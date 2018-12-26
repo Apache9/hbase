@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.security.access;
 import static org.apache.hadoop.fs.permission.AclEntryScope.ACCESS;
 import static org.apache.hadoop.fs.permission.AclEntryScope.DEFAULT;
 import static org.apache.hadoop.fs.permission.AclEntryType.USER;
+import static org.apache.hadoop.fs.permission.FsAction.ALL;
 import static org.apache.hadoop.fs.permission.FsAction.READ_EXECUTE;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ListMultimap;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
@@ -46,6 +48,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.AclEntryScope;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -300,6 +303,12 @@ public class HdfsAclManager {
             List<PathAcl> paths = pathAcl.getChildPathAcls();
             queue.addAll(paths);
             pathCount.addAndGet(paths.size());
+          } catch (Exception e) {
+            if (pathAcl != null && pathAcl.path != null) {
+              LOG.error("Set hdfs acl error for path: " + pathAcl.path.toString(), e);
+            } else {
+              LOG.error("Set hdfs acl error because of NPE", e);
+            }
           } finally {
             pathCount.decrementAndGet();
           }
@@ -387,18 +396,13 @@ public class HdfsAclManager {
       return pathAcls;
     }
 
-    void setAcl() throws Exception{
-      try {
-        if (fs.exists(path)) {
-          if (fs.isDirectory(path)) {
-            aclOperation.apply(fs, path, dirAcl);
-          } else {
-            aclOperation.apply(fs, path, fileAcl);
-          }
+    void setAcl() throws IOException {
+      if (fs.exists(path)) {
+        if (fs.isDirectory(path)) {
+          aclOperation.apply(fs, path, dirAcl);
+        } else {
+          aclOperation.apply(fs, path, fileAcl);
         }
-      } catch (Exception e) {
-        LOG.error("set acl error for path: " + path + ", " + e);
-        throw new Exception(e);
       }
     }
   }
@@ -407,22 +411,24 @@ public class HdfsAclManager {
     return Stream.of(permission.actions).anyMatch(a -> a == Permission.Action.READ);
   }
 
-  class PathHelper {
+  static class PathHelper {
     Configuration conf;
     Path rootDir;
+    Path tmpDir;
     Path tmpDataDir;
     Path dataDir;
+    Path archiveDir;
     Path archiveDataDir;
     Path snapshotDir;
 
     PathHelper(Configuration conf) {
       this.conf = conf;
       rootDir = new Path(conf.get(HConstants.HBASE_DIR));
-      tmpDataDir = new Path(new Path(rootDir, HConstants.HBASE_TEMP_DIRECTORY),
-          HConstants.BASE_NAMESPACE_DIR);
+      tmpDir = new Path(rootDir, HConstants.HBASE_TEMP_DIRECTORY);
+      tmpDataDir = new Path(tmpDir, HConstants.BASE_NAMESPACE_DIR);
       dataDir = new Path(rootDir, HConstants.BASE_NAMESPACE_DIR);
-      archiveDataDir = new Path(new Path(rootDir, HConstants.HFILE_ARCHIVE_DIRECTORY),
-          HConstants.BASE_NAMESPACE_DIR);
+      archiveDir = new Path(rootDir, HConstants.HFILE_ARCHIVE_DIRECTORY);
+      archiveDataDir = new Path(archiveDir, HConstants.BASE_NAMESPACE_DIR);
       snapshotDir = new Path(rootDir, HConstants.SNAPSHOT_DIR_NAME);
     }
 
@@ -434,8 +440,16 @@ public class HdfsAclManager {
       return dataDir;
     }
 
+    Path getTmpDir() {
+      return tmpDir;
+    }
+
     Path getTmpDataDir() {
       return tmpDataDir;
+    }
+
+    Path getArchiveDir() {
+      return archiveDir;
     }
 
     Path getArchiveDataDir() {
@@ -482,5 +496,81 @@ public class HdfsAclManager {
         return null;
       }
     }
+  }
+
+  /**
+   * If hbase.hdfs.acl is enabled, check exists (create if not exists) and set permission for public
+   * directories.
+   * @param conf The configuration of the cluster
+   * @param fs The file system
+   * @throws IOException
+   */
+  public static void setPublicDirectoryPermission(Configuration conf, FileSystem fs)
+      throws IOException {
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      PathHelper pathHelper = new PathHelper(conf);
+      String owner = fs.getFileStatus(pathHelper.getRootDir()).getOwner();
+      Path[] publicDirs = new Path[] { pathHelper.getRootDir(), pathHelper.getDataDir(),
+          pathHelper.getTmpDir(), pathHelper.getTmpDataDir(), pathHelper.getArchiveDir(),
+          pathHelper.getArchiveDataDir(), pathHelper.getSnapshotRootDir() };
+      checkDirExistAndSetPermission(fs, getHdfsAclEnabledPublicFilePermission(conf), owner,
+        publicDirs);
+      LOG.info("Finish set public directories permission used for scanning snapshot.");
+    }
+  }
+
+  /**
+   * If hbase.hdfs.acl is enabled, check exists (create if not exists) and set permission for
+   * restore directory.
+   * @param conf The configuration of the cluster
+   * @param fs The file system
+   */
+  public static void setRestoreDirectoryPermission(Configuration conf, FileSystem fs) {
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      try {
+        Path rootDir = new Path(conf.get(HConstants.HBASE_DIR));
+        String owner = fs.getFileStatus(rootDir).getOwner();
+        Path restoreDir = new Path(conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR,
+          HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
+        checkDirExistAndSetPermission(fs, getHdfsAclEnabledRestoreFilePermission(conf), owner,
+          restoreDir);
+        // set hbase owner acl over restore directory to run restore hfile cleaner
+        AclEntry ownerAccessAclEntry = new AclEntry.Builder().setScope(ACCESS).setType(USER)
+            .setName(owner).setPermission(ALL).build();
+        AclEntry ownerDefaultAclEntry = new AclEntry.Builder().setScope(DEFAULT).setType(USER)
+            .setName(owner).setPermission(ALL).build();
+        fs.modifyAclEntries(restoreDir,
+          Lists.newArrayList(ownerAccessAclEntry, ownerDefaultAclEntry));
+        LOG.info("Finish set restore directory permission used for scanning snapshot.");
+      } catch (IOException e) {
+        LOG.warn("Failed to set restore directory permission used for scanning snapshots", e);
+      }
+    }
+  }
+
+  private static void checkDirExistAndSetPermission(FileSystem fs, FsPermission permission,
+      String owner, Path... dirPaths) throws IOException {
+    for (Path path : dirPaths) {
+      if (!fs.exists(path)) {
+        fs.mkdirs(path);
+      }
+      if (!fs.getFileStatus(path).getOwner().equals(owner)) {
+        throw new IOException("The owner of directory [" + path.toString() + "] must be " + owner
+            + ", please change the owner manually.");
+      }
+      fs.setPermission(path, permission);
+    }
+  }
+
+  @VisibleForTesting
+  protected static FsPermission getHdfsAclEnabledPublicFilePermission(Configuration conf) {
+    return new FsPermission(conf.get(HConstants.HDFS_ACL_ENABLED_PUBLIC_HFILE_PERMISSION,
+      HConstants.HDFS_ACL_ENABLED_PUBLIC_HFILE_PERMISSION_DEFAULT));
+  }
+
+  @VisibleForTesting
+  protected static FsPermission getHdfsAclEnabledRestoreFilePermission(Configuration conf) {
+    return new FsPermission(conf.get(HConstants.HDFS_ACL_ENABLED_RESTORE_HFILE_PERMISSION,
+      HConstants.HDFS_ACL_ENABLED_RESTORE_HFILE_PERMISSION_DEFAULT));
   }
 }
