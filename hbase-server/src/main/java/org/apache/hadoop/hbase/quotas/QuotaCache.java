@@ -77,9 +77,9 @@ public class QuotaCache implements Stoppable {
   public static final String REFRESH_CONF_KEY = "hbase.quota.refresh.period";
   private static final int REFRESH_DEFAULT_PERIOD = 5 * 60000; // 5min
   public static final int EVICT_PERIOD_FACTOR = 5; // N * REFRESH_DEFAULT_PERIOD
-  static final String REGION_SERVER_READ_LIMIT_KEY = "hbase.regionserver.read.limit";
+  public static final String REGION_SERVER_READ_LIMIT_KEY = "hbase.regionserver.read.limit";
   static final int DEFAULT_REGION_SERVER_READ_LIMIT = 3000;
-  static final String REGION_SERVER_WRITE_LIMIT_KEY = "hbase.regionserver.write.limit";
+  public static final String REGION_SERVER_WRITE_LIMIT_KEY = "hbase.regionserver.write.limit";
   static final int DEFAULT_REGION_SERVER_WRITE_LIMIT = 10000;
 
   // If true, will cache all quota settings.

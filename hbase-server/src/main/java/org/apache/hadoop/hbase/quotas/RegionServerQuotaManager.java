@@ -19,7 +19,6 @@
 package org.apache.hadoop.hbase.quotas;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -37,8 +36,6 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.ipc.RpcScheduler;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
@@ -263,16 +260,10 @@ public class RegionServerQuotaManager {
   /**
    * Check quota for a list of Mutation.
    */
-  public OperationQuota checkQuota(final HRegion region, final List<ClientProtos.Action> actions)
+  public OperationQuota checkQuota(final HRegion region, final List<Mutation> mutations)
       throws IOException, ThrottlingException {
     UserGroupInformation ugi = getUserGroupInformation(region);
     TableName table = region.getTableDesc().getTableName();
-    List<Mutation> mutations = new ArrayList<>();
-    for (ClientProtos.Action action : actions) {
-      if (action.hasMutation()) {
-        mutations.add(ProtobufUtil.toMutation(action.getMutation()));
-      }
-    }
     return checkQuota(ugi, table, calculateWriteCapacityUnitNum(mutations), 0, 0);
   }
 

@@ -44,6 +44,7 @@ import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -5500,9 +5501,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final List<ClientProtos.Action> mutations, final CellScanner cells) throws ServiceException {
     Mutation[] mArray = new Mutation[mutations.size()];
     try {
-      if (isQuotaEnabled()) {
-        this.rsQuotaManager.checkQuota(region, mutations);
-      }
       int i = 0;
       for (ClientProtos.Action action: mutations) {
         MutationProto m = action.getMutation();
@@ -5513,6 +5511,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           mutation = ProtobufUtil.toDelete(m, cells);
         }
         mArray[i++] = mutation;
+      }
+
+      if (isQuotaEnabled()) {
+        this.rsQuotaManager.checkQuota(region, Arrays.asList(mArray));
       }
 
       if (!region.getRegionInfo().isMetaTable()) {
