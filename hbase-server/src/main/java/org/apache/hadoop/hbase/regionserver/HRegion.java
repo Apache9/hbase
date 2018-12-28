@@ -7617,8 +7617,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   }
 
   void updateReadRequestsByCapacityUnitPerSecond(List<Cell> cells) {
-    long val = cells.stream().mapToLong(CellUtil::estimatedSerializedSizeOf).sum();
-    readRequestsByCapacityUnitPerSecond.inc(val);
+    long totalSize = 0;
+    for (int i = 0, n = cells.size(); i < n; i++) {
+      totalSize += PrivateCellUtil.estimatedSerializedSizeOf(cells.get(i));
+    }
+    readRequestsByCapacityUnitPerSecond.inc(totalSize);
   }
 
   void metricsUpdateForGet(List<Cell> results, long before) {
