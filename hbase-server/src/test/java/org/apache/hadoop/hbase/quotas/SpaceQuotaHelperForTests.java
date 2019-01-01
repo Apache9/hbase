@@ -443,9 +443,9 @@ public class SpaceQuotaHelperForTests {
     public boolean evaluate() throws Exception {
       SpaceQuotaSnapshot snapshot;
       if (null == ns) {
-        snapshot = QuotaTableUtil.getCurrentSnapshot(conn, tn);
+        snapshot = QuotaTableTestUtil.getCurrentSnapshot(conn, tn);
       } else {
-        snapshot = QuotaTableUtil.getCurrentSnapshot(conn, ns);
+        snapshot = QuotaTableTestUtil.getCurrentSnapshot(conn, ns);
       }
 
       LOG.debug("Saw quota snapshot for " + (null == tn ? ns : tn) + ": " + snapshot);

@@ -108,7 +108,8 @@ public class TestQuotaStatusRPCs {
       }
     });
 
-    Map<TableName,Long> sizes = QuotaTableUtil.getMasterReportedTableSizes(TEST_UTIL.getConnection());
+    Map<TableName, Long> sizes =
+      QuotaTableTestUtil.getMasterReportedTableSizes(TEST_UTIL.getConnection());
     Long size = sizes.get(tn);
     assertNotNull("No reported size for " + tn, size);
     assertTrue("Reported table size was " + size, size.longValue() >= tableSize);
@@ -142,8 +143,8 @@ public class TestQuotaStatusRPCs {
       }
     });
 
-    Map<TableName, SpaceQuotaSnapshot> snapshots = QuotaTableUtil.getRegionServerQuotaSnapshots(
-        TEST_UTIL.getConnection(), rs.getServerName());
+    Map<TableName, SpaceQuotaSnapshot> snapshots = QuotaTableTestUtil
+      .getRegionServerQuotaSnapshots(TEST_UTIL.getConnection(), rs.getServerName());
     SpaceQuotaSnapshot snapshot = snapshots.get(tn);
     assertNotNull("Did not find snapshot for " + tn, snapshot);
     assertTrue(
@@ -189,8 +190,8 @@ public class TestQuotaStatusRPCs {
     });
 
     // We obtain the violations for a RegionServer by observing the snapshots
-    Map<TableName,SpaceQuotaSnapshot> snapshots =
-        QuotaTableUtil.getRegionServerQuotaSnapshots(TEST_UTIL.getConnection(), rs.getServerName());
+    Map<TableName, SpaceQuotaSnapshot> snapshots = QuotaTableTestUtil
+      .getRegionServerQuotaSnapshots(TEST_UTIL.getConnection(), rs.getServerName());
     SpaceQuotaSnapshot snapshot = snapshots.get(tn);
     assertNotNull("Did not find snapshot for " + tn, snapshot);
     assertTrue(snapshot.getQuotaStatus().isInViolation());
@@ -224,7 +225,7 @@ public class TestQuotaStatusRPCs {
     Waiter.waitFor(TEST_UTIL.getConfiguration(), 30 * 1000, new Predicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
-        SpaceQuotaSnapshot snapshot = QuotaTableUtil.getCurrentSnapshot(conn, tn);
+        SpaceQuotaSnapshot snapshot = QuotaTableTestUtil.getCurrentSnapshot(conn, tn);
         LOG.info("Table snapshot after initial ingest: " + snapshot);
         if (snapshot == null) {
           return false;
@@ -237,7 +238,7 @@ public class TestQuotaStatusRPCs {
     Waiter.waitFor(TEST_UTIL.getConfiguration(), 30 * 1000 * 1000, new Predicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
-        SpaceQuotaSnapshot snapshot = QuotaTableUtil.getCurrentSnapshot(
+        SpaceQuotaSnapshot snapshot = QuotaTableTestUtil.getCurrentSnapshot(
             conn, tn.getNamespaceAsString());
         LOG.debug("Namespace snapshot after initial ingest: " + snapshot);
         if (snapshot == null) {
@@ -250,7 +251,7 @@ public class TestQuotaStatusRPCs {
 
     // Sanity check: the below assertions will fail if we somehow write too much data
     // and force the table to move into violation before we write the second bit of data.
-    SpaceQuotaSnapshot snapshot = QuotaTableUtil.getCurrentSnapshot(conn, tn);
+    SpaceQuotaSnapshot snapshot = QuotaTableTestUtil.getCurrentSnapshot(conn, tn);
     assertTrue("QuotaSnapshot for " + tn + " should be non-null and not in violation",
         snapshot != null && !snapshot.getQuotaStatus().isInViolation());
 
@@ -264,7 +265,7 @@ public class TestQuotaStatusRPCs {
     Waiter.waitFor(TEST_UTIL.getConfiguration(), 30 * 1000, new Predicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
-        SpaceQuotaSnapshot snapshot = QuotaTableUtil.getCurrentSnapshot(conn, tn);
+        SpaceQuotaSnapshot snapshot = QuotaTableTestUtil.getCurrentSnapshot(conn, tn);
         LOG.info("Table snapshot after second ingest: " + snapshot);
         if (snapshot == null) {
           return false;
@@ -276,7 +277,7 @@ public class TestQuotaStatusRPCs {
     Waiter.waitFor(TEST_UTIL.getConfiguration(), 30 * 1000, new Predicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
-        SpaceQuotaSnapshot snapshot = QuotaTableUtil.getCurrentSnapshot(
+        SpaceQuotaSnapshot snapshot = QuotaTableTestUtil.getCurrentSnapshot(
             conn, tn.getNamespaceAsString());
         LOG.debug("Namespace snapshot after second ingest: " + snapshot);
         if (snapshot == null) {
