@@ -193,10 +193,6 @@ public class RpcServer implements RpcServerInterface {
    */
   protected static final ThreadLocal<Call> CurCall = new ThreadLocal<Call>();
 
-  /** Keeps MonitoredRPCHandler per handler thread. */
-  static final ThreadLocal<MonitoredRPCHandler> MONITORED_RPC
-      = new ThreadLocal<MonitoredRPCHandler>();
-
   protected final InetSocketAddress isa;
   protected int port;                             // port we listen on
   private int readThreads;                        // number of read threads
