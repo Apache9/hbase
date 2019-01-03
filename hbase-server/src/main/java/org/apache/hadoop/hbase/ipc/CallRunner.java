@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.exceptions.TimeoutIOException;
 import org.apache.hadoop.hbase.ipc.RpcServer.Call;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
+import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandlerImpl;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -63,7 +64,7 @@ public class CallRunner {
     this.rpcServer = rpcServer;
     // Add size of the call to queue size.
     this.rpcServer.addCallSize(call.getSize());
-    this.status = getStatus();
+    this.status = new MonitoredRPCHandlerImpl();
     this.userProvider = userProvider;
   }
 
@@ -188,18 +189,6 @@ public class CallRunner {
     call.sendResponseIfReady();
     this.status.markComplete("Sent response");
     this.status.pause("Waiting for a call");
-  }
-
-  MonitoredRPCHandler getStatus() {
-    // It is ugly the way we park status up in RpcServer.  Let it be for now.  TODO.
-    MonitoredRPCHandler status = RpcServer.MONITORED_RPC.get();
-    if (status != null) {
-      return status;
-    }
-    status = TaskMonitor.get().createRPCStatus(Thread.currentThread().getName());
-    status.pause("Waiting for a call");
-    RpcServer.MONITORED_RPC.set(status);
-    return status;
   }
 
   /**
