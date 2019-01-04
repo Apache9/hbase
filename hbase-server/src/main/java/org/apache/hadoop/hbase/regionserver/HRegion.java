@@ -120,6 +120,7 @@ import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+import org.apache.hadoop.hbase.client.VersionInfoUtil;
 import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.conf.PropagatingConfigurationObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
@@ -8199,8 +8200,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         case INCREMENT:
           NumberCodecType type = ((Increment) mutation).getNumberCodecType(
             store.getColumnFamilyDescriptor().getName(), CellUtil.cloneQualifier(delta));
-          Number deltaAmount =
-            type.decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
+          Number deltaAmount = getDeltaAmount(delta, type);
           byte[] newValue;
           if (currentValue != null) {
             try {
@@ -8267,6 +8267,16 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     } else {
       PrivateCellUtil.updateLatestStamp(delta, now);
       return CollectionUtils.isEmpty(tags) ? delta : PrivateCellUtil.createCell(delta, tags);
+    }
+  }
+
+  private Number getDeltaAmount(Cell delta, NumberCodecType type) {
+    // Used for keep compatibility with 0.98 mdh version
+    if (RpcServer.getCurrentCall().map(VersionInfoUtil::is98MDHClientRpcCall).orElse(false)) {
+      return NumberCodecType.RAW_LONG
+          .decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
+    } else {
+      return type.decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
     }
   }
 

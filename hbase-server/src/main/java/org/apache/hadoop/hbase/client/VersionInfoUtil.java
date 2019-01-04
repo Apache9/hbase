@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hbase.client;
 
+import org.apache.hadoop.hbase.ipc.RpcCall;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.ipc.RpcServer;
@@ -131,5 +132,9 @@ public final class VersionInfoUtil {
    */
   private static String[] getVersionComponents(final HBaseProtos.VersionInfo versionInfo) {
     return versionInfo.getVersion().split("[\\.-]");
+  }
+
+  public static boolean is98MDHClientRpcCall(RpcCall call) {
+    return call.getClientVersionInfo().getVersion().startsWith("0.98.11-mdh2");
   }
 }
