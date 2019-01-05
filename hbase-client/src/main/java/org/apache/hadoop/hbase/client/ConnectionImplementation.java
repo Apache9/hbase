@@ -1782,6 +1782,13 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
           TransitReplicationPeerSyncReplicationStateRequest request) throws ServiceException {
         return stub.transitReplicationPeerSyncReplicationState(controller, request);
       }
+
+      @Override
+      public MasterProtos.IsRestoreSnapshotDoneResponse isRestoreSnapshotDone(
+          RpcController controller, MasterProtos.IsRestoreSnapshotDoneRequest request)
+          throws ServiceException {
+        return stub.isRestoreSnapshotDone(controller, request);
+      }
     };
   }
 

@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.client;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.snapshot.CorruptedSnapshotException;
 import org.apache.hadoop.hbase.snapshot.SnapshotTestingUtils;
 import org.apache.hadoop.hbase.testclassification.ClientTests;
@@ -153,6 +155,12 @@ public class TestRestoreSnapshotFromClient {
     SnapshotTestingUtils.deleteArchiveDirectory(TEST_UTIL);
   }
 
+  private boolean isRestoreSnapshotDone(String snapshot) throws IOException {
+    return TEST_UTIL.getMiniHBaseCluster().getMaster().getSnapshotManager().isRestoreSnapshotDone(
+        ProtobufUtil.createHBaseProtosSnapshotDesc(
+            new SnapshotDescription(snapshot, tableName, SnapshotType.FLUSH)));
+  }
+
   @Test
   public void testRestoreSnapshot() throws IOException {
     verifyRowCount(TEST_UTIL, tableName, snapshot1Rows);
@@ -160,6 +168,7 @@ public class TestRestoreSnapshotFromClient {
     admin.snapshot(snapshotName1, tableName);
     // Restore from snapshot-0
     admin.restoreSnapshot(snapshotName0);
+    assertTrue(isRestoreSnapshotDone(Bytes.toString(snapshotName0)));
     admin.enableTable(tableName);
     verifyRowCount(TEST_UTIL, tableName, snapshot0Rows);
     SnapshotTestingUtils.verifyReplicasCameOnline(tableName, admin, getNumReplicas());
@@ -174,6 +183,7 @@ public class TestRestoreSnapshotFromClient {
     // Restore from snapshot-1
     admin.disableTable(tableName);
     admin.restoreSnapshot(snapshotName1);
+    assertTrue(isRestoreSnapshotDone(Bytes.toString(snapshotName1)));
     admin.enableTable(tableName);
     verifyRowCount(TEST_UTIL, tableName, snapshot1Rows);
     SnapshotTestingUtils.verifyReplicasCameOnline(tableName, admin, getNumReplicas());
@@ -181,6 +191,7 @@ public class TestRestoreSnapshotFromClient {
     // Restore from snapshot-1
     TEST_UTIL.deleteTable(tableName);
     admin.restoreSnapshot(snapshotName1);
+    assertTrue(isRestoreSnapshotDone(Bytes.toString(snapshotName1)));
     verifyRowCount(TEST_UTIL, tableName, snapshot1Rows);
     SnapshotTestingUtils.verifyReplicasCameOnline(tableName, admin, getNumReplicas());
   }

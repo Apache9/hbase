@@ -88,6 +88,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsNormaliz
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsNormalizerEnabledResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsProcedureDoneResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest;
@@ -646,5 +648,12 @@ public class ShortCircuitMasterConnection implements MasterKeepAliveConnection {
     transitReplicationPeerSyncReplicationState(RpcController controller,
       TransitReplicationPeerSyncReplicationStateRequest request) throws ServiceException {
     return stub.transitReplicationPeerSyncReplicationState(controller, request);
+  }
+
+  @Override
+  public IsRestoreSnapshotDoneResponse isRestoreSnapshotDone(
+      RpcController controller, IsRestoreSnapshotDoneRequest request)
+      throws ServiceException {
+    return stub.isRestoreSnapshotDone(controller, request);
   }
 }
