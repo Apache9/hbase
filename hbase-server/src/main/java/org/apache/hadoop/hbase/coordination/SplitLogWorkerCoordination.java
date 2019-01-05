@@ -48,9 +48,6 @@ import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesti
 @InterfaceAudience.Private
 public interface SplitLogWorkerCoordination {
 
-/* SplitLogWorker part */
-  int DEFAULT_MAX_SPLITTERS = 2;
-
   /**
    * Initialize internal values. This method should be used when corresponding SplitLogWorker
    * instance is created
