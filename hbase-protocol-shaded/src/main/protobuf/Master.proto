@@ -858,6 +858,11 @@ service MasterService {
   rpc RestoreSnapshot(RestoreSnapshotRequest) returns(RestoreSnapshotResponse);
 
   /**
+   * Determine if the snapshot restore is done yet.
+   */
+  rpc IsRestoreSnapshotDone(IsRestoreSnapshotDoneRequest) returns(IsRestoreSnapshotDoneResponse);
+
+  /**
    * Execute a distributed procedure.
    */
   rpc ExecProcedure(ExecProcedureRequest) returns(ExecProcedureResponse);

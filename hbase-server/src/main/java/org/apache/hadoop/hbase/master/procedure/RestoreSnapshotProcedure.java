@@ -561,4 +561,8 @@ public class RestoreSnapshotProcedure
     }
     return traceEnabled;
   }
+
+  public SnapshotDescription getSnapshot() {
+    return this.snapshot;
+  }
 }

@@ -343,6 +343,22 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
   }
 
   /**
+   * Check if the specified snapshot restore is done
+   */
+  public boolean isRestoreSnapshotDone(SnapshotDescription expected) throws IOException {
+    // check the request to make sure it has a snapshot
+    if (expected == null) {
+      throw new UnknownSnapshotException(
+          "No snapshot name passed in request, can't figure out which snapshot you want to check.");
+    }
+    // if find nothing, it means the procedure already done
+    return master.getMasterProcedureExecutor().getProcedures().stream()
+        .filter(p -> p instanceof RestoreSnapshotProcedure)
+        .filter(p -> ((RestoreSnapshotProcedure) p).getSnapshot().equals(expected))
+        .map(p -> p.isFinished()).findAny().orElse(true);
+  }
+
+  /**
    * Check if the specified snapshot is done
    *
    * @param expected

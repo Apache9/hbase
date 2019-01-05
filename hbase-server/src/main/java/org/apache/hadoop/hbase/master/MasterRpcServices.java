@@ -199,6 +199,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsNormaliz
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsNormalizerEnabledResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsProcedureDoneResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest;
@@ -1163,6 +1165,28 @@ public class MasterRpcServices extends RSRpcServices
       master.checkInitialized();
       IsSnapshotDoneResponse.Builder builder = IsSnapshotDoneResponse.newBuilder();
       boolean done = master.snapshotManager.isSnapshotDone(request.getSnapshot());
+      builder.setDone(done);
+      return builder.build();
+    } catch (ForeignException e) {
+      throw new ServiceException(e.getCause());
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  /**
+   * Checks if the specified snapshot restore is done.
+   * @return true if the specified snapshot restore is done
+   */
+  @Override
+  public IsRestoreSnapshotDoneResponse isRestoreSnapshotDone(RpcController controller,
+      IsRestoreSnapshotDoneRequest request) throws ServiceException {
+    LOG.debug("Checking to see if restore snapshot from request:" +
+        ClientSnapshotDescriptionUtils.toString(request.getSnapshot()) + " is done");
+    try {
+      master.checkInitialized();
+      IsRestoreSnapshotDoneResponse.Builder builder = IsRestoreSnapshotDoneResponse.newBuilder();
+      boolean done = master.snapshotManager.isRestoreSnapshotDone(request.getSnapshot());
       builder.setDone(done);
       return builder.build();
     } catch (ForeignException e) {
