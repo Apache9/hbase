@@ -159,6 +159,12 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
     LOG.info(msg);
     status.setStatus(msg);
     try {
+      // set snapshot hfile acl
+      if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)
+          && this.master.getHdfsAclManager() != null) {
+        this.master.getHdfsAclManager().snapshotAcl(snapshot);
+      }
+
       // If regions move after this meta scan, the region specific snapshot should fail, triggering
       // an external exception that gets captured here.
 
@@ -198,12 +204,6 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
       status.markComplete(msg);
       LOG.info(msg);
       metricsSnapshot.addSnapshot(status.getCompletionTimestamp() - status.getStartTime());
-
-      // set snapshot hfile acl
-      if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false) &&
-        this.master.getHdfsAclManager() != null) {
-        this.master.getHdfsAclManager().snapshotAcl(snapshot);
-      }
     } catch (Exception e) {
       status.abort("Failed to complete snapshot " + snapshot.getName() + " on table " +
           snapshotTable + " because " + e.getMessage());
