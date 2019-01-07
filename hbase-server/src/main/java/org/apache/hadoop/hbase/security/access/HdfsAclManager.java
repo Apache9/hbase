@@ -55,6 +55,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
+import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Lists;
@@ -133,25 +134,20 @@ public class HdfsAclManager {
     }
   }
 
-  public void snapshotAcl(SnapshotProtos.SnapshotDescription snapshot) {
-    try {
-      long start = System.currentTimeMillis();
-      TableName tableName = TableName.valueOf(snapshot.getTable());
-      Set<String> userSet = new HashSet<>();
-      userSet.addAll(AccessControlLists.getTablePermissions(conf, tableName).keySet());
-      userSet.addAll(AccessControlLists
-              .getNamespacePermissions(conf, tableName.getNamespaceAsString()).keySet());
-      List<String> users = Lists.newArrayList(userSet);
+  public void snapshotAcl(SnapshotProtos.SnapshotDescription snapshot) throws IOException {
+    long start = System.currentTimeMillis();
+    TableName tableName = TableName.valueOf(snapshot.getTable());
+    Set<String> userSet = new HashSet<>();
+    userSet.addAll(AccessControlLists.getTablePermissions(conf, tableName).keySet());
+    userSet.addAll(
+      AccessControlLists.getNamespacePermissions(conf, tableName.getNamespaceAsString()).keySet());
+    List<String> users = Lists.newArrayList(userSet);
 
-      List<Path> pathList = Lists.newArrayList(pathHelper.getSnapshotDir(snapshot.getName()));
-      List<PathAcl> pathAcls = getDefaultPathAcls(pathList, users, AclType.MODIFY);
-      traverseAndSetAcl(pathAcls);
-      traverseAndSetAcl(pathAcls); // set acl twice in case of file move
-      LOG.info("set acl when snapshot: " + snapshot.getName() + ", cost " + (System.currentTimeMillis() - start) + " ms.");
-    } catch (Exception e) {
-      LOG.error("set acl error when snapshot: " + (snapshot != null ? snapshot.getName() : null),
-        e);
-    }
+    List<Path> pathList = Lists.newArrayList(pathHelper.getSnapshotTmpDir(snapshot.getName()));
+    List<PathAcl> pathAcls = getDefaultPathAcls(pathList, users, AclType.MODIFY);
+    pathAcls.get(0).setAcl();
+    LOG.info("set acl when snapshot: " + snapshot.getName() + ", cost "
+        + (System.currentTimeMillis() - start) + " ms.");
   }
 
   /**
@@ -420,6 +416,7 @@ public class HdfsAclManager {
     Path archiveDir;
     Path archiveDataDir;
     Path snapshotDir;
+    Path snapshotTmpDir;
 
     PathHelper(Configuration conf) {
       this.conf = conf;
@@ -430,6 +427,7 @@ public class HdfsAclManager {
       archiveDir = new Path(rootDir, HConstants.HFILE_ARCHIVE_DIRECTORY);
       archiveDataDir = new Path(archiveDir, HConstants.BASE_NAMESPACE_DIR);
       snapshotDir = new Path(rootDir, HConstants.SNAPSHOT_DIR_NAME);
+      snapshotTmpDir = new Path(snapshotDir, SnapshotDescriptionUtils.SNAPSHOT_TMP_DIR_NAME);
     }
 
     Path getRootDir() {
@@ -486,6 +484,10 @@ public class HdfsAclManager {
 
     Path getSnapshotDir(String snapshot) {
       return new Path(snapshotDir, snapshot);
+    }
+
+    Path getSnapshotTmpDir(String snapshot) {
+      return new Path(snapshotTmpDir, snapshot);
     }
 
     FileSystem getFileSystem() {
