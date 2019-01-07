@@ -232,6 +232,11 @@ public class KeyOnlyFilter extends FilterBase {
     }
 
     @Override
+    public int getSerializedSize() {
+      return cell.getSerializedSize();
+    }
+
+    @Override
     public byte[] getTagsArray() {
       return HConstants.EMPTY_BYTE_ARRAY;
     }
@@ -244,6 +249,11 @@ public class KeyOnlyFilter extends FilterBase {
     @Override
     public int getTagsLength() {
       return 0;
+    }
+
+    @Override
+    public long heapSize() {
+      return cell.heapSize();
     }
   }
 
