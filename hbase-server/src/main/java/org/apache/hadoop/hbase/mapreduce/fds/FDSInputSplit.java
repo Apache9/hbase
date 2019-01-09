@@ -45,8 +45,7 @@ public class FDSInputSplit extends InputSplit implements Writable {
   public void write(DataOutput out) throws IOException {
     Bytes.writeByteArray(out, Bytes.toBytes(scanner.getEndpoint()));
     Bytes.writeByteArray(out, Bytes.toBytes(scanner.getBucket()));
-    Bytes.writeByteArray(out, Bytes.toBytes(scanner.getFileName()));
-    Bytes.writeByteArray(out, Bytes.toBytes(scanner.getFileSize()));
+    Bytes.writeByteArray(out, Bytes.toBytes(scanner.getPartition()));
     Bytes.writeByteArray(out, Bytes.toBytes(scanner.getCredential().getGalaxyAccessId()));
     Bytes.writeByteArray(out, Bytes.toBytes(scanner.getCredential().getGalaxyAccessSecret()));
     Bytes.writeByteArray(out, Bytes.toBytes(scanner.getTimeRange().getMin()));
@@ -58,16 +57,14 @@ public class FDSInputSplit extends InputSplit implements Writable {
     FDSMessageScanner.FDSMessageScannerBuilder builder = FDSMessageScanner.newBuilder();
     String endpoint = Bytes.toString(Bytes.readByteArray(in));
     String bucket = Bytes.toString(Bytes.readByteArray(in));
-    String fileName = Bytes.toString(Bytes.readByteArray(in));
-    long size = Bytes.toLong(Bytes.readByteArray(in));
+    String partition = Bytes.toString(Bytes.readByteArray(in));
     String accessKey = Bytes.toString(Bytes.readByteArray(in));
     String accessSecret = Bytes.toString(Bytes.readByteArray(in));
     long startTime = Bytes.toLong(Bytes.readByteArray(in));
     long endTime = Bytes.toLong(Bytes.readByteArray(in));
     builder.withEndpoint(endpoint)
         .withBucketName(bucket)
-        .withFileName(fileName)
-        .withFileSize(size)
+        .withPartition(partition)
         .withCredential(accessKey, accessSecret)
         .withTimeRange(startTime, endTime);
     this.scanner = builder.build();
@@ -75,7 +72,7 @@ public class FDSInputSplit extends InputSplit implements Writable {
 
   @Override
   public long getLength() throws IOException, InterruptedException {
-    return scanner.getFileSize();
+    return 0;
   }
 
   @Override

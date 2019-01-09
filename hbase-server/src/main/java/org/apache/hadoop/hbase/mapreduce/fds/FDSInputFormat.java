@@ -25,14 +25,11 @@ import com.xiaomi.infra.thirdparty.galaxy.fds.client.credential.BasicFDSCredenti
 import com.xiaomi.infra.thirdparty.galaxy.fds.client.credential.GalaxyFDSCredential;
 import com.xiaomi.infra.thirdparty.galaxy.fds.client.exception.GalaxyFDSClientException;
 import com.xiaomi.infra.thirdparty.galaxy.fds.client.model.FDSObjectListing;
-import com.xiaomi.infra.thirdparty.galaxy.fds.client.model.FDSObjectSummary;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.FDSMessageScanner;
@@ -43,10 +40,12 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Public
 public class FDSInputFormat extends InputFormat<ImmutableBytesWritable, Result> {
-  private final Log LOG = LogFactory.getLog(FDSInputFormat.class);
+  private final Logger LOG = LoggerFactory.getLogger(FDSInputFormat.class);
 
   static final String FDS_BUCKET_NAME = "galaxy.fds.bucket.name";
   static final String FDS_ENDPOINT = "galaxy.fds.endpoint";
@@ -71,7 +70,8 @@ public class FDSInputFormat extends InputFormat<ImmutableBytesWritable, Result> 
     accessKey = conf.get(FDS_ACCESS_KEY);
     accessSecret = conf.get(FDS_ACCESS_SECRET);
     if(endpoint == null || accessKey == null || accessSecret == null || bucketName == null) {
-      throw new IOException("please set all configs of endpoint, accessKey, accessSecret and bucketName");
+      throw new IOException(
+          "please set all configs of endpoint, accessKey, accessSecret and bucketName");
     }
 
     startTime = conf.getLong(FDS_START_TIME, 0);
@@ -85,45 +85,45 @@ public class FDSInputFormat extends InputFormat<ImmutableBytesWritable, Result> 
       if (!fdsClient.doesBucketExist(bucketName)) {
         throw new IOException("this bucket doesn't exist, please check: " + bucketName);
       }
-      List<FDSObjectSummary> files =  getAllFiles(fdsClient);
-      List<InputSplit> splits = createSplits(files);
-      return splits;
+      List<String> partitions = getAllPartitions(fdsClient);
+      return createSplits(partitions);
     } catch (GalaxyFDSClientException e) {
       throw new IOException("Get a exception from FDS: ", e);
     }
   }
 
-  private List<InputSplit> createSplits(List<FDSObjectSummary> files) throws IOException {
+  private List<InputSplit> createSplits(List<String> partitions) throws IOException {
     List<InputSplit> inputSplits = new ArrayList<>();
     FDSMessageScanner.FDSMessageScannerBuilder builder = FDSMessageScanner.newBuilder();
     builder.withEndpoint(endpoint)
         .withBucketName(bucketName)
         .withTimeRange(startTime, endTime)
         .withCredential(accessKey, accessSecret);
-    for(FDSObjectSummary file : files) {
-      inputSplits.add(new FDSInputSplit(builder.withFileObjectSummary(file).build()));
+    for(String partition : partitions) {
+      LOG.info("add a split for partition {}", partition);
+      inputSplits.add(new FDSInputSplit(builder.withPartition(partition).build()));
     }
     return inputSplits;
   }
 
-  private List<FDSObjectSummary> getAllFiles(GalaxyFDSClient fdsClient) throws GalaxyFDSClientException {
+  private List<String> getAllPartitions(GalaxyFDSClient fdsClient) throws GalaxyFDSClientException {
     FDSObjectListing listing = null;
-    List<FDSObjectSummary> allFiles = new ArrayList<>();
+    List<String> partitions = new ArrayList<>();
     do {
       if (listing == null) {
-        listing = fdsClient.listObjects(bucketName, "", "");
+        listing = fdsClient.listObjects(bucketName, getPrefix(bucketName), "/");
       } else {
         listing = fdsClient.listNextBatchOfObjects(listing);
       }
-      if(listing != null){
-        List<FDSObjectSummary> files = listing.getObjectSummaries();
-        for(FDSObjectSummary file : files) {
-          LOG.debug("get a file: " + file.getObjectName());
-          allFiles.add(file);
-        }
+      if (listing != null) {
+        partitions.addAll(listing.getCommonPrefixes());
       }
     } while (listing != null && listing.isTruncated());
-    return allFiles;
+    return partitions;
+  }
+
+  private String getPrefix(String bucket) {
+    return bucket.replaceAll("\\.", "_") + "/";
   }
 
   @Override
