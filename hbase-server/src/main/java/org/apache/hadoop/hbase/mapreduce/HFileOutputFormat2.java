@@ -198,22 +198,24 @@ public class HFileOutputFormat2
           rollWriters();
         }
 
-        // create a new HLog writer, if necessary
+        // create a new HFile writer, if necessary
         if (wl == null || wl.writer == null) {
           if (conf.getBoolean(LOCALITY_SENSITIVE_CONF_KEY, DEFAULT_LOCALITY_SENSITIVE)) {
             String tableName = conf.get(OUTPUT_TABLE_NAME_CONF_KEY);
             HRegionLocation loc = null;
             HTable htable = null;
-            try {
-              htable = new HTable(conf, tableName);
-              loc = htable.getRegionLocation(rowKey);
-            } catch (Throwable e) {
-              LOG.warn("there's something wrong when locating rowkey: " +
-                Bytes.toString(rowKey), e);
-              loc = null;
-            } finally {
-              if(null != htable) {
-                htable.close();
+            if (tableName != null) {
+              try {
+                htable = new HTable(conf, tableName);
+                loc = htable.getRegionLocation(rowKey);
+              } catch (Throwable e) {
+                LOG.warn("there's something wrong when locating rowkey: " + Bytes.toString(rowKey),
+                  e);
+                loc = null;
+              } finally {
+                if (null != htable) {
+                  htable.close();
+                }
               }
             }
 
@@ -451,7 +453,7 @@ public class HFileOutputFormat2
     if (conf.getBoolean(LOCALITY_SENSITIVE_CONF_KEY, DEFAULT_LOCALITY_SENSITIVE)) {
       // record this table name for creating writer by favored nodes
       LOG.info("bulkload locality sensitive enabled");
-      conf.set(OUTPUT_TABLE_NAME_CONF_KEY, table.getName().getNameAsString());
+      conf.set(OUTPUT_TABLE_NAME_CONF_KEY, Bytes.toString(table.getFullTableName()));
     }
 
     // Use table's region boundaries for TOP split points.
@@ -480,6 +482,12 @@ public class HFileOutputFormat2
     job.setOutputKeyClass(ImmutableBytesWritable.class);
     job.setOutputValueClass(KeyValue.class);
     job.setOutputFormatClass(HFileOutputFormat2.class);
+
+    if (conf.getBoolean(LOCALITY_SENSITIVE_CONF_KEY, DEFAULT_LOCALITY_SENSITIVE)) {
+      // record this table name for creating writer by favored nodes
+      LOG.info("bulkload locality sensitive enabled");
+      conf.set(OUTPUT_TABLE_NAME_CONF_KEY, Bytes.toString(table.getFullTableName()));
+    }
 
     // Set compression algorithms based on column families
     configureCompression(table, conf);
