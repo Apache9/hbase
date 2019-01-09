@@ -65,7 +65,12 @@ public class FDSRecordReader extends RecordReader<ImmutableBytesWritable, Result
 
   @Override
   public float getProgress() throws IOException, InterruptedException {
-    return scanner.getFileSize() == 0 ? 0 : scanner.getOffset() / scanner.getFileSize();
+    int fileCount = scanner.getFileList().size();
+    if(fileCount <= 0) {
+      return 0;
+    }
+    int index = scanner.getFileListIterator().previousIndex();
+    return  (index == -1 ? 0 : index) / fileCount;
   }
 
   @Override

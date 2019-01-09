@@ -23,10 +23,10 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.FDSMessageScanner;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
@@ -109,9 +110,9 @@ public class TestTalosUtil {
           Bytes.toInt(message.getMessage(), Bytes.SIZEOF_LONG + Bytes.SIZEOF_INT, Bytes.SIZEOF_INT);
       byte[] messageBytes =
           Bytes.copy(message.getMessage(), HEADER_SIZE, message.getMessage().length - HEADER_SIZE);
-      results.addAll(TalosUtil.convertMessageToResult(
-        TalosUtil.mergeChunksToMessage(
-          Arrays.asList(new TalosUtil.MessageChunk(HEADER_SIZE + messageBytes.length, seqNum, index, totalSlices, messageBytes))),
+      results.addAll(TalosUtil.convertMessageToResult(TalosUtil.mergeChunksToMessage(
+        Arrays.asList(new TalosUtil.MessageChunk(HEADER_SIZE + messageBytes.length, seqNum, index,
+            totalSlices, messageBytes))),
         timeRange));
     }
     return results;
@@ -134,9 +135,10 @@ public class TestTalosUtil {
     List<Message> messages = TalosUtil.constructMessages(entry);
     Assert.assertTrue(messages.size() == 1);
     DataInputStream inputStream = getDataInputStreamFromMessages(messages);
-    Pair<Integer, Message> messagePair = TalosUtil.getNextMessageFromStream(inputStream);
-    List<Result> results =
-        TalosUtil.convertMessageToResult(messagePair.getSecond(), new TimeRange());
+    FDSMessageScanner scanner = new FDSMessageScanner(new LinkedList<>(), inputStream);
+    Assert.assertTrue(scanner.loadNextMessage());
+    List<Result> results = TalosUtil.convertMessageToResult(
+        TalosUtil.mergeChunksToMessage(scanner.getMessageChunks()), new TimeRange());
     Assert.assertEquals("size of result ", 1000, results.size());
   }
 
@@ -146,35 +148,40 @@ public class TestTalosUtil {
     List<Message> messages = TalosUtil.constructMessages(entry);
     Assert.assertTrue(messages.size() > 1);
     DataInputStream inputStream = getDataInputStreamFromMessages(messages);
-    Pair<Integer, Message> messagePair = TalosUtil.getNextMessageFromStream(inputStream);
-    List<Result> results =
-        TalosUtil.convertMessageToResult(messagePair.getSecond(), new TimeRange());
+    FDSMessageScanner scanner = new FDSMessageScanner(new LinkedList<>(), inputStream);
+    Assert.assertTrue(scanner.loadNextMessage());
+    List<Result> results = TalosUtil.convertMessageToResult(
+      TalosUtil.mergeChunksToMessage(scanner.getMessageChunks()), new TimeRange());
     Assert.assertEquals("size of result ", 800000, results.size());
   }
 
   @Test
   public void testUncompleteMessages() throws Exception {
+    LinkedList<TalosUtil.MessageChunk> chunks  = new LinkedList<>();
     HLog.Entry entry = getEntry(1, 800000);
     List<Message> messages = TalosUtil.constructMessages(entry);
     Assert.assertTrue(messages.size() > 1);
     DataInputStream inputStream =
         getDataInputStreamFromMessages(messages.subList(0, messages.size() - 1));
-    Pair<Integer, Message> messagePair = null;
+    FDSMessageScanner scanner = new FDSMessageScanner(chunks, inputStream);
+    Throwable e = null;
     try {
-      messagePair = TalosUtil.getNextMessageFromStream(inputStream);
-    } catch (EOFException eof){
+      scanner.loadNextMessage();
+    } catch (Throwable eof) {
+      e = eof;
     }
-    Assert.assertTrue(messagePair == null);
+    Assert.assertNotNull(e);
+    Assert.assertFalse(scanner.getMessageChunks().getLast().isLastChunk());
     HLog.Entry smallEntry = getEntry(2, 1000);
     List<Message> completeMessages = TalosUtil.constructMessages(smallEntry);
     List<Message> testMessages = new ArrayList<>();
     testMessages.addAll(messages.subList(0, messages.size() - 2));
     testMessages.addAll(completeMessages);
-    DataInputStream inputStream2 =
-            getDataInputStreamFromMessages(testMessages);
-    Pair<Integer, Message> messagePair2 = TalosUtil.getNextMessageFromStream(inputStream2);
-    List<Result> results =
-            TalosUtil.convertMessageToResult(messagePair2.getSecond(), new TimeRange());
+    DataInputStream inputStream2 = getDataInputStreamFromMessages(testMessages);
+    scanner = new FDSMessageScanner(chunks, inputStream2);
+    Assert.assertTrue(scanner.loadNextMessage());
+    List<Result> results = TalosUtil
+        .convertMessageToResult(TalosUtil.mergeChunksToMessage(chunks), new TimeRange());
     Assert.assertEquals("size of result ", 1000, results.size());
   }
 
@@ -188,9 +195,10 @@ public class TestTalosUtil {
     duplicateMessageList.addAll(messages);
     Assert.assertTrue(duplicateMessageList.size() > messages.size());
     DataInputStream inputStream = getDataInputStreamFromMessages(duplicateMessageList);
-    Pair<Integer, Message> messagePair = TalosUtil.getNextMessageFromStream(inputStream);
-    List<Result> results =
-        TalosUtil.convertMessageToResult(messagePair.getSecond(), new TimeRange());
+    FDSMessageScanner scanner = new FDSMessageScanner(new LinkedList<>(), inputStream);
+    Assert.assertTrue(scanner.loadNextMessage());
+    List<Result> results = TalosUtil.convertMessageToResult(
+        TalosUtil.mergeChunksToMessage(scanner.getMessageChunks()), new TimeRange());
     Assert.assertEquals("size of result ", 800000, results.size());
   }
 

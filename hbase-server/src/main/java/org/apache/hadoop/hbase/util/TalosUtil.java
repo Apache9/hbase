@@ -73,30 +73,7 @@ public class TalosUtil {
 
   private TalosUtil(){}
 
-  public static Pair<Integer, Message> getNextMessageFromStream(DataInputStream in)
-      throws IOException {
-    boolean done = false;
-    int readBytes = 0;
-    LinkedList<MessageChunk> messageChunkList = new LinkedList<>();
-    while (!done) {
-      MessageChunk messageChunk = readMessageChunk(in);
-      if (messageChunkList.isEmpty()
-          || messageChunk.getSeqNum() != messageChunkList.getLast().getSeqNum()) {
-        messageChunkList.clear();
-      }
-      if (messageChunkList.isEmpty()
-          || messageChunk.getIndex() == messageChunkList.getLast().getIndex() + 1) {
-        messageChunkList.add(messageChunk);
-      }
-      readBytes += (Bytes.SIZEOF_INT + messageChunk.getMessageLength());
-      if (messageChunk.isLastChunk()) {
-        done = messageChunkList.size() == messageChunk.getTotalSlices();
-      }
-    }
-    return new Pair<>(readBytes, mergeChunksToMessage(messageChunkList));
-  }
-
-  private static MessageChunk readMessageChunk(DataInputStream in)
+  public static MessageChunk readMessageChunk(DataInputStream in)
       throws IOException {
     int messageLength = in.readInt();
     long seqNum = in.readLong();
@@ -260,6 +237,8 @@ public class TalosUtil {
     public boolean isLastChunk() {
       return isLastChunk;
     }
+
+    public boolean isFirstChunk() {return getIndex() == 0;}
 
     public int getMessageLength() {
       return messageLength;
