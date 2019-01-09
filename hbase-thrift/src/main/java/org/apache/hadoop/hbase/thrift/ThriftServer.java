@@ -140,6 +140,7 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.base.Joiner;
 import com.xiaomi.infra.thirdparty.com.google.common.base.Splitter;
 import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -274,6 +275,16 @@ public class ThriftServer  extends Configured implements Tool {
   protected TProcessor createProcessor() {
     return new Hbase.Processor<>(
         HbaseHandlerMetricsProxy.newInstance((Hbase.Iface) hbaseServiceHandler, metrics, conf));
+  }
+
+  @VisibleForTesting
+  public TServer getTserver() {
+    return tserver;
+  }
+
+  @VisibleForTesting
+  public Server getHttpServer() {
+    return httpServer;
   }
 
   protected void printUsageAndExit(Options options, int exitCode)
