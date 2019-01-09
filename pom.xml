@@ -1451,6 +1451,8 @@
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.9.3</thrift.version>
     <zookeeper.version>3.4.5-mdh1.2.0</zookeeper.version>
+    <galaxy-sds-core.version>3.0.0</galaxy-sds-core.version>
+    <themis-coprocessor.version>3.0.0</themis-coprocessor.version>
     <!-- What ZooKeeper 3.4.x depends on and nothing more -->
     <jline.version>0.9.94</jline.version>
     <slf4j.version>1.7.25</slf4j.version>
@@ -2715,6 +2717,22 @@
             <groupId>com.xiaomi.infra</groupId>
             <artifactId>hadoop-security</artifactId>
             <version>${hadoop-security.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>com.xiaomi.infra.galaxy</groupId>
+            <artifactId>galaxy-sds-core</artifactId>
+            <version>${galaxy-sds-core.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>com.xiaomi.infra</groupId>
+            <artifactId>themis-coprocessor</artifactId>
+            <version>${themis-coprocessor.version}</version>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
