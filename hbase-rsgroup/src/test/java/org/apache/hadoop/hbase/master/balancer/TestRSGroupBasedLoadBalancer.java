@@ -42,7 +42,7 @@ import org.apache.hadoop.hbase.master.RegionPlan;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.rsgroup.RSGroupBasedLoadBalancer;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -55,7 +55,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.ArrayListMultimap;
 /**
  * Test RSGroupBasedLoadBalancer with SimpleLoadBalancer as internal balancer
  */
-@Category(SmallTests.class)
+@Category(LargeTests.class)
 public class TestRSGroupBasedLoadBalancer extends RSGroupableBalancerTestBase {
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
