@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.thrift.HBaseServiceHandler;
 import org.apache.hadoop.hbase.thrift.HbaseHandlerMetricsProxy;
+import org.apache.hadoop.hbase.thrift.ThriftMetrics;
 import org.apache.hadoop.hbase.thrift2.generated.THBaseService;
 import org.apache.hadoop.util.Shell;
 import org.apache.hadoop.util.ToolRunner;
@@ -74,6 +75,11 @@ public class ThriftServer extends org.apache.hadoop.hbase.thrift.ThriftServer {
   protected HBaseServiceHandler createHandler(Configuration conf, UserProvider userProvider)
       throws IOException {
     return new ThriftHBaseServiceHandler(conf, userProvider);
+  }
+
+  @Override
+  protected ThriftMetrics createThriftMetrics(Configuration conf) {
+    return new ThriftMetrics(conf, ThriftMetrics.ThriftServerType.TWO);
   }
 
   @Override
