@@ -88,7 +88,7 @@ public class TestAsyncTableNoncedRetry {
       registry.getClusterId().get(), null, User.getCurrent()) {
 
       @Override
-      public NonceGenerator getNonceGenerator() {
+      NonceGenerator getNonceGenerator() {
         return NONCE_GENERATOR;
       }
     };
