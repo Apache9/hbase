@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-
 import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkArgument;
 import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.retries2Attempts;
@@ -32,7 +31,7 @@ import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timer;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.ScanResponse;
@@ -46,9 +45,9 @@ class AsyncRpcRetryingCallerFactory {
 
   private final AsyncConnectionImpl conn;
 
-  private final HashedWheelTimer retryTimer;
+  private final Timer retryTimer;
 
-  public AsyncRpcRetryingCallerFactory(AsyncConnectionImpl conn, HashedWheelTimer retryTimer) {
+  public AsyncRpcRetryingCallerFactory(AsyncConnectionImpl conn, Timer retryTimer) {
     this.conn = conn;
     this.retryTimer = retryTimer;
   }
