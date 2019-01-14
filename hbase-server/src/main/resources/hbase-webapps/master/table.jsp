@@ -31,11 +31,11 @@
   import="java.util.TreeMap"
   import="org.apache.commons.lang3.StringEscapeUtils"
   import="org.apache.hadoop.conf.Configuration"
-  import="org.apache.hadoop.hbase.HColumnDescriptor"
   import="org.apache.hadoop.hbase.HConstants"
   import="org.apache.hadoop.hbase.HRegionLocation"
   import="org.apache.hadoop.hbase.ServerName"
   import="org.apache.hadoop.hbase.TableName"
+  import="org.apache.hadoop.hbase.client.ColumnFamilyDescriptor"
   import="org.apache.hadoop.hbase.TableNotFoundException"
   import="org.apache.hadoop.hbase.client.Admin"
   import="org.apache.hadoop.hbase.client.CompactionState"
@@ -131,7 +131,7 @@
 if ( fqtn != null ) {
   try {
   table = master.getConnection().getTable(TableName.valueOf(fqtn));
-  if (table.getTableDescriptor().getRegionReplication() > 1) {
+  if (table.getDescriptor().getRegionReplication() > 1) {
     tableHeader = "<h2>Table Regions</h2><table id=\"tableRegionTable\" class=\"tablesorter table table-striped\" style=\"table-layout: fixed; word-wrap: break-word;\"><thead><tr><th>Name</th><th>Region Server</th><th>ReadRequests</th><th>WriteRequests</th><th>StorefileSize</th><th>Num.Storefiles</th><th>MemSize</th><th>Locality</th><th>Start Key</th><th>End Key</th><th>ReplicaID</th></tr></thead>";
     withReplica = true;
   } else {
@@ -172,7 +172,7 @@ if ( fqtn != null ) {
     %> Compact request accepted. <%
     } else if (action.equals("merge")) {
         if (left != null && left.length() > 0 && right != null && right.length() > 0) {
-            admin.mergeRegions(Bytes.toBytesBinary(left), Bytes.toBytesBinary(right), false);
+            admin.mergeRegionsAsync(Bytes.toBytesBinary(left), Bytes.toBytesBinary(right), false);
         }
         %> Merge request accepted. <%
     }
@@ -364,8 +364,8 @@ if ( fqtn != null ) {
       <th></th>
   </tr>
   <%
-    Collection<HColumnDescriptor> families = table.getTableDescriptor().getFamilies();
-    for (HColumnDescriptor family: families) {
+    ColumnFamilyDescriptor[] families = table.getDescriptor().getColumnFamilies();
+    for (ColumnFamilyDescriptor family: families) {
   %>
   <tr>
     <td><%= StringEscapeUtils.escapeHtml4(family.getNameAsString()) %></td>

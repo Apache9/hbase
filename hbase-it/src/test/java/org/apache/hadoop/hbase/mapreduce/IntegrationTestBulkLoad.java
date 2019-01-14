@@ -86,6 +86,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.hbase.thirdparty.com.google.common.base.Joiner;
 import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
 import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
@@ -298,7 +299,7 @@ public class IntegrationTestBulkLoad extends IntegrationTestBase {
         RegionLocator regionLocator = conn.getRegionLocator(getTablename())) {
 
       // Configure the partitioner and other things needed for HFileOutputFormat.
-      HFileOutputFormat2.configureIncrementalLoad(job, table.getTableDescriptor(), regionLocator);
+      HFileOutputFormat2.configureIncrementalLoad(job, table.getDescriptor(), regionLocator);
 
       // Run the job making sure it works.
       assertEquals(true, job.waitForCompletion(true));
@@ -670,9 +671,9 @@ public class IntegrationTestBulkLoad extends IntegrationTestBase {
       LOG.error("Failure in chain verification: " + msg);
       try (Connection connection = ConnectionFactory.createConnection(context.getConfiguration());
           Admin admin = connection.getAdmin()) {
-        LOG.error("cluster status:\n" + admin.getClusterStatus());
+        LOG.error("cluster status:\n" + admin.getClusterMetrics());
         LOG.error("table regions:\n"
-            + Joiner.on("\n").join(admin.getTableRegions(table)));
+            + Joiner.on("\n").join(admin.getRegions(table)));
       }
     }
   }

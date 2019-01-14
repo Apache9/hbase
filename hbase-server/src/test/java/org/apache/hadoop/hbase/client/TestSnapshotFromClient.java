@@ -261,7 +261,7 @@ public class TestSnapshotFromClient {
     boolean fail = false;
     do {
     try {
-      admin.getTableDescriptor(TableName.valueOf(tableName));
+      admin.getDescriptor(TableName.valueOf(tableName));
       fail = true;
           LOG.error("Table:" + tableName + " already exists, checking a new name");
       tableName = tableName+"!";

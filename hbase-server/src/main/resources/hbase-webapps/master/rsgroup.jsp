@@ -400,12 +400,12 @@
     </div>
 
     <% if (rsGroupTables != null && rsGroupTables.size() > 0) {
-        HTableDescriptor[] tables = null;
+        List<TableDescriptor> tables = null;
         try (Admin admin = master.getConnection().getAdmin()) {
-            tables = master.isInitialized() ? admin.listTables((Pattern)null, true) : null;
+            tables = master.isInitialized() ? admin.listTableDescriptors((Pattern)null, true) : Collections.emptyList();
         }
-         Map<TableName, HTableDescriptor> tableDescriptors
-            = Stream.of(tables).collect(Collectors.toMap(TableDescriptor::getTableName, p -> p));
+         Map<TableName, TableDescriptor> tableDescriptors
+            = tables.stream().collect(Collectors.toMap(TableDescriptor::getTableName, p -> p));
     %>
          <table class="table table-striped">
          <tr>
@@ -420,7 +420,7 @@
              <th>Description</th>
          </tr>
          <% for(TableName tableName : rsGroupTables) {
-             HTableDescriptor htDesc = tableDescriptors.get(tableName);
+             HTableDescriptor htDesc = new HTableDescriptor(tableDescriptors.get(tableName));
              if(htDesc == null) {
          %>
                <tr>

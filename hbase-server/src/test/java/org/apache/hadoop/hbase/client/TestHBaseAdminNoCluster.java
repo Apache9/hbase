@@ -44,7 +44,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
-import org.mockito.Matchers;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -129,7 +129,7 @@ public class TestHBaseAdminNoCluster {
     testMasterOperationIsRetried(new MethodCaller() {
       @Override
       public void call(Admin admin) throws Exception {
-        admin.listTables();
+        admin.listTableDescriptors();
       }
       @Override
       public void verify(MasterKeepAliveConnection masterAdmin, int count) throws Exception {
@@ -153,11 +153,11 @@ public class TestHBaseAdminNoCluster {
       }
     });
 
-    // Admin.getTableDescriptor()
+    // Admin.getDescriptor()
     testMasterOperationIsRetried(new MethodCaller() {
       @Override
       public void call(Admin admin) throws Exception {
-        admin.getTableDescriptor(TableName.valueOf(name.getMethodName()));
+        admin.getDescriptor(TableName.valueOf(name.getMethodName()));
       }
       @Override
       public void verify(MasterKeepAliveConnection masterAdmin, int count) throws Exception {
@@ -167,11 +167,11 @@ public class TestHBaseAdminNoCluster {
       }
     });
 
-    // Admin.getTableDescriptorsByTableName()
+    // Admin.listTableDescriptors()
     testMasterOperationIsRetried(new MethodCaller() {
       @Override
       public void call(Admin admin) throws Exception {
-        admin.getTableDescriptorsByTableName(new ArrayList<>());
+        admin.listTableDescriptors(new ArrayList<>());
       }
       @Override
       public void verify(MasterKeepAliveConnection masterAdmin, int count) throws Exception {
@@ -209,11 +209,11 @@ public class TestHBaseAdminNoCluster {
       }
     });
 
-    // Admin.setBalancerRunning()
+    // Admin.balancerSwitch()
     testMasterOperationIsRetried(new MethodCaller() {
       @Override
       public void call(Admin admin) throws Exception {
-        admin.setBalancerRunning(true, true);
+        admin.balancerSwitch(true, true);
       }
       @Override
       public void verify(MasterKeepAliveConnection masterAdmin, int count) throws Exception {
@@ -227,7 +227,7 @@ public class TestHBaseAdminNoCluster {
     testMasterOperationIsRetried(new MethodCaller() {
       @Override
       public void call(Admin admin) throws Exception {
-        admin.balancer();
+        admin.balance();
       }
       @Override
       public void verify(MasterKeepAliveConnection masterAdmin, int count) throws Exception {
@@ -237,11 +237,11 @@ public class TestHBaseAdminNoCluster {
       }
     });
 
-    // Admin.enabledCatalogJanitor()
+    // Admin.catalogJanitorSwitch()
     testMasterOperationIsRetried(new MethodCaller() {
       @Override
       public void call(Admin admin) throws Exception {
-        admin.enableCatalogJanitor(true);
+        admin.catalogJanitorSwitch(true);
       }
       @Override
       public void verify(MasterKeepAliveConnection masterAdmin, int count) throws Exception {
@@ -251,11 +251,11 @@ public class TestHBaseAdminNoCluster {
       }
     });
 
-    // Admin.runCatalogScan()
+    // Admin.runCatalogJanitor()
     testMasterOperationIsRetried(new MethodCaller() {
       @Override
       public void call(Admin admin) throws Exception {
-        admin.runCatalogScan();
+        admin.runCatalogJanitor();
       }
       @Override
       public void verify(MasterKeepAliveConnection masterAdmin, int count) throws Exception {
@@ -295,9 +295,9 @@ public class TestHBaseAdminNoCluster {
     ClusterConnection connection = mock(ClusterConnection.class);
     when(connection.getConfiguration()).thenReturn(configuration);
     MasterKeepAliveConnection masterAdmin =
-        Mockito.mock(MasterKeepAliveConnection.class, new Answer() {
+        Mockito.mock(MasterKeepAliveConnection.class, new Answer<Void>() {
           @Override
-          public Object answer(InvocationOnMock invocation) throws Throwable {
+          public Void answer(InvocationOnMock invocation) throws Throwable {
             if (invocation.getMethod().getName().equals("close")) {
               return null;
             }
@@ -319,7 +319,7 @@ public class TestHBaseAdminNoCluster {
       admin = Mockito.spy(new HBaseAdmin(connection));
       // mock the call to getRegion since in the absence of a cluster (which means the meta
       // is not assigned), getRegion can't function
-      Mockito.doReturn(null).when(((HBaseAdmin)admin)).getRegion(Matchers.<byte[]>any());
+      Mockito.doReturn(null).when(((HBaseAdmin)admin)).getRegion(ArgumentMatchers.<byte[]>any());
       try {
         caller.call(admin); // invoke the HBaseAdmin method
         fail();

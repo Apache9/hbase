@@ -31,9 +31,6 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.CacheEvictionStats;
 import org.apache.hadoop.hbase.ClusterMetrics;
 import org.apache.hadoop.hbase.ClusterMetrics.Option;
-import org.apache.hadoop.hbase.ClusterStatus;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NamespaceNotFoundException;
 import org.apache.hadoop.hbase.RegionMetrics;
@@ -56,7 +53,6 @@ import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
 import org.apache.hadoop.hbase.snapshot.SnapshotCreationException;
 import org.apache.hadoop.hbase.snapshot.UnknownSnapshotException;
-import org.apache.hadoop.hbase.util.Pair;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
@@ -95,36 +91,10 @@ public interface Admin extends Abortable, Closeable {
   /**
    * List all the userspace tables.
    *
-   * @return an array of read-only HTableDescriptors
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #listTableDescriptors()}.
-   * @see #listTableDescriptors()
-   */
-  @Deprecated
-  HTableDescriptor[] listTables() throws IOException;
-
-  /**
-   * List all the userspace tables.
-   *
    * @return a list of TableDescriptors
    * @throws IOException if a remote or network exception occurs
    */
   List<TableDescriptor> listTableDescriptors() throws IOException;
-
-  /**
-   * List all the userspace tables that match the given pattern.
-   *
-   * @param pattern The compiled regular expression to match against
-   * @return an array of read-only HTableDescriptors
-   * @throws IOException if a remote or network exception occurs
-   * @see #listTables()
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #listTableDescriptors(java.util.regex.Pattern)}.
-   * @see #listTableDescriptors(Pattern)
-   */
-  @Deprecated
-  HTableDescriptor[] listTables(Pattern pattern) throws IOException;
 
   /**
    * List all the userspace tables that match the given pattern.
@@ -137,35 +107,6 @@ public interface Admin extends Abortable, Closeable {
   List<TableDescriptor> listTableDescriptors(Pattern pattern) throws IOException;
 
   /**
-   * List all the userspace tables matching the given regular expression.
-   *
-   * @param regex The regular expression to match against
-   * @return a list of read-only HTableDescriptors
-   * @throws IOException if a remote or network exception occurs
-   * @see #listTableDescriptors(Pattern)
-   * @deprecated since 2.0 version and will be removed in 3.0 version. Use
-   *             {@link #listTableDescriptors(Pattern)} instead.
-   */
-  @Deprecated
-  HTableDescriptor[] listTables(String regex) throws IOException;
-
-  /**
-   * List all the tables matching the given pattern.
-   *
-   * @param pattern The compiled regular expression to match against
-   * @param includeSysTables <code>false</code> to match only against userspace tables
-   * @return an array of read-only HTableDescriptors
-   * @throws IOException if a remote or network exception occurs
-   * @see #listTables()
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #listTableDescriptors(java.util.regex.Pattern, boolean)}.
-   * @see #listTableDescriptors(java.util.regex.Pattern, boolean)
-   */
-  @Deprecated
-  HTableDescriptor[] listTables(Pattern pattern, boolean includeSysTables)
-      throws IOException;
-
-  /**
    * List all the tables matching the given pattern.
    *
    * @param pattern The compiled regular expression to match against
@@ -175,21 +116,6 @@ public interface Admin extends Abortable, Closeable {
    * @see #listTables()
    */
   List<TableDescriptor> listTableDescriptors(Pattern pattern, boolean includeSysTables)
-      throws IOException;
-
-  /**
-   * List all the tables matching the given pattern.
-   *
-   * @param regex The regular expression to match against
-   * @param includeSysTables <code>false</code> to match only against userspace tables
-   * @return an array of read-only HTableDescriptors
-   * @throws IOException if a remote or network exception occurs
-   * @see #listTables(java.util.regex.Pattern, boolean)
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #listTableDescriptors(Pattern, boolean)}.
-   */
-  @Deprecated
-  HTableDescriptor[] listTables(String regex, boolean includeSysTables)
       throws IOException;
 
   /**
@@ -210,17 +136,6 @@ public interface Admin extends Abortable, Closeable {
 
   /**
    * List all of the names of userspace tables.
-   * @param regex The regular expression to match against
-   * @return TableName[] table names
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version. Use
-   *             {@link #listTableNames(Pattern)} instead.
-   */
-  @Deprecated
-  TableName[] listTableNames(String regex) throws IOException;
-
-  /**
-   * List all of the names of userspace tables.
    * @param pattern The regular expression to match against
    * @param includeSysTables <code>false</code> to match only against userspace tables
    * @return TableName[] table names
@@ -228,33 +143,6 @@ public interface Admin extends Abortable, Closeable {
    */
   TableName[] listTableNames(Pattern pattern, boolean includeSysTables)
       throws IOException;
-
-  /**
-   * List all of the names of userspace tables.
-   * @param regex The regular expression to match against
-   * @param includeSysTables <code>false</code> to match only against userspace tables
-   * @return TableName[] table names
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version. Use
-   *             {@link #listTableNames(Pattern, boolean)} instead.
-   */
-  @Deprecated
-  TableName[] listTableNames(String regex, boolean includeSysTables)
-      throws IOException;
-
-  /**
-   * Get a table descriptor.
-   *
-   * @param tableName as a {@link TableName}
-   * @return the read-only tableDescriptor
-   * @throws org.apache.hadoop.hbase.TableNotFoundException
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #getDescriptor(TableName)}.
-   */
-  @Deprecated
-  HTableDescriptor getTableDescriptor(TableName tableName)
-      throws TableNotFoundException, IOException;
 
   /**
    * Get a table descriptor.
@@ -356,44 +244,6 @@ public interface Admin extends Abortable, Closeable {
   Future<Void> deleteTableAsync(TableName tableName) throws IOException;
 
   /**
-   * Deletes tables matching the passed in pattern and wait on completion. Warning: Use this method
-   * carefully, there is no prompting and the effect is immediate. Consider using {@link
-   * #listTableDescriptors(Pattern)}
-   * and {@link #deleteTable(org.apache.hadoop.hbase.TableName)}
-   *
-   * @param regex The regular expression to match table names against
-   * @return Table descriptors for tables that couldn't be deleted.
-   *         The return htds are read-only
-   * @throws IOException
-   * @see #deleteTables(java.util.regex.Pattern)
-   * @see #deleteTable(org.apache.hadoop.hbase.TableName)
-   * @deprecated since 2.0 version and will be removed in 3.0 version
-   *             This is just a trivial helper method without any magic.
-   *             Consider using {@link #listTableDescriptors(Pattern)}
-   *             and {@link #deleteTable(TableName)}
-   */
-  @Deprecated
-  HTableDescriptor[] deleteTables(String regex) throws IOException;
-
-  /**
-   * Delete tables matching the passed in pattern and wait on completion. Warning: Use this method
-   * carefully, there is no prompting and the effect is immediate. Consider using {@link
-   * #listTableDescriptors(java.util.regex.Pattern)} and
-   * {@link #deleteTable(org.apache.hadoop.hbase.TableName)}
-   *
-   * @param pattern The pattern to match table names against
-   * @return Table descriptors for tables that couldn't be deleted
-   *         The return htds are read-only
-   * @throws IOException
-   * @deprecated since 2.0 version and will be removed in 3.0 version
-   *             This is just a trivial helper method without any magic.
-   *             Consider using {@link #listTableDescriptors(java.util.regex.Pattern)}
-   *             and {@link #deleteTable(TableName)}
-   */
-  @Deprecated
-  HTableDescriptor[] deleteTables(Pattern pattern) throws IOException;
-
-  /**
    * Truncate a table.
    * Synchronous operation.
    *
@@ -448,43 +298,6 @@ public interface Admin extends Abortable, Closeable {
   Future<Void> enableTableAsync(TableName tableName) throws IOException;
 
   /**
-   * Enable tables matching the passed in pattern and wait on completion. Warning: Use this method
-   * carefully, there is no prompting and the effect is immediate. Consider using {@link
-   * #listTableDescriptors(Pattern)} and {@link #enableTable(org.apache.hadoop.hbase.TableName)}
-   *
-   * @param regex The regular expression to match table names against
-   * @throws IOException
-   * @return Table descriptors for tables that couldn't be enabled.
-   *         The return HTDs are read-only.
-   * @see #enableTables(java.util.regex.Pattern)
-   * @see #enableTable(org.apache.hadoop.hbase.TableName)
-   * @deprecated since 2.0 version and will be removed in 3.0 version
-   *             This is just a trivial helper method without any magic.
-   *             Consider using {@link #listTableDescriptors(Pattern)}
-   *             and {@link #enableTable(org.apache.hadoop.hbase.TableName)}
-   */
-  @Deprecated
-  HTableDescriptor[] enableTables(String regex) throws IOException;
-
-  /**
-   * Enable tables matching the passed in pattern and wait on completion. Warning: Use this method
-   * carefully, there is no prompting and the effect is immediate. Consider using {@link
-   * #listTableDescriptors(java.util.regex.Pattern)} and
-   * {@link #enableTable(org.apache.hadoop.hbase.TableName)}
-   *
-   * @param pattern The pattern to match table names against
-   * @throws IOException
-   * @return Table descriptors for tables that couldn't be enabled.
-   *         The return HTDs are read-only.
-   * @deprecated since 2.0 version and will be removed in 3.0 version
-   *             This is just a trivial helper method without any magic.
-   *             Consider using {@link #listTableDescriptors(java.util.regex.Pattern)}
-   *             and {@link #enableTable(org.apache.hadoop.hbase.TableName)}
-   */
-  @Deprecated
-  HTableDescriptor[] enableTables(Pattern pattern) throws IOException;
-
-  /**
    * Disable the table but does not block and wait for it to be completely disabled.
    * You can use Future.get(long, TimeUnit) to wait on the operation to complete.
    * It may throw ExecutionException if there was an error while executing the operation
@@ -511,43 +324,6 @@ public interface Admin extends Abortable, Closeable {
   void disableTable(TableName tableName) throws IOException;
 
   /**
-   * Disable tables matching the passed in pattern and wait on completion. Warning: Use this method
-   * carefully, there is no prompting and the effect is immediate. Consider using {@link
-   * #listTableDescriptors(Pattern)} and {@link #disableTable(org.apache.hadoop.hbase.TableName)}
-   *
-   * @param regex The regular expression to match table names against
-   * @return Table descriptors for tables that couldn't be disabled
-   *         The return htds are read-only
-   * @throws IOException
-   * @see #disableTables(java.util.regex.Pattern)
-   * @see #disableTable(org.apache.hadoop.hbase.TableName)
-   * @deprecated since 2.0 version and will be removed in 3.0 version
-   *             This is just a trivial helper method without any magic.
-   *             Consider using {@link #listTableDescriptors(Pattern)}
-   *             and {@link #disableTable(org.apache.hadoop.hbase.TableName)}
-   */
-  @Deprecated
-  HTableDescriptor[] disableTables(String regex) throws IOException;
-
-  /**
-   * Disable tables matching the passed in pattern and wait on completion. Warning: Use this method
-   * carefully, there is no prompting and the effect is immediate. Consider using {@link
-   * #listTableDescriptors(java.util.regex.Pattern)} and
-   * {@link #disableTable(org.apache.hadoop.hbase.TableName)}
-   *
-   * @param pattern The pattern to match table names against
-   * @return Table descriptors for tables that couldn't be disabled
-   *         The return htds are read-only
-   * @throws IOException
-   * @deprecated since 2.0 version and will be removed in 3.0 version
-   *             This is just a trivial helper method without any magic.
-   *             Consider using {@link #listTableDescriptors(java.util.regex.Pattern)}
-   *             and {@link #disableTable(org.apache.hadoop.hbase.TableName)}
-   */
-  @Deprecated
-  HTableDescriptor[] disableTables(Pattern pattern) throws IOException;
-
-  /**
    * @param tableName name of table to check
    * @return <code>true</code> if table is on-line
    * @throws IOException if a remote or network exception occurs
@@ -567,65 +343,6 @@ public interface Admin extends Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   boolean isTableAvailable(TableName tableName) throws IOException;
-
-  /**
-   * Use this api to check if the table has been created with the specified number of splitkeys
-   * which was used while creating the given table. Note : If this api is used after a table's
-   * region gets splitted, the api may return <code>false</code>.
-   *
-   * @param tableName name of table to check
-   * @param splitKeys keys to check if the table has been created with all split keys
-   * @throws IOException if a remote or network excpetion occurs
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use {@link #isTableAvailable(TableName)}
-   */
-  @Deprecated
-  boolean isTableAvailable(TableName tableName, byte[][] splitKeys) throws IOException;
-
-  /**
-   * Get the status of an <code>alter</code> (a.k.a <code>modify</code>) command - indicates how
-   * many regions have received the updated schema Asynchronous operation.
-   *
-   * @param tableName TableName instance
-   * @return Pair indicating the number of regions updated Pair.getFirst() is the regions that are
-   * yet to be updated Pair.getSecond() is the total number of regions of the table
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. No longer needed now you get a Future
-   * on an operation.
-   */
-  @Deprecated
-  Pair<Integer, Integer> getAlterStatus(TableName tableName) throws IOException;
-
-  /**
-   * Get the status of <code>alter</code> (a.k.a <code>modify</code>) command - indicates how many
-   * regions have received the updated schema Asynchronous operation.
-   *
-   * @param tableName name of the table to get the status of
-   * @return Pair indicating the number of regions updated Pair.getFirst() is the regions that are
-   * yet to be updated Pair.getSecond() is the total number of regions of the table
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. No longer needed now you get a Future
-   * on an operation.
-   */
-  @Deprecated
-  Pair<Integer, Integer> getAlterStatus(byte[] tableName) throws IOException;
-
-  /**
-   * Add a column family to an existing table. Synchronous operation.
-   * Use {@link #addColumnFamilyAsync(TableName, ColumnFamilyDescriptor)} instead because it
-   * returns a {@link Future} from which you can learn whether success or failure.
-   *
-   * @param tableName name of the table to add column family to
-   * @param columnFamily column family descriptor of column family to be added
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0.
-   *             This will be removed in HBase 3.0.0.
-   *             Use {@link #addColumnFamily(TableName, ColumnFamilyDescriptor)}.
-   */
-  @Deprecated
-  default void addColumn(TableName tableName, ColumnFamilyDescriptor columnFamily)
-    throws IOException {
-    addColumnFamily(tableName, columnFamily);
-  }
 
   /**
    * Add a column family to an existing table. Synchronous operation.
@@ -654,21 +371,6 @@ public interface Admin extends Abortable, Closeable {
    */
   Future<Void> addColumnFamilyAsync(TableName tableName, ColumnFamilyDescriptor columnFamily)
       throws IOException;
-
-  /**
-   * Delete a column family from a table. Synchronous operation.
-   *  Use {@link #deleteColumnFamily(TableName, byte[])} instead because it
-   * returns a {@link Future} from which you can learn whether success or failure.
-   *
-   * @param tableName name of table
-   * @param columnFamily name of column family to be deleted
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0.
-   *             This will be removed in HBase 3.0.0.
-   *             Use {@link #deleteColumnFamily(TableName, byte[])}}.
-   */
-  @Deprecated
-  void deleteColumn(TableName tableName, byte[] columnFamily) throws IOException;
 
   /**
    * Delete a column family from a table. Synchronous operation.
@@ -703,23 +405,6 @@ public interface Admin extends Abortable, Closeable {
    * @param tableName name of table
    * @param columnFamily new column family descriptor to use
    * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0.
-   *             This will be removed in HBase 3.0.0.
-   *             Use {@link #modifyColumnFamily(TableName, ColumnFamilyDescriptor)}.
-   */
-  @Deprecated
-  default void modifyColumn(TableName tableName, ColumnFamilyDescriptor columnFamily)
-      throws IOException {
-    modifyColumnFamily(tableName, columnFamily);
-  }
-
-  /**
-   * Modify an existing column family on a table. Synchronous operation.
-   * Use {@link #modifyColumnFamilyAsync(TableName, ColumnFamilyDescriptor)} instead because it
-   * returns a {@link Future} from which you can learn whether success or failure.
-   * @param tableName name of table
-   * @param columnFamily new column family descriptor to use
-   * @throws IOException if a remote or network exception occurs
    */
   void modifyColumnFamily(TableName tableName, ColumnFamilyDescriptor columnFamily)
       throws IOException;
@@ -739,67 +424,6 @@ public interface Admin extends Abortable, Closeable {
    */
   Future<Void> modifyColumnFamilyAsync(TableName tableName, ColumnFamilyDescriptor columnFamily)
       throws IOException;
-
-  /**
-   * Uses {@link #unassign(byte[], boolean)} to unassign the region. For expert-admins.
-   *
-   * @param regionname region name to close
-   * @param serverName Deprecated. Not used.
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0.
-   *             Use {@link #unassign(byte[], boolean)}.
-   */
-  @Deprecated
-  void closeRegion(String regionname, String serverName) throws IOException;
-
-  /**
-   * Uses {@link #unassign(byte[], boolean)} to unassign the region. For expert-admins.
-   *
-   * @param regionname region name to close
-   * @param serverName Deprecated. Not used.
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0.
-   *             Use {@link #unassign(byte[], boolean)}.
-   */
-  @Deprecated
-  void closeRegion(byte[] regionname, String serverName) throws IOException;
-
-  /**
-   * Uses {@link #unassign(byte[], boolean)} to unassign the region. For expert-admins.
-   *
-   * @param encodedRegionName The encoded region name; i.e. the hash that makes up the region name
-   * suffix: e.g. if regionname is
-   * <code>TestTable,0094429456,1289497600452.527db22f95c8a9e0116f0cc13c680396.</code>,
-   * then the encoded region name is: <code>527db22f95c8a9e0116f0cc13c680396</code>.
-   * @param serverName Deprecated. Not used.
-   * @return Deprecated. Returns <code>true</code> always.
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0.
-   *             Use {@link #unassign(byte[], boolean)}.
-   */
-  @Deprecated
-  boolean closeRegionWithEncodedRegionName(String encodedRegionName, String serverName)
-      throws IOException;
-
-  /**
-   * Used {@link #unassign(byte[], boolean)} to unassign the region. For expert-admins.
-   *
-   * @param sn Deprecated. Not used.
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0
-   *             (<a href="https://issues.apache.org/jira/browse/HBASE-18231">HBASE-18231</a>).
-   *             Use {@link #unassign(byte[], boolean)}.
-   */
-  @Deprecated
-  void closeRegion(final ServerName sn, final HRegionInfo hri) throws IOException;
-
-  /**
-   * Get all the online regions on a region server.
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0
-   *             (<a href="https://issues.apache.org/jira/browse/HBASE-17980">HBASE-17980</a>).
-   *             Use {@link #getRegions(ServerName sn)}.
-   */
-  @Deprecated
-  List<HRegionInfo> getOnlineRegions(ServerName sn) throws IOException;
 
   /**
    * Get all the online regions on a region server.
@@ -975,28 +599,6 @@ public interface Admin extends Abortable, Closeable {
     throws IOException, InterruptedException;
 
   /**
-   * Compact all regions on the region server. Asynchronous operation in that this method requests
-   * that a Compaction run and then it returns. It does not wait on the completion of Compaction (it
-   * can take a while).
-   * @param sn the region server name
-   * @param major if it's major compaction
-   * @throws IOException if a remote or network exception occurs
-   * @throws InterruptedException
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0. Use
-   *             {@link #compactRegionServer(ServerName)} or
-   *             {@link #majorCompactRegionServer(ServerName)}.
-   */
-  @Deprecated
-  default void compactRegionServer(ServerName sn, boolean major) throws IOException,
-      InterruptedException {
-    if (major) {
-      majorCompactRegionServer(sn);
-    } else {
-      compactRegionServer(sn);
-    }
-  }
-
-  /**
    * Turn the compaction on or off. Disabling compactions will also interrupt any currently ongoing
    * compactions. This state is ephemeral. The setting will be lost on restart. Compaction
    * can also be enabled/disabled by modifying configuration hbase.regionserver.compaction.enabled
@@ -1074,40 +676,12 @@ public interface Admin extends Abortable, Closeable {
 
   /**
    * Turn the load balancer on or off.
-   *
-   * @param synchronous If <code>true</code>, it waits until current balance() call, if
-   * outstanding, to return.
-   * @return Previous balancer value
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0.
-   * Use {@link #balancerSwitch(boolean, boolean)} instead.
-   */
-  @Deprecated
-  default boolean setBalancerRunning(boolean on, boolean synchronous) throws IOException {
-    return balancerSwitch(on, synchronous);
-  }
-
-  /**
-   * Turn the load balancer on or off.
    * @param onOrOff Set to <code>true</code> to enable, <code>false</code> to disable.
-   * @param synchronous If <code>true</code>, it waits until current balance() call, if
-   * outstanding, to return.
+   * @param synchronous If <code>true</code>, it waits until current balance() call, if outstanding,
+   *          to return.
    * @return Previous balancer value
    */
-  boolean balancerSwitch(boolean onOrOff, boolean synchronous)
-  throws IOException;
-
-  /**
-   * Invoke the balancer.  Will run the balancer and if regions to move, it will go ahead and do the
-   * reassignments.  Can NOT run for various reasons.  Check logs.
-   *
-   * @return <code>true</code> if balancer ran, <code>false</code> otherwise.
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0.
-   * Use {@link #balance()} instead.
-   */
-  @Deprecated
-  default boolean balancer() throws IOException {
-    return balance();
-  }
+  boolean balancerSwitch(boolean onOrOff, boolean synchronous) throws IOException;
 
   /**
    * Invoke the balancer.  Will run the balancer and if regions to move, it will go ahead and do the
@@ -1116,21 +690,6 @@ public interface Admin extends Abortable, Closeable {
    * @return <code>true</code> if balancer ran, <code>false</code> otherwise.
    */
   boolean balance() throws IOException;
-
-  /**
-   * Invoke the balancer.  Will run the balancer and if regions to move, it will
-   * go ahead and do the reassignments. If there is region in transition, force parameter of true
-   * would still run balancer. Can *not* run for other reasons.  Check
-   * logs.
-   * @param force whether we should force balance even if there is region in transition
-   * @return <code>true</code> if balancer ran, <code>false</code> otherwise.
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0.
-   * Use {@link #balance(boolean)} instead.
-   */
-  @Deprecated
-  default boolean balancer(boolean force) throws IOException {
-    return balance(force);
-  }
 
   /**
    * Invoke the balancer.  Will run the balancer and if regions to move, it will
@@ -1179,33 +738,8 @@ public interface Admin extends Abortable, Closeable {
    * Turn region normalizer on or off.
    *
    * @return Previous normalizer value
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use {@link #normalizerSwitch(boolean)}}
-   * instead.
-   */
-  @Deprecated
-  default boolean setNormalizerRunning(boolean on) throws IOException {
-    return normalizerSwitch(on);
-  }
-
-  /**
-   * Turn region normalizer on or off.
-   *
-   * @return Previous normalizer value
    */
   boolean normalizerSwitch (boolean on) throws IOException;
-
-  /**
-   * Enable/Disable the catalog janitor.
-   *
-   * @param enable if <code>true</code> enables the catalog janitor
-   * @return the previous state
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use {@link #catalogJanitorSwitch(boolean)}}
-   * instead.
-   */
-  @Deprecated
-  default boolean enableCatalogJanitor(boolean enable) throws IOException {
-    return catalogJanitorSwitch(enable);
-  }
 
   /**
    * Enable/Disable the catalog janitor/
@@ -1219,18 +753,6 @@ public interface Admin extends Abortable, Closeable {
    * Ask for a scan of the catalog table.
    *
    * @return the number of entries cleaned
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use {@link #runCatalogJanitor()}}
-   * instead.
-   */
-  @Deprecated
-  default int runCatalogScan() throws IOException {
-    return runCatalogJanitor();
-  }
-
-  /**
-   * Ask for a scan of the catalog table.
-   *
-   * @return the number of entries cleaned
    */
   int runCatalogJanitor() throws IOException;
 
@@ -1239,20 +761,6 @@ public interface Admin extends Abortable, Closeable {
    *
    */
   boolean isCatalogJanitorEnabled() throws IOException;
-
-  /**
-   * Enable/Disable the cleaner chore.
-   *
-   * @param on if <code>true</code> enables the cleaner chore
-   * @return the previous state
-   * @throws IOException
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use {@link #cleanerChoreSwitch(boolean)}}
-   * instead.
-   */
-  @Deprecated
-  default boolean setCleanerChoreRunning(boolean on) throws IOException {
-    return cleanerChoreSwitch(on);
-  }
 
   /**
    * Enable/Disable the cleaner chore.
@@ -1277,21 +785,6 @@ public interface Admin extends Abortable, Closeable {
    * @throws IOException
    */
   boolean isCleanerChoreEnabled() throws IOException;
-
-  /**
-   * Merge two regions. Asynchronous operation.
-   *
-   * @param nameOfRegionA encoded or full name of region a
-   * @param nameOfRegionB encoded or full name of region b
-   * @param forcible <code>true</code> if do a compulsory merge, otherwise we will only merge two
-   * adjacent regions
-   * @throws IOException
-   * @deprecated Since 2.0. Will be removed in 3.0. Use
-   *     {@link #mergeRegionsAsync(byte[], byte[], boolean)} instead.
-   */
-  @Deprecated
-  void mergeRegions(byte[] nameOfRegionA, byte[] nameOfRegionB,
-      boolean forcible) throws IOException;
 
 
   /**
@@ -1329,17 +822,6 @@ public interface Admin extends Abortable, Closeable {
   void split(TableName tableName) throws IOException;
 
   /**
-   * Split an individual region. Asynchronous operation.
-   *
-   * @param regionName region to split
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0.
-   *             Use {@link #splitRegionAsync(byte[], byte[])}.
-   */
-  @Deprecated
-  void splitRegion(byte[] regionName) throws IOException;
-
-  /**
    * Split a table. Asynchronous operation.
    *
    * @param tableName table to split
@@ -1347,19 +829,6 @@ public interface Admin extends Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   void split(TableName tableName, byte[] splitPoint)
-    throws IOException;
-
-  /**
-   * Split an individual region. Asynchronous operation.
-   *
-   * @param regionName region to split
-   * @param splitPoint the explicit position to split on
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0.
-   *             Use {@link #splitRegionAsync(byte[], byte[])}.
-   */
-  @Deprecated
-  void splitRegion(byte[] regionName, byte[] splitPoint)
     throws IOException;
 
   /**
@@ -1373,43 +842,10 @@ public interface Admin extends Abortable, Closeable {
 
   /**
    * Modify an existing table, more IRB friendly version.
-   *
-   * @param tableName name of table.
-   * @param td modified description of the table
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             use {@link #modifyTable(TableDescriptor)}
-   */
-  @Deprecated
-  void modifyTable(TableName tableName, TableDescriptor td)
-      throws IOException;
-
-  /**
-   * Modify an existing table, more IRB friendly version.
    * @param td modified description of the table
    * @throws IOException if a remote or network exception occurs
    */
   void modifyTable(TableDescriptor td) throws IOException;
-
-  /**
-   * Modify an existing table, more IRB friendly version. Asynchronous operation.  This means that
-   * it may be a while before your schema change is updated across all of the table.
-   * You can use Future.get(long, TimeUnit) to wait on the operation to complete.
-   * It may throw ExecutionException if there was an error while executing the operation
-   * or TimeoutException in case the wait timeout was not long enough to allow the
-   * operation to complete.
-   *
-   * @param tableName name of table.
-   * @param td modified description of the table
-   * @throws IOException if a remote or network exception occurs
-   * @return the result of the async modify. You can use Future.get(long, TimeUnit) to wait on the
-   *     operation to complete
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             use {@link #modifyTableAsync(TableDescriptor)}
-   */
-  @Deprecated
-  Future<Void> modifyTableAsync(TableName tableName, TableDescriptor td)
-      throws IOException;
 
   /**
    * Modify an existing table, more IRB (ruby) friendly version. Asynchronous operation. This means that
@@ -1467,27 +903,6 @@ public interface Admin extends Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   void stopRegionServer(String hostnamePort) throws IOException;
-
-  /**
-   * Get whole cluster status, containing status about:
-   * <pre>
-   * hbase version
-   * cluster id
-   * primary/backup master(s)
-   * master's coprocessors
-   * live/dead regionservers
-   * balancer
-   * regions in transition
-   * </pre>
-   * @return cluster status
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             use {@link #getClusterMetrics()}
-   */
-  @Deprecated
-  default ClusterStatus getClusterStatus() throws IOException {
-    return new ClusterStatus(getClusterMetrics());
-  }
 
   /**
    * Get whole cluster metrics, containing status about:
@@ -1585,23 +1000,19 @@ public interface Admin extends Abortable, Closeable {
   throws IOException;
 
   /**
-   * Modify an existing namespace.  Blocks until namespace has been successfully modified or an
+   * Modify an existing namespace. Blocks until namespace has been successfully modified or an
    * exception is thrown.
-   *
    * @param descriptor descriptor which describes the new namespace
    */
-  void modifyNamespace(NamespaceDescriptor descriptor)
-  throws IOException;
+  void modifyNamespace(NamespaceDescriptor descriptor) throws IOException;
 
   /**
    * Modify an existing namespace.
-   *
    * @param descriptor descriptor which describes the new namespace
    * @return the result of the async modify namespace operation. Use Future.get(long, TimeUnit) to
-   *  wait on the operation to complete.
+   *         wait on the operation to complete.
    */
-  Future<Void> modifyNamespaceAsync(NamespaceDescriptor descriptor)
-  throws IOException;
+  Future<Void> modifyNamespaceAsync(NamespaceDescriptor descriptor) throws IOException;
 
   /**
    * Delete an existing namespace. Only empty namespaces (no tables) can be removed.
@@ -1623,42 +1034,25 @@ public interface Admin extends Abortable, Closeable {
 
   /**
    * Get a namespace descriptor by name.
-   *
    * @param name name of namespace descriptor
    * @return A descriptor
    * @throws org.apache.hadoop.hbase.NamespaceNotFoundException
    * @throws IOException if a remote or network exception occurs
    */
   NamespaceDescriptor getNamespaceDescriptor(String name)
-  throws NamespaceNotFoundException, IOException;
+      throws NamespaceNotFoundException, IOException;
 
   /**
    * List available namespace descriptors.
-   *
    * @return List of descriptors
    */
-  NamespaceDescriptor[] listNamespaceDescriptors()
-  throws IOException;
-
-  /**
-   * Get list of table descriptors by namespace.
-   *
-   * @param name namespace name
-   * @return HTD[] the read-only tableDescriptors
-   * @throws IOException
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             use {@link #listTableDescriptorsByNamespace(byte[])}
-   */
-  @Deprecated
-  HTableDescriptor[] listTableDescriptorsByNamespace(String name)
-      throws IOException;
+  NamespaceDescriptor[] listNamespaceDescriptors() throws IOException;
 
   /**
    * Get list of table descriptors by namespace.
    *
    * @param name namespace name
    * @return returns a list of TableDescriptors
-   * @throws IOException
    */
   List<TableDescriptor> listTableDescriptorsByNamespace(byte[] name)
       throws IOException;
@@ -1668,7 +1062,6 @@ public interface Admin extends Abortable, Closeable {
    *
    * @param name namespace name
    * @return The list of table names in the namespace
-   * @throws IOException
    */
   TableName[] listTableNamesByNamespace(String name)
       throws IOException;
@@ -1677,22 +1070,7 @@ public interface Admin extends Abortable, Closeable {
    * Get the regions of a given table.
    *
    * @param tableName the name of the table
-   * @return List of {@link HRegionInfo}.
-   * @throws IOException
-   * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0
-   *             (<a href="https://issues.apache.org/jira/browse/HBASE-17980">HBASE-17980</a>).
-   *             Use {@link #getRegions(TableName)}.
-   */
-  @Deprecated
-  List<HRegionInfo> getTableRegions(TableName tableName)
-    throws IOException;
-
-  /**
-   * Get the regions of a given table.
-   *
-   * @param tableName the name of the table
    * @return List of {@link RegionInfo}.
-   * @throws IOException
    */
   List<RegionInfo> getRegions(TableName tableName) throws IOException;
 
@@ -1703,70 +1081,11 @@ public interface Admin extends Abortable, Closeable {
    * Get tableDescriptors.
    *
    * @param tableNames List of table names
-   * @return HTD[] the read-only tableDescriptors
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             use {@link #listTableDescriptors(List)}
-   */
-  @Deprecated
-  HTableDescriptor[] getTableDescriptorsByTableName(List<TableName> tableNames)
-    throws IOException;
-
-  /**
-   * Get tableDescriptors.
-   *
-   * @param tableNames List of table names
    * @return returns a list of TableDescriptors
    * @throws IOException if a remote or network exception occurs
    */
   List<TableDescriptor> listTableDescriptors(List<TableName> tableNames)
     throws IOException;
-
-  /**
-   * Get tableDescriptors.
-   *
-   * @param names List of table names
-   * @return HTD[] the read-only tableDescriptors
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             use {@link #listTableDescriptors(List)}
-   */
-  @Deprecated
-  HTableDescriptor[] getTableDescriptors(List<String> names)
-    throws IOException;
-
-  /**
-   * Abort a procedure.
-   * Do not use. Usually it is ignored but if not, it can do more damage than good. See hbck2.
-   * @param procId ID of the procedure to abort
-   * @param mayInterruptIfRunning if the proc completed at least one step, should it be aborted?
-   * @return <code>true</code> if aborted, <code>false</code> if procedure already completed or does not exist
-   * @throws IOException
-   * @deprecated Since 2.1.1 -- to be removed.
-   */
-  @Deprecated
-  boolean abortProcedure(
-      long procId,
-      boolean mayInterruptIfRunning) throws IOException;
-
-  /**
-   * Abort a procedure but does not block and wait for completion.
-   * You can use Future.get(long, TimeUnit) to wait on the operation to complete.
-   * It may throw ExecutionException if there was an error while executing the operation
-   * or TimeoutException in case the wait timeout was not long enough to allow the
-   * operation to complete.
-   * Do not use. Usually it is ignored but if not, it can do more damage than good. See hbck2.
-   *
-   * @param procId ID of the procedure to abort
-   * @param mayInterruptIfRunning if the proc completed at least one step, should it be aborted?
-   * @return <code>true</code> if aborted, <code>false</code> if procedure already completed or does not exist
-   * @throws IOException
-   * @deprecated Since 2.1.1 -- to be removed.
-   */
-  @Deprecated
-  Future<Boolean> abortProcedureAsync(
-    long procId,
-    boolean mayInterruptIfRunning) throws IOException;
 
   /**
    * Get procedures.
@@ -1794,18 +1113,6 @@ public interface Admin extends Abortable, Closeable {
    * @throws org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException
    */
   void rollWALWriter(ServerName serverName) throws IOException, FailedLogCloseException;
-
-  /**
-   * Helper that delegates to getClusterMetrics().getMasterCoprocessorNames().
-   * @return an array of master coprocessors
-   * @see org.apache.hadoop.hbase.ClusterMetrics#getMasterCoprocessorNames()
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             use {@link #getMasterCoprocessorNames()}
-   */
-  @Deprecated
-  default String[] getMasterCoprocessors() throws IOException {
-    return getMasterCoprocessorNames().stream().toArray(size -> new String[size]);
-  }
 
   /**
    * Helper that delegates to getClusterMetrics().getMasterCoprocessorNames().
@@ -1946,23 +1253,6 @@ public interface Admin extends Abortable, Closeable {
    */
   void snapshot(SnapshotDescription snapshot)
       throws IOException, SnapshotCreationException, IllegalArgumentException;
-
-  /**
-   * Take a snapshot without waiting for the server to complete that snapshot (asynchronous) Only a
-   * single snapshot should be taken at a time, or results may be undefined.
-   *
-   * @param snapshot snapshot to take
-   * @throws IOException if the snapshot did not succeed or we lose contact with the master.
-   * @throws SnapshotCreationException if snapshot creation failed
-   * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use
-   * {@link #snapshotAsync(SnapshotDescription)} instead.
-   */
-  @Deprecated
-  default void takeSnapshotAsync(SnapshotDescription snapshot)
-  throws IOException, SnapshotCreationException {
-    snapshotAsync(snapshot);
-  }
 
   /**
    * Take a snapshot without waiting for the server to complete that snapshot (asynchronous) Only a
@@ -2162,36 +1452,16 @@ public interface Admin extends Abortable, Closeable {
 
   /**
    * Execute a distributed procedure on a cluster.
-   *
    * @param signature A distributed procedure is uniquely identified by its signature (default the
-   * root ZK node name of the procedure).
+   *          root ZK node name of the procedure).
    * @param instance The instance name of the procedure. For some procedures, this parameter is
-   * optional.
-   * @param props Property/Value pairs of properties passing to the procedure
-   * @return data returned after procedure execution. null if no return data.
-   * @throws IOException
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use
-   * {@link #execProcedureWithReturn(String, String, Map)} } instead.
-   */
-  @Deprecated
-  default byte[] execProcedureWithRet(String signature, String instance, Map<String, String> props)
-      throws IOException {
-    return execProcedureWithReturn(signature, instance, props);
-  }
-
-  /**
-   * Execute a distributed procedure on a cluster.
-   *
-   * @param signature A distributed procedure is uniquely identified by its signature (default the
-   * root ZK node name of the procedure).
-   * @param instance The instance name of the procedure. For some procedures, this parameter is
-   * optional.
+   *          optional.
    * @param props Property/Value pairs of properties passing to the procedure
    * @return data returned after procedure execution. null if no return data.
    * @throws IOException
    */
   byte[] execProcedureWithReturn(String signature, String instance, Map<String, String> props)
-  throws IOException;
+      throws IOException;
 
   /**
    * Check the current state of the specified procedure. There are three possible states: <ol>
@@ -2216,18 +1486,6 @@ public interface Admin extends Abortable, Closeable {
   List<SnapshotDescription> listSnapshots() throws IOException;
 
   /**
-   * List all the completed snapshots matching the given regular expression.
-   *
-   * @param regex The regular expression to match against
-   * @return list of SnapshotDescription
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #listSnapshots(Pattern)} instead.
-   */
-  @Deprecated
-  List<SnapshotDescription> listSnapshots(String regex) throws IOException;
-
-  /**
    * List all the completed snapshots matching the given pattern.
    *
    * @param pattern The compiled regular expression to match against
@@ -2235,20 +1493,6 @@ public interface Admin extends Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   List<SnapshotDescription> listSnapshots(Pattern pattern) throws IOException;
-
-  /**
-   * List all the completed snapshots matching the given table name regular expression and snapshot
-   * name regular expression.
-   * @param tableNameRegex The table name regular expression to match against
-   * @param snapshotNameRegex The snapshot name regular expression to match against
-   * @return list of completed SnapshotDescription
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #listTableSnapshots(Pattern, Pattern)} instead.
-   */
-  @Deprecated
-  List<SnapshotDescription> listTableSnapshots(String tableNameRegex,
-      String snapshotNameRegex) throws IOException;
 
   /**
    * List all the completed snapshots matching the given table name regular expression and snapshot
@@ -2280,33 +1524,10 @@ public interface Admin extends Abortable, Closeable {
   /**
    * Delete existing snapshots whose names match the pattern passed.
    *
-   * @param regex The regular expression to match against
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #deleteSnapshots(Pattern)} instead.
-   */
-  @Deprecated
-  void deleteSnapshots(String regex) throws IOException;
-
-  /**
-   * Delete existing snapshots whose names match the pattern passed.
-   *
    * @param pattern pattern for names of the snapshot to match
    * @throws IOException if a remote or network exception occurs
    */
   void deleteSnapshots(Pattern pattern) throws IOException;
-
-  /**
-   * Delete all existing snapshots matching the given table name regular expression and snapshot
-   * name regular expression.
-   * @param tableNameRegex The table name regular expression to match against
-   * @param snapshotNameRegex The snapshot name regular expression to match against
-   * @throws IOException if a remote or network exception occurs
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
-   *             Use {@link #deleteTableSnapshots(Pattern, Pattern)} instead.
-   */
-  @Deprecated
-  void deleteTableSnapshots(String tableNameRegex, String snapshotNameRegex) throws IOException;
 
   /**
    * Delete all existing snapshots matching the given table name regular expression and snapshot
@@ -2421,35 +1642,6 @@ public interface Admin extends Abortable, Closeable {
   List<SecurityCapability> getSecurityCapabilities() throws IOException;
 
   /**
-   * Turn the Split or Merge switches on or off.
-   * @param enabled enabled or not
-   * @param synchronous If <code>true</code>, it waits until current split() call, if outstanding,
-   *          to return.
-   * @param switchTypes switchType list {@link MasterSwitchType}
-   * @return Previous switch value array
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use {@link #splitSwitch(boolean, boolean)}
-   *             or {@link #mergeSwitch(boolean, boolean)} instead.
-   */
-  @Deprecated
-  default boolean[] setSplitOrMergeEnabled(boolean enabled, boolean synchronous,
-      MasterSwitchType... switchTypes) throws IOException {
-    boolean[] preValues = new boolean[switchTypes.length];
-    for (int i = 0; i < switchTypes.length; i++) {
-      switch (switchTypes[i]) {
-        case SPLIT:
-          preValues[i] = splitSwitch(enabled, synchronous);
-          break;
-        case MERGE:
-          preValues[i] = mergeSwitch(enabled, synchronous);
-          break;
-        default:
-          throw new UnsupportedOperationException("Unsupported switch type:" + switchTypes[i]);
-      }
-    }
-    return preValues;
-  }
-
-  /**
    * Turn the split switch on or off.
    * @param enabled enabled or not
    * @param synchronous If <code>true</code>, it waits until current split() call, if outstanding,
@@ -2466,26 +1658,6 @@ public interface Admin extends Abortable, Closeable {
    * @return Previous switch value
    */
   boolean mergeSwitch(boolean enabled, boolean synchronous) throws IOException;
-
-  /**
-   * Query the current state of the switch.
-   *
-   * @return <code>true</code> if the switch is enabled, <code>false</code> otherwise.
-   * @deprecated Since 2.0.0. Will be removed in 3.0.0. Use
-   * {@link #isSplitEnabled()} or {@link #isMergeEnabled()} instead.
-   */
-  @Deprecated
-  default boolean isSplitOrMergeEnabled(MasterSwitchType switchType) throws IOException {
-    switch (switchType) {
-      case SPLIT:
-        return isSplitEnabled();
-      case MERGE:
-        return isMergeEnabled();
-      default:
-        break;
-    }
-    throw new UnsupportedOperationException("Unsupported switch type:" + switchType);
-  }
 
   /**
    * Query the current state of the split switch.

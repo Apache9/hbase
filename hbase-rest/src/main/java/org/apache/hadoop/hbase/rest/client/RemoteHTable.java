@@ -257,36 +257,6 @@ public class RemoteHTable implements Table {
   }
 
   @Override
-  @Deprecated
-  public HTableDescriptor getTableDescriptor() throws IOException {
-    StringBuilder sb = new StringBuilder();
-    sb.append('/');
-    sb.append(Bytes.toString(name));
-    sb.append('/');
-    sb.append("schema");
-    for (int i = 0; i < maxRetries; i++) {
-      Response response = client.get(sb.toString(), Constants.MIMETYPE_PROTOBUF);
-      int code = response.getCode();
-      switch (code) {
-      case 200:
-        TableSchemaModel schema = new TableSchemaModel();
-        schema.getObjectFromMessage(response.getBody());
-        return schema.getTableDescriptor();
-      case 509:
-        try {
-          Thread.sleep(sleepTime);
-        } catch (InterruptedException e) {
-          throw (InterruptedIOException)new InterruptedIOException().initCause(e);
-        }
-        break;
-      default:
-        throw new IOException("schema request returned " + code);
-      }
-    }
-    throw new IOException("schema request timed out");
-  }
-
-  @Override
   public void close() throws IOException {
     client.shutdown();
   }
@@ -505,7 +475,31 @@ public class RemoteHTable implements Table {
 
   @Override
   public TableDescriptor getDescriptor() throws IOException {
-    return getTableDescriptor();
+    StringBuilder sb = new StringBuilder();
+    sb.append('/');
+    sb.append(Bytes.toString(name));
+    sb.append('/');
+    sb.append("schema");
+    for (int i = 0; i < maxRetries; i++) {
+      Response response = client.get(sb.toString(), Constants.MIMETYPE_PROTOBUF);
+      int code = response.getCode();
+      switch (code) {
+      case 200:
+        TableSchemaModel schema = new TableSchemaModel();
+        schema.getObjectFromMessage(response.getBody());
+        return schema.getTableDescriptor();
+      case 509:
+        try {
+          Thread.sleep(sleepTime);
+        } catch (InterruptedException e) {
+          throw (InterruptedIOException)new InterruptedIOException().initCause(e);
+        }
+        break;
+      default:
+        throw new IOException("schema request returned " + code);
+      }
+    }
+    throw new IOException("schema request timed out");
   }
 
   class Scanner implements ResultScanner {
@@ -671,13 +665,6 @@ public class RemoteHTable implements Table {
     return true;
   }
 
-  @Override
-  @Deprecated
-  public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
-      byte[] value, Put put) throws IOException {
-    return doCheckAndPut(row, family, qualifier, value, put);
-  }
-
   private boolean doCheckAndPut(byte[] row, byte[] family, byte[] qualifier,
       byte[] value, Put put) throws IOException {
     // column to check-the-value
@@ -712,26 +699,6 @@ public class RemoteHTable implements Table {
       }
     }
     throw new IOException("checkAndPut request timed out");
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Put put) throws IOException {
-    throw new IOException("checkAndPut for non-equal comparison not implemented");
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
-                             CompareOperator compareOp, byte[] value, Put put) throws IOException {
-    throw new IOException("checkAndPut for non-equal comparison not implemented");
-  }
-
-  @Override
-  public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-      byte[] value, Delete delete) throws IOException {
-    return doCheckAndDelete(row, family, qualifier, value, delete);
   }
 
   private boolean doCheckAndDelete(byte[] row, byte[] family, byte[] qualifier,
@@ -772,36 +739,8 @@ public class RemoteHTable implements Table {
   }
 
   @Override
-  @Deprecated
-  public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Delete delete) throws IOException {
-    throw new IOException("checkAndDelete for non-equal comparison not implemented");
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-                                CompareOperator compareOp, byte[] value, Delete delete) throws IOException {
-    throw new IOException("checkAndDelete for non-equal comparison not implemented");
-  }
-
-  @Override
   public CheckAndMutateBuilder checkAndMutate(byte[] row, byte[] family) {
     return new CheckAndMutateBuilderImpl(row, family);
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, RowMutations rm) throws IOException {
-    throw new UnsupportedOperationException("checkAndMutate not implemented");
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier,
-      CompareOperator compareOp, byte[] value, RowMutations rm) throws IOException {
-    throw new UnsupportedOperationException("checkAndMutate not implemented");
   }
 
   @Override
@@ -877,31 +816,7 @@ public class RemoteHTable implements Table {
   }
 
   @Override
-  @Deprecated
-  public void setOperationTimeout(int operationTimeout) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public int getOperationTimeout() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public void setRpcTimeout(int rpcTimeout) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public long getReadRpcTimeout(TimeUnit unit) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public int getRpcTimeout() {
     throw new UnsupportedOperationException();
   }
 
@@ -911,31 +826,7 @@ public class RemoteHTable implements Table {
   }
 
   @Override
-  @Deprecated
-  public int getReadRpcTimeout() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public void setReadRpcTimeout(int readRpcTimeout) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public long getWriteRpcTimeout(TimeUnit unit) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public int getWriteRpcTimeout() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public void setWriteRpcTimeout(int writeRpcTimeout) {
     throw new UnsupportedOperationException();
   }
 

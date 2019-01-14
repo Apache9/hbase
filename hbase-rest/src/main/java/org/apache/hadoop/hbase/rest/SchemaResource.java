@@ -21,7 +21,6 @@ package org.apache.hadoop.hbase.rest;
 
 import java.io.IOException;
 import java.util.Map;
-
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -34,20 +33,20 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.UriInfo;
 import javax.xml.namespace.QName;
-
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.rest.model.ColumnSchemaModel;
+import org.apache.hadoop.hbase.rest.model.TableSchemaModel;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.rest.model.ColumnSchemaModel;
-import org.apache.hadoop.hbase.rest.model.TableSchemaModel;
 
 @InterfaceAudience.Private
 public class SchemaResource extends ResourceBase {
@@ -72,11 +71,11 @@ public class SchemaResource extends ResourceBase {
     this.tableResource = tableResource;
   }
 
-  private HTableDescriptor getTableSchema() throws IOException,
+  private TableDescriptor getTableSchema() throws IOException,
       TableNotFoundException {
     Table table = servlet.getTable(tableResource.getName());
     try {
-      return table.getTableDescriptor();
+      return table.getDescriptor();
     } finally {
       table.close();
     }
@@ -123,7 +122,7 @@ public class SchemaResource extends ResourceBase {
       }
       if (admin.tableExists(name)) {
         admin.disableTable(name);
-        admin.modifyTable(name, htd);
+        admin.modifyTable(htd);
         admin.enableTable(name);
         servlet.getMetrics().incrementSucessfulPutRequests(1);
       } else try {
@@ -150,7 +149,7 @@ public class SchemaResource extends ResourceBase {
         .build();
     }
     try {
-      HTableDescriptor htd = admin.getTableDescriptor(name);
+      TableDescriptor htd = admin.getDescriptor(name);
       admin.disableTable(name);
       try {
         for (ColumnSchemaModel family: model.getColumns()) {
@@ -158,7 +157,7 @@ public class SchemaResource extends ResourceBase {
           for (Map.Entry<QName,Object> e: family.getAny().entrySet()) {
             hcd.setValue(e.getKey().getLocalPart(), e.getValue().toString());
           }
-          if (htd.hasFamily(hcd.getName())) {
+          if (htd.hasColumnFamily(hcd.getName())) {
             admin.modifyColumnFamily(name, hcd);
           } else {
             admin.addColumnFamily(name, hcd);

@@ -92,7 +92,7 @@ public class TestSnapshotMetadata {
 
   private Admin admin;
   private String originalTableDescription;
-  private HTableDescriptor originalTableDescriptor;
+  private TableDescriptor originalTableDescriptor;
   TableName originalTableName;
 
   private static FileSystem fs;
@@ -178,8 +178,10 @@ public class TestSnapshotMetadata {
     admin.createTable(htd);
     Table original = UTIL.getConnection().getTable(originalTableName);
     originalTableName = TableName.valueOf(sourceTableNameAsString);
-    originalTableDescriptor = admin.getTableDescriptor(originalTableName);
-    originalTableDescription = originalTableDescriptor.toStringCustomizedValues();
+    originalTableDescriptor = admin.getDescriptor(originalTableName);
+    originalTableDescription =
+      ((TableDescriptorBuilder.ModifyableTableDescriptor) originalTableDescriptor)
+        .toStringCustomizedValues();
 
     original.close();
   }

@@ -68,7 +68,7 @@ public final class HelloHBase {
     try (Connection connection = ConnectionFactory.createConnection();
             Admin admin = connection.getAdmin()) {
 
-      admin.getClusterStatus(); // assure connection successfully established
+      admin.getClusterMetrics(); // assure connection successfully established
       System.out.println("\n*** Hello HBase! -- Connection has been "
               + "established via ZooKeeper!!\n");
 

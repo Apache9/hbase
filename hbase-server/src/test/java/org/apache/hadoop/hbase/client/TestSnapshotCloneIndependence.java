@@ -26,8 +26,6 @@ import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.regionserver.ConstantSizeRegionSplitPolicy;
@@ -298,20 +296,20 @@ public class TestSnapshotCloneIndependence {
   private void runTestRegionOperationsIndependent() throws Exception {
     // Verify that region information is the same pre-split
     ((ClusterConnection) UTIL.getConnection()).clearRegionCache();
-    List<HRegionInfo> originalTableHRegions = admin.getTableRegions(originalTableName);
+    List<RegionInfo> originalTableHRegions = admin.getRegions(originalTableName);
 
     final int originalRegionCount = originalTableHRegions.size();
-    final int cloneTableRegionCount = admin.getTableRegions(cloneTableName).size();
+    final int cloneTableRegionCount = admin.getRegions(cloneTableName).size();
     Assert.assertEquals(
       "The number of regions in the cloned table is different than in the original table.",
       originalRegionCount, cloneTableRegionCount);
 
     // Split a region on the parent table
-    admin.splitRegion(originalTableHRegions.get(0).getRegionName());
+    admin.splitRegionAsync(originalTableHRegions.get(0).getRegionName(), null).get();
     waitOnSplit(UTIL.getConnection(), originalTable, originalRegionCount);
 
     // Verify that the cloned table region is not split
-    final int cloneTableRegionCount2 = admin.getTableRegions(cloneTableName).size();
+    final int cloneTableRegionCount2 = admin.getRegions(cloneTableName).size();
     Assert.assertEquals(
       "The number of regions in the cloned table changed though none of its regions were split.",
       cloneTableRegionCount, cloneTableRegionCount2);
@@ -335,18 +333,18 @@ public class TestSnapshotCloneIndependence {
     // get a description of the cloned table
     // get a list of its families
     // assert that the family is there
-    HTableDescriptor originalTableDescriptor = originalTable.getTableDescriptor();
-    HTableDescriptor clonedTableDescriptor = admin.getTableDescriptor(cloneTableName);
+    TableDescriptor originalTableDescriptor = originalTable.getDescriptor();
+    TableDescriptor clonedTableDescriptor = admin.getDescriptor(cloneTableName);
 
     Assert.assertTrue("The original family was not found. There is something wrong. ",
-      originalTableDescriptor.hasFamily(TEST_FAM));
+      originalTableDescriptor.hasColumnFamily(TEST_FAM));
     Assert.assertTrue("The original family was not found in the clone. There is something wrong. ",
-      clonedTableDescriptor.hasFamily(TEST_FAM));
+      clonedTableDescriptor.hasColumnFamily(TEST_FAM));
 
     Assert.assertTrue("The new family was not found. ",
-      originalTableDescriptor.hasFamily(TEST_FAM_2));
+      originalTableDescriptor.hasColumnFamily(TEST_FAM_2));
     Assert.assertTrue("The new family was not found. ",
-      !clonedTableDescriptor.hasFamily(TEST_FAM_2));
+      !clonedTableDescriptor.hasColumnFamily(TEST_FAM_2));
   }
 
   /**

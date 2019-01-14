@@ -78,8 +78,8 @@ public class SplitNormalizationPlan implements NormalizationPlan {
   public void execute(Admin admin) {
     LOG.info("Executing splitting normalization plan: " + this);
     try {
-      admin.splitRegion(regionInfo.getRegionName());
-    } catch (IOException ex) {
+      admin.splitRegionAsync(regionInfo.getRegionName(), null).get();
+    } catch (Exception ex) {
       LOG.error("Error during region split: ", ex);
     }
   }

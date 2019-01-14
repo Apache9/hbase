@@ -157,8 +157,8 @@ public class TestMetaWithReplicas {
 
   @Test
   public void testMetaHTDReplicaCount() throws Exception {
-    assertTrue(TEST_UTIL.getAdmin().getTableDescriptor(TableName.META_TABLE_NAME)
-        .getRegionReplication() == 3);
+    assertTrue(
+      TEST_UTIL.getAdmin().getDescriptor(TableName.META_TABLE_NAME).getRegionReplication() == 3);
   }
 
   @Test
