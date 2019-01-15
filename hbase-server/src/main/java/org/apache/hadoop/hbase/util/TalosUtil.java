@@ -25,11 +25,11 @@ import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;
 import static org.apache.hadoop.hbase.regionserver.wal.WALEdit.METAFAMILY;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -39,8 +39,10 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.TalosTopicConsumer.SimpleMutation;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
@@ -76,6 +78,11 @@ public class TalosUtil {
   public static MessageChunk readMessageChunk(DataInputStream in)
       throws IOException {
     int messageLength = in.readInt();
+    return readMessageChunk(in, messageLength);
+  }
+  
+  public static MessageChunk readMessageChunk(DataInputStream in, int messageLength)
+      throws IOException {
     long seqNum = in.readLong();
     int index = in.readInt();
     int totalSlices = in.readInt();
@@ -83,6 +90,13 @@ public class TalosUtil {
     byte[] buffer = new byte[contentLength];
     in.readFully(buffer, 0, contentLength);
     return new MessageChunk(messageLength, seqNum, index, totalSlices, buffer);
+  }
+
+  public static MessageChunk convertMessageSliceToMessageChunk(Message message) throws IOException {
+    byte[] messageByte = message.getMessage();
+    MessageChunk chunk = readMessageChunk(
+      new DataInputStream(new ByteArrayInputStream(messageByte)), messageByte.length);
+    return chunk;
   }
 
   public static Message mergeChunksToMessage(List<MessageChunk> messageChunkList) {
@@ -93,6 +107,37 @@ public class TalosUtil {
     return new Message(ByteBuffer.wrap(result));
   }
 
+  public static List<SimpleMutation> convertMessageToMutation(Message message) throws IOException {
+    AdminProtos.WALEntry walEntry;
+    try {
+      List<SimpleMutation> mutations = new ArrayList<>();
+      walEntry = AdminProtos.WALEntry.parseFrom(message.getMessage());
+      List<ByteString> kvs = walEntry.getKeyValueBytesList();
+      long mvcc = walEntry.getKey().getLogSequenceNumber();
+      Cell prevCell = null;
+      SimpleMutation m = null;
+      for (ByteString kv : kvs) {
+        Cell cell = ProtobufUtil.toCell(CellProtos.Cell.parseFrom(kv), mvcc);
+        if (CellUtil.matchingFamily(cell, METAFAMILY)) {
+          continue;
+        }
+        if (isNewRowOrType(prevCell, cell)) {
+          m = new SimpleMutation(CellUtil.cloneRow(cell), cell.getTypeByte());
+          mutations.add(m);
+        }
+        m.addCell(KeyValueUtil.ensureKeyValue(cell));
+        prevCell = cell;
+      }
+      return mutations;
+    } catch (InvalidProtocolBufferException e) {
+      throw new IOException("convert ByteString to WalEntry or Cell failed", e);
+    }
+  }
+
+  private static boolean isNewRowOrType(final Cell previousCell, final Cell cell) {
+    return previousCell == null || previousCell.getTypeByte() != cell.getTypeByte()
+        || !CellUtil.matchingRow(previousCell, cell);
+  }
 
   public static List<Result> convertMessageToResult(Message message,
       TimeRange timeRange) throws IOException {
