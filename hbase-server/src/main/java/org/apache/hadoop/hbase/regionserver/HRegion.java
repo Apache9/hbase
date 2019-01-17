@@ -4184,11 +4184,6 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       // We should record the timestamp only after we have acquired the rowLock,
       // otherwise, newer puts/deletes are not guaranteed to have a newer timestamp
       long now = EnvironmentEdgeManager.currentTime();
-      if (batchOp.getConditions() != null && batchOp.getConditions().size() > 0) {
-        // wait for all prior MVCC transactions to finish - while we hold the row lock
-        // (so that we are guaranteed to see the latest state)
-        mvcc.complete(mvcc.begin());
-      }
       batchOp.prepareMiniBatchOperations(miniBatchOp, now, acquiredRowLocks);
       if (batchOp.getUnmetConditions() != null && !batchOp.getUnmetConditions().isEmpty()) {
         return; // some conditions unmet
