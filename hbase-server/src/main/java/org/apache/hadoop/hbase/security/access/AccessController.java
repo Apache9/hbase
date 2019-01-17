@@ -2409,23 +2409,28 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
   public void preGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
        List<TableName> tableNamesList, List<TableDescriptor> descriptors,
        String regex) throws IOException {
+    // After salted is stored in HTableDescriptor, any operation Read/Write will need to
+    // get table descriptor to judge whether it is a salted table. We don't do any acl
+    // check to getTableDescriptor to keep compatible with old grants.
+    // TODO: grant to users having any permission on any family
+
     // We are delegating the authorization check to postGetTableDescriptors as we don't have
     // any concrete set of table names when a regex is present or the full list is requested.
-    if (regex == null && tableNamesList != null && !tableNamesList.isEmpty()) {
+    // if (regex == null && tableNamesList != null && !tableNamesList.isEmpty()) {
       // Otherwise, if the requestor has ADMIN or CREATE privs for all listed tables, the
       // request can be granted.
-      TableName [] sns = null;
-      try (Admin admin = ctx.getEnvironment().getConnection().getAdmin()) {
-        sns = admin.listTableNames();
-        if (sns == null) return;
-        for (TableName tableName: tableNamesList) {
+      // TableName[] sns = null;
+      // try (Admin admin = ctx.getEnvironment().getConnection().getAdmin()) {
+        // sns = admin.listTableNames();
+        // if (sns == null) return;
+        // for (TableName tableName : tableNamesList) {
           // Skip checks for a table that does not exist
-          if (!admin.tableExists(tableName)) continue;
-          requirePermission(ctx, "getTableDescriptors", tableName, null, null,
-            Action.ADMIN, Action.CREATE);
-        }
-      }
-    }
+          // if (!admin.tableExists(tableName)) continue;
+          // requirePermission(ctx, "getTableDescriptors", tableName, null, null, Action.ADMIN,
+          //    Action.CREATE);
+        // }
+      // }
+    // }
   }
 
   @Override
