@@ -52,8 +52,10 @@ public interface RpcClient extends Closeable {
   int DEFAULT_SOCKET_TIMEOUT_READ = 20000; // 20 seconds
   int DEFAULT_SOCKET_TIMEOUT_WRITE = 60000; // 60 seconds
 
-  // Used by the server, for compatibility with old clients.
-  // The client in 0.99+ does not ping the server.
+  String PING_INTERVAL_NAME = "hbase.ipc.ping.interval";
+  int DEFAULT_PING_INTERVAL = 30000; // 30 seconds
+  String PING_TIMEOUT = "hbase.ipc.ping.timeout";
+  int DEFAULT_PING_TIMEOUT = 10000; // 10 seconds
   int PING_CALL_ID = -1;
 
   /**

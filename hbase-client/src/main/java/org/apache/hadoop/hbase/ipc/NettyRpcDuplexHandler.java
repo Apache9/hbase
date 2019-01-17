@@ -17,11 +17,22 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.apache.hadoop.hbase.CellScanner;
+import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.exceptions.ConnectionClosedException;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.ipc.RemoteException;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.Message.Builder;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.TextFormat;
-
 import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
 import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufInputStream;
 import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufOutputStream;
@@ -29,23 +40,14 @@ import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelDuplexHandler;
 import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
 import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPromise;
 import com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleStateEvent;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
+import com.xiaomi.infra.thirdparty.io.netty.util.TimerTask;
 import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.PromiseCombiner;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.hadoop.hbase.CellScanner;
-import org.apache.yetus.audience.InterfaceAudience;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.CellBlockMeta;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.ExceptionResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.RequestHeader;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.ResponseHeader;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.ipc.RemoteException;
 
 /**
  * The netty rpc handler.
@@ -66,13 +68,14 @@ class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
   private final Map<Integer, Call> id2Call = new HashMap<>();
 
+  private Timeout pingTimeout;
+
   public NettyRpcDuplexHandler(NettyRpcConnection conn, CellBlockBuilder cellBlockBuilder,
       Codec codec, CompressionCodec compressor) {
     this.conn = conn;
     this.cellBlockBuilder = cellBlockBuilder;
     this.codec = codec;
     this.compressor = compressor;
-
   }
 
   private void writeRequest(ChannelHandlerContext ctx, Call call, ChannelPromise promise)
@@ -131,6 +134,11 @@ class NettyRpcDuplexHandler extends ChannelDuplexHandler {
       LOG.trace("got response header " + TextFormat.shortDebugString(responseHeader)
           + ", totalSize: " + totalSize + " bytes");
     }
+    if (id == RpcClient.PING_CALL_ID) {
+      // ping response, ignore
+      LOG.debug("Receive ping response from {}", conn.remoteId());
+      return;
+    }
     RemoteException remoteExc;
     if (responseHeader.hasException()) {
       ExceptionResponse exceptionResponse = responseHeader.getException();
@@ -186,6 +194,12 @@ class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    // Ping is used to detect if the remote machine is down while the connection is still alive, so
+    // if we get something back then we can make sure the remote machine is alive.
+    if (pingTimeout != null) {
+      pingTimeout.cancel();
+      pingTimeout = null;
+    }
     if (msg instanceof ByteBuf) {
       ByteBuf buf = (ByteBuf) msg;
       try {
@@ -227,8 +241,25 @@ class NettyRpcDuplexHandler extends ChannelDuplexHandler {
     if (evt instanceof IdleStateEvent) {
       IdleStateEvent idleEvt = (IdleStateEvent) evt;
       switch (idleEvt.state()) {
+        case READER_IDLE: {
+          if (pingTimeout == null) {
+            LOG.debug("send ping to {}", conn.remoteId());
+            // write a ping
+            ctx.writeAndFlush(ctx.alloc().buffer(4).writeInt(RpcClient.PING_CALL_ID));
+            pingTimeout = conn.timeoutTimer.newTimeout(new TimerTask() {
+
+              @Override
+              public void run(Timeout timeout) throws Exception {
+                LOG.warn("Haven't got ping response from " + conn.remoteId +
+                  " in time, shutdown connection");
+                conn.shutdown();
+              }
+            }, conn.getPingTimeout(), TimeUnit.MILLISECONDS);
+          }
+        }
         case WRITER_IDLE:
           if (id2Call.isEmpty()) {
+            LOG.debug("shutdown connection to {} because idle for a long time", conn.remoteId());
             if (LOG.isTraceEnabled()) {
               LOG.trace("shutdown connection to " + conn.remoteId().address
                   + " because idle for a long time");

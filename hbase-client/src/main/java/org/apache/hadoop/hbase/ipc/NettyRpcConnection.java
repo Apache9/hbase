@@ -98,6 +98,10 @@ class NettyRpcConnection extends RpcConnection {
     header.writeTo(new ByteBufOutputStream(this.connectionHeaderWithLength));
   }
 
+  int getPingTimeout() {
+    return rpcClient.pingTimeout;
+  }
+
   @Override
   protected synchronized void callTimeout(Call call) {
     if (channel != null) {
@@ -135,8 +139,8 @@ class NettyRpcConnection extends RpcConnection {
   private void established(Channel ch) throws IOException {
     ChannelPipeline p = ch.pipeline();
     String addBeforeHandler = p.context(BufferCallBeforeInitHandler.class).name();
-    p.addBefore(addBeforeHandler, null,
-      new IdleStateHandler(0, rpcClient.minIdleTimeBeforeClose, 0, TimeUnit.MILLISECONDS));
+    p.addBefore(addBeforeHandler, null, new IdleStateHandler(rpcClient.pingInterval,
+      rpcClient.minIdleTimeBeforeClose, 0, TimeUnit.MILLISECONDS));
     p.addBefore(addBeforeHandler, null, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4));
     p.addBefore(addBeforeHandler, null,
       new NettyRpcDuplexHandler(this, rpcClient.cellBlockBuilder, codec, compressor));

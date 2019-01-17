@@ -72,6 +72,18 @@ public class NettyRpcServer extends RpcServer {
   private final ChannelGroup allChannels =
     new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
 
+  // will be overridden in test
+  @VisibleForTesting
+  protected void initPipeline(ChannelPipeline pipeline) {
+    FixedLengthFrameDecoder preambleDecoder = new FixedLengthFrameDecoder(6);
+    preambleDecoder.setSingleDecode(true);
+    pipeline.addLast("preambleDecoder", preambleDecoder);
+    pipeline.addLast("preambleHandler", createNettyRpcServerPreambleHandler());
+    pipeline.addLast("frameDecoder", new NettyRpcFrameDecoder(maxRequestSize));
+    pipeline.addLast("decoder", new NettyRpcServerRequestDecoder(allChannels, metrics));
+    pipeline.addLast("encoder", new NettyRpcServerResponseEncoder(metrics));
+  }
+
   public NettyRpcServer(Server server, String name, List<BlockingServiceAndInterface> services,
       InetSocketAddress bindAddress, Configuration conf, RpcScheduler scheduler,
       boolean reservoirEnabled) throws IOException {
@@ -95,14 +107,7 @@ public class NettyRpcServer extends RpcServer {
 
           @Override
           protected void initChannel(Channel ch) throws Exception {
-            ChannelPipeline pipeline = ch.pipeline();
-            FixedLengthFrameDecoder preambleDecoder = new FixedLengthFrameDecoder(6);
-            preambleDecoder.setSingleDecode(true);
-            pipeline.addLast("preambleDecoder", preambleDecoder);
-            pipeline.addLast("preambleHandler", createNettyRpcServerPreambleHandler());
-            pipeline.addLast("frameDecoder", new NettyRpcFrameDecoder(maxRequestSize));
-            pipeline.addLast("decoder", new NettyRpcServerRequestDecoder(allChannels, metrics));
-            pipeline.addLast("encoder", new NettyRpcServerResponseEncoder(metrics));
+            initPipeline(ch.pipeline());
           }
         });
     try {
@@ -169,9 +174,7 @@ public class NettyRpcServer extends RpcServer {
 
   @Override
   public int getNumOpenConnections() {
-    int channelsCount = allChannels.size();
-    // allChannels also contains the server channel, so exclude that from the count.
-    return channelsCount > 0 ? channelsCount - 1 : channelsCount;
+    return allChannels.size();
   }
 
   @Override

@@ -24,6 +24,8 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.client.VersionInfoUtil;
 import org.apache.hadoop.hbase.exceptions.RequestTooBigException;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
 import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelFutureListener;
@@ -41,6 +43,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
  */
 @InterfaceAudience.Private
 public class NettyRpcFrameDecoder extends ByteToMessageDecoder {
+
+  private static final Logger LOG = LoggerFactory.getLogger(NettyRpcFrameDecoder.class);
 
   private static int FRAME_LENGTH_FIELD_LENGTH = 4;
 
@@ -70,8 +74,17 @@ public class NettyRpcFrameDecoder extends ByteToMessageDecoder {
       return;
     }
 
-    long frameLength = in.getUnsignedInt(in.readerIndex());
-
+    // handle ping
+    int frameLength = in.getInt(in.readerIndex());
+    if (frameLength == RpcClient.PING_CALL_ID) {
+      LOG.debug("Received ping message");
+      NettyServerCall pingResp = new NettyServerCall(RpcClient.PING_CALL_ID, connection.service, null, null, null, null,
+        connection, 0, connection.addr, System.currentTimeMillis(), 0,
+        connection.rpcServer.reservoir, connection.rpcServer.cellBlockBuilder, null);
+      pingResp.setResponse(null, null, null, null);
+      connection.channel.writeAndFlush(pingResp);
+      return;
+    }
     if (frameLength < 0) {
       throw new IOException("negative frame length field: " + frameLength);
     }

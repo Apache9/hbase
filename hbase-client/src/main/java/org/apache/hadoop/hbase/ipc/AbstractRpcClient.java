@@ -126,6 +126,8 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
   protected final long failureSleep; // Time to sleep before retry on failure.
   protected final boolean tcpNoDelay; // if T then disable Nagle's Algorithm
   protected final boolean tcpKeepAlive; // if T then use keepalives
+  protected final int pingInterval; // how often sends ping to the server in msecs
+  protected final int pingTimeout;
   protected final Codec codec;
   protected final CompressionCodec compressor;
   protected final boolean fallbackAllowed;
@@ -172,6 +174,8 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
     this.maxRetries = conf.getInt("hbase.ipc.client.connect.max.retries", 0);
     this.tcpNoDelay = conf.getBoolean("hbase.ipc.client.tcpnodelay", true);
     this.cellBlockBuilder = new CellBlockBuilder(conf);
+    this.pingInterval = getPingInterval(conf);
+    this.pingTimeout = conf.getInt(PING_TIMEOUT, DEFAULT_PING_TIMEOUT);
 
     this.minIdleTimeBeforeClose = conf.getInt(IDLE_TIME, 120000); // 2 minutes
     this.conf = conf;
@@ -279,6 +283,16 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
     } catch (Exception e) {
       throw new RuntimeException("Failed getting compressor " + className, e);
     }
+  }
+
+  /**
+   * Get the ping interval from configuration; If not set in the configuration, return the default
+   * value.
+   * @param conf Configuration
+   * @return the ping interval
+   */
+  private static int getPingInterval(Configuration conf) {
+    return conf.getInt(PING_INTERVAL_NAME, conf.getInt("ipc.ping.interval", DEFAULT_PING_INTERVAL));
   }
 
   /**
