@@ -250,8 +250,8 @@ class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
               @Override
               public void run(Timeout timeout) throws Exception {
-                LOG.warn("Haven't got ping response from " + conn.remoteId +
-                  " in time, shutdown connection");
+                LOG.warn("Haven't got ping response from {} in time, shutdown connection",
+                  conn.remoteId());
                 conn.shutdown();
               }
             }, conn.getPingTimeout(), TimeUnit.MILLISECONDS);
@@ -260,10 +260,6 @@ class NettyRpcDuplexHandler extends ChannelDuplexHandler {
         case WRITER_IDLE:
           if (id2Call.isEmpty()) {
             LOG.debug("shutdown connection to {} because idle for a long time", conn.remoteId());
-            if (LOG.isTraceEnabled()) {
-              LOG.trace("shutdown connection to " + conn.remoteId().address
-                  + " because idle for a long time");
-            }
             // It may happen that there are still some pending calls in the event loop queue and
             // they will get a closed channel exception. But this is not a big deal as it rarely
             // rarely happens and the upper layer could retry immediately.

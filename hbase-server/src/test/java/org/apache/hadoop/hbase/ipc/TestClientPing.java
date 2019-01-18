@@ -27,7 +27,6 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -112,8 +111,8 @@ public class TestClientPing {
     CONF.setInt(PING_TIMEOUT, 500);
     CONF.setInt("hbase.ipc.client.connection.maxidletime", 60000);
     SERVER = new TestPingRpcServer(null, "testRpcServer",
-      Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(SERVICE, null)),
-      new InetSocketAddress("localhost", 0), CONF, new FifoRpcScheduler(CONF, 2), true);
+        Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(SERVICE, null)),
+        new InetSocketAddress("localhost", 0), CONF, new FifoRpcScheduler(CONF, 2), true);
     SERVER.start();
   }
 
@@ -158,6 +157,9 @@ public class TestClientPing {
     Thread.sleep(5000);
     // we have ping so the connection should be still alive.
     assertEquals(1, SERVER.getNumOpenConnections());
+    // confirm that the connection is still usable
+    assertEquals(msg,
+      stub.echo(null, EchoRequestProto.newBuilder().setMessage(msg).build()).getMessage());
 
     STOP_PING = true;
     Thread.sleep(5000);

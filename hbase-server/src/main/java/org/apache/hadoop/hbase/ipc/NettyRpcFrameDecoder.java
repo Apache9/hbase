@@ -77,7 +77,8 @@ public class NettyRpcFrameDecoder extends ByteToMessageDecoder {
     // handle ping
     int frameLength = in.getInt(in.readerIndex());
     if (frameLength == RpcClient.PING_CALL_ID) {
-      LOG.debug("Received ping message");
+      in.skipBytes(FRAME_LENGTH_FIELD_LENGTH);
+      LOG.debug("Received ping message from {}", connection.addr);
       NettyServerCall pingResp = new NettyServerCall(RpcClient.PING_CALL_ID, connection.service, null, null, null, null,
         connection, 0, connection.addr, System.currentTimeMillis(), 0,
         connection.rpcServer.reservoir, connection.rpcServer.cellBlockBuilder, null);
