@@ -2521,6 +2521,12 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
   }
 
   @Override
+  public void preSetRegionServerQuota(ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String regionServer, GlobalQuotaSettings quotas) throws IOException {
+    requirePermission(ctx, "setRegionServerQuota", Action.ADMIN);
+  }
+
+  @Override
   public ReplicationEndpoint postCreateReplicationEndPoint(
       ObserverContext<RegionServerCoprocessorEnvironment> ctx, ReplicationEndpoint endpoint) {
     return endpoint;
