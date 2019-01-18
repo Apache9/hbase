@@ -55,6 +55,7 @@ import org.apache.hadoop.hbase.protobuf.ResponseConverter;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
+import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
@@ -104,6 +105,8 @@ class AsyncBatchRpcRetryingCaller<T> {
 
   private final long startNs;
 
+  private final boolean ignoreThrottlingException;
+
   // we can not use HRegionLocation as the map key because the hashCode and equals method of
   // HRegionLocation only consider serverName.
   private static final class RegionRequest {
@@ -130,7 +133,7 @@ class AsyncBatchRpcRetryingCaller<T> {
 
   public AsyncBatchRpcRetryingCaller(HashedWheelTimer retryTimer, AsyncConnectionImpl conn,
       TableName tableName, List<? extends Row> actions, long pauseNs, int maxAttempts,
-      long operationTimeoutNs, long rpcTimeoutNs, int startLogErrorsCnt) {
+      long operationTimeoutNs, long rpcTimeoutNs, int startLogErrorsCnt, boolean ignoreThrottlingException) {
     this.retryTimer = retryTimer;
     this.conn = conn;
     this.tableName = tableName;
@@ -139,6 +142,7 @@ class AsyncBatchRpcRetryingCaller<T> {
     this.operationTimeoutNs = operationTimeoutNs;
     this.rpcTimeoutNs = rpcTimeoutNs;
     this.startLogErrorsCnt = startLogErrorsCnt;
+    this.ignoreThrottlingException = ignoreThrottlingException;
 
     this.actions = new ArrayList<>(actions.size());
     this.futures = new ArrayList<>(actions.size());
@@ -156,6 +160,16 @@ class AsyncBatchRpcRetryingCaller<T> {
     }
     this.action2Errors = new IdentityHashMap<>();
     this.startNs = System.nanoTime();
+  }
+
+  private boolean canRetry(Throwable error, int tries) {
+    if (ignoreThrottlingException && error instanceof ThrottlingException) {
+      return true;
+    }
+    if (error instanceof DoNotRetryIOException) {
+      return false;
+    }
+    return tries < maxAttempts;
   }
 
   private long remainingTimeNs() {
@@ -272,11 +286,11 @@ class AsyncBatchRpcRetryingCaller<T> {
       Throwable error = translateException((Throwable) result);
       logException(tries, () -> Stream.of(regionReq), error, serverName);
       conn.getLocator().updateCachedLocation(regionReq.loc, error);
-      if (error instanceof DoNotRetryIOException || tries >= maxAttempts) {
-        failOne(action, tries, error, EnvironmentEdgeManager.currentTimeMillis(),
-          getExtraContextForError(serverName));
-      } else {
+      if (canRetry(error, tries)) {
         failedActions.add(action);
+      } else {
+        failOne(action, tries, error, EnvironmentEdgeManager.currentTimeMillis(),
+            getExtraContextForError(serverName));
       }
     } else {
       action2Future.get(action).complete((T) result);
@@ -303,7 +317,7 @@ class AsyncBatchRpcRetryingCaller<T> {
           error = translateException(t);
           logException(tries, () -> Stream.of(regionReq), error, serverName);
           conn.getLocator().updateCachedLocation(regionReq.loc, error);
-          if (error instanceof DoNotRetryIOException || tries >= maxAttempts) {
+          if (!canRetry(error, tries)) {
             failAll(regionReq.actions.stream(), tries, error, serverName);
             return;
           }
@@ -373,7 +387,7 @@ class AsyncBatchRpcRetryingCaller<T> {
     logException(tries, () -> actionsByRegion.values().stream(), error, serverName);
     actionsByRegion
         .forEach((rn, regionReq) -> conn.getLocator().updateCachedLocation(regionReq.loc, error));
-    if (error instanceof DoNotRetryIOException || tries >= maxAttempts) {
+    if (!canRetry(error, tries)) {
       failAll(actionsByRegion.values().stream().flatMap(r -> r.actions.stream()), tries, error,
         serverName);
       return;

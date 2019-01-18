@@ -272,6 +272,8 @@ class AsyncRpcRetryingCallerFactory {
 
     private long rpcTimeoutNs = -1L;
 
+    private boolean ignoreThrottlingException = false;
+
     public BatchCallerBuilder table(TableName tableName) {
       this.tableName = tableName;
       return this;
@@ -307,9 +309,14 @@ class AsyncRpcRetryingCallerFactory {
       return this;
     }
 
+    public BatchCallerBuilder ignoreThrottlingException(boolean ignoreThrottlingException) {
+      this.ignoreThrottlingException = ignoreThrottlingException;
+      return this;
+    }
+
     public <T> AsyncBatchRpcRetryingCaller<T> build() {
       return new AsyncBatchRpcRetryingCaller<>(retryTimer, conn, tableName, actions, pauseNs,
-          maxAttempts, operationTimeoutNs, rpcTimeoutNs, startLogErrorsCnt);
+          maxAttempts, operationTimeoutNs, rpcTimeoutNs, startLogErrorsCnt, ignoreThrottlingException);
     }
 
     public <T> List<CompletableFuture<T>> call() {

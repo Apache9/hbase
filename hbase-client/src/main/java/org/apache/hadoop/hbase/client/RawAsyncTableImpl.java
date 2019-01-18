@@ -93,6 +93,8 @@ class RawAsyncTableImpl implements AsyncTable<AdvancedScanResultConsumer> {
 
   private final int startLogErrorsCnt;
 
+  private final boolean ignoreThrottlingException;
+
   RawAsyncTableImpl(AsyncConnectionImpl conn, AsyncTableBuilderBase<?> builder) {
     this.conn = conn;
     this.tableName = builder.tableName;
@@ -105,6 +107,7 @@ class RawAsyncTableImpl implements AsyncTable<AdvancedScanResultConsumer> {
     this.defaultScannerCaching = tableName.isSystemTable() ? conn.connConf.getMetaScannerCaching()
       : conn.connConf.getScannerCaching();
     this.defaultScannerMaxResultSize = conn.connConf.getScannerMaxResultSize();
+    this.ignoreThrottlingException = conn.connConf.isIgnoreThrottlingException();
   }
 
   @Override
@@ -466,7 +469,8 @@ class RawAsyncTableImpl implements AsyncTable<AdvancedScanResultConsumer> {
     return conn.callerFactory.batch().table(tableName).actions(actions)
         .operationTimeout(operationTimeoutNs, TimeUnit.NANOSECONDS)
         .rpcTimeout(rpcTimeoutNs, TimeUnit.NANOSECONDS).pause(pauseNs, TimeUnit.NANOSECONDS)
-        .maxAttempts(maxAttempts).startLogErrorsCnt(startLogErrorsCnt).call();
+        .maxAttempts(maxAttempts).startLogErrorsCnt(startLogErrorsCnt)
+        .ignoreThrottlingException(ignoreThrottlingException).call();
   }
 
   @Override
