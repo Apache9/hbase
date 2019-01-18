@@ -468,12 +468,13 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 <%java>
    List<TableDescriptor> tables = new ArrayList<TableDescriptor>();
    String errorMessage = getUserTables(master, tables);
+   int totalTablesCount = tables.size();
 </%java>
-<%if (tables.size() == 0 && errorMessage != null)%>
+<%if (totalTablesCount == 0 && errorMessage != null)%>
 <p> <% errorMessage %> </p>
 </%if>
 
-<%if (tables != null && tables.size() > 0)%>
+<%if (totalTablesCount > 0)%>
 <table id="userTables" class="tablesorter table table-striped">
 <thead>
     <tr>
@@ -498,6 +499,10 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
     </tr>
 </thead>
 <tbody>
+    <%java>
+      int endIndex = Math.min(totalTablesCount, 20);
+      tables = tables.subList(0, endIndex);
+    </%java>
     <%for TableDescriptor desc : tables%>
     <%java>
       HTableDescriptor htDesc = new HTableDescriptor(desc);
@@ -531,7 +536,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
             <td align="center"><% frags.get(tableName.getNameAsString()) != null ? frags.get(tableName.getNameAsString()).intValue() + "%" : "n/a" %></td>
         </%if>
         <td><% tableState.getState() %></td>
-        <td><% openRegionsCount %></td>
+        <%if (openRegionsCount <= 1) %> <td><span style="color:red"><% openRegionsCount %></span></td> <%else><td><% openRegionsCount %></td> </%if>
         <%if (openingRegionsCount > 0) %> <td><a href="/rits.jsp?table=<% tableName.getNameAsString() %>&state=OPENING"><% openingRegionsCount %></td> <%else><td><% openingRegionsCount %></td> </%if>
         <td><% closedRegionsCount %></td>
         <%if (closingRegionsCount > 0) %> <td><a href="/rits.jsp?table=<% tableName.getNameAsString() %>&state=CLOSING"><% closingRegionsCount %></td> <%else><td><% closingRegionsCount %></td> </%if>
@@ -542,7 +547,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <td><% htDesc.toStringCustomizedValues() %></td>
     </tr>
     </%for>
-    <p><% tables.size() %> table(s) in set. [<a href=tablesDetailed.jsp>Details</a>]</p>
+    <p><% tables.size() %>/<% totalTablesCount %> table(s) in set. [<a href=tablesDetailed.jsp>More tables and details</a>]</p>
 </tbody>
 </table>
 </%if>
