@@ -308,6 +308,12 @@ public interface TableDescriptor {
   Integer getSlotsCount();
 
   /**
+   * @return Name of this table and then a map of all of the column family descriptors (with only
+   *         the non-default column family attributes)
+   */
+  String toStringCustomizedValues();
+
+  /**
    * Check if any of the table's cfs' replication scope are set to
    * {@link HConstants#REPLICATION_SCOPE_GLOBAL}.
    * @return {@code true} if we have, otherwise {@code false}.
