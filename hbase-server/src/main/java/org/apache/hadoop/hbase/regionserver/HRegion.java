@@ -6899,7 +6899,7 @@ public class HRegion implements HeapSize { // , Writable{
   /**
    * Update the read operation metrics
    */
-  public void updateReadMetrics(int num) {
+  public void updateReadMetrics(long num) {
     if (num == 1) {
       this.readRequestsCount.increment();
       this.readRequestsPerSecond.inc();
@@ -6909,19 +6909,19 @@ public class HRegion implements HeapSize { // , Writable{
     }
   }
 
-  public void updateReadCellMetrics(int num) {
+  public void updateReadCellMetrics(long num) {
     this.readCellCountPerSecond.inc(num);
   }
 
-  public void updateReadRawCellMetrics(int num) {
+  public void updateReadRawCellMetrics(long num) {
     this.readRawCellCountPerSecond.inc(num);
   }
 
-  public void updateScanCountPerSecond(int num){
+  public void updateScanCountPerSecond(long num){
     this.scanCountPerSecond.inc(num);
   }
 
-  public void updateScanRowsPerSecond(int num){
+  public void updateScanRowsPerSecond(long num){
     this.scanRowsPerSecond.inc(num);
   }
 
@@ -6939,10 +6939,10 @@ public class HRegion implements HeapSize { // , Writable{
   }
 
   public void updateReadCapacityUnitMetrics(long readSize) {
-    int readCapacityUnitNum = 0;
+    long readCapacityUnitNum = 0;
     if (this.rsServices != null && this.rsServices.getRegionServerQuotaManager() != null) {
-      readCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager()
-          .calculateReadCapacityUnitNum(readSize);
+      readCapacityUnitNum =
+          this.rsServices.getRegionServerQuotaManager().calculateReadCapacityUnitNum(readSize);
     }
     this.readRequestsByCapacityUnitPerSecond.inc(readCapacityUnitNum);
     if (this.metricsRegion != null) {
@@ -6951,10 +6951,10 @@ public class HRegion implements HeapSize { // , Writable{
   }
 
   public void updateWriteCapacityUnitMetrics(long writeSize) {
-    int writeCapacityUnitNum = 0;
+    long writeCapacityUnitNum = 0;
     if (this.rsServices != null && this.rsServices.getRegionServerQuotaManager() != null) {
-      writeCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager()
-          .calculateWriteCapacityUnitNum(writeSize);
+      writeCapacityUnitNum =
+          this.rsServices.getRegionServerQuotaManager().calculateWriteCapacityUnitNum(writeSize);
     }
     this.writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnitNum);
     if (this.metricsRegion != null) {
