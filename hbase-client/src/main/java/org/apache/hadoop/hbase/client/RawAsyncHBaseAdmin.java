@@ -74,14 +74,17 @@ import org.apache.hadoop.hbase.client.replication.TableCFs;
 import org.apache.hadoop.hbase.client.security.SecurityCapability;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
+import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.QuotaTableUtil;
 import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
 import org.apache.hadoop.hbase.snapshot.SnapshotCreationException;
@@ -3711,5 +3714,18 @@ class RawAsyncHBaseAdmin implements AsyncAdmin {
     return getCurrentSpaceQuotaSnapshot(resp -> resp.getTableSnapshotsList().stream()
       .filter(s -> s.getTableName().equals(protoTableName)).findFirst()
       .map(s -> SpaceQuotaSnapshot.toSpaceQuotaSnapshot(s.getSnapshot())).orElse(null));
+  }
+
+  @Override
+  public CompletableFuture<ReplicationLoadSource>
+      getPeerMaxReplicationLoad(String peerId) {
+    return this.<ReplicationLoadSource> newMasterCaller().action((controller,
+        stub) -> this.<ReplicationProtos.GetPeerMaxReplicationLoadRequest,
+          ReplicationProtos.GetPeerMaxReplicationLoadResponse, ReplicationLoadSource> call(
+          controller, stub,
+          RequestConverter.buildGetPeerMaxReplicationLoadRequest(Optional.ofNullable(peerId)),
+          (s, c, req, done) -> s.getPeerMaxReplicationLoad(c, req, done),
+          resp -> ProtobufUtil.toReplicationLoadSource(resp.getReplicationLoadSource())))
+        .call();
   }
 }

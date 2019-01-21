@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.client.security.SecurityCapability;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
@@ -795,5 +796,10 @@ class AsyncHBaseAdmin implements AsyncAdmin {
   @Override
   public CompletableFuture<SpaceQuotaSnapshot> getCurrentSpaceQuotaSnapshot(TableName tableName) {
     return wrap(rawAdmin.getCurrentSpaceQuotaSnapshot(tableName));
+  }
+
+  @Override public CompletableFuture<ReplicationLoadSource> getPeerMaxReplicationLoad(
+      String peerId) {
+    return wrap(rawAdmin.getPeerMaxReplicationLoad(peerId));
   }
 }

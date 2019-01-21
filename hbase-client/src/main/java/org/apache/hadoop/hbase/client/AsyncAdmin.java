@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.client.security.SecurityCapability;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshotView;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
@@ -1324,4 +1325,9 @@ public interface AsyncAdmin {
    */
   CompletableFuture<? extends SpaceQuotaSnapshotView> getCurrentSpaceQuotaSnapshot(
       TableName tableName);
+
+  /**
+   * Returns the max load of replication for the given {@code peerId}
+   */
+  CompletableFuture<ReplicationLoadSource> getPeerMaxReplicationLoad(String peerId);
 }
