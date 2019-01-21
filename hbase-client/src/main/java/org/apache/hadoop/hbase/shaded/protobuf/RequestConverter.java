@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -1918,5 +1919,13 @@ public final class RequestConverter {
     return encodedRegionNames.stream().
         map(r -> buildRegionSpecifier(RegionSpecifierType.ENCODED_REGION_NAME, Bytes.toBytes(r))).
         collect(Collectors.toList());
+  }
+
+  public static ReplicationProtos.GetPeerMaxReplicationLoadRequest
+  buildGetPeerMaxReplicationLoadRequest(Optional<String> peerId) {
+    ReplicationProtos.GetPeerMaxReplicationLoadRequest.Builder builder =
+        ReplicationProtos.GetPeerMaxReplicationLoadRequest.newBuilder();
+    peerId.ifPresent(id -> builder.setPeerId(id));
+    return builder.build();
   }
 }

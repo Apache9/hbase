@@ -1018,6 +1018,10 @@ service MasterService {
   /** Get if is rpc throttled enabled */
   rpc IsRpcThrottleEnabled (IsRpcThrottleEnabledRequest)
     returns (IsRpcThrottleEnabledResponse);
+
+  /** Returns a list of replication loads */
+  rpc GetPeerMaxReplicationLoad(GetPeerMaxReplicationLoadRequest)
+  returns(GetPeerMaxReplicationLoadResponse);
 }
 
 // HBCK Service definitions.

@@ -27,6 +27,9 @@ import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesti
 import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableSet;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.reflect.Constructor;
@@ -79,6 +82,7 @@ import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.PleaseHoldException;
 import org.apache.hadoop.hbase.ReplicationPeerNotFoundException;
+import org.apache.hadoop.hbase.ServerMetrics;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
@@ -194,6 +198,8 @@ import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.Addressing;
@@ -3937,6 +3943,35 @@ public class HMaster extends HRegionServer implements MasterServices {
       }
     }
     return replicationLoadSourceMap;
+  }
+
+  public ReplicationLoadSource getPeerMaxReplicationLoad(String peerId)
+      throws DoNotRetryIOException {
+    if (peerId == null) {
+      throw new DoNotRetryIOException("peerId is required!");
+    }
+    ReplicationLoadSource heaviestLoad = null;
+    for (Map.Entry<ServerName, ServerMetrics> sl : this.getServerManager().getOnlineServers()
+        .entrySet()) {
+
+      for (ReplicationLoadSource rload : sl.getValue().getReplicationLoadSourceList()) {
+        if (rload.getPeerID().equals(peerId)) {
+          if (heaviestLoad == null) {
+            heaviestLoad = rload;
+          } else if (rload.getReplicationLag() > heaviestLoad.getReplicationLag()) {
+            heaviestLoad = rload;
+          }
+        }
+      }
+
+    }
+    if(heaviestLoad != null) {
+      LOG.info(
+        "heavies load of peer {}: replication lag: {}, size of queue: {}, AgeOfLastShippedOp: {}",
+        heaviestLoad.getPeerID(), heaviestLoad.getReplicationLag(),
+        heaviestLoad.getSizeOfLogQueue(), heaviestLoad.getAgeOfLastShippedOp());
+    }
+    return heaviestLoad;
   }
 
   /**

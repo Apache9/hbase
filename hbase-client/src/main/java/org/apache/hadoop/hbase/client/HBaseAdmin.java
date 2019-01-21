@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -88,9 +89,11 @@ import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
@@ -4481,6 +4484,23 @@ public class HBaseAdmin implements Admin {
             }
           }
           return null;
+        }
+      });
+  }
+
+  public ReplicationLoadSource getPeerMaxReplicationLoad(String peerId) throws IOException {
+    return executeCallable(
+      new MasterCallable<ReplicationLoadSource>(getConnection(), getRpcControllerFactory()) {
+        @Override
+        protected ReplicationLoadSource rpcCall() throws Exception {
+          ClusterStatusProtos.ReplicationLoadSource heaviestLoad =
+              master
+                  .getPeerMaxReplicationLoad(getRpcController(),
+                    RequestConverter
+                        .buildGetPeerMaxReplicationLoadRequest(Optional.ofNullable(peerId)))
+                  .getReplicationLoadSource();
+          ReplicationLoadSource result = ProtobufUtil.toReplicationLoadSource(heaviestLoad);
+          return result;
         }
       });
   }

@@ -71,6 +71,7 @@ import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.log.HBaseMarkers;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
@@ -1803,6 +1804,13 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
       public IsRpcThrottleEnabledResponse isRpcThrottleEnabled(RpcController controller,
           IsRpcThrottleEnabledRequest request) throws ServiceException {
         return stub.isRpcThrottleEnabled(controller, request);
+      }
+
+      @Override
+      public ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+          RpcController controller, ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
+          throws ServiceException {
+        return stub.getPeerMaxReplicationLoad(controller, request);
       }
     };
   }

@@ -130,6 +130,30 @@ public class TestMasterMetrics {
     metricsHelper.assertCounter("cluster_requests", expectedRequestNumber, masterSource);
   }
 
+  @Test(timeout = 300000)
+  public void testReplicationStatusRequests() throws Exception {
+    RegionServerStatusProtos.RegionServerReportRequest.Builder request =
+        RegionServerStatusProtos.RegionServerReportRequest.newBuilder();
+    ServerName serverName = cluster.getRegionServer(0).getServerName();
+    request.setServer(ProtobufUtil.toServerName(serverName));
+
+    ClusterStatusProtos.ReplicationLoadSource rload1 = ClusterStatusProtos.ReplicationLoadSource
+        .newBuilder().setPeerID("test").setAgeOfLastShippedOp(1).setReplicationLag(2)
+        .setTimeStampOfLastShippedOp(10).setSizeOfLogQueue(2).build();
+    ClusterStatusProtos.ReplicationLoadSource rload2 = ClusterStatusProtos.ReplicationLoadSource
+        .newBuilder().setPeerID("test1").setAgeOfLastShippedOp(1).setReplicationLag(3)
+        .setTimeStampOfLastShippedOp(10).setSizeOfLogQueue(1).build();
+
+    ClusterStatusProtos.ServerLoad sl = ClusterStatusProtos.ServerLoad.newBuilder()
+        .addReplLoadSource(0, rload1).addReplLoadSource(1, rload2).build();
+    request.setLoad(sl);
+    master.getMasterRpcServices().regionServerReport(null, request.build());
+    Assert.assertEquals("get the replication lag",
+        master.getPeerMaxReplicationLoad("test").getReplicationLag(), 2);
+    Assert.assertEquals("get the size of log queue",
+        master.getPeerMaxReplicationLoad("test1").getSizeOfLogQueue(), 1);
+  }
+
   @Test
   public void testDefaultMasterMetrics() throws Exception {
     MetricsMasterSource masterSource = master.getMasterMetrics().getMetricsSource();

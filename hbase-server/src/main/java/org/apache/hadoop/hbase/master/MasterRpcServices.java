@@ -88,6 +88,7 @@ import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot;
 import org.apache.hadoop.hbase.regionserver.RSRpcServices;
 import org.apache.hadoop.hbase.regionserver.RpcSchedulerFactory;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.security.User;
@@ -95,6 +96,8 @@ import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.AccessController;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.visibility.VisibilityController;
+import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -2510,6 +2513,31 @@ public class MasterRpcServices extends RSRpcServices
     } catch (Exception e) {
       throw new ServiceException(e);
     }
+  }
+
+  @Override
+  public ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+      RpcController controller, ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
+      throws ServiceException {
+    ReplicationProtos.GetPeerMaxReplicationLoadResponse.Builder response =
+        ReplicationProtos.GetPeerMaxReplicationLoadResponse.newBuilder();
+    try {
+      master.checkInitialized();
+      ReplicationLoadSource maxLoad = master.getPeerMaxReplicationLoad(request.getPeerId());
+      ClusterStatusProtos.ReplicationLoadSource.Builder maxLoadBuilder =
+          ClusterStatusProtos.ReplicationLoadSource.newBuilder();
+      if (maxLoad != null) {
+        maxLoadBuilder.setPeerID(maxLoad.getPeerID());
+        maxLoadBuilder.setAgeOfLastShippedOp(maxLoad.getAgeOfLastShippedOp());
+        maxLoadBuilder.setSizeOfLogQueue((int) maxLoad.getSizeOfLogQueue());
+        maxLoadBuilder.setTimeStampOfLastShippedOp(maxLoad.getTimeStampOfLastShippedOp());
+        maxLoadBuilder.setReplicationLag(maxLoad.getReplicationLag());
+        response.setReplicationLoadSource(maxLoadBuilder.build());
+      }
+    } catch (Exception e) {
+      throw new ServiceException(e);
+    }
+    return response.build();
   }
 
   private boolean containMetaWals(ServerName serverName) throws IOException {

@@ -26,6 +26,7 @@ option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
 import "HBase.proto";
+import "ClusterStatus.proto";
 
 message TableCF {
   optional TableName table_name = 1;
@@ -160,4 +161,12 @@ message TransitReplicationPeerSyncReplicationStateRequest {
 
 message TransitReplicationPeerSyncReplicationStateResponse {
   required uint64 proc_id = 1;
+}
+
+message GetPeerMaxReplicationLoadRequest {
+  optional string peer_id = 1;
+}
+
+message GetPeerMaxReplicationLoadResponse {
+  optional ReplicationLoadSource replicationLoadSource = 1;
 }

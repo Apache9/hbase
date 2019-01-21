@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 import org.apache.yetus.audience.InterfaceAudience;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
@@ -670,5 +671,11 @@ public class ShortCircuitMasterConnection implements MasterKeepAliveConnection {
   public IsRpcThrottleEnabledResponse isRpcThrottleEnabled(RpcController controller,
       IsRpcThrottleEnabledRequest request) throws ServiceException {
     return stub.isRpcThrottleEnabled(controller, request);
+  }
+
+  @Override public ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+      RpcController controller, ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
+      throws ServiceException {
+    return stub.getPeerMaxReplicationLoad(controller, request);
   }
 }
