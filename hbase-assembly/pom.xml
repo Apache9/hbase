@@ -175,18 +175,7 @@
   </build>
   <dependencies>
     <!-- client artifacts for downstream use -->
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-shaded-client</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-shaded-client-byo-hadoop</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-shaded-mapreduce</artifactId>
-    </dependency>
+    <!-- we do not need shaded artifacts for mdh binaries -->
 	<!-- Intra-project dependencies -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
