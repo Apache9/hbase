@@ -34,7 +34,7 @@ import org.apache.hadoop.util.StringUtils;
 public class MetricsRate extends MetricsBase {
   private static final Log LOG = LogFactory.getLog("org.apache.hadoop.hbase.metrics");
 
-  private int value;
+  private long value;
   private float prevRate;
   private long ts;
 
@@ -51,7 +51,7 @@ public class MetricsRate extends MetricsBase {
     this(name, registry, NO_DESCRIPTION);
   }
 
-  public synchronized void inc(final int incr) {
+  public synchronized void inc(long incr) {
     value += incr;
   }
 

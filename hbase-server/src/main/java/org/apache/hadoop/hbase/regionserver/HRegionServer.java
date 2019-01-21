@@ -1382,7 +1382,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       readRequestsPerSecond += load.getReadRequestsPerSecond();
       writeRequestsPerSecond += load.getWriteRequestsPerSecond();
       readCellCountPerSecond += load.getReadCellCountPerSecond();
-      readRawCellCountPerSecond += load.getReadCellCountPerSecond();
+      readRawCellCountPerSecond += load.getReadRawCellCountPerSecond();
       scanCountPerSecond += load.getScanCountPerSecond();
       scanRowsPerSecond += load.getScanRowsPerSecond();
     }
@@ -4153,7 +4153,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     try {
       List<Result> results = new ArrayList<>();
       long totalKvSize = 0L;
-      int resultCells = 0;
+      long resultCells = 0;
       if (rows > 0) {
         boolean done = false;
         // Call coprocessor. Get region info from scanner.
