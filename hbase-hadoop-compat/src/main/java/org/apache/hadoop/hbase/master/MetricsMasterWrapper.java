@@ -51,6 +51,20 @@ public interface MetricsMasterWrapper {
   String getClusterId();
 
   /**
+   * Get the hbase version.
+   *
+   * @return the hbase version string, eg. "0.6.3-dev"
+   */
+  String getVersion();
+
+  /**
+   * Get the subversion revision number for the root directory
+   *
+   * @return the revision number, eg. "451451"
+   */
+  String getRevision();
+
+  /**
    * Get the ZooKeeper Quorum Info
    *
    * @return ZooKeeper Quorum Info

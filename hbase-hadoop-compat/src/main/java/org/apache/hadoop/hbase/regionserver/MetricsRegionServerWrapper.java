@@ -47,6 +47,20 @@ public interface MetricsRegionServerWrapper {
   String getZookeeperQuorum();
 
   /**
+   * Get the hbase version.
+   *
+   * @return the hbase version string, eg. "0.6.3-dev"
+   */
+  String getVersion();
+
+  /**
+   * Get the subversion revision number for the root directory
+   *
+   * @return the revision number, eg. "451451"
+   */
+  String getRevision();
+
+  /**
    * Get the co-processors
    *
    * @return Co-processors

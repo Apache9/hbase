@@ -61,6 +61,8 @@ public interface MetricsMasterSource extends BaseSource {
   String SERVER_NAME_NAME = "serverName";
   String CLUSTER_ID_NAME = "clusterId";
   String IS_ACTIVE_MASTER_NAME = "isActiveMaster";
+  String VERSION_NAME = "version";
+  String REVISION_NAME = "revision";
   String SPLIT_PLAN_COUNT_NAME = "splitPlanCount";
   String MERGE_PLAN_COUNT_NAME = "mergePlanCount";
 
@@ -77,6 +79,8 @@ public interface MetricsMasterSource extends BaseSource {
   String SERVER_NAME_DESC = "Server Name";
   String CLUSTER_ID_DESC = "Cluster Id";
   String IS_ACTIVE_MASTER_DESC = "Is Active Master";
+  String VERSION_DESC = "hbase version";
+  String REVISION_DESC = "revision number";
   String SPLIT_PLAN_COUNT_DESC = "Number of Region Split Plans executed";
   String MERGE_PLAN_COUNT_DESC = "Number of Region Merge Plans executed";
 

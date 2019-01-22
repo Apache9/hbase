@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.metrics.Interns;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.quotas.QuotaObserverChore;
@@ -86,6 +87,16 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
       return "";
     }
     return zk.getQuorum();
+  }
+
+  @Override
+  public String getVersion() {
+    return VersionInfo.getVersion();
+  }
+
+  @Override
+  public String getRevision() {
+    return VersionInfo.getRevision();
   }
 
   @Override

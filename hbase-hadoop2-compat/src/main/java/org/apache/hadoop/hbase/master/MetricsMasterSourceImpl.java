@@ -112,7 +112,9 @@ public class MetricsMasterSourceImpl
           .tag(Interns.info(CLUSTER_ID_NAME, CLUSTER_ID_DESC), masterWrapper.getClusterId())
           .tag(Interns.info(IS_ACTIVE_MASTER_NAME,
               IS_ACTIVE_MASTER_DESC),
-              String.valueOf(masterWrapper.getIsActiveMaster()));
+              String.valueOf(masterWrapper.getIsActiveMaster()))
+          .tag(Interns.info(VERSION_NAME, VERSION_DESC), masterWrapper.getVersion())
+          .tag(Interns.info(REVISION_NAME, REVISION_DESC), masterWrapper.getVersion());;
     }
 
     metricsRegistry.snapshot(metricsRecordBuilder, all);

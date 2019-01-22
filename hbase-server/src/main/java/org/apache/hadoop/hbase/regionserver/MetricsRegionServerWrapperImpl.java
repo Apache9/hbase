@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.mob.MobFileCache;
 import org.apache.hadoop.hbase.regionserver.wal.MetricsWALSource;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.hbase.wal.WALProvider;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.hdfs.DFSHedgedReadMetrics;
@@ -211,6 +212,16 @@ class MetricsRegionServerWrapperImpl
       return "";
     }
     return serverName.getServerName();
+  }
+
+  @Override
+  public String getVersion() {
+    return VersionInfo.getVersion();
+  }
+
+  @Override
+  public String getRevision() {
+    return VersionInfo.getRevision();
   }
 
   @Override

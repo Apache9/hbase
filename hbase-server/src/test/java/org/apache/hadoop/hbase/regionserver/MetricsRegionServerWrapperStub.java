@@ -36,6 +36,16 @@ public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrappe
   }
 
   @Override
+  public String getVersion() {
+    return "testVersion";
+  }
+
+  @Override
+  public String getRevision() {
+    return "testRevision";
+  }
+
+  @Override
   public String getCoprocessors() {
     return "co-process";
   }

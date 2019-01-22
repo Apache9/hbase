@@ -392,10 +392,14 @@ public interface MetricsRegionServerSource extends BaseSource, JvmPauseMonitorSo
   String ZOOKEEPER_QUORUM_NAME = "zookeeperQuorum";
   String SERVER_NAME_NAME = "serverName";
   String CLUSTER_ID_NAME = "clusterId";
+  String VERSION_NAME = "version";
+  String REVISION_NAME = "revision";
   String RS_START_TIME_DESC = "RegionServer Start Time";
   String ZOOKEEPER_QUORUM_DESC = "ZooKeeper Quorum";
   String SERVER_NAME_DESC = "Server Name";
   String CLUSTER_ID_DESC = "Cluster Id";
+  String VERSION_DESC = "hbase version";
+  String REVISION_DESC = "revision number";
   String UPDATES_BLOCKED_TIME = "updatesBlockedTime";
   String UPDATES_BLOCKED_DESC =
       "Number of MS updates have been blocked so that the memstore can be flushed.";
