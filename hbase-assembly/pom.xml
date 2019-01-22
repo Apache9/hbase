@@ -319,6 +319,10 @@
       <groupId>com.xiaomi.infra</groupId>
       <artifactId>hadoop-security</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra</groupId>
+      <artifactId>scribe-log4j</artifactId>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>

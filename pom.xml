@@ -1444,6 +1444,7 @@
     <hamcrest.version>1.3</hamcrest.version>
     <htrace.version>4.2.0-incubating</htrace.version>
     <log4j.version>1.2.17</log4j.version>
+    <scribe-log4j.version>1.0.0-SNAPSHOT</scribe-log4j.version>
     <mockito-core.version>2.1.0</mockito-core.version>
     <!--Internally we use a different version of protobuf. See hbase-protocol-shaded-->
     <external.protobuf.version>2.5.0</external.protobuf.version>
@@ -1831,6 +1832,11 @@
         <groupId>log4j</groupId>
         <artifactId>log4j</artifactId>
         <version>${log4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.xiaomi.infra</groupId>
+        <artifactId>scribe-log4j</artifactId>
+        <version>${scribe-log4j.version}</version>
       </dependency>
       <!-- Avro dependencies we mostly get transitively, manual version coallescing -->
       <dependency>
