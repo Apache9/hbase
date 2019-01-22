@@ -482,7 +482,7 @@ public class MetricsRegionServerSourceImpl
               .tag(Interns.info(SERVER_NAME_NAME, SERVER_NAME_DESC), rsWrap.getServerName())
               .tag(Interns.info(CLUSTER_ID_NAME, CLUSTER_ID_DESC), rsWrap.getClusterId())
               .tag(Interns.info(VERSION_NAME, VERSION_DESC), rsWrap.getVersion())
-              .tag(Interns.info(REVISION_NAME, REVISION_DESC), rsWrap.getVersion());
+              .tag(Interns.info(REVISION_NAME, REVISION_DESC), rsWrap.getRevision());
     }
 
     metricsRegistry.snapshot(mrb, all);

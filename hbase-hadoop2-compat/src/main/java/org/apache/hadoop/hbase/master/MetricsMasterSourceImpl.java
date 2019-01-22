@@ -114,7 +114,7 @@ public class MetricsMasterSourceImpl
               IS_ACTIVE_MASTER_DESC),
               String.valueOf(masterWrapper.getIsActiveMaster()))
           .tag(Interns.info(VERSION_NAME, VERSION_DESC), masterWrapper.getVersion())
-          .tag(Interns.info(REVISION_NAME, REVISION_DESC), masterWrapper.getVersion());;
+          .tag(Interns.info(REVISION_NAME, REVISION_DESC), masterWrapper.getRevision());;
     }
 
     metricsRegistry.snapshot(metricsRecordBuilder, all);
