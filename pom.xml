@@ -1478,7 +1478,7 @@
     <exec.maven.version>1.6.0</exec.maven.version>
     <error-prone.version>2.2.0</error-prone.version>
     <findbugs-annotations>1.3.9-1</findbugs-annotations>
-    <findbugs.maven.version>3.0.4</findbugs.maven.version>
+    <findbugs.maven.version>3.0.5</findbugs.maven.version>
     <jamon.plugin.version>2.4.2</jamon.plugin.version>
     <lifecycle.mapping.version>1.0.0</lifecycle.mapping.version>
     <maven.antrun.version>1.8</maven.antrun.version>
@@ -2293,7 +2293,7 @@
             <plugin>
               <groupId>org.codehaus.mojo</groupId>
               <artifactId>findbugs-maven-plugin</artifactId>
-              <version>3.0.0</version>
+              <version>${findbugs.maven.version}</version>
               <!--NOTE: Findbugs 3.0.0 requires jdk7-->
               <configuration>
                 <excludeFilterFile>${project.basedir}/../dev-support/findbugs-exclude.xml</excludeFilterFile>
