@@ -184,8 +184,7 @@ public class QuotaUtil extends QuotaTableUtil {
     }
     doDelete(conf, delete);
   }
-  
-  
+
   // update cluster limit to region server limit
   public static Quotas updateByLocalFactor(Quotas quotas, double factor) {
     Quotas.Builder newQuotas = Quotas.newBuilder(quotas);
@@ -193,32 +192,32 @@ public class QuotaUtil extends QuotaTableUtil {
       Throttle.Builder throttle = Throttle.newBuilder(newQuotas.getThrottle());
       if (throttle.hasReqNum()) {
         TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReqNum());
-        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        timedQuota.setSoftLimit(Math.max(1, (long) (timedQuota.getSoftLimit() * factor)));
         throttle.setReqNum(timedQuota.build());
       }
       if (throttle.hasReqSize()) {
         TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReqSize());
-        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        timedQuota.setSoftLimit(Math.max(1, (long) (timedQuota.getSoftLimit() * factor)));
         throttle.setReqSize(timedQuota.build());
       }
       if (throttle.hasReadNum()) {
         TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReadNum());
-        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        timedQuota.setSoftLimit(Math.max(1, (long) (timedQuota.getSoftLimit() * factor)));
         throttle.setReadNum(timedQuota.build());
       }
       if (throttle.hasReadSize()) {
         TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReadSize());
-        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        timedQuota.setSoftLimit(Math.max(1, (long) (timedQuota.getSoftLimit() * factor)));
         throttle.setReadSize(timedQuota.build());
       }
       if (throttle.hasWriteNum()) {
         TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getWriteNum());
-        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        timedQuota.setSoftLimit(Math.max(1, (long) (timedQuota.getSoftLimit() * factor)));
         throttle.setWriteNum(timedQuota.build());
       }
       if (throttle.hasWriteSize()) {
         TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getWriteSize());
-        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        timedQuota.setSoftLimit(Math.max(1, (long) (timedQuota.getSoftLimit() * factor)));
         throttle.setWriteSize(timedQuota.build());
       }
       newQuotas.setThrottle(throttle.build());

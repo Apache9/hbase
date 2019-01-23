@@ -297,6 +297,7 @@ public class RegionServerQuotaManager {
         throw e;
       }
     } catch (Throwable t) {
+      LOG.error("Unexcepted exception when check quota", t);
       throw new IOException("Unexcepted exception when check quota", t);
     }
     return quota;

@@ -506,8 +506,8 @@ public class MasterQuotaManager implements RegionStateListener {
 
   private void validateTimedQuota(final TimedQuota timedQuota) throws IOException {
     if (timedQuota.getSoftLimit() < 1) {
-      throw new DoNotRetryIOException(new UnsupportedOperationException(
-          "The throttle limit must be greater then 0, got " + timedQuota.getSoftLimit()));
+      throw new DoNotRetryIOException(new IllegalArgumentException(
+          "The throttle limit must be greater than 0, got " + timedQuota.getSoftLimit()));
     }
   }
 
@@ -540,6 +540,12 @@ public class MasterQuotaManager implements RegionStateListener {
     // so update total existed limit after set quota
     computeTotalExistedLimit();
     reqLimit = (long)(reqLimit * localFactor);
+    if (reqLimit < 1) {
+      throw new DoNotRetryIOException(
+          new IllegalArgumentException("The machine throttle limit must be greater than 0, type="
+              + type + ", user=" + user + ", tableName=" + tableName + ", requestLimit=" + reqLimit
+              + ", localFactor=" + localFactor));
+    }
     long previous = (long)(getSoftLimitForUserAndTable(user, tableName, type) * localFactor);
     long consumed = type == ThrottleType.READ_NUMBER ? totalExistedReadLimit
         : totalExistedWriteLimit;
@@ -645,7 +651,7 @@ public class MasterQuotaManager implements RegionStateListener {
     QuotaFilter filter = new QuotaFilter().setUserFilter("(.+)").setTableFilter(pattern);
     return getCumulativeSoftLimit(filter, type);
   }
-  
+
   public void checkNamespaceQuota(String user, TableName tableName, long reqLimit, ThrottleType type)
       throws IOException {
     long previous = getSoftLimitForUserAndTable(user, tableName, type);
