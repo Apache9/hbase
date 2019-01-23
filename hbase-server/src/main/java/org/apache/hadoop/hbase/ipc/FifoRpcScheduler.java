@@ -169,6 +169,11 @@ public class FifoRpcScheduler extends RpcScheduler {
   }
 
   @Override
+  public int getActiveMetaPriorityRpcHandlerCount() {
+    return 0;
+  }
+
+  @Override
   public long getNumGeneralCallsDropped() {
     return 0;
   }
@@ -205,6 +210,11 @@ public class FifoRpcScheduler extends RpcScheduler {
 
   @Override
   public int getActiveScanRpcHandlerCount() {
+    return 0;
+  }
+
+  @Override
+  public int getMetaPriorityQueueLength() {
     return 0;
   }
 
