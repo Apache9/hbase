@@ -574,12 +574,10 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpcore</artifactId>
-      <scope>test</scope>
     </dependency>
     <!-- commons-logging is used by HBTU to monkey with log levels
          have to put it at compile scope because Hadoop's IOUtils uses it
@@ -593,7 +591,6 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-crypto</artifactId>
-      <version>${commons-crypto.version}</version>
       <exclusions>
         <exclusion>
           <groupId>net.java.dev.jna</groupId>

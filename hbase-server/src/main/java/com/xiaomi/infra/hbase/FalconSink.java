@@ -22,20 +22,28 @@ package com.xiaomi.infra.hbase;
 import com.xiaomi.infra.base.nameservice.ClusterInfo;
 import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.tool.Canary.Sink;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.entity.EntityBuilder;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.thirdparty.com.google.gson.Gson;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonArray;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonObject;
 
 @InterfaceAudience.Private
 public class FalconSink implements Sink, Configurable {
@@ -43,13 +51,14 @@ public class FalconSink implements Sink, Configurable {
   private static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
   private static final String DEFAULT_COLLECTOR_URI =
       "http://canary.d.xiaomi.net/canary/push_metric/";
+  private static final Gson GSON = new Gson();
 
   private Configuration conf;
-  private HttpClient client = new HttpClient();
-  private AtomicLong failedReadCounter = new AtomicLong(0);
-  private AtomicLong totalReadCounter = new AtomicLong(0);
-  private AtomicLong failedWriteCounter = new AtomicLong(0);
-  private AtomicLong totalWriteCounter = new AtomicLong(0);
+  private final CloseableHttpClient client = HttpClients.createDefault();
+  private final AtomicLong failedReadCounter = new AtomicLong(0);
+  private final AtomicLong totalReadCounter = new AtomicLong(0);
+  private final AtomicLong failedWriteCounter = new AtomicLong(0);
+  private final AtomicLong totalWriteCounter = new AtomicLong(0);
   private long oldWalsFilesCount = 0;
   private boolean ignoreFushToNet;
   private double readAvailability = 100.0;
@@ -154,70 +163,77 @@ public class FalconSink implements Sink, Configurable {
     }
   }
 
-  private JSONObject buildCanaryMetric(String clusterName, String key, double value)
-      throws JSONException {
-    JSONObject metric = new JSONObject();
-    metric.put("service", "hbase");
-    metric.put("cluster", clusterName);
-    metric.put("name", key);
-    metric.put("timestamp", System.currentTimeMillis() / 1000);
-    metric.put("value", value);
-    metric.put("unit", "%");
+  private JsonObject buildCanaryMetric(String clusterName, String key, double value) {
+    JsonObject metric = new JsonObject();
+    metric.addProperty("service", "hbase");
+    metric.addProperty("cluster", clusterName);
+    metric.addProperty("name", key);
+    metric.addProperty("timestamp", System.currentTimeMillis() / 1000);
+    metric.addProperty("value", value);
+    metric.addProperty("unit", "%");
     return metric;
   }
 
   public void pushToCollector(String clusterName, double avail, double readAvail,
       double writeAvail) {
+    JsonArray data = new JsonArray();
+      data.add(buildCanaryMetric(clusterName, "cluster-availability", avail));
+      data.add(buildCanaryMetric(clusterName, "cluster-read-availability", readAvail));
+      data.add(buildCanaryMetric(clusterName, "cluster-write-availability", writeAvail));
+
     String uri = conf.get("hbase.canary.sink.collector.uri", DEFAULT_COLLECTOR_URI);
-    PostMethod post = new PostMethod(uri);
-    JSONArray data = new JSONArray();
-    try {
-      data.put(buildCanaryMetric(clusterName, "cluster-availability", avail));
-      data.put(buildCanaryMetric(clusterName, "cluster-read-availability", readAvail));
-      data.put(buildCanaryMetric(clusterName, "cluster-write-availability", writeAvail));
-    } catch (JSONException e) {
-      LOG.error("Create json error.", e);
-    }
-    post.setRequestBody(data.toString());
-    try {
-      client.executeMethod(post);
+    HttpPost post = new HttpPost(uri);
+    post.setEntity(EntityBuilder.create().setContentType(ContentType.APPLICATION_JSON)
+      .setContentEncoding(StandardCharsets.UTF_8.name()).setText(GSON.toJson(data)).build());
+    try (CloseableHttpResponse resp = client.execute(post)) {
+      int code = resp.getStatusLine().getStatusCode();
+      if (code != HttpStatus.SC_OK) {
+        LOG.warn("Push metrics to collector failed, status code={}, content={}", code,
+          EntityUtils.toString(resp.getEntity()));
+      }
     } catch (IOException e) {
-      LOG.info("Push metrics to collector failed", e);
+      LOG.warn("Push metrics to collector failed", e);
     }
   }
 
-  private JSONObject buildFalconMetric(String clusterName, String key, double value)
-      throws Exception {
-    JSONObject metric = new JSONObject();
-    metric.put("endpoint", "hbase-canary");
-    metric.put("metric", key);
-    metric.put("timestamp", System.currentTimeMillis() / 1000);
-    metric.put("value", value);
-    metric.put("step", 60);
-    metric.put("counterType", "GAUGE");
+  private JsonObject buildFalconMetric(String clusterName, String key, double value)
+      throws IOException {
+    JsonObject metric = new JsonObject();
+    metric.addProperty("endpoint", "hbase-canary");
+    metric.addProperty("metric", key);
+    metric.addProperty("timestamp", System.currentTimeMillis() / 1000);
+    metric.addProperty("value", value);
+    metric.addProperty("step", 60);
+    metric.addProperty("counterType", "GAUGE");
     ClusterType type = new ClusterInfo(clusterName).getZkClusterInfo().getClusterType();
-    metric.put("tags",
+    metric.addProperty("tags",
       "srv=hbase,type=" + type.toString().toLowerCase() + ",cluster=" + clusterName);
     return metric;
   }
 
   private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail) {
-    String uri = conf.get("hbase.canary.sink.falcon.uri", DEFAULT_FALCON_URI);
-    PostMethod post = new PostMethod(uri);
-    JSONArray data = new JSONArray();
+    JsonArray data = new JsonArray();
     try {
-      data.put(buildFalconMetric(clusterName, "cluster-availability", avail));
-      data.put(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
-      data.put(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
-      data.put(buildFalconMetric(clusterName, "cluster-oldWals-files-count", oldWalsFilesCount));
-    } catch (Exception e) {
-      LOG.error("Create json error.", e);
-    }
-    post.setRequestBody(data.toString());
-    try {
-      client.executeMethod(post);
+      data.add(buildFalconMetric(clusterName, "cluster-availability", avail));
+      data.add(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
+      data.add(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
+      data.add(buildFalconMetric(clusterName, "cluster-oldWals-files-count", oldWalsFilesCount));
     } catch (IOException e) {
-      LOG.info("Push metrics to falcon failed", e);
+      LOG.error("Create json error", e);
+      return;
+    }
+    String uri = conf.get("hbase.canary.sink.falcon.uri", DEFAULT_FALCON_URI);
+    HttpPost post = new HttpPost(uri);
+    post.setEntity(EntityBuilder.create().setContentType(ContentType.APPLICATION_JSON)
+      .setContentEncoding(StandardCharsets.UTF_8.name()).setText(GSON.toJson(data)).build());
+    try (CloseableHttpResponse resp = client.execute(post)) {
+      int code = resp.getStatusLine().getStatusCode();
+      if (code != HttpStatus.SC_OK) {
+        LOG.warn("Push metrics to falcon failed, status code={}, content={}", code,
+          EntityUtils.toString(resp.getEntity()));
+      }
+    } catch (IOException e) {
+      LOG.warn("Push metrics to falcon failed", e);
     }
   }
 
