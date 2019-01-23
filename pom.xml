@@ -2222,6 +2222,16 @@
         <artifactId>infra-shaded-protobuf</artifactId>
         <version>${infra-thirdparty.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.xiaomi.infra.thirdparty</groupId>
+        <artifactId>infra-shaded-fds-sdk</artifactId>
+        <version>${infra-thirdparty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.xiaomi.infra.thirdparty</groupId>
+        <artifactId>infra-shaded-talos-sdk</artifactId>
+        <version>${infra-thirdparty.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <dependencies>

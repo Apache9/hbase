@@ -1436,6 +1436,10 @@ public final class HConstants {
   public static final String CLIENT_WARN_IPC_RESPONSE_TIME = "hbase.client.ipc.warn.response.time";
   public static final long DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME = 100; // milliseconds
 
+  public static final String TALOS_ACCESS_KEY = "galaxy.talos.access.key";
+  public static final String TALOS_ACCESS_SECRET = "galaxy.talos.access.secret";
+  public static final String TALOS_ACCESS_ENDPOINT = "galaxy.talos.service.endpoint";
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

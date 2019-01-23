@@ -115,4 +115,8 @@ public abstract class BaseReplicationEndpoint extends AbstractService
   public boolean isStarting() {
     return state() == State.STARTING;
   }
+
+  protected boolean isPeerEnabled() {
+    return ctx.getReplicationPeer().isPeerEnabled();
+  }
 }

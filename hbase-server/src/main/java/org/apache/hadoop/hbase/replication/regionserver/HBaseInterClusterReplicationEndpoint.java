@@ -438,10 +438,6 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     return false; // in case we exited before replicating
   }
 
-  protected boolean isPeerEnabled() {
-    return ctx.getReplicationPeer().isPeerEnabled();
-  }
-
   @Override
   protected void doStop() {
     disconnect(); // don't call super.doStop()

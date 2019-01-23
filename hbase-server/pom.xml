@@ -332,6 +332,14 @@
       <groupId>com.xiaomi.infra.thirdparty</groupId>
       <artifactId>infra-shaded-miscellaneous</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-fds-sdk</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-talos-sdk</artifactId>
+    </dependency>
     <!-- Intra-project dependencies -->
     <dependency>
       <groupId>org.apache.hbase</groupId>

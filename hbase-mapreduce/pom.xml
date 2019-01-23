@@ -101,6 +101,10 @@
       <groupId>com.xiaomi.infra.thirdparty</groupId>
       <artifactId>infra-shaded-protobuf</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-fds-sdk</artifactId>
+    </dependency>
     <!-- Intra-project dependencies -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
