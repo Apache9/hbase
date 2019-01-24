@@ -37,7 +37,7 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Topic;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAndPartition;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicTalosResourceName;
-import libthrift091.TException;
+import com.xiaomi.infra.thirdparty.libthrift091.TException;
 
 import java.io.IOException;
 import java.util.ArrayList;

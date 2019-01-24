@@ -56,7 +56,7 @@ import com.xiaomi.infra.thirdparty.galaxy.rpc.thrift.UserType;
 import com.xiaomi.infra.thirdparty.galaxy.talos.admin.TalosAdmin;
 import com.xiaomi.infra.thirdparty.galaxy.talos.client.TalosClientConfig;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
-import libthrift091.TException;
+import com.xiaomi.infra.thirdparty.libthrift091.TException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;

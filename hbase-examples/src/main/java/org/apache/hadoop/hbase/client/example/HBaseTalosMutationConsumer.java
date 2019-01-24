@@ -21,7 +21,7 @@ package org.apache.hadoop.hbase.client.example;
 
 
 import com.xiaomi.infra.base.nameservice.NameService;
-import libthrift091.TException;
+import com.xiaomi.infra.thirdparty.libthrift091.TException;
 
 import java.io.IOException;
 import java.util.ArrayList;

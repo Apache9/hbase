@@ -23,7 +23,7 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.consumer.SimpleConsumer;
 import com.xiaomi.infra.thirdparty.galaxy.talos.producer.SimpleProducer;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.MessageAndOffset;
-import libthrift091.TException;
+import com.xiaomi.infra.thirdparty.libthrift091.TException;
 
 import java.io.IOException;
 import java.util.ArrayList;

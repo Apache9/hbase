@@ -21,8 +21,6 @@ package org.apache.hadoop.hbase.client;
 
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
 
-import libthrift091.TException;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -50,6 +48,7 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.MessageAndOffset;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Topic;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAndPartition;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicTalosResourceName;
+import com.xiaomi.infra.thirdparty.libthrift091.TException;
 
 /**
  * used to consume data from Talos.
@@ -304,7 +303,15 @@ public class TalosTopicConsumer {
     TalosTopicConsumerBuilder builder = TalosTopicConsumer.newBuilder();
     TalosTopicConsumer consumer = builder.withAccessKey(APP_ACCESS_KEY)
         .withAccessSecret(APP_ACCESS_SECRET).withEndpoint(endpoint).withTopicName(topicName)
-        .withConsumerGroup("test").withMutationConsumerFactory(null).build();
+        .withConsumerGroup("test").withMutationConsumerFactory(() -> new MutationConsumer() {
+          @Override
+          public void init() {
+          }
+          @Override
+          public void consume(List<SimpleMutation> mutations) throws IOException {
+            LOG.info("mutation size {}", mutations.size());
+          }
+        }).build();
     consumer.start();
   }
 }
