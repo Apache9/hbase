@@ -65,7 +65,7 @@ public interface MetricsClusterSource extends BaseSource {
   String READ_RAW_CELLS_PER_SECOND_DESC = "Number of raw cell read per second";
   String REGION_COUNT = "regionCount";
   String REGION_COUNT_DESC = "Number of regions";
-  String MEMSTORE_SIZE_MB = "memStoreSizeMB";
+  String MEMSTORE_SIZE_MB = "memstoreSizeMB";
   String MEMSTORE_SIZE_MB_DESC = "Size of the memstore";
   String STOREFILE_SIZE_MB = "storefileSizeMB";
   String STOREFILE_SIZE_MB_DESC = "Size of the storefiles";
