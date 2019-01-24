@@ -264,15 +264,15 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
       mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.READ_REQUEST_PER_SECOND,
               MetricsRegionServerSource.READ_REQUEST_PER_SECOND_DESC),
-           this.regionWrapper.getReadRequestsCountPerSecond());
+           this.regionWrapper.getReadRequestsPerSecond());
       mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.WRITE_REQUEST_PER_SECOND,
               MetricsRegionServerSource.WRITE_REQUEST_PER_SECOND_DESC),
-              this.regionWrapper.getWriteRequestsCountPerSecond());
+              this.regionWrapper.getWriteRequestsPerSecond());
       mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.GET_REQEUST_PER_SECOND,
               MetricsRegionServerSource.GET_REQUEST_PER_SECOND_DESC),
-              this.regionWrapper.getGetRequestsCountPerSecond());
+              this.regionWrapper.getGetRequestsPerSecond());
       mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.SCAN_REQUEST_PER_SECOND,
               MetricsRegionServerSource.SCAN_REQUEST_PER_SECOND_DESC),
@@ -292,11 +292,11 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
       mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.READ_CELLS_PER_SECOND,
               MetricsRegionServerSource.READ_CELLS_PER_SECOND_DESC),
-              this.regionWrapper.getReadCellsPerSecond());
+              this.regionWrapper.getReadCellCountPerSecond());
       mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.READ_RAW_CELLS_PER_SECOND,
               MetricsRegionServerSource.READ_RAW_CELLS_PER_SECOND_DESC),
-              this.regionWrapper.getReadRawCellsPerSecond());
+              this.regionWrapper.getReadRawCellCountPerSecond());
       mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.FILTERED_READ_REQUEST_COUNT,
               MetricsRegionServerSource.FILTERED_READ_REQUEST_COUNT_DESC),
@@ -325,6 +325,8 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
               regionNamePrefix + MetricsRegionSource.MAX_FLUSH_QUEUE_SIZE,
               MetricsRegionSource.MAX_FLUSH_QUEUE_DESC),
           this.regionWrapper.getMaxFlushQueueSize());
+      mrb.tag(Interns.info(regionNamePrefix + MetricsRegionSource.NAME_AS_STRING,
+          MetricsRegionSource.NAME_AS_STRING_DESC), this.regionWrapper.getRegionNameAsString());
     }
   }
 

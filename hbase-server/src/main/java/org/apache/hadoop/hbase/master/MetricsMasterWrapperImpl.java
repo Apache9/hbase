@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -220,18 +222,19 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     }
   }
 
-  public static <K> void accumulateMap(Map<K, Long> map, K key, Long value) {
+  private static <K> void accumulateMap(Map<K, Long> map, K key, Long value) {
     map.compute(key, (k, oldValue) -> oldValue == null ? value : oldValue + value);
   }
 
-  public static <K> long sumUpMap(Map<K, Long> map) {
+  private static <K> long sumUpMap(Map<K, Long> map) {
     return map.values().stream().mapToLong(l -> l.longValue()).sum();
   }
 
-  public static MetricsRecordBuilder appendMetrics(MetricsRecordBuilder builder, String prefix,
+  private static MetricsRecordBuilder appendMetrics(MetricsRecordBuilder builder, String prefix,
       long readRequestPerSecond, long writeRequestPerSecond, long getRequestPerSecond,
       long scanRequestPerSecond, long scanRowsCountPerSecond, long readRequestByCapacityUnit,
-      long writeRequestByCapacityUnit, long readCellsPerSecond, long readRawCellsPerSecond) {
+      long writeRequestByCapacityUnit, long readCellCountPerSecond, long readRawCellCountPerSecond,
+      long memStoreSizeMB, long storeFileSizeMB, long regionCount) {
     return builder
         .addCounter(Interns.info(prefix + MetricsClusterSource.READ_REQUEST_PER_SECOND,
           MetricsClusterSource.READ_REQUEST_PER_SECOND_DESC), readRequestPerSecond)
@@ -252,11 +255,21 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
             MetricsClusterSource.WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
           writeRequestByCapacityUnit)
         .addCounter(Interns.info(prefix + MetricsClusterSource.READ_CELLS_PER_SECOND,
-          MetricsClusterSource.READ_CELLS_PER_SECOND_DESC), readCellsPerSecond)
+          MetricsClusterSource.READ_CELLS_PER_SECOND_DESC), readCellCountPerSecond)
         .addCounter(Interns.info(prefix + MetricsClusterSource.READ_RAW_CELLS_PER_SECOND,
-          MetricsClusterSource.READ_RAW_CELLS_PER_SECOND_DESC), readRawCellsPerSecond);
+          MetricsClusterSource.READ_RAW_CELLS_PER_SECOND_DESC), readRawCellCountPerSecond)
+        .addCounter(Interns.info(prefix + MetricsClusterSource.MEMSTORE_SIZE_MB,
+            MetricsClusterSource.MEMSTORE_SIZE_MB_DESC), memStoreSizeMB)
+        .addCounter(Interns.info(prefix + MetricsClusterSource.STOREFILE_SIZE_MB,
+            MetricsClusterSource.STOREFILE_SIZE_MB_DESC), storeFileSizeMB)
+        .addCounter(Interns.info(prefix + MetricsClusterSource.REGION_COUNT,
+            MetricsClusterSource.REGION_COUNT_DESC), regionCount);
   }
 
+  /**
+   * Xiaomi aggregation metrics
+   * @param builder
+   */
   @Override
   public void addClusterMetrics(MetricsRecordBuilder builder) {
     Map<ServerName, ServerMetrics> serverMetricsMap = this.getRegionServerMetrics();
@@ -268,8 +281,12 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     long globalScanRowsCountPerSecond = 0;
     long globalReadRequestByCapacityUnit = 0;
     long globalWriteRequestByCapacityUnit = 0;
-    long globalReadCellsPerSecond = 0;
-    long globalReadRawCellsPerSecond = 0;
+    long globalReadCellCountPerSecond = 0;
+    long globalReadRawCellCountPerSecond = 0;
+    long globalMemStoreSizeMB = 0;
+    long globalStoreFileSizeMB = 0;
+    long globalRegionCount = 0;
+    long globalTableCount = 0;
 
     // Table metrics
     Map<TableName, Long> tableReadRequestPerSecond = new HashMap<>();
@@ -279,23 +296,29 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     Map<TableName, Long> tableScanRowsCountPerSecond = new HashMap<>();
     Map<TableName, Long> tableReadRequestByCapacityUnit = new HashMap<>();
     Map<TableName, Long> tableWriteRequestByCapacityUnit = new HashMap<>();
-    Map<TableName, Long> tableReadCellsPerSecond = new HashMap<>();
-    Map<TableName, Long> tableReadRawCellsPerSecond = new HashMap<>();
+    Map<TableName, Long> tableReadCellCountPerSecond = new HashMap<>();
+    Map<TableName, Long> tableReadRawCellCountPerSecond = new HashMap<>();
+    Map<TableName, Long> tableMemStoreSizeMB = new HashMap<>();
+    Map<TableName, Long> tableStoreFileSizeMB = new HashMap<>();
+    Map<TableName, Long> tableRegionCount = new HashMap<>();
+    List<TableName> tables = new LinkedList<>();
 
     // Namespace metrics
-    Map<byte[], Long> nsReadRequestPerSecond = new HashMap<>();
-    Map<byte[], Long> nsWriteRequestPerSecond = new HashMap<>();
-    Map<byte[], Long> nsGetRequestPerSecond = new HashMap<>();
-    Map<byte[], Long> nsScanRequestPerSecond = new HashMap<>();
-    Map<byte[], Long> nsScanRowsCountPerSecond = new HashMap<>();
-    Map<byte[], Long> nsReadRequestByCapacityUnit = new HashMap<>();
-    Map<byte[], Long> nsWriteRequestByCapacityUnit = new HashMap<>();
-    Map<byte[], Long> nsReadCellsPerSecond = new HashMap<>();
-    Map<byte[], Long> nsReadRawCellsPerSecond = new HashMap<>();
+    Map<String, Long> nsReadRequestPerSecond = new HashMap<>();
+    Map<String, Long> nsWriteRequestPerSecond = new HashMap<>();
+    Map<String, Long> nsGetRequestPerSecond = new HashMap<>();
+    Map<String, Long> nsScanRequestPerSecond = new HashMap<>();
+    Map<String, Long> nsScanRowsCountPerSecond = new HashMap<>();
+    Map<String, Long> nsReadRequestByCapacityUnit = new HashMap<>();
+    Map<String, Long> nsWriteRequestByCapacityUnit = new HashMap<>();
+    Map<String, Long> nsReadCellCountPerSecond = new HashMap<>();
+    Map<String, Long> nsReadRawCellCountPerSecond = new HashMap<>();
+    Map<String, Long> nsMemStoreSizeMB = new HashMap<>();
+    Map<String, Long> nsStoreFileSizeMB = new HashMap<>();
+    Map<String, Long> nsTableCount = new HashMap<>();
+    Map<String, Long> nsRegionCount = new HashMap<>();
 
     for (Entry<ServerName, ServerMetrics> serverEntry : serverMetricsMap.entrySet()) {
-      ServerName serverName = serverEntry.getKey();
-
       for (Entry<byte[], RegionMetrics> regionEntry : serverEntry.getValue().getRegionMetrics()
               .entrySet()) {
         RegionInfo r = parseRegionInfo(regionEntry.getKey());
@@ -306,39 +329,52 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
 
         TableName table = r.getTable();
         // Update table metrics
-        accumulateMap(tableReadRequestPerSecond, table, regionMetrics.getReadRequestsCountPerSecond());
-        accumulateMap(tableWriteRequestPerSecond, table, regionMetrics.getWriteRequestsCountPerSecond());
-        accumulateMap(tableGetRequestPerSecond, table, regionMetrics.getGetRequestsCountPerSecond());
+        accumulateMap(tableReadRequestPerSecond, table, regionMetrics.getReadRequestsPerSecond());
+        accumulateMap(tableWriteRequestPerSecond, table, regionMetrics.getWriteRequestsPerSecond());
+        accumulateMap(tableGetRequestPerSecond, table, regionMetrics.getGetRequestsPerSecond());
         accumulateMap(tableScanRequestPerSecond, table, regionMetrics.getScanRequestsCountPerSecond());
         accumulateMap(tableScanRowsCountPerSecond, table, regionMetrics.getScanRowsCountPerSecond());
         accumulateMap(tableReadRequestByCapacityUnit, table, regionMetrics.getReadRequestsByCapacityUnitPerSecond());
         accumulateMap(tableWriteRequestByCapacityUnit, table, regionMetrics.getWriteRequestsByCapacityUnitPerSecond());
-        accumulateMap(tableReadCellsPerSecond, table, regionMetrics.getReadCellsPerSecond());
-        accumulateMap(tableReadRawCellsPerSecond, table, regionMetrics.getReadRawCellsPerSecond());
-
-        // Update Namespace metrics
-        byte[] ns = table.getNamespace();
-        accumulateMap(nsReadRequestPerSecond, ns, regionMetrics.getReadRequestsCountPerSecond());
-        accumulateMap(nsWriteRequestPerSecond, ns, regionMetrics.getWriteRequestsCountPerSecond());
-        accumulateMap(nsGetRequestPerSecond, ns, regionMetrics.getGetRequestsCountPerSecond());
-        accumulateMap(nsScanRequestPerSecond, ns, regionMetrics.getScanRequestsCountPerSecond());
-        accumulateMap(nsScanRowsCountPerSecond, ns, regionMetrics.getScanRowsCountPerSecond());
-        accumulateMap(nsReadRequestByCapacityUnit, ns, regionMetrics.getReadRequestsByCapacityUnitPerSecond());
-        accumulateMap(nsWriteRequestByCapacityUnit, ns, regionMetrics.getWriteRequestsByCapacityUnitPerSecond());
-        accumulateMap(nsReadCellsPerSecond, ns, regionMetrics.getReadCellsPerSecond());
-        accumulateMap(nsReadRawCellsPerSecond, ns, regionMetrics.getReadRawCellsPerSecond());
+        accumulateMap(tableReadCellCountPerSecond, table, regionMetrics.getReadCellCountPerSecond());
+        accumulateMap(tableReadRawCellCountPerSecond, table, regionMetrics.getReadRawCellCountPerSecond());
+        accumulateMap(tableMemStoreSizeMB, table, regionMetrics.getMemStoreSize().getLongValue());
+        accumulateMap(tableStoreFileSizeMB, table, regionMetrics.getStoreFileSize().getLongValue());
+        accumulateMap(tableRegionCount, table, 1L);
       }
     }
-    globalReadRequestPerSecond += sumUpMap(tableReadRequestPerSecond);
-    globalWriteRequestPerSecond += sumUpMap(tableWriteRequestPerSecond);
-    globalGetRequestPerSecond += sumUpMap(tableGetRequestPerSecond);
-    globalScanRequestPerSecond += sumUpMap(tableScanRequestPerSecond);
-    globalScanRowsCountPerSecond += sumUpMap(tableScanRowsCountPerSecond);
-    globalReadRequestByCapacityUnit += sumUpMap(tableReadRequestByCapacityUnit);
-    globalWriteRequestByCapacityUnit += sumUpMap(tableWriteRequestByCapacityUnit);
-    globalReadCellsPerSecond += sumUpMap(tableReadCellsPerSecond);
-    globalReadRawCellsPerSecond += sumUpMap(tableReadRawCellsPerSecond);
 
+    for (TableName table : tables) {
+      String ns = table.getNamespaceAsString();
+      accumulateMap(nsReadRequestPerSecond, ns, tableReadRequestPerSecond.get(table));
+      accumulateMap(nsWriteRequestPerSecond, ns, tableWriteRequestPerSecond.get(table));
+      accumulateMap(nsGetRequestPerSecond, ns, tableGetRequestPerSecond.get(table));
+      accumulateMap(nsScanRequestPerSecond, ns, tableScanRequestPerSecond.get(table));
+      accumulateMap(nsScanRowsCountPerSecond, ns, tableScanRowsCountPerSecond.get(table));
+      accumulateMap(nsReadRequestByCapacityUnit, ns, tableReadRequestByCapacityUnit.get(table));
+      accumulateMap(nsWriteRequestByCapacityUnit, ns, tableWriteRequestByCapacityUnit.get(table));
+      accumulateMap(nsReadCellCountPerSecond, ns, tableReadCellCountPerSecond.get(table));
+      accumulateMap(nsReadRawCellCountPerSecond, ns, tableReadRawCellCountPerSecond.get(table));
+      accumulateMap(nsMemStoreSizeMB, ns, tableMemStoreSizeMB.get(table));
+      accumulateMap(nsStoreFileSizeMB, ns, tableStoreFileSizeMB.get(table));
+      accumulateMap(nsRegionCount, ns, tableRegionCount.get(table));
+      accumulateMap(nsTableCount, ns, 1L);
+    }
+
+    globalReadRequestPerSecond += sumUpMap(nsReadRequestPerSecond);
+    globalWriteRequestPerSecond += sumUpMap(nsWriteRequestPerSecond);
+    globalGetRequestPerSecond += sumUpMap(nsGetRequestPerSecond);
+    globalScanRequestPerSecond += sumUpMap(nsScanRequestPerSecond);
+    globalScanRowsCountPerSecond += sumUpMap(nsScanRowsCountPerSecond);
+    globalReadRequestByCapacityUnit += sumUpMap(nsReadRequestByCapacityUnit);
+    globalWriteRequestByCapacityUnit += sumUpMap(nsWriteRequestByCapacityUnit);
+    globalReadCellCountPerSecond += sumUpMap(nsReadCellCountPerSecond);
+    globalReadRawCellCountPerSecond += sumUpMap(nsReadRawCellCountPerSecond);
+    globalMemStoreSizeMB += sumUpMap(nsMemStoreSizeMB);
+    globalStoreFileSizeMB += sumUpMap(nsStoreFileSizeMB);
+    globalRegionCount += sumUpMap(nsRegionCount);
+    globalTableCount += sumUpMap(nsTableCount);
+    long globalNamespaceCount = nsTableCount.size();
 
     // Append cluster metrics
     String clusterPrefix = "Cluster_metric_";
@@ -351,8 +387,15 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
             globalScanRowsCountPerSecond,
             globalReadRequestByCapacityUnit,
             globalWriteRequestByCapacityUnit,
-            globalReadCellsPerSecond,
-            globalReadRawCellsPerSecond);
+            globalReadCellCountPerSecond,
+            globalReadRawCellCountPerSecond,
+            globalMemStoreSizeMB,
+            globalStoreFileSizeMB,
+            globalRegionCount);
+    builder.addCounter(Interns.info(clusterPrefix + MetricsClusterSource.TABLE_COUNT,
+        MetricsClusterSource.TABLE_COUNT_DESC), globalTableCount);
+    builder.addCounter(Interns.info(clusterPrefix + MetricsClusterSource.NAMESPACE_COUNT,
+        MetricsClusterSource.NAMESPACE_COUNT_DESC), globalNamespaceCount);
 
     // Append table metrics
     for (TableName table : tableReadRequestPerSecond.keySet()) {
@@ -367,13 +410,16 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
               tableScanRowsCountPerSecond.getOrDefault(table, 0L),
               tableReadRequestByCapacityUnit.getOrDefault(table, 0L),
               tableWriteRequestByCapacityUnit.getOrDefault(table, 0L),
-              tableReadCellsPerSecond.getOrDefault(table, 0L),
-              tableReadRawCellsPerSecond.getOrDefault(table, 0L));
+              tableReadCellCountPerSecond.getOrDefault(table, 0L),
+              tableReadRawCellCountPerSecond.getOrDefault(table, 0L),
+              tableMemStoreSizeMB.getOrDefault(table, 0L),
+              tableStoreFileSizeMB.getOrDefault(table, 0L),
+              tableRegionCount.getOrDefault(table, 0L));
     }
 
     // Append namespace metrics
-    for(byte[] ns: nsReadRequestPerSecond.keySet()){
-      String namespacePrefix = "Namespace_" + Bytes.toStringBinary(ns) + "_metric_";
+    for(String ns : nsReadRequestPerSecond.keySet()){
+      String namespacePrefix = "Namespace_" + ns + "_metric_";
       appendMetrics(builder,
               namespacePrefix,
               nsReadRequestPerSecond.getOrDefault(ns,0L),
@@ -383,8 +429,13 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
               nsScanRowsCountPerSecond.getOrDefault(ns, 0L),
               nsReadRequestByCapacityUnit.getOrDefault(ns, 0L),
               nsWriteRequestByCapacityUnit.getOrDefault(ns, 0L),
-              nsReadCellsPerSecond.getOrDefault(ns, 0L),
-              nsReadRawCellsPerSecond.getOrDefault(ns, 0L));
+              nsReadCellCountPerSecond.getOrDefault(ns, 0L),
+              nsReadRawCellCountPerSecond.getOrDefault(ns, 0L),
+              nsMemStoreSizeMB.getOrDefault(ns, 0L),
+              nsStoreFileSizeMB.getOrDefault(ns, 0L),
+              nsRegionCount.getOrDefault(ns, 0L));
+      builder.addCounter(Interns.info(namespacePrefix + MetricsClusterSource.TABLE_COUNT,
+          MetricsClusterSource.TABLE_COUNT_DESC), nsTableCount.getOrDefault(ns, 0L));
     }
   }
 }

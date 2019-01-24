@@ -345,11 +345,11 @@ public class MetricsRegionServerSourceImpl
               .addCounter(Interns.info(WRITE_REQUEST_COUNT, WRITE_REQUEST_COUNT_DESC),
                       rsWrap.getWriteRequestsCount())
               .addCounter(Interns.info(READ_REQUEST_PER_SECOND, READ_REQUEST_PER_SECOND_DESC),
-                      rsWrap.getReadRequestsCountPerSecond())
+                      rsWrap.getReadRequestsPerSecond())
               .addCounter(Interns.info(WRITE_REQUEST_PER_SECOND, WRITE_REQUEST_PER_SECOND_DESC),
-                      rsWrap.getWriteRequestsCountPerSecond())
+                      rsWrap.getWriteRequestsPerSecond())
               .addCounter(Interns.info(GET_REQEUST_PER_SECOND, GET_REQUEST_PER_SECOND_DESC),
-                      rsWrap.getGetRequestsCountPerSecond())
+                      rsWrap.getGetRequestsPerSecond())
               .addCounter(Interns.info(SCAN_REQUEST_PER_SECOND, SCAN_REQUEST_PER_SECOND_DESC),
                       rsWrap.getScanRequestsCountPerSecond())
               .addCounter(Interns.info(SCAN_ROWS_COUNT_PER_SECOND, SCAN_ROWS_COUNT_PER_SECOND_DESC),
@@ -362,10 +362,10 @@ public class MetricsRegionServerSourceImpl
                       rsWrap.getWriteRequestsByCapacityUnitPerSecond())
               .addCounter(Interns.info(READ_CELLS_PER_SECOND,
                       READ_CELLS_PER_SECOND_DESC),
-                      rsWrap.getReadCellsPerSecond())
+                      rsWrap.getReadCellCountPerSecond())
               .addCounter(Interns.info(READ_RAW_CELLS_PER_SECOND,
                       READ_RAW_CELLS_PER_SECOND_DESC),
-                      rsWrap.getReadRawCellsPerSecond())
+                      rsWrap.getReadRawCellCountPerSecond())
               .addCounter(Interns.info(RPC_GET_REQUEST_COUNT, RPC_GET_REQUEST_COUNT_DESC),
                       rsWrap.getRpcGetRequestsCount())
               .addCounter(Interns.info(RPC_SCAN_REQUEST_COUNT, RPC_SCAN_REQUEST_COUNT_DESC),

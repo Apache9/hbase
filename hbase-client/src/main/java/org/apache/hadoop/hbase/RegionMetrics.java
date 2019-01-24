@@ -144,11 +144,11 @@ public interface RegionMetrics {
    */
   long getLastMajorCompactionTimestamp();
 
-  long getReadRequestsCountPerSecond();
+  long getReadRequestsPerSecond();
 
-  long getWriteRequestsCountPerSecond();
+  long getWriteRequestsPerSecond();
 
-  long getGetRequestsCountPerSecond();
+  long getGetRequestsPerSecond();
 
   long getScanRequestsCountPerSecond();
 
@@ -158,7 +158,7 @@ public interface RegionMetrics {
 
   long getWriteRequestsByCapacityUnitPerSecond();
 
-  long getReadCellsPerSecond();
+  long getReadCellCountPerSecond();
 
-  long getReadRawCellsPerSecond();
+  long getReadRawCellCountPerSecond();
 }

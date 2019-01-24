@@ -44,12 +44,12 @@ public interface MetricsClusterSource extends BaseSource {
    */
   String METRICS_DESCRIPTION = "Overview metrics about HBase cluster.";
 
-
-  String READ_REQUEST_PER_SECOND = "readRequestsCountPerSecond";
+  // Xiaomi metrics, keep name compatible with 0.98
+  String READ_REQUEST_PER_SECOND = "readRequestsPerSecond";
   String READ_REQUEST_PER_SECOND_DESC = "Number of read requests per second";
-  String WRITE_REQUEST_PER_SECOND = "writeRequestsCountPerSecond";
+  String WRITE_REQUEST_PER_SECOND = "writeRequestsPerSecond";
   String WRITE_REQUEST_PER_SECOND_DESC = "Number of write requests per second";
-  String GET_REQEUST_PER_SECOND = "getRequestsCountPerSecond";
+  String GET_REQEUST_PER_SECOND = "getRequestsPerSecond";
   String GET_REQUEST_PER_SECOND_DESC = "Number of get requests per second";
   String SCAN_REQUEST_PER_SECOND = "scanRequestsCountPerSecond";
   String SCAN_REQUEST_PER_SECOND_DESC = "Number of scan requests per second";
@@ -59,8 +59,18 @@ public interface MetricsClusterSource extends BaseSource {
   String READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Read bytes per second, unit: 1KB";
   String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND = "writeRequestsByCapacityUnitPerSecond";
   String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Write bytes per second, unit: 1KB";
-  String READ_CELLS_PER_SECOND = "readCellsPerSecond";
+  String READ_CELLS_PER_SECOND = "readCellCountPerSecond";
   String READ_CELLS_PER_SECOND_DESC = "Number of read cells per second";
-  String READ_RAW_CELLS_PER_SECOND = "readRawCellsPerSecond";
+  String READ_RAW_CELLS_PER_SECOND = "readRawCellCountPerSecond";
   String READ_RAW_CELLS_PER_SECOND_DESC = "Number of raw cell read per second";
+  String REGION_COUNT = "regionCount";
+  String REGION_COUNT_DESC = "Number of regions";
+  String MEMSTORE_SIZE_MB = "memStoreSizeMB";
+  String MEMSTORE_SIZE_MB_DESC = "Size of the memstore";
+  String STOREFILE_SIZE_MB = "storefileSizeMB";
+  String STOREFILE_SIZE_MB_DESC = "Size of the storefiles";
+  String TABLE_COUNT = "tableCount";
+  String TABLE_COUNT_DESC = "Number of tables";
+  String NAMESPACE_COUNT = "namespaceCount";
+  String NAMESPACE_COUNT_DESC = "Number of namespaces";
 }

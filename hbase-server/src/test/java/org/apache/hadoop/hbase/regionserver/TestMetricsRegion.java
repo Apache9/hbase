@@ -70,13 +70,13 @@ public class TestMetricsRegion {
       "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_replicaid", 0,
       agg);
     HELPER.assertCounter(
-      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readRequestsCountPerSecond",
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readRequestsPerSecond",
       1, agg);
     HELPER.assertCounter(
-      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_writeRequestsCountPerSecond",
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_writeRequestsPerSecond",
       2, agg);
     HELPER.assertCounter(
-      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_getRequestsCountPerSecond",
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_getRequestsPerSecond",
       3, agg);
     HELPER.assertCounter(
       "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_scanRequestsCountPerSecond",
@@ -91,10 +91,10 @@ public class TestMetricsRegion {
       "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_writeRequestsByCapacityUnitPerSecond",
       7, agg);
     HELPER.assertCounter(
-      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readCellsPerSecond",
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readCellCountPerSecond",
       8, agg);
     HELPER.assertCounter(
-      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readRawCellsPerSecond",
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readRawCellCountPerSecond",
       9, agg);
     mr.close();
 
@@ -129,6 +129,9 @@ public class TestMetricsRegion {
     HELPER.assertCounter(
       "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_maxFlushQueueSize",
       6, agg);
+    HELPER.assertTag(
+        "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_nameAsString",
+        "TestRegionNameAsString", agg);
     mr.close();
   }
 }

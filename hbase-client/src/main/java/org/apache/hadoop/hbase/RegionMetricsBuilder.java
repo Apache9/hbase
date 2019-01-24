@@ -58,15 +58,15 @@ public final class RegionMetricsBuilder {
         .setMemStoreSize(new Size(regionLoadPB.getMemStoreSizeMB(), Size.Unit.MEGABYTE))
         .setReadRequestCount(regionLoadPB.getReadRequestsCount())
         .setWriteRequestCount(regionLoadPB.getWriteRequestsCount())
-        .setReadRequestsCountPerSecond(regionLoadPB.getReadRequestsPerSecond())
-        .setWriteRequestsCountPerSecond(regionLoadPB.getWriteRequestsPerSecond())
-        .setGetRequestsCountPerSecond(regionLoadPB.getGetRequestsPerSecond())
+        .setReadRequestsPerSecond(regionLoadPB.getReadRequestsPerSecond())
+        .setWriteRequestsPerSecond(regionLoadPB.getWriteRequestsPerSecond())
+        .setGetRequestsPerSecond(regionLoadPB.getGetRequestsPerSecond())
         .setScanRequestsCountPerSecond(regionLoadPB.getScanRequestsPerSecond())
         .setScanRowsCountPerSecond(regionLoadPB.getScanRowsPerSecond())
         .setReadRequestsByCapacityUnitPerSecond(regionLoadPB.getReadRequestsByCapacityUnitPerSecond())
         .setWriteRequestsByCapacityUnitPerSecond(regionLoadPB.getWriteRequestsByCapacityUnitPerSecond())
-        .setReadCellsPerSecond(regionLoadPB.getReadCellCountPerSecond())
-        .setReadRawCellsPerSecond(regionLoadPB.getReadRawCellCountPerSecond())
+        .setReadCellCountPerSecond(regionLoadPB.getReadCellCountPerSecond())
+        .setReadRawCellCountPerSecond(regionLoadPB.getReadRawCellCountPerSecond())
         .setStoreFileIndexSize(new Size(regionLoadPB.getStorefileIndexSizeKB(),
           Size.Unit.KILOBYTE))
         .setStoreFileRootLevelIndexSize(new Size(regionLoadPB.getRootIndexSizeKB(),
@@ -143,15 +143,15 @@ public final class RegionMetricsBuilder {
   private Size uncompressedStoreFileSize = Size.ZERO;
   private long writeRequestCount;
   private long readRequestCount;
-  private long readRequestsCountPerSecond;
-  private long writeRequestsCountPerSecond;
-  private long getRequestsCountPerSecond;
+  private long readRequestsPerSecond;
+  private long writeRequestsPerSecond;
+  private long getRequestsPerSecond;
   private long scanRequestsCountPerSecond;
   private long scanRowsCountPerSecond;
   private long readRequestsByCapacityUnitPerSecond;
   private long writeRequestsByCapacityUnitPerSecond;
-  private long readCellsPerSecond;
-  private long readRawCellsPerSecond;
+  private long readCellCountPerSecond;
+  private long readRawCellCountPerSecond;
   private long filteredReadRequestCount;
   private long completedSequenceId;
   private Map<byte[], Long> storeSequenceIds = Collections.emptyMap();
@@ -214,18 +214,18 @@ public final class RegionMetricsBuilder {
     return this;
   }
 
-  public RegionMetricsBuilder setReadRequestsCountPerSecond(long value) {
-    this.readRequestsCountPerSecond = value;
+  public RegionMetricsBuilder setReadRequestsPerSecond(long value) {
+    this.readRequestsPerSecond = value;
     return this;
   }
 
-  public RegionMetricsBuilder setWriteRequestsCountPerSecond(long value) {
-    this.writeRequestsCountPerSecond = value;
+  public RegionMetricsBuilder setWriteRequestsPerSecond(long value) {
+    this.writeRequestsPerSecond = value;
     return this;
   }
 
-  public RegionMetricsBuilder setGetRequestsCountPerSecond(long value) {
-    this.getRequestsCountPerSecond = value;
+  public RegionMetricsBuilder setGetRequestsPerSecond(long value) {
+    this.getRequestsPerSecond = value;
     return this;
   }
 
@@ -249,13 +249,13 @@ public final class RegionMetricsBuilder {
     return this;
   }
 
-  public RegionMetricsBuilder setReadCellsPerSecond(long value) {
-    this.readCellsPerSecond = value;
+  public RegionMetricsBuilder setReadCellCountPerSecond(long value) {
+    this.readCellCountPerSecond = value;
     return this;
   }
 
-  public RegionMetricsBuilder setReadRawCellsPerSecond(long value) {
-    this.readRawCellsPerSecond = value;
+  public RegionMetricsBuilder setReadRawCellCountPerSecond(long value) {
+    this.readRawCellCountPerSecond = value;
     return this;
   }
 
@@ -295,15 +295,15 @@ public final class RegionMetricsBuilder {
         uncompressedStoreFileSize,
         writeRequestCount,
         readRequestCount,
-        readRequestsCountPerSecond,
-        writeRequestsCountPerSecond,
-        getRequestsCountPerSecond,
+        readRequestsPerSecond,
+        writeRequestsPerSecond,
+        getRequestsPerSecond,
         scanRequestsCountPerSecond,
         scanRowsCountPerSecond,
         readRequestsByCapacityUnitPerSecond,
         writeRequestsByCapacityUnitPerSecond,
-        readCellsPerSecond,
-        readRawCellsPerSecond,
+        readCellCountPerSecond,
+        readRawCellCountPerSecond,
         filteredReadRequestCount,
         completedSequenceId,
         storeSequenceIds,
@@ -326,15 +326,15 @@ public final class RegionMetricsBuilder {
     private final Size uncompressedStoreFileSize;
     private final long writeRequestCount;
     private final long readRequestCount;
-    private final long readRequestsCountPerSecond;
-    private final long writeRequestsCountPerSecond;
-    private final long getRequestsCountPerSecond;
+    private final long readRequestsPerSecond;
+    private final long writeRequestsPerSecond;
+    private final long getRequestsPerSecond;
     private final long scanRequestsCountPerSecond;
     private final long scanRowsCountPerSecond;
     private final long readRequestsByCapacityUnitPerSecond;
     private final long writeRequestsByCapacityUnitPerSecond;
-    private final long readCellsPerSecond;
-    private final long readRawCellsPerSecond;
+    private final long readCellCountPerSecond;
+    private final long readRawCellCountPerSecond;
     private final long filteredReadRequestCount;
     private final long completedSequenceId;
     private final Map<byte[], Long> storeSequenceIds;
@@ -354,15 +354,15 @@ public final class RegionMetricsBuilder {
         Size uncompressedStoreFileSize,
         long writeRequestCount,
         long readRequestCount,
-        long readRequestsCountPerSecond,
-        long writeRequestsCountPerSecond,
-        long getRequestsCountPerSecond,
+        long readRequestsPerSecond,
+        long writeRequestsPerSecond,
+        long getRequestsPerSecond,
         long scanRequestsCountPerSecond,
         long scanRowsCountPerSecond,
         long readRequestsByCapacityUnitPerSecond,
         long writeRequestsByCapacityUnitPerSecond,
-        long readCellsPerSecond,
-        long readRawCellsPerSecond,
+        long readCellCountPerSecond,
+        long readRawCellCountPerSecond,
         long filteredReadRequestCount,
         long completedSequenceId,
         Map<byte[], Long> storeSequenceIds,
@@ -382,15 +382,15 @@ public final class RegionMetricsBuilder {
       this.uncompressedStoreFileSize = Preconditions.checkNotNull(uncompressedStoreFileSize);
       this.writeRequestCount = writeRequestCount;
       this.readRequestCount = readRequestCount;
-      this.readRequestsCountPerSecond = readRequestsCountPerSecond;
-      this.writeRequestsCountPerSecond = writeRequestsCountPerSecond;
-      this.getRequestsCountPerSecond = getRequestsCountPerSecond;
+      this.readRequestsPerSecond = readRequestsPerSecond;
+      this.writeRequestsPerSecond = writeRequestsPerSecond;
+      this.getRequestsPerSecond = getRequestsPerSecond;
       this.scanRequestsCountPerSecond = scanRequestsCountPerSecond;
       this.scanRowsCountPerSecond = scanRowsCountPerSecond;
       this.readRequestsByCapacityUnitPerSecond = readRequestsByCapacityUnitPerSecond;
       this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
-      this.readCellsPerSecond = readCellsPerSecond;
-      this.readRawCellsPerSecond = readRawCellsPerSecond;
+      this.readCellCountPerSecond = readCellCountPerSecond;
+      this.readRawCellCountPerSecond = readRawCellCountPerSecond;
       this.filteredReadRequestCount = filteredReadRequestCount;
       this.completedSequenceId = completedSequenceId;
       this.storeSequenceIds = Preconditions.checkNotNull(storeSequenceIds);
@@ -494,18 +494,18 @@ public final class RegionMetricsBuilder {
     }
 
     @Override
-    public long getReadRequestsCountPerSecond() {
-      return readRequestsCountPerSecond;
+    public long getReadRequestsPerSecond() {
+      return readRequestsPerSecond;
     }
 
     @Override
-    public long getWriteRequestsCountPerSecond() {
-      return writeRequestsCountPerSecond;
+    public long getWriteRequestsPerSecond() {
+      return writeRequestsPerSecond;
     }
 
     @Override
-    public long getGetRequestsCountPerSecond() {
-      return getRequestsCountPerSecond;
+    public long getGetRequestsPerSecond() {
+      return getRequestsPerSecond;
     }
 
     @Override
@@ -529,13 +529,13 @@ public final class RegionMetricsBuilder {
     }
 
     @Override
-    public long getReadCellsPerSecond() {
-      return readCellsPerSecond;
+    public long getReadCellCountPerSecond() {
+      return readCellCountPerSecond;
     }
 
     @Override
-    public long getReadRawCellsPerSecond() {
-      return readRawCellsPerSecond;
+    public long getReadRawCellCountPerSecond() {
+      return readRawCellCountPerSecond;
     }
 
     @Override
@@ -583,11 +583,11 @@ public final class RegionMetricsBuilder {
           this.getCompletedSequenceId());
       Strings.appendKeyValue(sb, "dataLocality",
           this.getDataLocality());
-      Strings.appendKeyValue(sb, "readRequestsCountPerSecond",
-        this.getReadRequestsCountPerSecond());
-      Strings.appendKeyValue(sb, "writeRequestsCountPerSecond",
-        this.getWriteRequestsCountPerSecond());
-      Strings.appendKeyValue(sb, "getRequestsCountPerSecond", this.getGetRequestsCountPerSecond());
+      Strings.appendKeyValue(sb, "readRequestsPerSecond",
+        this.getReadRequestsPerSecond());
+      Strings.appendKeyValue(sb, "writeRequestsPerSecond",
+        this.getWriteRequestsPerSecond());
+      Strings.appendKeyValue(sb, "getRequestsPerSecond", this.getGetRequestsPerSecond());
       Strings.appendKeyValue(sb, "scanRequestsCountPerSecond",
         this.getScanRequestsCountPerSecond());
       Strings.appendKeyValue(sb, "scanRowsCountPerSecond", this.getScanRowsCountPerSecond());
@@ -595,8 +595,8 @@ public final class RegionMetricsBuilder {
         this.getReadRequestsByCapacityUnitPerSecond());
       Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
         this.getWriteRequestsByCapacityUnitPerSecond());
-      Strings.appendKeyValue(sb, "readCellsPerSecond", this.getReadCellsPerSecond());
-      Strings.appendKeyValue(sb, "readRawCellsPerSecond", this.getReadRawCellsPerSecond());
+      Strings.appendKeyValue(sb, "readCellCountPerSecond", this.getReadCellCountPerSecond());
+      Strings.appendKeyValue(sb, "readRawCellCountPerSecond", this.getReadRawCellCountPerSecond());
       return sb.toString();
     }
   }

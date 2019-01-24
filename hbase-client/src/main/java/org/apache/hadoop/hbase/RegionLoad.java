@@ -349,18 +349,18 @@ public class RegionLoad implements RegionMetrics {
   }
 
   @Override
-  public long getReadRequestsCountPerSecond() {
-    return metrics.getReadRequestsCountPerSecond();
+  public long getReadRequestsPerSecond() {
+    return metrics.getReadRequestsPerSecond();
   }
 
   @Override
-  public long getWriteRequestsCountPerSecond() {
-    return metrics.getWriteRequestsCountPerSecond();
+  public long getWriteRequestsPerSecond() {
+    return metrics.getWriteRequestsPerSecond();
   }
 
   @Override
-  public long getGetRequestsCountPerSecond() {
-    return metrics.getGetRequestsCountPerSecond();
+  public long getGetRequestsPerSecond() {
+    return metrics.getGetRequestsPerSecond();
   }
 
   @Override
@@ -384,13 +384,13 @@ public class RegionLoad implements RegionMetrics {
   }
 
   @Override
-  public long getReadCellsPerSecond() {
-    return metrics.getReadCellsPerSecond();
+  public long getReadCellCountPerSecond() {
+    return metrics.getReadCellCountPerSecond();
   }
 
   @Override
-  public long getReadRawCellsPerSecond() {
-    return metrics.getReadRawCellsPerSecond();
+  public long getReadRawCellCountPerSecond() {
+    return metrics.getReadRawCellCountPerSecond();
   }
 
   /**

@@ -112,17 +112,17 @@ public class TestMetricsTableSourceImpl {
     }
 
     @Override
-    public long getReadRequestsCountPerSecond(String table) {
+    public long getReadRequestsPerSecond(String table) {
       return 0;
     }
 
     @Override
-    public long getWriteRequestsCountPerSecond(String table) {
+    public long getWriteRequestsPerSecond(String table) {
       return 0;
     }
 
     @Override
-    public long getGetRequestsCountPerSecond(String table) {
+    public long getGetRequestsPerSecond(String table) {
       return 0;
     }
 
@@ -147,12 +147,12 @@ public class TestMetricsTableSourceImpl {
     }
 
     @Override
-    public long getReadCellsPerSecond(String table) {
+    public long getReadCellCountPerSecond(String table) {
       return 0;
     }
 
     @Override
-    public long getReadRawCellsPerSecond(String table) {
+    public long getReadRawCellCountPerSecond(String table) {
       return 0;
     }
 

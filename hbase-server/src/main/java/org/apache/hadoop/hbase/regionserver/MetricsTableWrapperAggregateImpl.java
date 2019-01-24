@@ -78,9 +78,9 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
         metricsTable.setReadRequestsCount(metricsTable.getReadRequestsCount() + r.getReadRequestsCount());
         metricsTable.setWriteRequestsCount(metricsTable.getWriteRequestsCount() + r.getWriteRequestsCount());
         metricsTable.setTotalRequestsCount(metricsTable.getReadRequestsCount() + metricsTable.getWriteRequestsCount());
-        metricsTable.setReadRequestsCountPerSecond(metricsTable.getReadRequestsCountPerSecond() + r.getReadRequestsCountPerSecond());
-        metricsTable.setWriteRequestsCountPerSecond(metricsTable.getWriteRequestsCountPerSecond() + r.getWriteRequestsCountPerSecond());
-        metricsTable.setGetRequestsCountPerSecond(metricsTable.getGetRequestsCountPerSecond() + r.getGetRequestsCountPerSecond());
+        metricsTable.setReadRequestsPerSecond(metricsTable.getReadRequestsPerSecond() + r.getReadRequestsPerSecond());
+        metricsTable.setWriteRequestsPerSecond(metricsTable.getWriteRequestsPerSecond() + r.getWriteRequestsPerSecond());
+        metricsTable.setGetRequestsPerSecond(metricsTable.getGetRequestsPerSecond() + r.getGetRequestsPerSecond());
         metricsTable.setScanRequestsCountPerSecond(metricsTable.getScanRequestsCountPerSecond() + r.getScanRequestsCountPerSecond());
         metricsTable.setScanRowsCountPerSecond(metricsTable.getScanRowsCountPerSecond() + r.getScanRowsCountPerSecond());
         metricsTable.setReadRequestsByCapacityUnitPerSecond(
@@ -89,10 +89,10 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
         metricsTable.setWriteRequestsByCapacityUnitPerSecond(
           metricsTable.getWriteRequestsByCapacityUnitPerSecond()
               + r.getWriteRequestsByCapacityUnitPerSecond());
-        metricsTable.setReadCellsPerSecond(
-          metricsTable.getReadCellsPerSecond() + r.getReadCellsPerSecond());
-        metricsTable.setReadRawCellsPerSecond(
-          metricsTable.getReadRawCellsPerSecond() + r.getReadRawCellsPerSecond());
+        metricsTable.setReadCellCountPerSecond(
+          metricsTable.getReadCellCountPerSecond() + r.getReadCellCountPerSecond());
+        metricsTable.setReadRawCellCountPerSecond(
+          metricsTable.getReadRawCellCountPerSecond() + r.getReadRawCellCountPerSecond());
       }
 
       for(Map.Entry<TableName, MetricsTableValues> entry : localMetricsTableMap.entrySet()) {
@@ -175,32 +175,32 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
   }
 
   @Override
-  public long getReadRequestsCountPerSecond(String table) {
+  public long getReadRequestsPerSecond(String table) {
     MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
     if (metricsTable == null) {
       return 0;
     } else {
-      return metricsTable.getReadRequestsCountPerSecond();
+      return metricsTable.getReadRequestsPerSecond();
     }
   }
 
   @Override
-  public long getWriteRequestsCountPerSecond(String table) {
+  public long getWriteRequestsPerSecond(String table) {
     MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
     if (metricsTable == null) {
       return 0;
     } else {
-      return metricsTable.getWriteRequestsCountPerSecond();
+      return metricsTable.getWriteRequestsPerSecond();
     }
   }
 
   @Override
-  public long getGetRequestsCountPerSecond(String table) {
+  public long getGetRequestsPerSecond(String table) {
     MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
     if (metricsTable == null) {
       return 0;
     } else {
-      return metricsTable.getGetRequestsCountPerSecond();
+      return metricsTable.getGetRequestsPerSecond();
     }
   }
 
@@ -245,22 +245,22 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
   }
 
   @Override
-  public long getReadCellsPerSecond(String table) {
+  public long getReadCellCountPerSecond(String table) {
     MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
     if (metricsTable == null) {
       return 0;
     } else {
-      return metricsTable.getReadCellsPerSecond();
+      return metricsTable.getReadCellCountPerSecond();
     }
   }
 
   @Override
-  public long getReadRawCellsPerSecond(String table) {
+  public long getReadRawCellCountPerSecond(String table) {
     MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
     if (metricsTable == null) {
       return 0;
     } else {
-      return metricsTable.getReadRawCellsPerSecond();
+      return metricsTable.getReadRawCellCountPerSecond();
     }
   }
 
@@ -277,15 +277,15 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
     private long memstoresSize;
     private long storeFilesSize;
     private long tableSize;
-    private long readRequestsCountPerSecond;
-    private long writeRequestsCountPerSecond;
-    private long getRequestsCountPerSecond;
+    private long readRequestsPerSecond;
+    private long writeRequestsPerSecond;
+    private long getRequestsPerSecond;
     private long scanRequestsCountPerSecond;
     private long scanRowsCountPerSecond;
     private long readRequestsByCapacityUnitPerSecond;
     private long writeRequestsByCapacityUnitPerSecond;
-    private long readCellsPerSecond;
-    private long readRawCellsPerSecond;
+    private long readCellCountPerSecond;
+    private long readRawCellCountPerSecond;
 
     public long getTotalRequestsCount() {
       return totalRequestsCount;
@@ -335,28 +335,28 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
       this.tableSize = tableSize;
     }
 
-    public long getReadRequestsCountPerSecond() {
-      return readRequestsCountPerSecond;
+    public long getReadRequestsPerSecond() {
+      return readRequestsPerSecond;
     }
 
-    public void setReadRequestsCountPerSecond(long readRequestsCountPerSecond) {
-      this.readRequestsCountPerSecond = readRequestsCountPerSecond;
+    public void setReadRequestsPerSecond(long readRequestsPerSecond) {
+      this.readRequestsPerSecond = readRequestsPerSecond;
     }
 
-    public long getWriteRequestsCountPerSecond() {
-      return writeRequestsCountPerSecond;
+    public long getWriteRequestsPerSecond() {
+      return writeRequestsPerSecond;
     }
 
-    public void setWriteRequestsCountPerSecond(long writeRequestsCountPerSecond) {
-      this.writeRequestsCountPerSecond = writeRequestsCountPerSecond;
+    public void setWriteRequestsPerSecond(long writeRequestsPerSecond) {
+      this.writeRequestsPerSecond = writeRequestsPerSecond;
     }
 
-    public long getGetRequestsCountPerSecond() {
-      return getRequestsCountPerSecond;
+    public long getGetRequestsPerSecond() {
+      return getRequestsPerSecond;
     }
 
-    public void setGetRequestsCountPerSecond(long getRequestsCountPerSecond) {
-      this.getRequestsCountPerSecond = getRequestsCountPerSecond;
+    public void setGetRequestsPerSecond(long getRequestsPerSecond) {
+      this.getRequestsPerSecond = getRequestsPerSecond;
     }
 
     public long getScanRequestsCountPerSecond() {
@@ -391,20 +391,20 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
       this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
     }
 
-    public long getReadCellsPerSecond() {
-      return readCellsPerSecond;
+    public long getReadCellCountPerSecond() {
+      return readCellCountPerSecond;
     }
 
-    public void setReadCellsPerSecond(long readCellsPerSecond) {
-      this.readCellsPerSecond = readCellsPerSecond;
+    public void setReadCellCountPerSecond(long readCellCountPerSecond) {
+      this.readCellCountPerSecond = readCellCountPerSecond;
     }
 
-    public long getReadRawCellsPerSecond() {
-      return readRawCellsPerSecond;
+    public long getReadRawCellCountPerSecond() {
+      return readRawCellCountPerSecond;
     }
 
-    public void setReadRawCellsPerSecond(long readRawCellsPerSecond) {
-      this.readRawCellsPerSecond = readRawCellsPerSecond;
+    public void setReadRawCellCountPerSecond(long readRawCellCountPerSecond) {
+      this.readRawCellCountPerSecond = readRawCellCountPerSecond;
     }
   }
 

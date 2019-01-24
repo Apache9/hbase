@@ -85,6 +85,11 @@ public class TestMetricsRegionSourceImpl {
     }
 
     @Override
+    public String getRegionNameAsString() {
+      return this.regionName;
+    }
+
+    @Override
     public long getNumStores() {
       return 0;
     }
@@ -178,17 +183,17 @@ public class TestMetricsRegionSourceImpl {
     }
 
     @Override
-    public long getReadRequestsCountPerSecond() {
+    public long getReadRequestsPerSecond() {
       return 0;
     }
 
     @Override
-    public long getWriteRequestsCountPerSecond() {
+    public long getWriteRequestsPerSecond() {
       return 0;
     }
 
     @Override
-    public long getGetRequestsCountPerSecond() {
+    public long getGetRequestsPerSecond() {
       return 0;
     }
 
@@ -213,12 +218,12 @@ public class TestMetricsRegionSourceImpl {
     }
 
     @Override
-    public long getReadCellsPerSecond() {
+    public long getReadCellCountPerSecond() {
       return 0;
     }
 
     @Override
-    public long getReadRawCellsPerSecond() {
+    public long getReadRawCellCountPerSecond() {
       return 0;
     }
 

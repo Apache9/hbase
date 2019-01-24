@@ -147,11 +147,11 @@ public interface Region extends ConfigurationObserver {
   /** @return write request count for this region */
   long getWriteRequestsCount();
 
-  long getReadRequestsCountPerSecond();
+  long getReadRequestsPerSecond();
 
-  long getWriteRequestsCountPerSecond();
+  long getWriteRequestsPerSecond();
 
-  long getGetRequestsCountPerSecond();
+  long getGetRequestsPerSecond();
 
   long getScanRequestsCountPerSecond();
 
@@ -161,9 +161,9 @@ public interface Region extends ConfigurationObserver {
 
   long getWriteRequestsByCapacityUnitPerSecond();
 
-  long getReadCellsPerSecond();
+  long getReadCellCountPerSecond();
 
-  long getReadRawCellsPerSecond();
+  long getReadRawCellCountPerSecond();
 
   /**
    * @return memstore size for this region, in bytes. It just accounts data size of cells added to

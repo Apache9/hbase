@@ -51,6 +51,11 @@ public class MetricsRegionWrapperStub implements MetricsRegionWrapper {
   }
 
   @Override
+  public String getRegionNameAsString() {
+    return "TestRegionNameAsString";
+  }
+
+  @Override
   public long getNumStores() {
     return 101;
   }
@@ -144,17 +149,17 @@ public class MetricsRegionWrapperStub implements MetricsRegionWrapper {
   }
 
   @Override
-  public long getReadRequestsCountPerSecond() {
+  public long getReadRequestsPerSecond() {
     return 1;
   }
 
   @Override
-  public long getWriteRequestsCountPerSecond() {
+  public long getWriteRequestsPerSecond() {
     return 2;
   }
 
   @Override
-  public long getGetRequestsCountPerSecond() {
+  public long getGetRequestsPerSecond() {
     return 3;
   }
 
@@ -179,12 +184,12 @@ public class MetricsRegionWrapperStub implements MetricsRegionWrapper {
   }
 
   @Override
-  public long getReadCellsPerSecond() {
+  public long getReadCellCountPerSecond() {
     return 8;
   }
 
   @Override
-  public long getReadRawCellsPerSecond() {
+  public long getReadRawCellCountPerSecond() {
     return 9;
   }
 

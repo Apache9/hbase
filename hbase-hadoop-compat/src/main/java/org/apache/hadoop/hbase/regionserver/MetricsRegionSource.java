@@ -53,6 +53,8 @@ public interface MetricsRegionSource extends Comparable<MetricsRegionSource> {
   String COPROCESSOR_EXECUTION_STATISTICS_DESC = "Statistics for coprocessor execution times";
   String REPLICA_ID = "replicaid";
   String REPLICA_ID_DESC = "The replica ID of a region. 0 is primary, otherwise is secondary";
+  String NAME_AS_STRING = "nameAsString";
+  String NAME_AS_STRING_DESC = "Region name as string";
 
   /**
    * Close the region's metrics as this region is closing.

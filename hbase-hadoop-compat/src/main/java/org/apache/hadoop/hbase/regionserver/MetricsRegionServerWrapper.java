@@ -518,11 +518,11 @@ public interface MetricsRegionServerWrapper {
 
   long getTotalRowActionRequestCount();
 
-  long getReadRequestsCountPerSecond();
+  long getReadRequestsPerSecond();
 
-  long getWriteRequestsCountPerSecond();
+  long getWriteRequestsPerSecond();
 
-  long getGetRequestsCountPerSecond();
+  long getGetRequestsPerSecond();
 
   long getScanRequestsCountPerSecond();
 
@@ -532,7 +532,7 @@ public interface MetricsRegionServerWrapper {
 
   long getWriteRequestsByCapacityUnitPerSecond();
 
-  long getReadCellsPerSecond();
+  long getReadCellCountPerSecond();
 
-  long getReadRawCellsPerSecond();
+  long getReadRawCellCountPerSecond();
 }

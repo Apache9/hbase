@@ -39,11 +39,13 @@ public interface MetricsTableSource extends Comparable<MetricsTableSource> {
   String STORE_FILE_SIZE_DESC = "The size of store files size";
   String TABLE_SIZE = "tableSize";
   String TABLE_SIZE_DESC = "Total size of the table in the region server";
-  String READ_REQUEST_PER_SECOND = "readRequestsCountPerSecond";
+
+  // Xiaomi metrics, keep name compatible with 0.98
+  String READ_REQUEST_PER_SECOND = "readRequestsPerSecond";
   String READ_REQUEST_PER_SECOND_DESC = "Number of read requests per second";
-  String WRITE_REQUEST_PER_SECOND = "writeRequestsCountPerSecond";
+  String WRITE_REQUEST_PER_SECOND = "writeRequestsPerSecond";
   String WRITE_REQUEST_PER_SECOND_DESC = "Number of write requests per second";
-  String GET_REQEUST_PER_SECOND = "getRequestsCountPerSecond";
+  String GET_REQEUST_PER_SECOND = "getRequestsPerSecond";
   String GET_REQUEST_PER_SECOND_DESC = "Number of get requests per second";
   String SCAN_REQUEST_PER_SECOND = "scanRequestsCountPerSecond";
   String SCAN_REQUEST_PER_SECOND_DESC = "Number of scan requests per second";
@@ -53,9 +55,9 @@ public interface MetricsTableSource extends Comparable<MetricsTableSource> {
   String READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Read bytes per second, unit: 1KB";
   String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND = "writeRequestsByCapacityUnitPerSecond";
   String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Write bytes per second, unit: 1KB";
-  String READ_CELLS_PER_SECOND = "readCellsPerSecond";
+  String READ_CELLS_PER_SECOND = "readCellCountPerSecond";
   String READ_CELLS_PER_SECOND_DESC = "Number of read cells per second";
-  String READ_RAW_CELLS_PER_SECOND = "readRawCellsPerSecond";
+  String READ_RAW_CELLS_PER_SECOND = "readRawCellCountPerSecond";
   String READ_RAW_CELLS_PER_SECOND_DESC = "Number of raw cell read per second";
 
   String getTableName();

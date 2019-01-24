@@ -48,6 +48,11 @@ public interface MetricsRegionWrapper {
   String getRegionName();
 
   /**
+   * @return Region name as a String.
+   */
+  String getRegionNameAsString();
+
+  /**
    * Get the number of stores hosted on this region server.
    */
   long getNumStores();
@@ -151,11 +156,11 @@ public interface MetricsRegionWrapper {
    */
   int getReplicaId();
 
-  long getReadRequestsCountPerSecond();
+  long getReadRequestsPerSecond();
 
-  long getWriteRequestsCountPerSecond();
+  long getWriteRequestsPerSecond();
 
-  long getGetRequestsCountPerSecond();
+  long getGetRequestsPerSecond();
 
   long getScanRequestsCountPerSecond();
 
@@ -165,7 +170,7 @@ public interface MetricsRegionWrapper {
 
   long getWriteRequestsByCapacityUnitPerSecond();
 
-  long getReadCellsPerSecond();
+  long getReadCellCountPerSecond();
 
-  long getReadRawCellsPerSecond();
+  long getReadRawCellCountPerSecond();
 }

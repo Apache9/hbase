@@ -57,11 +57,11 @@ public interface MetricsTableWrapperAggregate {
    */
   long getTableSize(String table);
 
-  long getReadRequestsCountPerSecond(String table);
+  long getReadRequestsPerSecond(String table);
 
-  long getWriteRequestsCountPerSecond(String table);
+  long getWriteRequestsPerSecond(String table);
 
-  long getGetRequestsCountPerSecond(String table);
+  long getGetRequestsPerSecond(String table);
 
   long getScanRequestsCountPerSecond(String table);
 
@@ -71,7 +71,7 @@ public interface MetricsTableWrapperAggregate {
 
   long getWriteRequestsByCapacityUnitPerSecond(String table);
 
-  long getReadCellsPerSecond(String table);
+  long getReadCellCountPerSecond(String table);
 
-  long getReadRawCellsPerSecond(String table);
+  long getReadRawCellCountPerSecond(String table);
 }

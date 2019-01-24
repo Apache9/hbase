@@ -116,17 +116,17 @@ public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrappe
   }
 
   @Override
-  public long getReadRequestsCountPerSecond() {
+  public long getReadRequestsPerSecond() {
     return 1;
   }
 
   @Override
-  public long getWriteRequestsCountPerSecond() {
+  public long getWriteRequestsPerSecond() {
     return 2;
   }
 
   @Override
-  public long getGetRequestsCountPerSecond() {
+  public long getGetRequestsPerSecond() {
     return 3;
   }
 
@@ -151,12 +151,12 @@ public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrappe
   }
 
   @Override
-  public long getReadCellsPerSecond() {
+  public long getReadCellCountPerSecond() {
     return 8;
   }
 
   @Override
-  public long getReadRawCellsPerSecond() {
+  public long getReadRawCellCountPerSecond() {
     return 9;
   }
 

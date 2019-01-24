@@ -143,15 +143,15 @@ public class MetricsTableSourceImpl implements MetricsTableSource {
         mrb.addGauge(
           Interns.info(tableNamePrefix + MetricsTableSource.READ_REQUEST_PER_SECOND,
             MetricsTableSource.READ_REQUEST_PER_SECOND_DESC),
-          tableWrapperAgg.getReadRequestsCountPerSecond(tableName.getNameAsString()));
+          tableWrapperAgg.getReadRequestsPerSecond(tableName.getNameAsString()));
         mrb.addGauge(
           Interns.info(tableNamePrefix + MetricsTableSource.WRITE_REQUEST_PER_SECOND,
             MetricsTableSource.WRITE_REQUEST_PER_SECOND_DESC),
-          tableWrapperAgg.getWriteRequestsCountPerSecond(tableName.getNameAsString()));
+          tableWrapperAgg.getWriteRequestsPerSecond(tableName.getNameAsString()));
         mrb.addGauge(
           Interns.info(tableNamePrefix + MetricsTableSource.GET_REQEUST_PER_SECOND,
             MetricsTableSource.GET_REQUEST_PER_SECOND_DESC),
-          tableWrapperAgg.getGetRequestsCountPerSecond(tableName.getNameAsString()));
+          tableWrapperAgg.getGetRequestsPerSecond(tableName.getNameAsString()));
         mrb.addGauge(
           Interns.info(tableNamePrefix + MetricsTableSource.SCAN_REQUEST_PER_SECOND,
             MetricsTableSource.SCAN_REQUEST_PER_SECOND_DESC),
@@ -173,11 +173,11 @@ public class MetricsTableSourceImpl implements MetricsTableSource {
         mrb.addGauge(
           Interns.info(tableNamePrefix + MetricsTableSource.READ_CELLS_PER_SECOND,
             MetricsTableSource.READ_CELLS_PER_SECOND_DESC),
-          tableWrapperAgg.getReadCellsPerSecond(tableName.getNameAsString()));
+          tableWrapperAgg.getReadCellCountPerSecond(tableName.getNameAsString()));
         mrb.addGauge(
           Interns.info(tableNamePrefix + MetricsTableSource.READ_RAW_CELLS_PER_SECOND,
             MetricsTableSource.READ_RAW_CELLS_PER_SECOND_DESC),
-          tableWrapperAgg.getReadRawCellsPerSecond(tableName.getNameAsString()));
+          tableWrapperAgg.getReadRawCellCountPerSecond(tableName.getNameAsString()));
       }
     }
   }

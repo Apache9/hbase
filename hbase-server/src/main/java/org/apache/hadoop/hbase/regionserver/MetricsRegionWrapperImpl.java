@@ -85,7 +85,6 @@ public class MetricsRegionWrapperImpl implements MetricsRegionWrapper, Closeable
     return tableDesc.getTableName().getNamespaceAsString();
   }
 
-
   @Override
   public String getRegionName() {
     RegionInfo regionInfo = this.region.getRegionInfo();
@@ -93,6 +92,15 @@ public class MetricsRegionWrapperImpl implements MetricsRegionWrapper, Closeable
       return UNKNOWN;
     }
     return regionInfo.getEncodedName();
+  }
+
+  @Override
+  public String getRegionNameAsString() {
+    RegionInfo regionInfo = this.region.getRegionInfo();
+    if (regionInfo == null) {
+      return UNKNOWN;
+    }
+    return regionInfo.getRegionNameAsString();
   }
 
   @Override
@@ -292,18 +300,18 @@ public class MetricsRegionWrapperImpl implements MetricsRegionWrapper, Closeable
   }
 
   @Override
-  public long getReadRequestsCountPerSecond() {
-    return region.getReadRequestsCountPerSecond();
+  public long getReadRequestsPerSecond() {
+    return region.getReadRequestsPerSecond();
   }
 
   @Override
-  public long getWriteRequestsCountPerSecond() {
-    return region.getWriteRequestsCountPerSecond();
+  public long getWriteRequestsPerSecond() {
+    return region.getWriteRequestsPerSecond();
   }
 
   @Override
-  public long getGetRequestsCountPerSecond() {
-    return region.getGetRequestsCountPerSecond();
+  public long getGetRequestsPerSecond() {
+    return region.getGetRequestsPerSecond();
   }
 
   @Override
@@ -327,12 +335,12 @@ public class MetricsRegionWrapperImpl implements MetricsRegionWrapper, Closeable
   }
 
   @Override
-  public long getReadCellsPerSecond() {
-    return region.getReadCellsPerSecond();
+  public long getReadCellCountPerSecond() {
+    return region.getReadCellCountPerSecond();
   }
 
   @Override
-  public long getReadRawCellsPerSecond() {
-    return region.getReadRawCellsPerSecond();
+  public long getReadRawCellCountPerSecond() {
+    return region.getReadRawCellCountPerSecond();
   }
 }
