@@ -301,7 +301,6 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     Map<TableName, Long> tableMemStoreSizeMB = new HashMap<>();
     Map<TableName, Long> tableStoreFileSizeMB = new HashMap<>();
     Map<TableName, Long> tableRegionCount = new HashMap<>();
-    List<TableName> tables = new LinkedList<>();
 
     // Namespace metrics
     Map<String, Long> nsReadRequestPerSecond = new HashMap<>();
@@ -344,7 +343,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
       }
     }
 
-    for (TableName table : tables) {
+    for (TableName table : tableReadRequestPerSecond.keySet()) {
       String ns = table.getNamespaceAsString();
       accumulateMap(nsReadRequestPerSecond, ns, tableReadRequestPerSecond.get(table));
       accumulateMap(nsWriteRequestPerSecond, ns, tableWriteRequestPerSecond.get(table));
