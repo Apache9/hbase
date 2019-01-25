@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.replication.regionserver.MetricsSource;
@@ -41,6 +42,7 @@ import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.hadoop.hbase.wal.WALKeyImpl;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
@@ -49,6 +51,9 @@ import static org.apache.hadoop.hbase.util.TalosUtil.HEADER_SIZE;
 
 @Category(SmallTests.class)
 public class TestTalosReplicationEndpoint {
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestTalosReplicationEndpoint.class);
   private static TalosReplicationEndpoint endpoint;
   private static ReplicationEndpoint.ReplicateContext context;
   private static final TableName TEST_TABLE = TableName.valueOf("test:talos");

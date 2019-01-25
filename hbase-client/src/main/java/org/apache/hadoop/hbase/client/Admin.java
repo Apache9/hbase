@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshotView;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
@@ -2833,4 +2834,9 @@ public interface Admin extends Abortable, Closeable {
    * no quota information on that table.
    */
   SpaceQuotaSnapshotView getCurrentSpaceQuotaSnapshot(TableName tableName) throws IOException;
+
+  /**
+   * Returns the max load of a specified peer
+   */
+  ReplicationLoadSource getPeerMaxReplicationLoad(String peerId) throws IOException;
 }

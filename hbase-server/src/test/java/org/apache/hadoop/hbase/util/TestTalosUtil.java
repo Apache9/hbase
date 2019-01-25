@@ -32,6 +32,7 @@ import java.util.UUID;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.FDSMessageScanner;
@@ -42,6 +43,7 @@ import org.apache.hadoop.hbase.wal.WAL;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.hadoop.hbase.wal.WALKeyImpl;
 import org.junit.Assert;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -50,6 +52,9 @@ import static org.apache.hadoop.hbase.util.TalosUtil.HEADER_SIZE;
 
 @Category(SmallTests.class)
 public class TestTalosUtil {
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestTalosUtil.class);
   private static final String REGION_NAME = "testRegion";
   private static final TableName TABLE_NAME = TableName.valueOf("test:testTable");
   private static final byte[] FAMILY = Bytes.toBytes("family");

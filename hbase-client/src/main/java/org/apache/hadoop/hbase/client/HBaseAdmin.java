@@ -4488,6 +4488,7 @@ public class HBaseAdmin implements Admin {
       });
   }
 
+  @Override
   public ReplicationLoadSource getPeerMaxReplicationLoad(String peerId) throws IOException {
     return executeCallable(
       new MasterCallable<ReplicationLoadSource>(getConnection(), getRpcControllerFactory()) {

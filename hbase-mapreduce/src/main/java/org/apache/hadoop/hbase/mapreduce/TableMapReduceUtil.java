@@ -216,6 +216,9 @@ public class TableMapReduceUtil {
         CellSerialization.class.getName());
     if (addDependencyJars) {
       addDependencyJars(job);
+      addDependencyJarsForClasses(job.getConfiguration(),
+        org.apache.hadoop.hbase.replication.ReplicationUtils.class,
+        org.apache.hadoop.hbase.procedure2.util.StringUtils.class);
     }
     if (initCredentials) {
       initCredentials(job);
