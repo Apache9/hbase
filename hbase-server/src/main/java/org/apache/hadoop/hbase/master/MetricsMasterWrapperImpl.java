@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.metrics.Interns;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
@@ -317,9 +318,13 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     Map<String, Long> nsTableCount = new HashMap<>();
     Map<String, Long> nsRegionCount = new HashMap<>();
 
+    // Replication metrics
+    Map<String, Long> peerSizeOfLogQueue = new HashMap<>();
+    Map<String, Long> peerReplicationLag = new HashMap<>();
+
     for (Entry<ServerName, ServerMetrics> serverEntry : serverMetricsMap.entrySet()) {
-      for (Entry<byte[], RegionMetrics> regionEntry : serverEntry.getValue().getRegionMetrics()
-              .entrySet()) {
+      ServerMetrics serverMetrics = serverEntry.getValue();
+      for (Entry<byte[], RegionMetrics> regionEntry : serverMetrics.getRegionMetrics().entrySet()) {
         RegionInfo r = parseRegionInfo(regionEntry.getKey());
         if (r == null) {
           continue;
@@ -331,16 +336,44 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
         accumulateMap(tableReadRequestPerSecond, table, regionMetrics.getReadRequestsPerSecond());
         accumulateMap(tableWriteRequestPerSecond, table, regionMetrics.getWriteRequestsPerSecond());
         accumulateMap(tableGetRequestPerSecond, table, regionMetrics.getGetRequestsPerSecond());
-        accumulateMap(tableScanRequestPerSecond, table, regionMetrics.getScanRequestsCountPerSecond());
-        accumulateMap(tableScanRowsCountPerSecond, table, regionMetrics.getScanRowsCountPerSecond());
-        accumulateMap(tableReadRequestByCapacityUnit, table, regionMetrics.getReadRequestsByCapacityUnitPerSecond());
-        accumulateMap(tableWriteRequestByCapacityUnit, table, regionMetrics.getWriteRequestsByCapacityUnitPerSecond());
-        accumulateMap(tableReadCellCountPerSecond, table, regionMetrics.getReadCellCountPerSecond());
-        accumulateMap(tableReadRawCellCountPerSecond, table, regionMetrics.getReadRawCellCountPerSecond());
+        accumulateMap(tableScanRequestPerSecond, table,
+            regionMetrics.getScanRequestsCountPerSecond());
+        accumulateMap(tableScanRowsCountPerSecond, table,
+            regionMetrics.getScanRowsCountPerSecond());
+        accumulateMap(tableReadRequestByCapacityUnit, table,
+            regionMetrics.getReadRequestsByCapacityUnitPerSecond());
+        accumulateMap(tableWriteRequestByCapacityUnit, table,
+            regionMetrics.getWriteRequestsByCapacityUnitPerSecond());
+        accumulateMap(tableReadCellCountPerSecond, table,
+            regionMetrics.getReadCellCountPerSecond());
+        accumulateMap(tableReadRawCellCountPerSecond, table,
+            regionMetrics.getReadRawCellCountPerSecond());
         accumulateMap(tableMemStoreSizeMB, table, regionMetrics.getMemStoreSize().getLongValue());
         accumulateMap(tableStoreFileSizeMB, table, regionMetrics.getStoreFileSize().getLongValue());
         accumulateMap(tableRegionCount, table, 1L);
       }
+
+      // Append server replication metric
+      String serverPrefix = "Server_" + serverMetrics.getServerName();
+      for (ReplicationLoadSource source : serverMetrics.getReplicationLoadSourceList()) {
+        String peerId = source.getPeerID();
+        accumulateMap(peerSizeOfLogQueue, peerId, source.getSizeOfLogQueue());
+        accumulateMap(peerReplicationLag, peerId, source.getReplicationLag());
+        String peerPrefix = serverPrefix + "_peer_" + peerId + "_metric_";
+        builder.addCounter(Interns.info(peerPrefix + MetricsClusterSource.SIZE_OF_LOG_QUEUE,
+            MetricsClusterSource.SIZE_OF_LOG_QUEUE_DESC), source.getSizeOfLogQueue()).addCounter(
+            Interns.info(peerPrefix + MetricsClusterSource.REPLICATION_LAG,
+                MetricsClusterSource.REPLICATION_LAG_DESC), source.getReplicationLag());
+      }
+    }
+
+    // Append cluster replication metric
+    for (String peerId : peerSizeOfLogQueue.keySet()) {
+      String clusterPeerPrefix = "Cluster_peer_" + peerId + "_metric_";
+      builder.addCounter(Interns.info(clusterPeerPrefix + MetricsClusterSource.SIZE_OF_LOG_QUEUE,
+          MetricsClusterSource.SIZE_OF_LOG_QUEUE_DESC), peerSizeOfLogQueue.get(peerId)).addCounter(
+          Interns.info(clusterPeerPrefix + MetricsClusterSource.REPLICATION_LAG,
+              MetricsClusterSource.REPLICATION_LAG_DESC), peerReplicationLag.get(peerId));
     }
 
     for (TableName table : tableReadRequestPerSecond.keySet()) {

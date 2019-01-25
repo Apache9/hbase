@@ -73,4 +73,8 @@ public interface MetricsClusterSource extends BaseSource {
   String TABLE_COUNT_DESC = "Number of tables";
   String NAMESPACE_COUNT = "namespaceCount";
   String NAMESPACE_COUNT_DESC = "Number of namespaces";
+  String SIZE_OF_LOG_QUEUE = "sizeOfLogQueue";
+  String SIZE_OF_LOG_QUEUE_DESC = "Number of replication source queue logs";
+  String REPLICATION_LAG = "replicationLag";
+  String REPLICATION_LAG_DESC = "Replication lag";
 }
