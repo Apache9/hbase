@@ -208,6 +208,7 @@ class NettyRpcConnection extends RpcConnection {
           established(ch);
         } else {
           final Throwable error = future.cause();
+          LOG.warn("Exception encountered while connecting to the server :", error);
           scheduleRelogin(error);
           failInit(ch, toIOE(error));
         }
