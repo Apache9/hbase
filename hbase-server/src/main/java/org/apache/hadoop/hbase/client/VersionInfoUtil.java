@@ -135,6 +135,10 @@ public final class VersionInfoUtil {
   }
 
   public static boolean is98MDHClientRpcCall(RpcCall call) {
-    return call.getClientVersionInfo().getVersion().startsWith("0.98.11-mdh2");
+    HBaseProtos.VersionInfo versionInfo = call.getClientVersionInfo();
+    if (versionInfo == null) {
+      return true;
+    }
+    return versionInfo.getVersion().startsWith("0.98.11-mdh2");
   }
 }
