@@ -154,7 +154,8 @@ public class RpcServer implements RpcServerInterface {
 
   public static final byte CURRENT_VERSION = 0;
 
-  public static long SLOW_IO_LOG_THRESHOLD_MS;
+  public static final long SLOW_IO_LOG_THRESHOLD_MS_DEFAULT = 300;
+  public static long SLOW_IO_LOG_THRESHOLD_MS = SLOW_IO_LOG_THRESHOLD_MS_DEFAULT;
   public static boolean ALWAYS_TRACE_IN_SERVER_SIDE; // always trace in server side
   public static final String ALWAYS_TRACE_IN_SERVER_SIDE_KEY = "hbase.always.trace.in.server.side";
 
@@ -1921,7 +1922,8 @@ public class RpcServer implements RpcServerInterface {
     }
     this.scheduler = scheduler;
     this.scheduler.init(new RpcSchedulerContext(this));
-    SLOW_IO_LOG_THRESHOLD_MS = conf.getLong("hbase.slow.io.log.threshold.ms", 300);
+    SLOW_IO_LOG_THRESHOLD_MS =
+        conf.getLong("hbase.slow.io.log.threshold.ms", SLOW_IO_LOG_THRESHOLD_MS_DEFAULT);
     ALWAYS_TRACE_IN_SERVER_SIDE = conf.getBoolean(ALWAYS_TRACE_IN_SERVER_SIDE_KEY, false);
   }
 
