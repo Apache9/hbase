@@ -43,7 +43,7 @@ public class TestKeyValueSkipListSet extends TestCase {
     KeyValue kv = new KeyValue(bytes, bytes, bytes, bytes);
     this.kvsls.add(kv);
     assertTrue(this.kvsls.contains(kv));
-    assertEquals(1, this.kvsls.size());
+    assertEquals(1, this.kvsls.sizeForTest());
     KeyValue first = this.kvsls.first();
     assertTrue(kv.equals(first));
     assertTrue(Bytes.equals(kv.getValue(), first.getValue()));
@@ -51,7 +51,7 @@ public class TestKeyValueSkipListSet extends TestCase {
     byte [] overwriteValue = Bytes.toBytes("overwrite");
     KeyValue overwrite = new KeyValue(bytes, bytes, bytes, overwriteValue);
     this.kvsls.add(overwrite);
-    assertEquals(1, this.kvsls.size());
+    assertEquals(1, this.kvsls.sizeForTest());
     first = this.kvsls.first();
     assertTrue(Bytes.equals(overwrite.getValue(), first.getValue()));
     assertFalse(Bytes.equals(overwrite.getValue(), kv.getValue()));

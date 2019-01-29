@@ -46,11 +46,11 @@ public class DefaultStoreFlusher extends StoreFlusher {
   }
 
   @Override
-  public List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, long cacheFlushId,
-      TimeRangeTracker snapshotTimeRangeTracker, AtomicLong flushedSize,
+  public List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, int cellCountOfSnapshot,
+      long cacheFlushId, TimeRangeTracker snapshotTimeRangeTracker, AtomicLong flushedSize,
       MonitoredTask status) throws IOException {
     ArrayList<Path> result = new ArrayList<Path>();
-    if (snapshot.size() == 0) return result; // don't flush if there are no entries
+    if (snapshot.isEmpty()) return result; // don't flush if there are no entries
 
     // Use a store scanner to find which rows to flush.
     long smallestReadPoint = store.getSmallestReadPoint();
@@ -67,7 +67,7 @@ public class DefaultStoreFlusher extends StoreFlusher {
       synchronized (flushLock) {
         status.setStatus("Flushing " + store + ": creating writer");
         // Write the map out to the disk
-        writer = store.createWriterInTmp(snapshot.size(), store.getFamily().getCompression(),
+        writer = store.createWriterInTmp(cellCountOfSnapshot, store.getFamily().getCompression(),
             /* isCompaction = */ false,
             /* includeMVCCReadpoint = */ true,
             /* includesTags = */ true,
