@@ -36,6 +36,7 @@ import "Procedure.proto";
 import "Quota.proto";
 import "Replication.proto";
 import "Snapshot.proto";
+import "AccessControl.proto";
 
 /* Column-level protobufs */
 
@@ -1023,6 +1024,10 @@ service MasterService {
   /** Returns a list of replication loads */
   rpc GetPeerMaxReplicationLoad(GetPeerMaxReplicationLoadRequest)
   returns(GetPeerMaxReplicationLoadResponse);
+
+  rpc Grant(GrantRequest) returns (GrantResponse);
+
+  rpc Revoke(RevokeRequest) returns (RevokeResponse);
 }
 
 // HBCK Service definitions.

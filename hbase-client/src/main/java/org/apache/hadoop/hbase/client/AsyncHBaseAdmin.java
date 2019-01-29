@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
@@ -798,8 +799,19 @@ class AsyncHBaseAdmin implements AsyncAdmin {
     return wrap(rawAdmin.getCurrentSpaceQuotaSnapshot(tableName));
   }
 
-  @Override public CompletableFuture<ReplicationLoadSource> getPeerMaxReplicationLoad(
-      String peerId) {
+  @Override
+  public CompletableFuture<ReplicationLoadSource> getPeerMaxReplicationLoad(String peerId) {
     return wrap(rawAdmin.getPeerMaxReplicationLoad(peerId));
+  }
+
+  @Override
+  public CompletableFuture<Void> grant(UserPermission userPermission,
+      boolean mergeExistingPermissions) {
+    return wrap(rawAdmin.grant(userPermission, mergeExistingPermissions));
+  }
+
+  @Override
+  public CompletableFuture<Void> revoke(UserPermission userPermission) {
+    return wrap(rawAdmin.revoke(userPermission));
   }
 }

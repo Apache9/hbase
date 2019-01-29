@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
@@ -1330,4 +1331,19 @@ public interface AsyncAdmin {
    * Returns the max load of replication for the given {@code peerId}
    */
   CompletableFuture<ReplicationLoadSource> getPeerMaxReplicationLoad(String peerId);
+
+  /**
+   * Grants user specific permissions
+   * @param userPermission user and permissions
+   * @param mergeExistingPermissions If set to false, later granted permissions will override
+   *          previous granted permissions. otherwise, it'll merge with previous granted
+   *          permissions.
+   */
+  CompletableFuture<Void> grant(UserPermission userPermission, boolean mergeExistingPermissions);
+
+  /**
+   * Revokes user specific permissions
+   * @param userPermission user and permissions
+   */
+  CompletableFuture<Void> revoke(UserPermission userPermission);
 }

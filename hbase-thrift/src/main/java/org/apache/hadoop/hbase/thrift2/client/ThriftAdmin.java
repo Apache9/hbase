@@ -60,6 +60,7 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.thrift2.ThriftUtilities;
 import org.apache.hadoop.hbase.thrift2.generated.TColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.thrift2.generated.THBaseService;
@@ -1430,5 +1431,15 @@ public class ThriftAdmin implements Admin {
   @Override
   public ReplicationLoadSource getPeerMaxReplicationLoad(String peerId) throws IOException {
     throw new NotImplementedException("getPeerMaxReplicationLoad not supported in ThriftAdmin");
+  }
+
+  @Override
+  public void grant(UserPermission userPermission, boolean mergeExistingPermissions) {
+    throw new NotImplementedException("grant not supported in ThriftAdmin");
+  }
+
+  @Override
+  public void revoke(UserPermission userPermission) {
+    throw new NotImplementedException("revoke not supported in ThriftAdmin");
   }
 }

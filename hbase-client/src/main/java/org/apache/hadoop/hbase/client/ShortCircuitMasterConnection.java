@@ -19,8 +19,14 @@ package org.apache.hadoop.hbase.client;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 import org.apache.yetus.audience.InterfaceAudience;
+
 import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
+
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos.GrantRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos.GrantResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos.RevokeRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos.RevokeResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CoprocessorServiceRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CoprocessorServiceResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.AbortProcedureRequest;
@@ -673,9 +679,22 @@ public class ShortCircuitMasterConnection implements MasterKeepAliveConnection {
     return stub.isRpcThrottleEnabled(controller, request);
   }
 
-  @Override public ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+  @Override
+  public ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
       RpcController controller, ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
       throws ServiceException {
     return stub.getPeerMaxReplicationLoad(controller, request);
+  }
+
+  @Override
+  public GrantResponse grant(RpcController controller, GrantRequest request)
+      throws ServiceException {
+    return stub.grant(controller, request);
+  }
+
+  @Override
+  public RevokeResponse revoke(RpcController controller, RevokeRequest request)
+      throws ServiceException {
+    return stub.revoke(controller, request);
   }
 }
