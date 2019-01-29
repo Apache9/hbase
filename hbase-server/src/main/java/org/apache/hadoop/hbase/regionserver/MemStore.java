@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.SortedSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
@@ -87,6 +88,7 @@ public class MemStore implements HeapSize {
 
   // Used to track own heapSize
   final AtomicLong size;
+  final AtomicInteger cellsCount;
   private volatile long snapshotSize;
 
   // Used to track when to flush
@@ -119,6 +121,7 @@ public class MemStore implements HeapSize {
     timeRangeTracker = new TimeRangeTracker();
     snapshotTimeRangeTracker = new TimeRangeTracker();
     this.size = new AtomicLong(DEEP_OVERHEAD);
+    this.cellsCount = new AtomicInteger(0);
     this.snapshotSize = 0;
     if (conf.getBoolean(USEMSLAB_KEY, USEMSLAB_DEFAULT)) {
       this.chunkPool = MemStoreChunkPool.getPool(conf);
@@ -158,6 +161,7 @@ public class MemStore implements HeapSize {
         this.timeRangeTracker = new TimeRangeTracker();
         // Reset heap to not include any keys
         this.size.set(DEEP_OVERHEAD);
+        this.cellsCount.set(0);
         this.snapshotAllocator = this.allocator;
         // Reset allocator so we get a fresh buffer for the new memstore
         if (allocator != null) {
@@ -178,6 +182,10 @@ public class MemStore implements HeapSize {
    */
   KeyValueSkipListSet getSnapshot() {
     return this.snapshot;
+  }
+
+  int getCellsCount() {
+    return this.cellsCount.get();
   }
 
   /**
@@ -260,9 +268,13 @@ public class MemStore implements HeapSize {
    * Callers should ensure they already have the read lock taken
    */
   private long internalAdd(final KeyValue toAdd) {
-    long s = heapSizeChange(toAdd, addToKVSet(toAdd));
+    boolean succ = addToKVSet(toAdd);
+    long s = heapSizeChange(toAdd, succ);
     timeRangeTracker.includeTimestamp(toAdd);
     this.size.addAndGet(s);
+    if (succ) {
+      this.cellsCount.incrementAndGet();
+    }
     return s;
   }
 
@@ -308,9 +320,11 @@ public class MemStore implements HeapSize {
     // If the key is in the memstore, delete it. Update this.size.
     found = this.kvset.get(kv);
     if (found != null && found.getMvccVersion() == kv.getMvccVersion()) {
-      removeFromKVSet(kv);
-      long s = heapSizeChange(kv, true);
-      this.size.addAndGet(-s);
+      if (removeFromKVSet(kv)) {
+        long s = heapSizeChange(kv, true);
+        this.size.addAndGet(-s);
+        this.cellsCount.addAndGet(-1);
+      }
     }
   }
 
@@ -322,9 +336,13 @@ public class MemStore implements HeapSize {
   long delete(final KeyValue delete) {
     long s = 0;
     KeyValue toAdd = maybeCloneWithAllocator(delete);
-    s += heapSizeChange(toAdd, addToKVSet(toAdd));
+    boolean succ = addToKVSet(toAdd);
+    s += heapSizeChange(toAdd, succ);
     timeRangeTracker.includeTimestamp(toAdd);
     this.size.addAndGet(s);
+    if (succ) {
+      this.cellsCount.addAndGet(1);
+    }
     return s;
   }
 
@@ -596,6 +614,7 @@ public class MemStore implements HeapSize {
             long delta = heapSizeChange(cur, true);
             addedSize -= delta;
             this.size.addAndGet(-delta);
+            this.cellsCount.addAndGet(-1);
             it.remove();
             setOldestEditTimeToNow();
           } else {
@@ -1004,11 +1023,11 @@ public class MemStore implements HeapSize {
   }
 
   public final static long FIXED_OVERHEAD = ClassSize.align(
-      ClassSize.OBJECT + (10 * ClassSize.REFERENCE) + (2 * Bytes.SIZEOF_LONG));
+      ClassSize.OBJECT + (11 * ClassSize.REFERENCE) + (2 * Bytes.SIZEOF_LONG));
 
-  public final static long DEEP_OVERHEAD = ClassSize.align(FIXED_OVERHEAD +
-      ClassSize.ATOMIC_LONG + (2 * ClassSize.TIMERANGE_TRACKER) +
-      (2 * ClassSize.KEYVALUE_SKIPLIST_SET) + (2 * ClassSize.CONCURRENT_SKIPLISTMAP));
+  public final static long DEEP_OVERHEAD = ClassSize.align(FIXED_OVERHEAD + ClassSize.ATOMIC_LONG
+      + ClassSize.ATOMIC_INTEGER + (2 * ClassSize.TIMERANGE_TRACKER)
+      + (2 * ClassSize.KEYVALUE_SKIPLIST_SET) + (2 * ClassSize.CONCURRENT_SKIPLISTMAP));
 
   /*
    * Calculate how the MemStore size has changed.  Includes overhead of the

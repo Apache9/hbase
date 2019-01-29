@@ -794,7 +794,7 @@ public class HStore implements Store {
 
   /**
    * Snapshot this stores memstore. Call before running
-   * {@link #flushCache(long, SortedSet, TimeRangeTracker, AtomicLong, MonitoredTask)}
+   * {@link #flushCache(long, SortedSet, int, TimeRangeTracker, AtomicLong, MonitoredTask)}
    *  so it has some work to do.
    */
   void snapshot() {
@@ -818,7 +818,7 @@ public class HStore implements Store {
    * @throws IOException
    */
   protected List<Path> flushCache(final long logCacheFlushId,
-      SortedSet<KeyValue> snapshot,
+      SortedSet<KeyValue> snapshot, int cellCountOfSnapshot,
       TimeRangeTracker snapshotTimeRangeTracker,
       AtomicLong flushedSize,
       MonitoredTask status) throws IOException {
@@ -831,8 +831,8 @@ public class HStore implements Store {
     IOException lastException = null;
     for (int i = 0; i < flushRetriesNumber; i++) {
       try {
-        List<Path> pathNames = flusher.flushSnapshot(
-            snapshot, logCacheFlushId, snapshotTimeRangeTracker, flushedSize, status);
+        List<Path> pathNames = flusher.flushSnapshot(snapshot, cellCountOfSnapshot, logCacheFlushId,
+          snapshotTimeRangeTracker, flushedSize, status);
         Path lastPathName = null;
         try {
           for (Path pathName : pathNames) {
@@ -2067,7 +2067,7 @@ public class HStore implements Store {
     private List<Path> tempFiles;
     private List<Path> committedFiles;
     private TimeRangeTracker snapshotTimeRangeTracker;
-    private long flushedCount;
+    private int flushedCount;
     private final AtomicLong flushedSize = new AtomicLong();
 
     private StoreFlusherImpl(long cacheFlushSeqNum) {
@@ -2080,17 +2080,17 @@ public class HStore implements Store {
      */
     @Override
     public void prepare() {
+      this.flushedCount = memstore.getCellsCount();
       memstore.snapshot();
       this.snapshot = memstore.getSnapshot();
       this.snapshotTimeRangeTracker = memstore.getSnapshotTimeRangeTracker();
-      this.flushedCount = this.snapshot.size();
       committedFiles = new ArrayList<>();
     }
 
     @Override
     public void flushCache(MonitoredTask status) throws IOException {
-      tempFiles = HStore.this.flushCache(
-        cacheFlushSeqNum, snapshot, snapshotTimeRangeTracker, flushedSize, status);
+      tempFiles = HStore.this.flushCache(cacheFlushSeqNum, snapshot, flushedCount,
+        snapshotTimeRangeTracker, flushedSize, status);
     }
 
     @Override

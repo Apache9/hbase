@@ -58,12 +58,11 @@ public class StripeStoreFlusher extends StoreFlusher {
   }
 
   @Override
-  public List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, long cacheFlushSeqNum,
-      final TimeRangeTracker tracker, AtomicLong flushedSize, MonitoredTask status)
-          throws IOException {
+  public List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, int cellCountOfSnapshot,
+      long cacheFlushSeqNum, final TimeRangeTracker tracker, AtomicLong flushedSize,
+      MonitoredTask status) throws IOException {
     List<Path> result = new ArrayList<Path>();
-    int kvCount = snapshot.size();
-    if (kvCount == 0) return result; // don't flush if there are no entries
+    if (cellCountOfSnapshot == 0) return result; // don't flush if there are no entries
 
     long smallestReadPoint = store.getSmallestReadPoint();
     InternalScanner scanner = createScanner(snapshot, smallestReadPoint);
@@ -72,16 +71,17 @@ public class StripeStoreFlusher extends StoreFlusher {
     }
 
     // Let policy select flush method.
-    StripeFlushRequest req = this.policy.selectFlush(store.getComparator(), this.stripes,
-      kvCount);
+    StripeFlushRequest req =
+        this.policy.selectFlush(store.getComparator(), this.stripes, cellCountOfSnapshot);
 
     long flushedBytes = 0;
     boolean success = false;
     StripeMultiFileWriter mw = null;
     try {
       mw = req.createWriter(); // Writer according to the policy.
-      StripeMultiFileWriter.WriterFactory factory = createWriterFactory(tracker, kvCount);
-      StoreScanner storeScanner = (scanner instanceof StoreScanner) ? (StoreScanner)scanner : null;
+      StripeMultiFileWriter.WriterFactory factory =
+          createWriterFactory(tracker, cellCountOfSnapshot);
+      StoreScanner storeScanner = (scanner instanceof StoreScanner) ? (StoreScanner) scanner : null;
       mw.init(storeScanner, factory);
 
       synchronized (flushLock) {

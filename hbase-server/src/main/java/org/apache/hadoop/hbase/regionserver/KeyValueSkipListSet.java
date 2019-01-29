@@ -29,6 +29,8 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * A {@link java.util.Set} of {@link KeyValue}s implemented on top of a
  * {@link java.util.concurrent.ConcurrentSkipListMap}.  Works like a
@@ -171,6 +173,14 @@ public class KeyValueSkipListSet implements NavigableSet<KeyValue> {
   }
 
   public int size() {
+    if (delegatee instanceof ConcurrentSkipListMap) {
+      throw new UnsupportedOperationException("ConcurrentSkipListMap.size() is time-consuming");
+    }
+    return this.delegatee.size();
+  }
+
+  @VisibleForTesting
+  public int sizeForTest() {
     return this.delegatee.size();
   }
 

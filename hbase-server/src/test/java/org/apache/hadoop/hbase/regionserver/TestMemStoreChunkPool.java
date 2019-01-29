@@ -117,13 +117,13 @@ public class TestMemStoreChunkPool {
     // Creating a snapshot
     memstore.snapshot();
     KeyValueSkipListSet snapshot = memstore.getSnapshot();
-    assertEquals(3, memstore.snapshot.size());
+    assertEquals(3, memstore.snapshot.sizeForTest());
 
     // Adding value to "new" memstore
-    assertEquals(0, memstore.kvset.size());
+    assertEquals(0, memstore.kvset.sizeForTest());
     memstore.add(new KeyValue(row, fam, qf4, val));
     memstore.add(new KeyValue(row, fam, qf5, val));
-    assertEquals(2, memstore.kvset.size());
+    assertEquals(2, memstore.kvset.sizeForTest());
     memstore.clearSnapshot(snapshot);
 
     int chunkCount = chunkPool.getPoolSize();
@@ -155,13 +155,13 @@ public class TestMemStoreChunkPool {
     // Creating a snapshot
     memstore.snapshot();
     KeyValueSkipListSet snapshot = memstore.getSnapshot();
-    assertEquals(3, memstore.snapshot.size());
+    assertEquals(3, memstore.snapshot.sizeForTest());
 
     // Adding value to "new" memstore
-    assertEquals(0, memstore.kvset.size());
+    assertEquals(0, memstore.kvset.sizeForTest());
     memstore.add(new KeyValue(row, fam, qf4, val));
     memstore.add(new KeyValue(row, fam, qf5, val));
-    assertEquals(2, memstore.kvset.size());
+    assertEquals(2, memstore.kvset.sizeForTest());
 
     // opening scanner before clear the snapshot
     List<KeyValueScanner> scanners = memstore.getScanners(0);

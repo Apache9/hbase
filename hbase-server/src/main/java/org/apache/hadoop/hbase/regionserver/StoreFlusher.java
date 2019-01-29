@@ -61,9 +61,9 @@ abstract class StoreFlusher {
    * @param status Task that represents the flush operation and may be updated with status.
    * @return List of files written. Can be empty; must not be null.
    */
-  public abstract List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, long cacheFlushSeqNum,
-      TimeRangeTracker snapshotTimeRangeTracker, AtomicLong flushedSize, MonitoredTask status)
-      throws IOException;
+  public abstract List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, int cellCountOfSnapshot,
+      long cacheFlushSeqNum, TimeRangeTracker snapshotTimeRangeTracker, AtomicLong flushedSize,
+      MonitoredTask status) throws IOException;
 
   protected void finalizeWriter(StoreFile.Writer writer, long cacheFlushSeqNum,
       MonitoredTask status) throws IOException {

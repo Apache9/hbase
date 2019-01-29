@@ -636,17 +636,17 @@ public class TestWALReplay {
     public CustomStoreFlusher(Configuration conf, Store store) {
       super(conf, store);
     }
+
     @Override
-    public List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, long cacheFlushId,
-        TimeRangeTracker snapshotTimeRangeTracker, AtomicLong flushedSize, MonitoredTask status)
-            throws IOException {
+    public List<Path> flushSnapshot(SortedSet<KeyValue> snapshot, int cellCountOfSnapshot,
+        long cacheFlushId, TimeRangeTracker snapshotTimeRangeTracker, AtomicLong flushedSize,
+        MonitoredTask status) throws IOException {
       if (throwExceptionWhenFlushing.get()) {
         throw new IOException("Simulated exception by tests");
       }
-      return super.flushSnapshot(snapshot, cacheFlushId, snapshotTimeRangeTracker,
-          flushedSize, status);
+      return super.flushSnapshot(snapshot, cellCountOfSnapshot, cacheFlushId,
+        snapshotTimeRangeTracker, flushedSize, status);
     }
-
   };
 
   /**
