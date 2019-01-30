@@ -54,6 +54,7 @@ Examples:
   hbase> # SPLITALGO ("HexStringSplit", "UniformSplit" or classname)
   hbase> create 't1', 'f1', {NUMREGIONS => 15, SPLITALGO => 'HexStringSplit'}
   hbase> create 't1', 'f1', {NUMREGIONS => 15, SPLITALGO => 'HexStringSplit', REGION_REPLICATION => 2, CONFIGURATION => {'hbase.hregion.scan.loadColumnFamiliesOnDemand' => 'true'}}
+  hbase> create 't1', 'f1', {SPLIT_ENABLED => false, MERGE_ENABLED => false}
   hbase> create 't1', {NAME => 'f1', DFS_REPLICATION => 1}
   hbase> # create salted table
   hbase> create 'ns1:t1', {METADATA => {'SLOTS_COUNT' => '256'}}, {NAME=>'f1'}
