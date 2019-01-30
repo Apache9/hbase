@@ -68,8 +68,8 @@ public class TestSimpleRegionNormalizer {
     Map<byte[], Integer> regionSizes = new HashMap<>();
 
     setupMocksForNormalizer(regionSizes, hris);
-    NormalizationPlan plan = normalizer.computePlanForTable(testTable);
-    assertTrue(plan instanceof EmptyNormalizationPlan);
+    List<NormalizationPlan> plans = normalizer.computePlanForTable(testTable);
+    assertEquals(0, plans.size());
   }
 
   @Test
@@ -87,8 +87,8 @@ public class TestSimpleRegionNormalizer {
     regionSizes.put(hri2.getRegionName(), 15);
 
     setupMocksForNormalizer(regionSizes, hris);
-    NormalizationPlan plan = normalizer.computePlanForTable(testTable);
-    assertTrue((plan instanceof EmptyNormalizationPlan));
+    List<NormalizationPlan> plans = normalizer.computePlanForTable(testTable);
+    assertEquals(0, plans.size());
   }
 
   @Test
@@ -115,8 +115,8 @@ public class TestSimpleRegionNormalizer {
 
 
     setupMocksForNormalizer(regionSizes, hris);
-    NormalizationPlan plan = normalizer.computePlanForTable(testTable);
-    assertTrue(plan instanceof EmptyNormalizationPlan);
+    List<NormalizationPlan> plans = normalizer.computePlanForTable(testTable);
+    assertEquals(0, plans.size());
   }
 
   @Test
@@ -146,8 +146,9 @@ public class TestSimpleRegionNormalizer {
     regionSizes.put(hri5.getRegionName(), 16);
 
     setupMocksForNormalizer(regionSizes, hris);
-    NormalizationPlan plan = normalizer.computePlanForTable(testTable);
-
+    List<NormalizationPlan> plans = normalizer.computePlanForTable(testTable);
+    assertEquals(1, plans.size());
+    NormalizationPlan plan = plans.get(0);
     assertTrue(plan instanceof MergeNormalizationPlan);
     assertEquals(hri2, ((MergeNormalizationPlan) plan).getFirstRegion());
     assertEquals(hri3, ((MergeNormalizationPlan) plan).getSecondRegion());
@@ -180,9 +181,8 @@ public class TestSimpleRegionNormalizer {
     regionSizes.put(hri5.getRegionName(), 5);
 
     setupMocksForNormalizer(regionSizes, hris);
-    NormalizationPlan plan = normalizer.computePlanForTable(testTable);
-
-    assertTrue(plan instanceof EmptyNormalizationPlan);
+    List<NormalizationPlan> plans = normalizer.computePlanForTable(testTable);
+    assertEquals(0, plans.size());
   }
 
   @Test
@@ -208,8 +208,9 @@ public class TestSimpleRegionNormalizer {
     regionSizes.put(hri4.getRegionName(), 30);
 
     setupMocksForNormalizer(regionSizes, hris);
-    NormalizationPlan plan = normalizer.computePlanForTable(testTable);
-
+    List<NormalizationPlan> plans = normalizer.computePlanForTable(testTable);
+    assertEquals(1, plans.size());
+    NormalizationPlan plan = plans.get(0);
     assertTrue(plan instanceof SplitNormalizationPlan);
     assertEquals(hri4, ((SplitNormalizationPlan) plan).getRegionInfo());
   }

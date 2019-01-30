@@ -124,6 +124,7 @@ import org.apache.hadoop.hbase.master.handler.TableAddFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableDeleteFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableModifyFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TruncateTableHandler;
+import org.apache.hadoop.hbase.master.normalizer.NormalizationPlan;
 import org.apache.hadoop.hbase.master.normalizer.RegionNormalizer;
 import org.apache.hadoop.hbase.master.normalizer.RegionNormalizerChore;
 import org.apache.hadoop.hbase.master.normalizer.RegionNormalizerFactory;
@@ -2076,7 +2077,10 @@ MasterServices, Server {
             LOG.debug("Skipping normalization for table: " + table + ", as it's either system" + " table or doesn't have auto normalization turned on");
             continue;
           }
-          this.normalizer.computePlanForTable(table).execute(admin);
+          List<NormalizationPlan> plans = this.normalizer.computePlanForTable(table);
+          if (plans != null) {
+            plans.stream().forEach(plan -> plan.execute(admin));
+          }
         }
       }
     }

@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.master.normalizer;
 
+import java.util.List;
+
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -47,5 +49,5 @@ public interface RegionNormalizer {
    * @param table table to normalize
    * @return Next (perhaps most urgent) normalization action to perform
    */
-  NormalizationPlan computePlanForTable(TableName table);
+  List<NormalizationPlan> computePlanForTable(TableName table);
 }
