@@ -1272,6 +1272,7 @@ public final class ProtobufUtil {
               kv.getQualifierArray(), kv.getQualifierOffset(), kv.getQualifierLength()));
           valueBuilder.setValue(ByteStringer.wrap(
               kv.getValueArray(), kv.getValueOffset(), kv.getValueLength()));
+          valueBuilder.setTimestamp(cell.getTimestamp());
           if (kv.getTagsLengthUnsigned() > 0) {
             valueBuilder.setTags(ByteStringer.wrap(kv.getTagsArray(),
                 kv.getTagsOffset(), kv.getTagsLengthUnsigned()));
