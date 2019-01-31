@@ -535,7 +535,7 @@ public class TestStore {
     this.store.snapshot();
     flushStore(store, id++);
     Assert.assertEquals(storeFilessize, this.store.getStorefiles().size());
-    Assert.assertEquals(0, this.store.memstore.kvset.size());
+    Assert.assertEquals(0, this.store.memstore.kvset.sizeForTest());
   }
 
   private void assertCheck() {
@@ -580,7 +580,7 @@ public class TestStore {
     flushStore(store, id++);
     Assert.assertEquals(1, this.store.getStorefiles().size());
     // from the one we inserted up there, and a new one
-    Assert.assertEquals(2, this.store.memstore.kvset.size());
+    Assert.assertEquals(2, this.store.memstore.kvset.sizeForTest());
 
     // how many key/values for this row are there?
     Get get = new Get(row);
@@ -686,7 +686,7 @@ public class TestStore {
     // then flush.
     flushStore(store, id++);
     Assert.assertEquals(1, this.store.getStorefiles().size());
-    Assert.assertEquals(1, this.store.memstore.kvset.size());
+    Assert.assertEquals(1, this.store.memstore.kvset.sizeForTest());
 
     // now increment again:
     newValue += 1;
