@@ -200,9 +200,11 @@ public class TestProtobufUtil {
     QualifierValue.Builder qualifierBuilder = QualifierValue.newBuilder();
     qualifierBuilder.setQualifier(ByteString.copyFromUtf8("c1"));
     qualifierBuilder.setValue(ByteStringer.wrap(Bytes.toBytes(11L)));
+    qualifierBuilder.setTimestamp(HConstants.LATEST_TIMESTAMP);
     valueBuilder.addQualifierValue(qualifierBuilder.build());
     qualifierBuilder.setQualifier(ByteString.copyFromUtf8("c2"));
     qualifierBuilder.setValue(ByteStringer.wrap(Bytes.toBytes(22L)));
+    qualifierBuilder.setTimestamp(HConstants.LATEST_TIMESTAMP);
     valueBuilder.addQualifierValue(qualifierBuilder.build());
     mutateBuilder.addColumnValue(valueBuilder.build());
 
