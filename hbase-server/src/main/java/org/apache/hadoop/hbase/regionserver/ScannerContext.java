@@ -126,7 +126,7 @@ public class ScannerContext {
     this.metrics = trackMetrics ? new ServerSideScanMetrics() : null;
   }
 
-  boolean isTrackingMetrics() {
+  public boolean isTrackingMetrics() {
     return this.metrics != null;
   }
 
@@ -135,7 +135,7 @@ public class ScannerContext {
    * has been made to confirm that metrics are indeed being tracked.
    * @return {@link ServerSideScanMetrics} instance that is tracking metrics for this scan
    */
-  ServerSideScanMetrics getMetrics() {
+  public ServerSideScanMetrics getMetrics() {
     assert isTrackingMetrics();
     return this.metrics;
   }
