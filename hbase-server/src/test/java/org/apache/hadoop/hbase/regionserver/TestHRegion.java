@@ -1893,12 +1893,10 @@ public class TestHRegion {
 
       // checkAndPut with wrong value
       HStore store = (HStore) region.getStore(fam1);
-      store.memstore.kvset.size();
 
       boolean res = region.checkAndMutate(row1, fam1, qf1, CompareOp.EQUAL, new BinaryComparator(
           val1), put, true);
       assertEquals(true, res);
-      store.memstore.kvset.size();
 
       Get get = new Get(row1);
       get.addColumn(fam2, qf1);
