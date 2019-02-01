@@ -821,6 +821,7 @@ public class TestHFileOutputFormat2  {
   private void setupMockTableName(HTable table) throws IOException {
     TableName mockTableName = TableName.valueOf("mock_table");
     Mockito.doReturn(mockTableName).when(table).getName();
+    Mockito.doReturn(Bytes.toBytes("mock_table")).when(table).getFullTableName();
   }
 
   /**
