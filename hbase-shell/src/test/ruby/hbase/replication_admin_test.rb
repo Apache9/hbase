@@ -52,6 +52,20 @@ module Hbase
       end
     end
 
+    define_test "add_peer: CLUSTER_KEY and ENDPOINT_CLASSNAME are specified" do
+      cluster_key = "zk1,zk2,zk3:2182:/hbase-prod"
+      repl_impl = "org.apache.hadoop.hbase.replication.regionserver.RedirectingInterClusterReplicationEndpoint"
+      args = {CLUSTER_KEY => cluster_key, ENDPOINT_CLASSNAME => repl_impl}
+      replication_admin.add_peer(@peer_id, args)
+
+      assert_equal(1, replication_admin.list_peers().length)
+      assert_equal(cluster_key, replication_admin.list_peers().fetch(@peer_id).getClusterKey)
+      assert_equal(repl_impl, replication_admin.list_peers().fetch(@peer_id).getReplicationEndpointImpl)
+
+      # cleanup for future tests
+      replication_admin.remove_peer(@peer_id)
+    end
+
     define_test "add_peer: args must be a hash" do
       assert_raise(ArgumentError) do
         replication_admin.add_peer(@peer_id, 1)

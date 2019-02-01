@@ -19,10 +19,6 @@
 
 package org.apache.hadoop.hbase.replication;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,12 +33,8 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
@@ -63,8 +55,6 @@ public class TestNamespaceReplication extends TestReplicationBase {
 
   private static final byte[] f1Name = Bytes.toBytes("f1");
   private static final byte[] f2Name = Bytes.toBytes("f2");
-
-  private static final byte[] val = Bytes.toBytes("myval");
 
   private static HTableDescriptor tabA;
   private static HTableDescriptor tabB;
@@ -223,65 +213,5 @@ public class TestNamespaceReplication extends TestReplicationBase {
     ensureRowExisted(htab2B, row, f2Name);
     delete(htab1B, row, f2Name);
     ensureRowNotExisted(htab2B, row, f1Name, f2Name);
-  }
-
-  private void put(HTable source, byte[] row, byte[]... families)
-      throws Exception {
-    for (byte[] fam : families) {
-      Put put = new Put(row);
-      put.add(fam, row, val);
-      source.put(put);
-    }
-  }
-
-  private void delete(HTable source, byte[] row, byte[]... families)
-      throws Exception {
-    for (byte[] fam : families) {
-      Delete del = new Delete(row);
-      del.deleteFamily(fam);
-      source.delete(del);
-    }
-  }
-
-  private void ensureRowExisted(HTable target, byte[] row, byte[]... families)
-      throws Exception {
-    for (byte[] fam : families) {
-      Get get = new Get(row);
-      get.addFamily(fam);
-      for (int i = 0; i < NB_RETRIES; i++) {
-        if (i == NB_RETRIES - 1) {
-          fail("Waited too much time for put replication");
-        }
-        Result res = target.get(get);
-        if (res.size() == 0) {
-          LOG.info("Row not available");
-        } else {
-          assertEquals(res.size(), 1);
-          assertArrayEquals(res.value(), val);
-          break;
-        }
-        Thread.sleep(SLEEP_TIME);
-      }
-    }
-  }
-
-  private void ensureRowNotExisted(HTable target, byte[] row, byte[]... families)
-      throws Exception {
-    for (byte[] fam : families) {
-      Get get = new Get(row);
-      get.addFamily(fam);
-      for (int i = 0; i < NB_RETRIES; i++) {
-        if (i == NB_RETRIES - 1) {
-          fail("Waited too much time for delete replication");
-        }
-        Result res = target.get(get);
-        if (res.size() >= 1) {
-          LOG.info("Row not deleted");
-        } else {
-          break;
-        }
-        Thread.sleep(SLEEP_TIME);
-      }
-    }
   }
 }
