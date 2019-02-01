@@ -297,7 +297,7 @@ public class TestSnapshotCloneIndependence {
    */
   private void runTestRegionOperationsIndependent() throws Exception {
     // Verify that region information is the same pre-split
-    ((ClusterConnection) UTIL.getConnection()).clearRegionCache();
+    UTIL.getConnection().clearRegionLocationCache();
     List<HRegionInfo> originalTableHRegions = admin.getTableRegions(originalTableName);
 
     final int originalRegionCount = originalTableHRegions.size();
