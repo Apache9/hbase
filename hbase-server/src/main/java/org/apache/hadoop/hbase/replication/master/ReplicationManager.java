@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
 import org.apache.hadoop.hbase.replication.ReplicationQueuesClient;
 import org.apache.hadoop.hbase.replication.TalosReplicationEndpoint;
+import org.apache.hadoop.hbase.replication.regionserver.RedirectingInterClusterReplicationEndpoint;
 import org.apache.hadoop.hbase.util.TalosUtil;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -82,7 +83,7 @@ public class ReplicationManager {
     if (!peerModificationEnabled) {
       throw new ReplicationException("Replication peer modification is disabled");
     }
-    if(peerConfig.getReplicationEndpointImpl() != null) {
+    if (peerConfig.getReplicationEndpointImpl() != null) {
       checkReplicationEndpoint(peerConfig);
     } else {
       checkClusterKey(peerConfig.getClusterKey());
@@ -96,8 +97,12 @@ public class ReplicationManager {
       throws DoNotRetryIOException {
     try {
       Class endpointImpl = Class.forName(peerConfig.getReplicationEndpointImpl());
-      if(endpointImpl == TalosReplicationEndpoint.class) {
+      if (endpointImpl.equals(TalosReplicationEndpoint.class)) {
         TalosUtil.checkConfig(peerConfig);
+      }
+      // For RedirectingInterClusterReplicationEndpoint, need check cluster key, too.
+      if (endpointImpl.equals(RedirectingInterClusterReplicationEndpoint.class)) {
+        checkClusterKey(peerConfig.getClusterKey());
       }
     } catch (ClassNotFoundException e) {
       throw new DoNotRetryIOException(

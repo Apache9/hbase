@@ -188,6 +188,15 @@ public class HLogKey implements WritableComparable<HLogKey> {
     return tablename;
   }
 
+  /**
+   * Set the tablename of this HLogKey
+   *
+   * @param tablename
+   */
+  public void setTablename(TableName tablename) {
+    this.tablename = tablename;
+  }
+
   /** @return log sequence number */
   public long getLogSeqNum() {
     return this.logSeqNum;

@@ -28,8 +28,12 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSource;
@@ -39,6 +43,10 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.log4j.Level;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * This class is only a base for other integration-level replication tests.
@@ -79,6 +87,7 @@ public class TestReplicationBase {
   protected static final byte[] famName = Bytes.toBytes("f");
   protected static final byte[] row = Bytes.toBytes("row");
   protected static final byte[] noRepfamName = Bytes.toBytes("norep");
+  private static final byte[] val = Bytes.toBytes("myval");
 
   protected static final int numRegionServers = 2;
 
@@ -160,6 +169,64 @@ public class TestReplicationBase {
     utility1.shutdownMiniCluster();
   }
 
+  protected void put(HTable source, byte[] row, byte[]... families)
+      throws Exception {
+    for (byte[] fam : families) {
+      Put put = new Put(row);
+      put.add(fam, row, val);
+      source.put(put);
+    }
+  }
 
+  protected void delete(HTable source, byte[] row, byte[]... families)
+      throws Exception {
+    for (byte[] fam : families) {
+      Delete del = new Delete(row);
+      del.deleteFamily(fam);
+      source.delete(del);
+    }
+  }
+
+  protected void ensureRowExisted(HTable target, byte[] row, byte[]... families)
+      throws Exception {
+    for (byte[] fam : families) {
+      Get get = new Get(row);
+      get.addFamily(fam);
+      for (int i = 0; i < NB_RETRIES; i++) {
+        if (i == NB_RETRIES - 1) {
+          fail("Waited too much time for put replication");
+        }
+        Result res = target.get(get);
+        if (res.size() == 0) {
+          LOG.info("Row not available");
+        } else {
+          assertEquals(res.size(), 1);
+          assertArrayEquals(res.value(), val);
+          break;
+        }
+        Thread.sleep(SLEEP_TIME);
+      }
+    }
+  }
+
+  protected void ensureRowNotExisted(HTable target, byte[] row, byte[]... families)
+      throws Exception {
+    for (byte[] fam : families) {
+      Get get = new Get(row);
+      get.addFamily(fam);
+      for (int i = 0; i < NB_RETRIES; i++) {
+        if (i == NB_RETRIES - 1) {
+          fail("Waited too much time for delete replication");
+        }
+        Result res = target.get(get);
+        if (res.size() >= 1) {
+          LOG.info("Row not deleted");
+        } else {
+          break;
+        }
+        Thread.sleep(SLEEP_TIME);
+      }
+    }
+  }
 }
 
