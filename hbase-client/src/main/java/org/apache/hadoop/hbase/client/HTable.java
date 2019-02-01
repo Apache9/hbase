@@ -105,7 +105,7 @@ import static org.apache.hadoop.hbase.client.ConnectionUtils.checkHasFamilies;
 public class HTable implements Table {
   private static final Logger LOG = LoggerFactory.getLogger(HTable.class);
   private static final Consistency DEFAULT_CONSISTENCY = Consistency.STRONG;
-  private final ClusterConnection connection;
+  private final ConnectionImplementation connection;
   private final TableName tableName;
   private final Configuration configuration;
   private final ConnectionConfiguration connConfiguration;
@@ -953,7 +953,7 @@ public class HTable implements Table {
    * This is a power user function: avoid unless you know the ramifications.
    */
   public void clearRegionCache() {
-    this.connection.clearRegionCache();
+    this.connection.clearRegionLocationCache();
   }
 
   @Override
