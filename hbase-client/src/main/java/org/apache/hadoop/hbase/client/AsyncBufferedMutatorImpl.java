@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.util.FutureUtils.addListener;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -95,7 +97,7 @@ class AsyncBufferedMutatorImpl implements AsyncBufferedMutator {
     Iterator<CompletableFuture<Void>> toCompleteIter = toComplete.iterator();
     for (CompletableFuture<?> future : table.batch(toSend)) {
       CompletableFuture<Void> toCompleteFuture = toCompleteIter.next();
-      future.whenComplete((r, e) -> {
+      addListener(future, (r, e) -> {
         if (e != null) {
           toCompleteFuture.completeExceptionally(e);
         } else {

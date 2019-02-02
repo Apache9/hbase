@@ -18,20 +18,20 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.util.FutureUtils.addListener;
+
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
-
-import com.xiaomi.infra.base.nameservice.NameService;
-import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+import org.apache.yetus.audience.InterfaceAudience;
 
 /**
  * A non-instantiable class that manages creation of {@link Connection}s. Managing the lifecycle of
@@ -306,7 +306,7 @@ public class ConnectionFactory {
       User user) {
     CompletableFuture<AsyncConnection> future = new CompletableFuture<>();
     AsyncRegistry registry = AsyncRegistryFactory.getRegistry(conf);
-    registry.getClusterId().whenComplete((clusterId, error) -> {
+    addListener(registry.getClusterId(), (clusterId, error) -> {
       if (error != null) {
         future.completeExceptionally(error);
         return;

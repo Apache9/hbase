@@ -587,7 +587,7 @@ class RawAsyncTableImpl implements AsyncTable<AdvancedScanResultConsumer> {
         (l, e) -> onLocateComplete(stubMaker, callable, callback, locs, endKey, endKeyInclusive,
           locateFinished, unfinishedRequest, l, e));
     }
-    coprocessorService(stubMaker, callable, region, region.getStartKey()).whenComplete((r, e) -> {
+    addListener(coprocessorService(stubMaker, callable, region, region.getStartKey()), (r, e) -> {
       if (e != null) {
         callback.onRegionError(region, e);
       } else {
