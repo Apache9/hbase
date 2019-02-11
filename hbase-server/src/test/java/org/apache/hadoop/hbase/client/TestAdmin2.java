@@ -783,7 +783,7 @@ public class TestAdmin2 {
     Assert.assertNotNull(store);
     Assert.assertEquals(expectedStoreFilesSize, store.getSize());
 
-    ClusterConnection conn = ((ClusterConnection) admin.getConnection());
+    ConnectionImplementation conn = (ConnectionImplementation) admin.getConnection();
     HBaseRpcController controller = conn.getRpcControllerFactory().newController();
     for (int i = 0; i < 10; i++) {
       RegionInfo ri =
