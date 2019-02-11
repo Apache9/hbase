@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.master;
 
+import static org.apache.hadoop.hbase.HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE_DEFAULT;
 import static org.apache.hadoop.hbase.master.MasterWalManager.META_FILTER;
 
 import java.io.IOException;
@@ -51,6 +52,7 @@ import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.client.VersionInfoUtil;
 import org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUtil;
@@ -509,6 +511,19 @@ public class MasterRpcServices extends RSRpcServices
     TableDescriptor tableDescriptor = ProtobufUtil.toTableDescriptor(req.getTableSchema());
     byte [][] splitKeys = ProtobufUtil.getSplitKeysArray(req);
     try {
+      if (master.getConfiguration().getBoolean(HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE,
+        IGNORE_SPLITS_WHEN_CREATE_TABLE_DEFAULT)) {
+        splitKeys = null;
+        TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(tableDescriptor)
+            .setValue(TableDescriptorBuilder.IGNORE_SPLITS_WHEN_CREATING_KEY,
+              new Bytes(Bytes.toBytes("true")));
+        if (tableDescriptor.isSalted()) {
+          builder.setSlotsCount(1);
+        }
+        tableDescriptor = builder.build();
+        LOG.info("ignore splits for table " + tableDescriptor.getTableName() + ", isSalted="
+            + tableDescriptor.isSalted());
+      }
       long procId =
           master.createTable(tableDescriptor, splitKeys, req.getNonceGroup(), req.getNonce());
       LOG.info(master.getClientIdAuditPrefix() + " procedure request for creating table: " +

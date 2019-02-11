@@ -1447,6 +1447,11 @@ public final class HConstants {
   public static final String TALOS_ACCESS_SECRET = "galaxy.talos.access.secret";
   public static final String TALOS_ACCESS_ENDPOINT = "galaxy.talos.service.endpoint";
 
+  /** Config key to ignore splits when in staging environment */
+  public static final String IGNORE_SPLITS_WHEN_CREATE_TABLE =
+      "hbase.ignore.splits.when.create.table";
+  public static final boolean IGNORE_SPLITS_WHEN_CREATE_TABLE_DEFAULT = false;
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

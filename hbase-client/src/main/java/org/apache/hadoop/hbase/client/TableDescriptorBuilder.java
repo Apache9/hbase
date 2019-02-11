@@ -60,6 +60,12 @@ public class TableDescriptorBuilder {
   public static final String SPLIT_POLICY = "SPLIT_POLICY";
   public static final String ACROSS_PREFIX_ROWS_ATOMIC = "ACROSS_PREFIX_ROWS_ATOMIC";
 
+  @InterfaceAudience.Private
+  public static final String IGNORE_SPLITS_WHEN_CREATING = "IGNORE_SPLITS_WHEN_CREATING";
+  @InterfaceAudience.Private
+  public static final Bytes IGNORE_SPLITS_WHEN_CREATING_KEY =
+      new Bytes(Bytes.toBytes(IGNORE_SPLITS_WHEN_CREATING));
+
   public static final String DEFAULT_SPLIT_POLICY_FOR_ACROSS_PREFIX_ROWS_ATOMIC =
       "org.apache.hadoop.hbase.regionserver.KeyDelimiterPrefixRegionSplitPolicy";
 
