@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -322,12 +321,11 @@ public final class Canary implements Tool {
   private long timeout;
   private int maxConcurrency;
   private List<RegionTask> tasks;
-  private final ConcurrentMap<String, List<RegionTask>> cachedTasks =
-      new ConcurrentHashMap<String, List<RegionTask>>();
+  private final ConcurrentMap<String, List<RegionTask>> cachedTasks = new ConcurrentHashMap<>();
   private FileSystem fs;
   private Path rootdir;
-  private Map<ServerName, Integer> failuresByServer;
-  private Map<TableName, Integer> failuresByTable;
+  private ConcurrentMap<ServerName, Integer> failuresByServer;
+  private ConcurrentMap<TableName, Integer> failuresByTable;
   private InfoServer infoServer;
 
   public Canary(Sink sink) {
@@ -632,7 +630,7 @@ public final class Canary implements Tool {
    * Loops over regions that owns this table, and output some information abouts the state.
    */
   private List<RegionTask> sniff(HTableDescriptor tableDesc) throws Exception {
-    if(tableDesc.getTableName().getNamespaceAsString().equals(excludeNamespace)) {
+    if (tableDesc.getTableName().getNamespaceAsString().equals(excludeNamespace)) {
       return new ArrayList<>();
     }
     List<RegionTask> tasks = cachedTasks.get(tableDesc.getNameAsString());
@@ -640,16 +638,13 @@ public final class Canary implements Tool {
       return tasks;
     }
     AsyncTable<?> table = asyncConn.getTable(tableDesc.getTableName());
-    tasks = MetaScanner
-        .allTableRegions(conf, conn, tableDesc.getTableName(), false)
-        .entrySet()
-        .stream()
-        .map(
-          entry -> new RegionTask(conf, table, tableDesc, entry.getKey(), entry.getValue(), sink,
-              this)).collect(Collectors.toList());
+    tasks = MetaScanner.findAndCacheAllTableRegions(conf, conn, tableDesc.getTableName(), asyncConn)
+        .entrySet().stream().map(
+            entry -> new RegionTask(conf, table, tableDesc, entry.getKey(), entry.getValue(), sink,
+                this)).collect(Collectors.toList());
     cachedTasks.put(tableDesc.getNameAsString(), tasks);
-    LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount="
-        + tasks.size());
+    LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount=" +
+        tasks.size());
     return tasks;
   }
 

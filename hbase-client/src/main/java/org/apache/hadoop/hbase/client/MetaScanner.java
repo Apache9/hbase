@@ -28,6 +28,7 @@ import java.util.TreeMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
@@ -35,6 +36,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -276,6 +278,41 @@ public class MetaScanner {
         HRegionInfo info = getHRegionInfo(rowResult);
         ServerName serverName = HRegionInfo.getServerName(rowResult);
         regions.put(new UnmodifyableHRegionInfo(info), serverName);
+        return true;
+      }
+    };
+    metaScan(conf, connection, visitor, tableName);
+    return regions;
+  }
+
+  /**
+   * Only used for canary
+   */
+  public static NavigableMap<HRegionInfo, ServerName> findAndCacheAllTableRegions(
+      Configuration conf, HConnection connection, final TableName tableName,
+      AsyncConnection asyncConnection) throws IOException {
+    final NavigableMap<HRegionInfo, ServerName> regions = new TreeMap<>();
+    AsyncConnectionImpl asyncConnectionImpl = (AsyncConnectionImpl) asyncConnection;
+    MetaScannerVisitor visitor = new TableMetaScannerVisitor(tableName) {
+      @Override
+      public boolean processRowInternal(Result rowResult) throws IOException {
+        HRegionInfo info = getHRegionInfo(rowResult);
+        if (info == null) {
+          LOG.warn("Null REGIONINFO_QUALIFIER: " + rowResult);
+          return true;
+        }
+        if (info.isOffline() || info.isSplitParent()) {
+          return true;
+        }
+        ServerName serverName = HRegionInfo.getServerName(rowResult);
+        regions.put(new UnmodifyableHRegionInfo(info), serverName);
+
+        // Cache region location
+        long seqNum = HRegionInfo.getSeqNumDuringOpen(rowResult);
+        asyncConnectionImpl.getLocator()
+            .updateCachedLocation(new HRegionLocation(info, serverName, seqNum),
+                new RegionMovedException(serverName, seqNum));
+
         return true;
       }
     };
