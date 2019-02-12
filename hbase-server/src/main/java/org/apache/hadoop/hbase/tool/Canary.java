@@ -621,8 +621,7 @@ public final class Canary implements Tool {
       return tasks;
     }
     AsyncTable<?> table = asyncConn.getTable(tableDesc.getTableName());
-    tasks = MetaTableAccessor.getTableRegionsAndLocations(conn, tableDesc.getTableName(), false)
-        .stream()
+    tasks = MetaTableAccessor.getTableRegionsAndLocations(conn, tableDesc.getTableName()).stream()
         .map(r -> new RegionTask(table, tableDesc, r.getFirst(), r.getSecond(), sink, this))
         .collect(Collectors.toList());
     cachedTasks.put(tableDesc.getTableName().getNameAsString(), tasks);
