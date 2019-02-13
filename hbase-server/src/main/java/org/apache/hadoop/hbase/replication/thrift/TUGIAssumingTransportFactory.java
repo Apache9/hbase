@@ -20,8 +20,8 @@
 package org.apache.hadoop.hbase.replication.thrift;
 
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportFactory;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportFactory;
 
 import java.security.PrivilegedAction;
 

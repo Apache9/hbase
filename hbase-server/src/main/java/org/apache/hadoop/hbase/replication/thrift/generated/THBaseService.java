@@ -12,58 +12,58 @@ public class THBaseService {
 
   public interface Iface {
 
-    public void replicate(TBatchEdit edits) throws TIOError, org.apache.thrift.TException;
+    public void replicate(TBatchEdit edits) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void ping() throws org.apache.thrift.TException;
+    public void ping() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public java.lang.String getClusterUUID() throws org.apache.thrift.TException;
+    public java.lang.String getClusterUUID() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
   }
 
   public interface AsyncIface {
 
-    public void replicate(TBatchEdit edits, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
+    public void replicate(TBatchEdit edits, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void ping(org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
+    public void ping(com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void getClusterUUID(org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws org.apache.thrift.TException;
+    public void getClusterUUID(com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
   }
 
-  public static class Client extends org.apache.thrift.TServiceClient implements Iface {
-    public static class Factory implements org.apache.thrift.TServiceClientFactory<Client> {
+  public static class Client extends com.xiaomi.infra.thirdparty.org.apache.thrift.TServiceClient implements Iface {
+    public static class Factory implements com.xiaomi.infra.thirdparty.org.apache.thrift.TServiceClientFactory<Client> {
       public Factory() {}
-      public Client getClient(org.apache.thrift.protocol.TProtocol prot) {
+      public Client getClient(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) {
         return new Client(prot);
       }
-      public Client getClient(org.apache.thrift.protocol.TProtocol iprot, org.apache.thrift.protocol.TProtocol oprot) {
+      public Client getClient(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) {
         return new Client(iprot, oprot);
       }
     }
 
-    public Client(org.apache.thrift.protocol.TProtocol prot)
+    public Client(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot)
     {
       super(prot, prot);
     }
 
-    public Client(org.apache.thrift.protocol.TProtocol iprot, org.apache.thrift.protocol.TProtocol oprot) {
+    public Client(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) {
       super(iprot, oprot);
     }
 
-    public void replicate(TBatchEdit edits) throws TIOError, org.apache.thrift.TException
+    public void replicate(TBatchEdit edits) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_replicate(edits);
       recv_replicate();
     }
 
-    public void send_replicate(TBatchEdit edits) throws org.apache.thrift.TException
+    public void send_replicate(TBatchEdit edits) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       replicate_args args = new replicate_args();
       args.setEdits(edits);
       sendBase("replicate", args);
     }
 
-    public void recv_replicate() throws TIOError, org.apache.thrift.TException
+    public void recv_replicate() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       replicate_result result = new replicate_result();
       receiveBase(result, "replicate");
@@ -73,175 +73,175 @@ public class THBaseService {
       return;
     }
 
-    public void ping() throws org.apache.thrift.TException
+    public void ping() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_ping();
       recv_ping();
     }
 
-    public void send_ping() throws org.apache.thrift.TException
+    public void send_ping() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       ping_args args = new ping_args();
       sendBase("ping", args);
     }
 
-    public void recv_ping() throws org.apache.thrift.TException
+    public void recv_ping() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       ping_result result = new ping_result();
       receiveBase(result, "ping");
       return;
     }
 
-    public java.lang.String getClusterUUID() throws org.apache.thrift.TException
+    public java.lang.String getClusterUUID() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_getClusterUUID();
       return recv_getClusterUUID();
     }
 
-    public void send_getClusterUUID() throws org.apache.thrift.TException
+    public void send_getClusterUUID() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getClusterUUID_args args = new getClusterUUID_args();
       sendBase("getClusterUUID", args);
     }
 
-    public java.lang.String recv_getClusterUUID() throws org.apache.thrift.TException
+    public java.lang.String recv_getClusterUUID() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getClusterUUID_result result = new getClusterUUID_result();
       receiveBase(result, "getClusterUUID");
       if (result.isSetSuccess()) {
         return result.success;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "getClusterUUID failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "getClusterUUID failed: unknown result");
     }
 
   }
-  public static class AsyncClient extends org.apache.thrift.async.TAsyncClient implements AsyncIface {
-    public static class Factory implements org.apache.thrift.async.TAsyncClientFactory<AsyncClient> {
-      private org.apache.thrift.async.TAsyncClientManager clientManager;
-      private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
-      public Factory(org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
+  public static class AsyncClient extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient implements AsyncIface {
+    public static class Factory implements com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientFactory<AsyncClient> {
+      private com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientManager clientManager;
+      private com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory;
+      public Factory(com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientManager clientManager, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
         this.clientManager = clientManager;
         this.protocolFactory = protocolFactory;
       }
-      public AsyncClient getAsyncClient(org.apache.thrift.transport.TNonblockingTransport transport) {
+      public AsyncClient getAsyncClient(com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) {
         return new AsyncClient(protocolFactory, clientManager, transport);
       }
     }
 
-    public AsyncClient(org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.transport.TNonblockingTransport transport) {
+    public AsyncClient(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientManager clientManager, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) {
       super(protocolFactory, clientManager, transport);
     }
 
-    public void replicate(TBatchEdit edits, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+    public void replicate(TBatchEdit edits, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       replicate_call method_call = new replicate_call(edits, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class replicate_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
+    public static class replicate_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<Void> {
       private TBatchEdit edits;
-      public replicate_call(TBatchEdit edits, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public replicate_call(TBatchEdit edits, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.edits = edits;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("replicate", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("replicate", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         replicate_args args = new replicate_args();
         args.setEdits(edits);
         args.write(prot);
         prot.writeMessageEnd();
       }
 
-      public Void getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public Void getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return null;
       }
     }
 
-    public void ping(org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+    public void ping(com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       ping_call method_call = new ping_call(resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class ping_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
-      public ping_call(org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+    public static class ping_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<Void> {
+      public ping_call(com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("ping", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("ping", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         ping_args args = new ping_args();
         args.write(prot);
         prot.writeMessageEnd();
       }
 
-      public Void getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public Void getResult() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return null;
       }
     }
 
-    public void getClusterUUID(org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws org.apache.thrift.TException {
+    public void getClusterUUID(com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       getClusterUUID_call method_call = new getClusterUUID_call(resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class getClusterUUID_call extends org.apache.thrift.async.TAsyncMethodCall<java.lang.String> {
-      public getClusterUUID_call(org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+    public static class getClusterUUID_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.lang.String> {
+      public getClusterUUID_call(com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("getClusterUUID", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("getClusterUUID", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         getClusterUUID_args args = new getClusterUUID_args();
         args.write(prot);
         prot.writeMessageEnd();
       }
 
-      public java.lang.String getResult() throws org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.lang.String getResult() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_getClusterUUID();
       }
     }
 
   }
 
-  public static class Processor<I extends Iface> extends org.apache.thrift.TBaseProcessor<I> implements org.apache.thrift.TProcessor {
+  public static class Processor<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseProcessor<I> implements com.xiaomi.infra.thirdparty.org.apache.thrift.TProcessor {
     private static final org.slf4j.Logger _LOGGER = org.slf4j.LoggerFactory.getLogger(Processor.class.getName());
     public Processor(I iface) {
-      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>>()));
+      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>>()));
     }
 
-    protected Processor(I iface, java.util.Map<java.lang.String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>> processMap) {
+    protected Processor(I iface, java.util.Map<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>> processMap) {
       super(iface, getProcessMap(processMap));
     }
 
-    private static <I extends Iface> java.util.Map<java.lang.String,  org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>> getProcessMap(java.util.Map<java.lang.String, org.apache.thrift.ProcessFunction<I, ? extends  org.apache.thrift.TBase>> processMap) {
+    private static <I extends Iface> java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>> getProcessMap(java.util.Map<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>> processMap) {
       processMap.put("replicate", new replicate());
       processMap.put("ping", new ping());
       processMap.put("getClusterUUID", new getClusterUUID());
       return processMap;
     }
 
-    public static class replicate<I extends Iface> extends org.apache.thrift.ProcessFunction<I, replicate_args> {
+    public static class replicate<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, replicate_args> {
       public replicate() {
         super("replicate");
       }
@@ -259,7 +259,7 @@ public class THBaseService {
         return false;
       }
 
-      public replicate_result getResult(I iface, replicate_args args) throws org.apache.thrift.TException {
+      public replicate_result getResult(I iface, replicate_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         replicate_result result = new replicate_result();
         try {
           iface.replicate(args.edits);
@@ -270,7 +270,7 @@ public class THBaseService {
       }
     }
 
-    public static class ping<I extends Iface> extends org.apache.thrift.ProcessFunction<I, ping_args> {
+    public static class ping<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ping_args> {
       public ping() {
         super("ping");
       }
@@ -288,14 +288,14 @@ public class THBaseService {
         return false;
       }
 
-      public ping_result getResult(I iface, ping_args args) throws org.apache.thrift.TException {
+      public ping_result getResult(I iface, ping_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         ping_result result = new ping_result();
         iface.ping();
         return result;
       }
     }
 
-    public static class getClusterUUID<I extends Iface> extends org.apache.thrift.ProcessFunction<I, getClusterUUID_args> {
+    public static class getClusterUUID<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, getClusterUUID_args> {
       public getClusterUUID() {
         super("getClusterUUID");
       }
@@ -313,7 +313,7 @@ public class THBaseService {
         return false;
       }
 
-      public getClusterUUID_result getResult(I iface, getClusterUUID_args args) throws org.apache.thrift.TException {
+      public getClusterUUID_result getResult(I iface, getClusterUUID_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         getClusterUUID_result result = new getClusterUUID_result();
         result.success = iface.getClusterUUID();
         return result;
@@ -322,24 +322,24 @@ public class THBaseService {
 
   }
 
-  public static class AsyncProcessor<I extends AsyncIface> extends org.apache.thrift.TBaseAsyncProcessor<I> {
+  public static class AsyncProcessor<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseAsyncProcessor<I> {
     private static final org.slf4j.Logger _LOGGER = org.slf4j.LoggerFactory.getLogger(AsyncProcessor.class.getName());
     public AsyncProcessor(I iface) {
-      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, org.apache.thrift.AsyncProcessFunction<I, ? extends org.apache.thrift.TBase, ?>>()));
+      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase, ?>>()));
     }
 
-    protected AsyncProcessor(I iface, java.util.Map<java.lang.String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase, ?>> processMap) {
+    protected AsyncProcessor(I iface, java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase, ?>> processMap) {
       super(iface, getProcessMap(processMap));
     }
 
-    private static <I extends AsyncIface> java.util.Map<java.lang.String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase,?>> getProcessMap(java.util.Map<java.lang.String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase, ?>> processMap) {
+    private static <I extends AsyncIface> java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase,?>> getProcessMap(java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase, ?>> processMap) {
       processMap.put("replicate", new replicate());
       processMap.put("ping", new ping());
       processMap.put("getClusterUUID", new getClusterUUID());
       return processMap;
     }
 
-    public static class replicate<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, replicate_args, Void> {
+    public static class replicate<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, replicate_args, Void> {
       public replicate() {
         super("replicate");
       }
@@ -348,14 +348,14 @@ public class THBaseService {
         return new replicate_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<Void>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void>() { 
           public void onComplete(Void o) {
             replicate_result result = new replicate_result();
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -364,25 +364,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             replicate_result result = new replicate_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -398,12 +398,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, replicate_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, replicate_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.replicate(args.edits,resultHandler);
       }
     }
 
-    public static class ping<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, ping_args, Void> {
+    public static class ping<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ping_args, Void> {
       public ping() {
         super("ping");
       }
@@ -412,14 +412,14 @@ public class THBaseService {
         return new ping_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<Void>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void>() { 
           public void onComplete(Void o) {
             ping_result result = new ping_result();
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -428,21 +428,21 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             ping_result result = new ping_result();
-            if (e instanceof org.apache.thrift.transport.TTransportException) {
+            if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -458,12 +458,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, ping_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, ping_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.ping(resultHandler);
       }
     }
 
-    public static class getClusterUUID<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, getClusterUUID_args, java.lang.String> {
+    public static class getClusterUUID<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, getClusterUUID_args, java.lang.String> {
       public getClusterUUID() {
         super("getClusterUUID");
       }
@@ -472,15 +472,15 @@ public class THBaseService {
         return new getClusterUUID_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.lang.String> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.lang.String>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.String> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.String>() { 
           public void onComplete(java.lang.String o) {
             getClusterUUID_result result = new getClusterUUID_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -489,21 +489,21 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             getClusterUUID_result result = new getClusterUUID_result();
-            if (e instanceof org.apache.thrift.transport.TTransportException) {
+            if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -519,25 +519,25 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, getClusterUUID_args args, org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, getClusterUUID_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.getClusterUUID(resultHandler);
       }
     }
 
   }
 
-  public static class replicate_args implements org.apache.thrift.TBase<replicate_args, replicate_args._Fields>, java.io.Serializable, Cloneable, Comparable<replicate_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("replicate_args");
+  public static class replicate_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<replicate_args, replicate_args._Fields>, java.io.Serializable, Cloneable, Comparable<replicate_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("replicate_args");
 
-    private static final org.apache.thrift.protocol.TField EDITS_FIELD_DESC = new org.apache.thrift.protocol.TField("edits", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField EDITS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("edits", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new replicate_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new replicate_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new replicate_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new replicate_argsTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TBatchEdit edits; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TBatchEdit edits; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       EDITS((short)1, "edits");
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -551,7 +551,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // EDITS
@@ -574,7 +574,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -597,13 +597,13 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.EDITS, new org.apache.thrift.meta_data.FieldMetaData("edits", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TBatchEdit.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.EDITS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("edits", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TBatchEdit.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(replicate_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(replicate_args.class, metaDataMap);
     }
 
     public replicate_args() {
@@ -634,12 +634,12 @@ public class THBaseService {
       this.edits = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TBatchEdit getEdits() {
       return this.edits;
     }
 
-    public replicate_args setEdits(@org.apache.thrift.annotation.Nullable TBatchEdit edits) {
+    public replicate_args setEdits(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TBatchEdit edits) {
       this.edits = edits;
       return this;
     }
@@ -659,7 +659,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case EDITS:
         if (value == null) {
@@ -672,7 +672,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case EDITS:
@@ -746,7 +746,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetEdits()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.edits, other.edits);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.edits, other.edits);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -754,16 +754,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -783,10 +783,10 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (edits == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'edits' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'edits' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (edits != null) {
@@ -796,49 +796,49 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class replicate_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class replicate_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public replicate_argsStandardScheme getScheme() {
         return new replicate_argsStandardScheme();
       }
     }
 
-    private static class replicate_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<replicate_args> {
+    private static class replicate_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<replicate_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, replicate_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, replicate_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // EDITS
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.edits = new TBatchEdit();
                 struct.edits.read(iprot);
                 struct.setEditsIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -848,7 +848,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, replicate_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, replicate_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -863,46 +863,46 @@ public class THBaseService {
 
     }
 
-    private static class replicate_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class replicate_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public replicate_argsTupleScheme getScheme() {
         return new replicate_argsTupleScheme();
       }
     }
 
-    private static class replicate_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<replicate_args> {
+    private static class replicate_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<replicate_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, replicate_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, replicate_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.edits.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, replicate_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, replicate_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.edits = new TBatchEdit();
         struct.edits.read(iprot);
         struct.setEditsIsSet(true);
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class replicate_result implements org.apache.thrift.TBase<replicate_result, replicate_result._Fields>, java.io.Serializable, Cloneable, Comparable<replicate_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("replicate_result");
+  public static class replicate_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<replicate_result, replicate_result._Fields>, java.io.Serializable, Cloneable, Comparable<replicate_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("replicate_result");
 
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new replicate_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new replicate_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new replicate_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new replicate_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       IO((short)1, "io");
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -916,7 +916,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // IO
@@ -939,7 +939,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -962,13 +962,13 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(replicate_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(replicate_result.class, metaDataMap);
     }
 
     public replicate_result() {
@@ -999,12 +999,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public replicate_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public replicate_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -1024,7 +1024,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case IO:
         if (value == null) {
@@ -1037,7 +1037,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case IO:
@@ -1111,7 +1111,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -1119,16 +1119,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -1148,56 +1148,56 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class replicate_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class replicate_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public replicate_resultStandardScheme getScheme() {
         return new replicate_resultStandardScheme();
       }
     }
 
-    private static class replicate_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<replicate_result> {
+    private static class replicate_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<replicate_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, replicate_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, replicate_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -1207,7 +1207,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, replicate_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, replicate_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -1222,17 +1222,17 @@ public class THBaseService {
 
     }
 
-    private static class replicate_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class replicate_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public replicate_resultTupleScheme getScheme() {
         return new replicate_resultTupleScheme();
       }
     }
 
-    private static class replicate_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<replicate_result> {
+    private static class replicate_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<replicate_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, replicate_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, replicate_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetIo()) {
           optionals.set(0);
@@ -1244,8 +1244,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, replicate_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, replicate_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
           struct.io = new TIOError();
@@ -1255,21 +1255,21 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class ping_args implements org.apache.thrift.TBase<ping_args, ping_args._Fields>, java.io.Serializable, Cloneable, Comparable<ping_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ping_args");
+  public static class ping_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<ping_args, ping_args._Fields>, java.io.Serializable, Cloneable, Comparable<ping_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("ping_args");
 
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new ping_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new ping_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new ping_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new ping_argsTupleSchemeFactory();
 
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
 ;
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -1283,7 +1283,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           default:
@@ -1304,7 +1304,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -1325,11 +1325,11 @@ public class THBaseService {
         return _fieldName;
       }
     }
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ping_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ping_args.class, metaDataMap);
     }
 
     public ping_args() {
@@ -1349,12 +1349,12 @@ public class THBaseService {
     public void clear() {
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       }
@@ -1408,16 +1408,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -1430,47 +1430,47 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class ping_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class ping_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public ping_argsStandardScheme getScheme() {
         return new ping_argsStandardScheme();
       }
     }
 
-    private static class ping_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<ping_args> {
+    private static class ping_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<ping_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, ping_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, ping_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -1480,7 +1480,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, ping_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, ping_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -1490,40 +1490,40 @@ public class THBaseService {
 
     }
 
-    private static class ping_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class ping_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public ping_argsTupleScheme getScheme() {
         return new ping_argsTupleScheme();
       }
     }
 
-    private static class ping_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<ping_args> {
+    private static class ping_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<ping_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, ping_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, ping_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, ping_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, ping_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class ping_result implements org.apache.thrift.TBase<ping_result, ping_result._Fields>, java.io.Serializable, Cloneable, Comparable<ping_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ping_result");
+  public static class ping_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<ping_result, ping_result._Fields>, java.io.Serializable, Cloneable, Comparable<ping_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("ping_result");
 
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new ping_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new ping_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new ping_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new ping_resultTupleSchemeFactory();
 
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
 ;
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -1537,7 +1537,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           default:
@@ -1558,7 +1558,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -1579,11 +1579,11 @@ public class THBaseService {
         return _fieldName;
       }
     }
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ping_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ping_result.class, metaDataMap);
     }
 
     public ping_result() {
@@ -1603,12 +1603,12 @@ public class THBaseService {
     public void clear() {
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       }
@@ -1662,16 +1662,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -1684,47 +1684,47 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class ping_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class ping_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public ping_resultStandardScheme getScheme() {
         return new ping_resultStandardScheme();
       }
     }
 
-    private static class ping_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<ping_result> {
+    private static class ping_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<ping_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, ping_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, ping_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -1734,7 +1734,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, ping_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, ping_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -1744,40 +1744,40 @@ public class THBaseService {
 
     }
 
-    private static class ping_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class ping_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public ping_resultTupleScheme getScheme() {
         return new ping_resultTupleScheme();
       }
     }
 
-    private static class ping_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<ping_result> {
+    private static class ping_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<ping_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, ping_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, ping_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, ping_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, ping_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getClusterUUID_args implements org.apache.thrift.TBase<getClusterUUID_args, getClusterUUID_args._Fields>, java.io.Serializable, Cloneable, Comparable<getClusterUUID_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getClusterUUID_args");
+  public static class getClusterUUID_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getClusterUUID_args, getClusterUUID_args._Fields>, java.io.Serializable, Cloneable, Comparable<getClusterUUID_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getClusterUUID_args");
 
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getClusterUUID_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getClusterUUID_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getClusterUUID_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getClusterUUID_argsTupleSchemeFactory();
 
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
 ;
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -1791,7 +1791,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           default:
@@ -1812,7 +1812,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -1833,11 +1833,11 @@ public class THBaseService {
         return _fieldName;
       }
     }
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getClusterUUID_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getClusterUUID_args.class, metaDataMap);
     }
 
     public getClusterUUID_args() {
@@ -1857,12 +1857,12 @@ public class THBaseService {
     public void clear() {
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       }
@@ -1916,16 +1916,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -1938,47 +1938,47 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getClusterUUID_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getClusterUUID_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getClusterUUID_argsStandardScheme getScheme() {
         return new getClusterUUID_argsStandardScheme();
       }
     }
 
-    private static class getClusterUUID_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<getClusterUUID_args> {
+    private static class getClusterUUID_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getClusterUUID_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getClusterUUID_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getClusterUUID_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -1988,7 +1988,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getClusterUUID_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getClusterUUID_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -1998,42 +1998,42 @@ public class THBaseService {
 
     }
 
-    private static class getClusterUUID_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getClusterUUID_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getClusterUUID_argsTupleScheme getScheme() {
         return new getClusterUUID_argsTupleScheme();
       }
     }
 
-    private static class getClusterUUID_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<getClusterUUID_args> {
+    private static class getClusterUUID_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getClusterUUID_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getClusterUUID_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getClusterUUID_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getClusterUUID_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getClusterUUID_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getClusterUUID_result implements org.apache.thrift.TBase<getClusterUUID_result, getClusterUUID_result._Fields>, java.io.Serializable, Cloneable, Comparable<getClusterUUID_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getClusterUUID_result");
+  public static class getClusterUUID_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getClusterUUID_result, getClusterUUID_result._Fields>, java.io.Serializable, Cloneable, Comparable<getClusterUUID_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getClusterUUID_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.STRING, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)0);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getClusterUUID_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getClusterUUID_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getClusterUUID_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getClusterUUID_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable java.lang.String success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.String success; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success");
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -2047,7 +2047,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -2070,7 +2070,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -2093,13 +2093,13 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getClusterUUID_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getClusterUUID_result.class, metaDataMap);
     }
 
     public getClusterUUID_result() {
@@ -2130,12 +2130,12 @@ public class THBaseService {
       this.success = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.String getSuccess() {
       return this.success;
     }
 
-    public getClusterUUID_result setSuccess(@org.apache.thrift.annotation.Nullable java.lang.String success) {
+    public getClusterUUID_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.String success) {
       this.success = success;
       return this;
     }
@@ -2155,7 +2155,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -2168,7 +2168,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -2242,7 +2242,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -2250,16 +2250,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -2279,55 +2279,55 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getClusterUUID_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getClusterUUID_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getClusterUUID_resultStandardScheme getScheme() {
         return new getClusterUUID_resultStandardScheme();
       }
     }
 
-    private static class getClusterUUID_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<getClusterUUID_result> {
+    private static class getClusterUUID_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getClusterUUID_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getClusterUUID_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getClusterUUID_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.success = iprot.readString();
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -2337,7 +2337,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getClusterUUID_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getClusterUUID_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -2352,17 +2352,17 @@ public class THBaseService {
 
     }
 
-    private static class getClusterUUID_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getClusterUUID_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getClusterUUID_resultTupleScheme getScheme() {
         return new getClusterUUID_resultTupleScheme();
       }
     }
 
-    private static class getClusterUUID_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<getClusterUUID_result> {
+    private static class getClusterUUID_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getClusterUUID_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getClusterUUID_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getClusterUUID_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -2374,8 +2374,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getClusterUUID_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getClusterUUID_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
           struct.success = iprot.readString();
@@ -2384,8 +2384,8 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 

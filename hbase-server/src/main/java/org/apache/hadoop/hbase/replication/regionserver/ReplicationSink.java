@@ -57,7 +57,7 @@ import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
 import org.apache.hadoop.hbase.replication.thrift.generated.TIOError;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
 /**
  * This class is responsible for replicating the edits coming

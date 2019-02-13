@@ -18,8 +18,8 @@
 
 package org.apache.hadoop.hbase.replication.thrift;
 
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException;
 
 /**
  * Transport that simply wraps another transport.
