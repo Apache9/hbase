@@ -25,7 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
 import org.apache.hadoop.hbase.replication.thrift.generated.TIOError;
-import org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;

@@ -19,7 +19,7 @@
 package org.apache.hadoop.hbase.thrift2;
 
 import static org.apache.hadoop.hbase.thrift2.ThriftUtilities.*;
-import static org.apache.thrift.TBaseHelper.byteBufferToByteArray;
+import static com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.byteBufferToByteArray;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
@@ -43,7 +43,7 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.thrift.ThriftMetrics;
 import org.apache.hadoop.hbase.thrift2.generated.*;
 import org.apache.hadoop.hbase.util.ConnectionCache;
-import org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
 /**
  * This class is a glue object that connects Thrift RPC calls to the HBase client API primarily

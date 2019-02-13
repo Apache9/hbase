@@ -50,14 +50,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.security.SaslRpcServer;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSaslClientTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TBinaryProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TSaslClientTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TSocket;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException;
 
 public class ThriftClient {
   private static final Log LOG = LogFactory.getLog(ThriftClient.class);

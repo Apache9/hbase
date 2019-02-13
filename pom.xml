@@ -1011,6 +1011,7 @@
     <protobuf.version>2.5.0</protobuf.version>
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.12.0</thrift.version>
+    <shaded-thrift.version>2.0.2</shaded-thrift.version>
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
     <hadoop-mdh.version>2.4.0-mdh2.3.41</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
@@ -1339,15 +1340,9 @@
         <version>${shaded-thirdparty.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.thrift</groupId>
-        <artifactId>libthrift</artifactId>
-        <version>${thrift.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-          </exclusion>
-        </exclusions>
+        <groupId>com.xiaomi.infra.thirdparty</groupId>
+        <artifactId>infra-shaded-thrift</artifactId>
+        <version>${shaded-thrift.version}</version>
       </dependency>
       <dependency>
         <groupId>org.jruby</groupId>

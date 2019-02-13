@@ -32,12 +32,12 @@ import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.security.SaslRpcServer;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.*;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TBinaryProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TThreadPoolServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.*;
 
 import javax.security.sasl.Sasl;
 import java.io.IOException;

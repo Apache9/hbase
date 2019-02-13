@@ -21,7 +21,7 @@ public class THBaseService {
      * 
      * @param get the TGet to check for
      */
-    public boolean exists(java.nio.ByteBuffer table, TGet get) throws TIOError, org.apache.thrift.TException;
+    public boolean exists(java.nio.ByteBuffer table, TGet get) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Method for getting data from a row.
@@ -35,7 +35,7 @@ public class THBaseService {
      * 
      * @param get the TGet to fetch
      */
-    public TResult get(java.nio.ByteBuffer table, TGet get) throws TIOError, org.apache.thrift.TException;
+    public TResult get(java.nio.ByteBuffer table, TGet get) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Method for getting multiple rows.
@@ -52,7 +52,7 @@ public class THBaseService {
      * will have the Results at corresponding positions
      * or null if there was an error
      */
-    public java.util.List<TResult> getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets) throws TIOError, org.apache.thrift.TException;
+    public java.util.List<TResult> getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Commit a TPut to a table.
@@ -61,7 +61,7 @@ public class THBaseService {
      * 
      * @param put the TPut to put
      */
-    public void put(java.nio.ByteBuffer table, TPut put) throws TIOError, org.apache.thrift.TException;
+    public void put(java.nio.ByteBuffer table, TPut put) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Atomically checks if a row/family/qualifier value matches the expected
@@ -83,7 +83,7 @@ public class THBaseService {
      * 
      * @param put the TPut to put if the check succeeds
      */
-    public boolean checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put) throws TIOError, org.apache.thrift.TException;
+    public boolean checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Commit a List of Puts to the table.
@@ -92,7 +92,7 @@ public class THBaseService {
      * 
      * @param puts a list of TPuts to commit
      */
-    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts) throws TIOError, org.apache.thrift.TException;
+    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Deletes as specified by the TDelete.
@@ -104,7 +104,7 @@ public class THBaseService {
      * 
      * @param deleteSingle the TDelete to delete
      */
-    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle) throws TIOError, org.apache.thrift.TException;
+    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Bulk commit a List of TDeletes to the table.
@@ -117,7 +117,7 @@ public class THBaseService {
      * 
      * @param deletes list of TDeletes to delete
      */
-    public java.util.List<TDelete> deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes) throws TIOError, org.apache.thrift.TException;
+    public java.util.List<TDelete> deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Atomically checks if a row/family/qualifier value matches the expected
@@ -139,11 +139,11 @@ public class THBaseService {
      * 
      * @param deleteSingle the TDelete to execute if the check succeeds
      */
-    public boolean checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle) throws TIOError, org.apache.thrift.TException;
+    public boolean checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public TResult increment(java.nio.ByteBuffer table, TIncrement increment) throws TIOError, org.apache.thrift.TException;
+    public TResult increment(java.nio.ByteBuffer table, TIncrement increment) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public TResult append(java.nio.ByteBuffer table, TAppend append) throws TIOError, org.apache.thrift.TException;
+    public TResult append(java.nio.ByteBuffer table, TAppend append) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Get a Scanner for the provided TScan object.
@@ -154,7 +154,7 @@ public class THBaseService {
      * 
      * @param scan the scan object to get a Scanner for
      */
-    public int openScanner(java.nio.ByteBuffer table, TScan scan) throws TIOError, org.apache.thrift.TException;
+    public int openScanner(java.nio.ByteBuffer table, TScan scan) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Grabs multiple rows from a Scanner.
@@ -165,7 +165,7 @@ public class THBaseService {
      * 
      * @param numRows number of rows to return
      */
-    public java.util.List<TResult> getScannerRows(int scannerId, int numRows) throws TIOError, TIllegalArgument, org.apache.thrift.TException;
+    public java.util.List<TResult> getScannerRows(int scannerId, int numRows) throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Closes the scanner. Should be called to free server side resources timely.
@@ -174,7 +174,7 @@ public class THBaseService {
      * 
      * @param scannerId the Id of the Scanner to close *
      */
-    public void closeScanner(int scannerId) throws TIOError, TIllegalArgument, org.apache.thrift.TException;
+    public void closeScanner(int scannerId) throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * mutateRow performs multiple mutations atomically on a single row.
@@ -183,7 +183,7 @@ public class THBaseService {
      * 
      * @param rowMutations mutations to apply
      */
-    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations) throws TIOError, org.apache.thrift.TException;
+    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
     /**
      * Get results for the provided TScan object.
@@ -197,73 +197,73 @@ public class THBaseService {
      * 
      * @param numRows number of rows to return
      */
-    public java.util.List<TResult> getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows) throws TIOError, org.apache.thrift.TException;
+    public java.util.List<TResult> getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
   }
 
   public interface AsyncIface {
 
-    public void exists(java.nio.ByteBuffer table, TGet get, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException;
+    public void exists(java.nio.ByteBuffer table, TGet get, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void get(java.nio.ByteBuffer table, TGet get, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException;
+    public void get(java.nio.ByteBuffer table, TGet get, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException;
+    public void getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void put(java.nio.ByteBuffer table, TPut put, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
+    public void put(java.nio.ByteBuffer table, TPut put, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException;
+    public void checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
+    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
+    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler) throws org.apache.thrift.TException;
+    public void deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException;
+    public void checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void increment(java.nio.ByteBuffer table, TIncrement increment, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException;
+    public void increment(java.nio.ByteBuffer table, TIncrement increment, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void append(java.nio.ByteBuffer table, TAppend append, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException;
+    public void append(java.nio.ByteBuffer table, TAppend append, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void openScanner(java.nio.ByteBuffer table, TScan scan, org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler) throws org.apache.thrift.TException;
+    public void openScanner(java.nio.ByteBuffer table, TScan scan, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void getScannerRows(int scannerId, int numRows, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException;
+    public void getScannerRows(int scannerId, int numRows, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void closeScanner(int scannerId, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
+    public void closeScanner(int scannerId, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
+    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
-    public void getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException;
+    public void getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
   }
 
-  public static class Client extends org.apache.thrift.TServiceClient implements Iface {
-    public static class Factory implements org.apache.thrift.TServiceClientFactory<Client> {
+  public static class Client extends com.xiaomi.infra.thirdparty.org.apache.thrift.TServiceClient implements Iface {
+    public static class Factory implements com.xiaomi.infra.thirdparty.org.apache.thrift.TServiceClientFactory<Client> {
       public Factory() {}
-      public Client getClient(org.apache.thrift.protocol.TProtocol prot) {
+      public Client getClient(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) {
         return new Client(prot);
       }
-      public Client getClient(org.apache.thrift.protocol.TProtocol iprot, org.apache.thrift.protocol.TProtocol oprot) {
+      public Client getClient(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) {
         return new Client(iprot, oprot);
       }
     }
 
-    public Client(org.apache.thrift.protocol.TProtocol prot)
+    public Client(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot)
     {
       super(prot, prot);
     }
 
-    public Client(org.apache.thrift.protocol.TProtocol iprot, org.apache.thrift.protocol.TProtocol oprot) {
+    public Client(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) {
       super(iprot, oprot);
     }
 
-    public boolean exists(java.nio.ByteBuffer table, TGet get) throws TIOError, org.apache.thrift.TException
+    public boolean exists(java.nio.ByteBuffer table, TGet get) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_exists(table, get);
       return recv_exists();
     }
 
-    public void send_exists(java.nio.ByteBuffer table, TGet get) throws org.apache.thrift.TException
+    public void send_exists(java.nio.ByteBuffer table, TGet get) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       exists_args args = new exists_args();
       args.setTable(table);
@@ -271,7 +271,7 @@ public class THBaseService {
       sendBase("exists", args);
     }
 
-    public boolean recv_exists() throws TIOError, org.apache.thrift.TException
+    public boolean recv_exists() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       exists_result result = new exists_result();
       receiveBase(result, "exists");
@@ -281,16 +281,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "exists failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "exists failed: unknown result");
     }
 
-    public TResult get(java.nio.ByteBuffer table, TGet get) throws TIOError, org.apache.thrift.TException
+    public TResult get(java.nio.ByteBuffer table, TGet get) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_get(table, get);
       return recv_get();
     }
 
-    public void send_get(java.nio.ByteBuffer table, TGet get) throws org.apache.thrift.TException
+    public void send_get(java.nio.ByteBuffer table, TGet get) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       get_args args = new get_args();
       args.setTable(table);
@@ -298,7 +298,7 @@ public class THBaseService {
       sendBase("get", args);
     }
 
-    public TResult recv_get() throws TIOError, org.apache.thrift.TException
+    public TResult recv_get() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       get_result result = new get_result();
       receiveBase(result, "get");
@@ -308,16 +308,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "get failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "get failed: unknown result");
     }
 
-    public java.util.List<TResult> getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets) throws TIOError, org.apache.thrift.TException
+    public java.util.List<TResult> getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_getMultiple(table, gets);
       return recv_getMultiple();
     }
 
-    public void send_getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets) throws org.apache.thrift.TException
+    public void send_getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getMultiple_args args = new getMultiple_args();
       args.setTable(table);
@@ -325,7 +325,7 @@ public class THBaseService {
       sendBase("getMultiple", args);
     }
 
-    public java.util.List<TResult> recv_getMultiple() throws TIOError, org.apache.thrift.TException
+    public java.util.List<TResult> recv_getMultiple() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getMultiple_result result = new getMultiple_result();
       receiveBase(result, "getMultiple");
@@ -335,16 +335,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "getMultiple failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "getMultiple failed: unknown result");
     }
 
-    public void put(java.nio.ByteBuffer table, TPut put) throws TIOError, org.apache.thrift.TException
+    public void put(java.nio.ByteBuffer table, TPut put) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_put(table, put);
       recv_put();
     }
 
-    public void send_put(java.nio.ByteBuffer table, TPut put) throws org.apache.thrift.TException
+    public void send_put(java.nio.ByteBuffer table, TPut put) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       put_args args = new put_args();
       args.setTable(table);
@@ -352,7 +352,7 @@ public class THBaseService {
       sendBase("put", args);
     }
 
-    public void recv_put() throws TIOError, org.apache.thrift.TException
+    public void recv_put() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       put_result result = new put_result();
       receiveBase(result, "put");
@@ -362,13 +362,13 @@ public class THBaseService {
       return;
     }
 
-    public boolean checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put) throws TIOError, org.apache.thrift.TException
+    public boolean checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_checkAndPut(table, row, family, qualifier, value, put);
       return recv_checkAndPut();
     }
 
-    public void send_checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put) throws org.apache.thrift.TException
+    public void send_checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       checkAndPut_args args = new checkAndPut_args();
       args.setTable(table);
@@ -380,7 +380,7 @@ public class THBaseService {
       sendBase("checkAndPut", args);
     }
 
-    public boolean recv_checkAndPut() throws TIOError, org.apache.thrift.TException
+    public boolean recv_checkAndPut() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       checkAndPut_result result = new checkAndPut_result();
       receiveBase(result, "checkAndPut");
@@ -390,16 +390,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "checkAndPut failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "checkAndPut failed: unknown result");
     }
 
-    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts) throws TIOError, org.apache.thrift.TException
+    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_putMultiple(table, puts);
       recv_putMultiple();
     }
 
-    public void send_putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts) throws org.apache.thrift.TException
+    public void send_putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       putMultiple_args args = new putMultiple_args();
       args.setTable(table);
@@ -407,7 +407,7 @@ public class THBaseService {
       sendBase("putMultiple", args);
     }
 
-    public void recv_putMultiple() throws TIOError, org.apache.thrift.TException
+    public void recv_putMultiple() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       putMultiple_result result = new putMultiple_result();
       receiveBase(result, "putMultiple");
@@ -417,13 +417,13 @@ public class THBaseService {
       return;
     }
 
-    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle) throws TIOError, org.apache.thrift.TException
+    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_deleteSingle(table, deleteSingle);
       recv_deleteSingle();
     }
 
-    public void send_deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle) throws org.apache.thrift.TException
+    public void send_deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       deleteSingle_args args = new deleteSingle_args();
       args.setTable(table);
@@ -431,7 +431,7 @@ public class THBaseService {
       sendBase("deleteSingle", args);
     }
 
-    public void recv_deleteSingle() throws TIOError, org.apache.thrift.TException
+    public void recv_deleteSingle() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       deleteSingle_result result = new deleteSingle_result();
       receiveBase(result, "deleteSingle");
@@ -441,13 +441,13 @@ public class THBaseService {
       return;
     }
 
-    public java.util.List<TDelete> deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes) throws TIOError, org.apache.thrift.TException
+    public java.util.List<TDelete> deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_deleteMultiple(table, deletes);
       return recv_deleteMultiple();
     }
 
-    public void send_deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes) throws org.apache.thrift.TException
+    public void send_deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       deleteMultiple_args args = new deleteMultiple_args();
       args.setTable(table);
@@ -455,7 +455,7 @@ public class THBaseService {
       sendBase("deleteMultiple", args);
     }
 
-    public java.util.List<TDelete> recv_deleteMultiple() throws TIOError, org.apache.thrift.TException
+    public java.util.List<TDelete> recv_deleteMultiple() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       deleteMultiple_result result = new deleteMultiple_result();
       receiveBase(result, "deleteMultiple");
@@ -465,16 +465,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "deleteMultiple failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "deleteMultiple failed: unknown result");
     }
 
-    public boolean checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle) throws TIOError, org.apache.thrift.TException
+    public boolean checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_checkAndDelete(table, row, family, qualifier, value, deleteSingle);
       return recv_checkAndDelete();
     }
 
-    public void send_checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle) throws org.apache.thrift.TException
+    public void send_checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       checkAndDelete_args args = new checkAndDelete_args();
       args.setTable(table);
@@ -486,7 +486,7 @@ public class THBaseService {
       sendBase("checkAndDelete", args);
     }
 
-    public boolean recv_checkAndDelete() throws TIOError, org.apache.thrift.TException
+    public boolean recv_checkAndDelete() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       checkAndDelete_result result = new checkAndDelete_result();
       receiveBase(result, "checkAndDelete");
@@ -496,16 +496,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "checkAndDelete failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "checkAndDelete failed: unknown result");
     }
 
-    public TResult increment(java.nio.ByteBuffer table, TIncrement increment) throws TIOError, org.apache.thrift.TException
+    public TResult increment(java.nio.ByteBuffer table, TIncrement increment) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_increment(table, increment);
       return recv_increment();
     }
 
-    public void send_increment(java.nio.ByteBuffer table, TIncrement increment) throws org.apache.thrift.TException
+    public void send_increment(java.nio.ByteBuffer table, TIncrement increment) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       increment_args args = new increment_args();
       args.setTable(table);
@@ -513,7 +513,7 @@ public class THBaseService {
       sendBase("increment", args);
     }
 
-    public TResult recv_increment() throws TIOError, org.apache.thrift.TException
+    public TResult recv_increment() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       increment_result result = new increment_result();
       receiveBase(result, "increment");
@@ -523,16 +523,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "increment failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "increment failed: unknown result");
     }
 
-    public TResult append(java.nio.ByteBuffer table, TAppend append) throws TIOError, org.apache.thrift.TException
+    public TResult append(java.nio.ByteBuffer table, TAppend append) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_append(table, append);
       return recv_append();
     }
 
-    public void send_append(java.nio.ByteBuffer table, TAppend append) throws org.apache.thrift.TException
+    public void send_append(java.nio.ByteBuffer table, TAppend append) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       append_args args = new append_args();
       args.setTable(table);
@@ -540,7 +540,7 @@ public class THBaseService {
       sendBase("append", args);
     }
 
-    public TResult recv_append() throws TIOError, org.apache.thrift.TException
+    public TResult recv_append() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       append_result result = new append_result();
       receiveBase(result, "append");
@@ -550,16 +550,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "append failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "append failed: unknown result");
     }
 
-    public int openScanner(java.nio.ByteBuffer table, TScan scan) throws TIOError, org.apache.thrift.TException
+    public int openScanner(java.nio.ByteBuffer table, TScan scan) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_openScanner(table, scan);
       return recv_openScanner();
     }
 
-    public void send_openScanner(java.nio.ByteBuffer table, TScan scan) throws org.apache.thrift.TException
+    public void send_openScanner(java.nio.ByteBuffer table, TScan scan) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       openScanner_args args = new openScanner_args();
       args.setTable(table);
@@ -567,7 +567,7 @@ public class THBaseService {
       sendBase("openScanner", args);
     }
 
-    public int recv_openScanner() throws TIOError, org.apache.thrift.TException
+    public int recv_openScanner() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       openScanner_result result = new openScanner_result();
       receiveBase(result, "openScanner");
@@ -577,16 +577,16 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "openScanner failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "openScanner failed: unknown result");
     }
 
-    public java.util.List<TResult> getScannerRows(int scannerId, int numRows) throws TIOError, TIllegalArgument, org.apache.thrift.TException
+    public java.util.List<TResult> getScannerRows(int scannerId, int numRows) throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_getScannerRows(scannerId, numRows);
       return recv_getScannerRows();
     }
 
-    public void send_getScannerRows(int scannerId, int numRows) throws org.apache.thrift.TException
+    public void send_getScannerRows(int scannerId, int numRows) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getScannerRows_args args = new getScannerRows_args();
       args.setScannerId(scannerId);
@@ -594,7 +594,7 @@ public class THBaseService {
       sendBase("getScannerRows", args);
     }
 
-    public java.util.List<TResult> recv_getScannerRows() throws TIOError, TIllegalArgument, org.apache.thrift.TException
+    public java.util.List<TResult> recv_getScannerRows() throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getScannerRows_result result = new getScannerRows_result();
       receiveBase(result, "getScannerRows");
@@ -607,23 +607,23 @@ public class THBaseService {
       if (result.ia != null) {
         throw result.ia;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "getScannerRows failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "getScannerRows failed: unknown result");
     }
 
-    public void closeScanner(int scannerId) throws TIOError, TIllegalArgument, org.apache.thrift.TException
+    public void closeScanner(int scannerId) throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_closeScanner(scannerId);
       recv_closeScanner();
     }
 
-    public void send_closeScanner(int scannerId) throws org.apache.thrift.TException
+    public void send_closeScanner(int scannerId) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       closeScanner_args args = new closeScanner_args();
       args.setScannerId(scannerId);
       sendBase("closeScanner", args);
     }
 
-    public void recv_closeScanner() throws TIOError, TIllegalArgument, org.apache.thrift.TException
+    public void recv_closeScanner() throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       closeScanner_result result = new closeScanner_result();
       receiveBase(result, "closeScanner");
@@ -636,13 +636,13 @@ public class THBaseService {
       return;
     }
 
-    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations) throws TIOError, org.apache.thrift.TException
+    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_mutateRow(table, rowMutations);
       recv_mutateRow();
     }
 
-    public void send_mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations) throws org.apache.thrift.TException
+    public void send_mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       mutateRow_args args = new mutateRow_args();
       args.setTable(table);
@@ -650,7 +650,7 @@ public class THBaseService {
       sendBase("mutateRow", args);
     }
 
-    public void recv_mutateRow() throws TIOError, org.apache.thrift.TException
+    public void recv_mutateRow() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       mutateRow_result result = new mutateRow_result();
       receiveBase(result, "mutateRow");
@@ -660,13 +660,13 @@ public class THBaseService {
       return;
     }
 
-    public java.util.List<TResult> getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows) throws TIOError, org.apache.thrift.TException
+    public java.util.List<TResult> getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows) throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       send_getScannerResults(table, scan, numRows);
       return recv_getScannerResults();
     }
 
-    public void send_getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows) throws org.apache.thrift.TException
+    public void send_getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getScannerResults_args args = new getScannerResults_args();
       args.setTable(table);
@@ -675,7 +675,7 @@ public class THBaseService {
       sendBase("getScannerResults", args);
     }
 
-    public java.util.List<TResult> recv_getScannerResults() throws TIOError, org.apache.thrift.TException
+    public java.util.List<TResult> recv_getScannerResults() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException
     {
       getScannerResults_result result = new getScannerResults_result();
       receiveBase(result, "getScannerResults");
@@ -685,45 +685,45 @@ public class THBaseService {
       if (result.io != null) {
         throw result.io;
       }
-      throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "getScannerResults failed: unknown result");
+      throw new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.MISSING_RESULT, "getScannerResults failed: unknown result");
     }
 
   }
-  public static class AsyncClient extends org.apache.thrift.async.TAsyncClient implements AsyncIface {
-    public static class Factory implements org.apache.thrift.async.TAsyncClientFactory<AsyncClient> {
-      private org.apache.thrift.async.TAsyncClientManager clientManager;
-      private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
-      public Factory(org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
+  public static class AsyncClient extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient implements AsyncIface {
+    public static class Factory implements com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientFactory<AsyncClient> {
+      private com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientManager clientManager;
+      private com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory;
+      public Factory(com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientManager clientManager, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
         this.clientManager = clientManager;
         this.protocolFactory = protocolFactory;
       }
-      public AsyncClient getAsyncClient(org.apache.thrift.transport.TNonblockingTransport transport) {
+      public AsyncClient getAsyncClient(com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) {
         return new AsyncClient(protocolFactory, clientManager, transport);
       }
     }
 
-    public AsyncClient(org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.transport.TNonblockingTransport transport) {
+    public AsyncClient(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClientManager clientManager, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) {
       super(protocolFactory, clientManager, transport);
     }
 
-    public void exists(java.nio.ByteBuffer table, TGet get, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException {
+    public void exists(java.nio.ByteBuffer table, TGet get, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       exists_call method_call = new exists_call(table, get, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class exists_call extends org.apache.thrift.async.TAsyncMethodCall<java.lang.Boolean> {
+    public static class exists_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.lang.Boolean> {
       private java.nio.ByteBuffer table;
       private TGet get;
-      public exists_call(java.nio.ByteBuffer table, TGet get, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public exists_call(java.nio.ByteBuffer table, TGet get, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.get = get;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("exists", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("exists", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         exists_args args = new exists_args();
         args.setTable(table);
         args.setGet(get);
@@ -731,34 +731,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.lang.Boolean getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.lang.Boolean getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_exists();
       }
     }
 
-    public void get(java.nio.ByteBuffer table, TGet get, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException {
+    public void get(java.nio.ByteBuffer table, TGet get, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       get_call method_call = new get_call(table, get, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class get_call extends org.apache.thrift.async.TAsyncMethodCall<TResult> {
+    public static class get_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<TResult> {
       private java.nio.ByteBuffer table;
       private TGet get;
-      public get_call(java.nio.ByteBuffer table, TGet get, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public get_call(java.nio.ByteBuffer table, TGet get, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.get = get;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("get", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("get", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         get_args args = new get_args();
         args.setTable(table);
         args.setGet(get);
@@ -766,34 +766,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public TResult getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public TResult getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_get();
       }
     }
 
-    public void getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException {
+    public void getMultiple(java.nio.ByteBuffer table, java.util.List<TGet> gets, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       getMultiple_call method_call = new getMultiple_call(table, gets, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class getMultiple_call extends org.apache.thrift.async.TAsyncMethodCall<java.util.List<TResult>> {
+    public static class getMultiple_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.util.List<TResult>> {
       private java.nio.ByteBuffer table;
       private java.util.List<TGet> gets;
-      public getMultiple_call(java.nio.ByteBuffer table, java.util.List<TGet> gets, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public getMultiple_call(java.nio.ByteBuffer table, java.util.List<TGet> gets, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.gets = gets;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("getMultiple", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("getMultiple", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         getMultiple_args args = new getMultiple_args();
         args.setTable(table);
         args.setGets(gets);
@@ -801,34 +801,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.util.List<TResult> getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.util.List<TResult> getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_getMultiple();
       }
     }
 
-    public void put(java.nio.ByteBuffer table, TPut put, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+    public void put(java.nio.ByteBuffer table, TPut put, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       put_call method_call = new put_call(table, put, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class put_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
+    public static class put_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<Void> {
       private java.nio.ByteBuffer table;
       private TPut put;
-      public put_call(java.nio.ByteBuffer table, TPut put, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public put_call(java.nio.ByteBuffer table, TPut put, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.put = put;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("put", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("put", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         put_args args = new put_args();
         args.setTable(table);
         args.setPut(put);
@@ -836,31 +836,31 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public Void getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public Void getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return null;
       }
     }
 
-    public void checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException {
+    public void checkAndPut(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       checkAndPut_call method_call = new checkAndPut_call(table, row, family, qualifier, value, put, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class checkAndPut_call extends org.apache.thrift.async.TAsyncMethodCall<java.lang.Boolean> {
+    public static class checkAndPut_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.lang.Boolean> {
       private java.nio.ByteBuffer table;
       private java.nio.ByteBuffer row;
       private java.nio.ByteBuffer family;
       private java.nio.ByteBuffer qualifier;
       private java.nio.ByteBuffer value;
       private TPut put;
-      public checkAndPut_call(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public checkAndPut_call(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TPut put, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.row = row;
@@ -870,8 +870,8 @@ public class THBaseService {
         this.put = put;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("checkAndPut", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("checkAndPut", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         checkAndPut_args args = new checkAndPut_args();
         args.setTable(table);
         args.setRow(row);
@@ -883,34 +883,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.lang.Boolean getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.lang.Boolean getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_checkAndPut();
       }
     }
 
-    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+    public void putMultiple(java.nio.ByteBuffer table, java.util.List<TPut> puts, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       putMultiple_call method_call = new putMultiple_call(table, puts, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class putMultiple_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
+    public static class putMultiple_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<Void> {
       private java.nio.ByteBuffer table;
       private java.util.List<TPut> puts;
-      public putMultiple_call(java.nio.ByteBuffer table, java.util.List<TPut> puts, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public putMultiple_call(java.nio.ByteBuffer table, java.util.List<TPut> puts, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.puts = puts;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("putMultiple", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("putMultiple", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         putMultiple_args args = new putMultiple_args();
         args.setTable(table);
         args.setPuts(puts);
@@ -918,34 +918,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public Void getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public Void getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return null;
       }
     }
 
-    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+    public void deleteSingle(java.nio.ByteBuffer table, TDelete deleteSingle, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       deleteSingle_call method_call = new deleteSingle_call(table, deleteSingle, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class deleteSingle_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
+    public static class deleteSingle_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<Void> {
       private java.nio.ByteBuffer table;
       private TDelete deleteSingle;
-      public deleteSingle_call(java.nio.ByteBuffer table, TDelete deleteSingle, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public deleteSingle_call(java.nio.ByteBuffer table, TDelete deleteSingle, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.deleteSingle = deleteSingle;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("deleteSingle", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("deleteSingle", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         deleteSingle_args args = new deleteSingle_args();
         args.setTable(table);
         args.setDeleteSingle(deleteSingle);
@@ -953,34 +953,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public Void getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public Void getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return null;
       }
     }
 
-    public void deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler) throws org.apache.thrift.TException {
+    public void deleteMultiple(java.nio.ByteBuffer table, java.util.List<TDelete> deletes, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       deleteMultiple_call method_call = new deleteMultiple_call(table, deletes, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class deleteMultiple_call extends org.apache.thrift.async.TAsyncMethodCall<java.util.List<TDelete>> {
+    public static class deleteMultiple_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.util.List<TDelete>> {
       private java.nio.ByteBuffer table;
       private java.util.List<TDelete> deletes;
-      public deleteMultiple_call(java.nio.ByteBuffer table, java.util.List<TDelete> deletes, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public deleteMultiple_call(java.nio.ByteBuffer table, java.util.List<TDelete> deletes, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.deletes = deletes;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("deleteMultiple", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("deleteMultiple", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         deleteMultiple_args args = new deleteMultiple_args();
         args.setTable(table);
         args.setDeletes(deletes);
@@ -988,31 +988,31 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.util.List<TDelete> getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.util.List<TDelete> getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_deleteMultiple();
       }
     }
 
-    public void checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException {
+    public void checkAndDelete(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       checkAndDelete_call method_call = new checkAndDelete_call(table, row, family, qualifier, value, deleteSingle, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class checkAndDelete_call extends org.apache.thrift.async.TAsyncMethodCall<java.lang.Boolean> {
+    public static class checkAndDelete_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.lang.Boolean> {
       private java.nio.ByteBuffer table;
       private java.nio.ByteBuffer row;
       private java.nio.ByteBuffer family;
       private java.nio.ByteBuffer qualifier;
       private java.nio.ByteBuffer value;
       private TDelete deleteSingle;
-      public checkAndDelete_call(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public checkAndDelete_call(java.nio.ByteBuffer table, java.nio.ByteBuffer row, java.nio.ByteBuffer family, java.nio.ByteBuffer qualifier, java.nio.ByteBuffer value, TDelete deleteSingle, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.row = row;
@@ -1022,8 +1022,8 @@ public class THBaseService {
         this.deleteSingle = deleteSingle;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("checkAndDelete", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("checkAndDelete", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         checkAndDelete_args args = new checkAndDelete_args();
         args.setTable(table);
         args.setRow(row);
@@ -1035,34 +1035,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.lang.Boolean getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.lang.Boolean getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_checkAndDelete();
       }
     }
 
-    public void increment(java.nio.ByteBuffer table, TIncrement increment, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException {
+    public void increment(java.nio.ByteBuffer table, TIncrement increment, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       increment_call method_call = new increment_call(table, increment, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class increment_call extends org.apache.thrift.async.TAsyncMethodCall<TResult> {
+    public static class increment_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<TResult> {
       private java.nio.ByteBuffer table;
       private TIncrement increment;
-      public increment_call(java.nio.ByteBuffer table, TIncrement increment, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public increment_call(java.nio.ByteBuffer table, TIncrement increment, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.increment = increment;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("increment", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("increment", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         increment_args args = new increment_args();
         args.setTable(table);
         args.setIncrement(increment);
@@ -1070,34 +1070,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public TResult getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public TResult getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_increment();
       }
     }
 
-    public void append(java.nio.ByteBuffer table, TAppend append, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException {
+    public void append(java.nio.ByteBuffer table, TAppend append, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       append_call method_call = new append_call(table, append, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class append_call extends org.apache.thrift.async.TAsyncMethodCall<TResult> {
+    public static class append_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<TResult> {
       private java.nio.ByteBuffer table;
       private TAppend append;
-      public append_call(java.nio.ByteBuffer table, TAppend append, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public append_call(java.nio.ByteBuffer table, TAppend append, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.append = append;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("append", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("append", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         append_args args = new append_args();
         args.setTable(table);
         args.setAppend(append);
@@ -1105,34 +1105,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public TResult getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public TResult getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_append();
       }
     }
 
-    public void openScanner(java.nio.ByteBuffer table, TScan scan, org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler) throws org.apache.thrift.TException {
+    public void openScanner(java.nio.ByteBuffer table, TScan scan, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       openScanner_call method_call = new openScanner_call(table, scan, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class openScanner_call extends org.apache.thrift.async.TAsyncMethodCall<java.lang.Integer> {
+    public static class openScanner_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.lang.Integer> {
       private java.nio.ByteBuffer table;
       private TScan scan;
-      public openScanner_call(java.nio.ByteBuffer table, TScan scan, org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public openScanner_call(java.nio.ByteBuffer table, TScan scan, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.scan = scan;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("openScanner", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("openScanner", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         openScanner_args args = new openScanner_args();
         args.setTable(table);
         args.setScan(scan);
@@ -1140,34 +1140,34 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.lang.Integer getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.lang.Integer getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_openScanner();
       }
     }
 
-    public void getScannerRows(int scannerId, int numRows, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException {
+    public void getScannerRows(int scannerId, int numRows, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       getScannerRows_call method_call = new getScannerRows_call(scannerId, numRows, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class getScannerRows_call extends org.apache.thrift.async.TAsyncMethodCall<java.util.List<TResult>> {
+    public static class getScannerRows_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.util.List<TResult>> {
       private int scannerId;
       private int numRows;
-      public getScannerRows_call(int scannerId, int numRows, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public getScannerRows_call(int scannerId, int numRows, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.scannerId = scannerId;
         this.numRows = numRows;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("getScannerRows", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("getScannerRows", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         getScannerRows_args args = new getScannerRows_args();
         args.setScannerId(scannerId);
         args.setNumRows(numRows);
@@ -1175,66 +1175,66 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.util.List<TResult> getResult() throws TIOError, TIllegalArgument, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.util.List<TResult> getResult() throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_getScannerRows();
       }
     }
 
-    public void closeScanner(int scannerId, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+    public void closeScanner(int scannerId, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       closeScanner_call method_call = new closeScanner_call(scannerId, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class closeScanner_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
+    public static class closeScanner_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<Void> {
       private int scannerId;
-      public closeScanner_call(int scannerId, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public closeScanner_call(int scannerId, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.scannerId = scannerId;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("closeScanner", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("closeScanner", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         closeScanner_args args = new closeScanner_args();
         args.setScannerId(scannerId);
         args.write(prot);
         prot.writeMessageEnd();
       }
 
-      public Void getResult() throws TIOError, TIllegalArgument, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public Void getResult() throws TIOError, TIllegalArgument, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return null;
       }
     }
 
-    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+    public void mutateRow(java.nio.ByteBuffer table, TRowMutations rowMutations, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       mutateRow_call method_call = new mutateRow_call(table, rowMutations, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class mutateRow_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
+    public static class mutateRow_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<Void> {
       private java.nio.ByteBuffer table;
       private TRowMutations rowMutations;
-      public mutateRow_call(java.nio.ByteBuffer table, TRowMutations rowMutations, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public mutateRow_call(java.nio.ByteBuffer table, TRowMutations rowMutations, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.rowMutations = rowMutations;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("mutateRow", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("mutateRow", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         mutateRow_args args = new mutateRow_args();
         args.setTable(table);
         args.setRowMutations(rowMutations);
@@ -1242,36 +1242,36 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public Void getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public Void getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return null;
       }
     }
 
-    public void getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException {
+    public void getScannerResults(java.nio.ByteBuffer table, TScan scan, int numRows, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       checkReady();
       getScannerResults_call method_call = new getScannerResults_call(table, scan, numRows, resultHandler, this, ___protocolFactory, ___transport);
       this.___currentMethod = method_call;
       ___manager.call(method_call);
     }
 
-    public static class getScannerResults_call extends org.apache.thrift.async.TAsyncMethodCall<java.util.List<TResult>> {
+    public static class getScannerResults_call extends com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall<java.util.List<TResult>> {
       private java.nio.ByteBuffer table;
       private TScan scan;
       private int numRows;
-      public getScannerResults_call(java.nio.ByteBuffer table, TScan scan, int numRows, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+      public getScannerResults_call(java.nio.ByteBuffer table, TScan scan, int numRows, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler, com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncClient client, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory protocolFactory, com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingTransport transport) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.table = table;
         this.scan = scan;
         this.numRows = numRows;
       }
 
-      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
-        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("getScannerResults", org.apache.thrift.protocol.TMessageType.CALL, 0));
+      public void write_args(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        prot.writeMessageBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessage("getScannerResults", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.CALL, 0));
         getScannerResults_args args = new getScannerResults_args();
         args.setTable(table);
         args.setScan(scan);
@@ -1280,29 +1280,29 @@ public class THBaseService {
         prot.writeMessageEnd();
       }
 
-      public java.util.List<TResult> getResult() throws TIOError, org.apache.thrift.TException {
-        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+      public java.util.List<TResult> getResult() throws TIOError, com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        if (getState() != com.xiaomi.infra.thirdparty.org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new java.lang.IllegalStateException("Method call not finished!");
         }
-        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
-        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
         return (new Client(prot)).recv_getScannerResults();
       }
     }
 
   }
 
-  public static class Processor<I extends Iface> extends org.apache.thrift.TBaseProcessor<I> implements org.apache.thrift.TProcessor {
+  public static class Processor<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseProcessor<I> implements com.xiaomi.infra.thirdparty.org.apache.thrift.TProcessor {
     private static final org.slf4j.Logger _LOGGER = org.slf4j.LoggerFactory.getLogger(Processor.class.getName());
     public Processor(I iface) {
-      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>>()));
+      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>>()));
     }
 
-    protected Processor(I iface, java.util.Map<java.lang.String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>> processMap) {
+    protected Processor(I iface, java.util.Map<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>> processMap) {
       super(iface, getProcessMap(processMap));
     }
 
-    private static <I extends Iface> java.util.Map<java.lang.String,  org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>> getProcessMap(java.util.Map<java.lang.String, org.apache.thrift.ProcessFunction<I, ? extends  org.apache.thrift.TBase>> processMap) {
+    private static <I extends Iface> java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>> getProcessMap(java.util.Map<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase>> processMap) {
       processMap.put("exists", new exists());
       processMap.put("get", new get());
       processMap.put("getMultiple", new getMultiple());
@@ -1322,7 +1322,7 @@ public class THBaseService {
       return processMap;
     }
 
-    public static class exists<I extends Iface> extends org.apache.thrift.ProcessFunction<I, exists_args> {
+    public static class exists<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, exists_args> {
       public exists() {
         super("exists");
       }
@@ -1340,7 +1340,7 @@ public class THBaseService {
         return false;
       }
 
-      public exists_result getResult(I iface, exists_args args) throws org.apache.thrift.TException {
+      public exists_result getResult(I iface, exists_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         exists_result result = new exists_result();
         try {
           result.success = iface.exists(args.table, args.get);
@@ -1352,7 +1352,7 @@ public class THBaseService {
       }
     }
 
-    public static class get<I extends Iface> extends org.apache.thrift.ProcessFunction<I, get_args> {
+    public static class get<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, get_args> {
       public get() {
         super("get");
       }
@@ -1370,7 +1370,7 @@ public class THBaseService {
         return false;
       }
 
-      public get_result getResult(I iface, get_args args) throws org.apache.thrift.TException {
+      public get_result getResult(I iface, get_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         get_result result = new get_result();
         try {
           result.success = iface.get(args.table, args.get);
@@ -1381,7 +1381,7 @@ public class THBaseService {
       }
     }
 
-    public static class getMultiple<I extends Iface> extends org.apache.thrift.ProcessFunction<I, getMultiple_args> {
+    public static class getMultiple<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, getMultiple_args> {
       public getMultiple() {
         super("getMultiple");
       }
@@ -1399,7 +1399,7 @@ public class THBaseService {
         return false;
       }
 
-      public getMultiple_result getResult(I iface, getMultiple_args args) throws org.apache.thrift.TException {
+      public getMultiple_result getResult(I iface, getMultiple_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         getMultiple_result result = new getMultiple_result();
         try {
           result.success = iface.getMultiple(args.table, args.gets);
@@ -1410,7 +1410,7 @@ public class THBaseService {
       }
     }
 
-    public static class put<I extends Iface> extends org.apache.thrift.ProcessFunction<I, put_args> {
+    public static class put<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, put_args> {
       public put() {
         super("put");
       }
@@ -1428,7 +1428,7 @@ public class THBaseService {
         return false;
       }
 
-      public put_result getResult(I iface, put_args args) throws org.apache.thrift.TException {
+      public put_result getResult(I iface, put_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         put_result result = new put_result();
         try {
           iface.put(args.table, args.put);
@@ -1439,7 +1439,7 @@ public class THBaseService {
       }
     }
 
-    public static class checkAndPut<I extends Iface> extends org.apache.thrift.ProcessFunction<I, checkAndPut_args> {
+    public static class checkAndPut<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, checkAndPut_args> {
       public checkAndPut() {
         super("checkAndPut");
       }
@@ -1457,7 +1457,7 @@ public class THBaseService {
         return false;
       }
 
-      public checkAndPut_result getResult(I iface, checkAndPut_args args) throws org.apache.thrift.TException {
+      public checkAndPut_result getResult(I iface, checkAndPut_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         checkAndPut_result result = new checkAndPut_result();
         try {
           result.success = iface.checkAndPut(args.table, args.row, args.family, args.qualifier, args.value, args.put);
@@ -1469,7 +1469,7 @@ public class THBaseService {
       }
     }
 
-    public static class putMultiple<I extends Iface> extends org.apache.thrift.ProcessFunction<I, putMultiple_args> {
+    public static class putMultiple<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, putMultiple_args> {
       public putMultiple() {
         super("putMultiple");
       }
@@ -1487,7 +1487,7 @@ public class THBaseService {
         return false;
       }
 
-      public putMultiple_result getResult(I iface, putMultiple_args args) throws org.apache.thrift.TException {
+      public putMultiple_result getResult(I iface, putMultiple_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         putMultiple_result result = new putMultiple_result();
         try {
           iface.putMultiple(args.table, args.puts);
@@ -1498,7 +1498,7 @@ public class THBaseService {
       }
     }
 
-    public static class deleteSingle<I extends Iface> extends org.apache.thrift.ProcessFunction<I, deleteSingle_args> {
+    public static class deleteSingle<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, deleteSingle_args> {
       public deleteSingle() {
         super("deleteSingle");
       }
@@ -1516,7 +1516,7 @@ public class THBaseService {
         return false;
       }
 
-      public deleteSingle_result getResult(I iface, deleteSingle_args args) throws org.apache.thrift.TException {
+      public deleteSingle_result getResult(I iface, deleteSingle_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         deleteSingle_result result = new deleteSingle_result();
         try {
           iface.deleteSingle(args.table, args.deleteSingle);
@@ -1527,7 +1527,7 @@ public class THBaseService {
       }
     }
 
-    public static class deleteMultiple<I extends Iface> extends org.apache.thrift.ProcessFunction<I, deleteMultiple_args> {
+    public static class deleteMultiple<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, deleteMultiple_args> {
       public deleteMultiple() {
         super("deleteMultiple");
       }
@@ -1545,7 +1545,7 @@ public class THBaseService {
         return false;
       }
 
-      public deleteMultiple_result getResult(I iface, deleteMultiple_args args) throws org.apache.thrift.TException {
+      public deleteMultiple_result getResult(I iface, deleteMultiple_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         deleteMultiple_result result = new deleteMultiple_result();
         try {
           result.success = iface.deleteMultiple(args.table, args.deletes);
@@ -1556,7 +1556,7 @@ public class THBaseService {
       }
     }
 
-    public static class checkAndDelete<I extends Iface> extends org.apache.thrift.ProcessFunction<I, checkAndDelete_args> {
+    public static class checkAndDelete<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, checkAndDelete_args> {
       public checkAndDelete() {
         super("checkAndDelete");
       }
@@ -1574,7 +1574,7 @@ public class THBaseService {
         return false;
       }
 
-      public checkAndDelete_result getResult(I iface, checkAndDelete_args args) throws org.apache.thrift.TException {
+      public checkAndDelete_result getResult(I iface, checkAndDelete_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         checkAndDelete_result result = new checkAndDelete_result();
         try {
           result.success = iface.checkAndDelete(args.table, args.row, args.family, args.qualifier, args.value, args.deleteSingle);
@@ -1586,7 +1586,7 @@ public class THBaseService {
       }
     }
 
-    public static class increment<I extends Iface> extends org.apache.thrift.ProcessFunction<I, increment_args> {
+    public static class increment<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, increment_args> {
       public increment() {
         super("increment");
       }
@@ -1604,7 +1604,7 @@ public class THBaseService {
         return false;
       }
 
-      public increment_result getResult(I iface, increment_args args) throws org.apache.thrift.TException {
+      public increment_result getResult(I iface, increment_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         increment_result result = new increment_result();
         try {
           result.success = iface.increment(args.table, args.increment);
@@ -1615,7 +1615,7 @@ public class THBaseService {
       }
     }
 
-    public static class append<I extends Iface> extends org.apache.thrift.ProcessFunction<I, append_args> {
+    public static class append<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, append_args> {
       public append() {
         super("append");
       }
@@ -1633,7 +1633,7 @@ public class THBaseService {
         return false;
       }
 
-      public append_result getResult(I iface, append_args args) throws org.apache.thrift.TException {
+      public append_result getResult(I iface, append_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         append_result result = new append_result();
         try {
           result.success = iface.append(args.table, args.append);
@@ -1644,7 +1644,7 @@ public class THBaseService {
       }
     }
 
-    public static class openScanner<I extends Iface> extends org.apache.thrift.ProcessFunction<I, openScanner_args> {
+    public static class openScanner<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, openScanner_args> {
       public openScanner() {
         super("openScanner");
       }
@@ -1662,7 +1662,7 @@ public class THBaseService {
         return false;
       }
 
-      public openScanner_result getResult(I iface, openScanner_args args) throws org.apache.thrift.TException {
+      public openScanner_result getResult(I iface, openScanner_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         openScanner_result result = new openScanner_result();
         try {
           result.success = iface.openScanner(args.table, args.scan);
@@ -1674,7 +1674,7 @@ public class THBaseService {
       }
     }
 
-    public static class getScannerRows<I extends Iface> extends org.apache.thrift.ProcessFunction<I, getScannerRows_args> {
+    public static class getScannerRows<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, getScannerRows_args> {
       public getScannerRows() {
         super("getScannerRows");
       }
@@ -1692,7 +1692,7 @@ public class THBaseService {
         return false;
       }
 
-      public getScannerRows_result getResult(I iface, getScannerRows_args args) throws org.apache.thrift.TException {
+      public getScannerRows_result getResult(I iface, getScannerRows_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         getScannerRows_result result = new getScannerRows_result();
         try {
           result.success = iface.getScannerRows(args.scannerId, args.numRows);
@@ -1705,7 +1705,7 @@ public class THBaseService {
       }
     }
 
-    public static class closeScanner<I extends Iface> extends org.apache.thrift.ProcessFunction<I, closeScanner_args> {
+    public static class closeScanner<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, closeScanner_args> {
       public closeScanner() {
         super("closeScanner");
       }
@@ -1723,7 +1723,7 @@ public class THBaseService {
         return false;
       }
 
-      public closeScanner_result getResult(I iface, closeScanner_args args) throws org.apache.thrift.TException {
+      public closeScanner_result getResult(I iface, closeScanner_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         closeScanner_result result = new closeScanner_result();
         try {
           iface.closeScanner(args.scannerId);
@@ -1736,7 +1736,7 @@ public class THBaseService {
       }
     }
 
-    public static class mutateRow<I extends Iface> extends org.apache.thrift.ProcessFunction<I, mutateRow_args> {
+    public static class mutateRow<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, mutateRow_args> {
       public mutateRow() {
         super("mutateRow");
       }
@@ -1754,7 +1754,7 @@ public class THBaseService {
         return false;
       }
 
-      public mutateRow_result getResult(I iface, mutateRow_args args) throws org.apache.thrift.TException {
+      public mutateRow_result getResult(I iface, mutateRow_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         mutateRow_result result = new mutateRow_result();
         try {
           iface.mutateRow(args.table, args.rowMutations);
@@ -1765,7 +1765,7 @@ public class THBaseService {
       }
     }
 
-    public static class getScannerResults<I extends Iface> extends org.apache.thrift.ProcessFunction<I, getScannerResults_args> {
+    public static class getScannerResults<I extends Iface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.ProcessFunction<I, getScannerResults_args> {
       public getScannerResults() {
         super("getScannerResults");
       }
@@ -1783,7 +1783,7 @@ public class THBaseService {
         return false;
       }
 
-      public getScannerResults_result getResult(I iface, getScannerResults_args args) throws org.apache.thrift.TException {
+      public getScannerResults_result getResult(I iface, getScannerResults_args args) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         getScannerResults_result result = new getScannerResults_result();
         try {
           result.success = iface.getScannerResults(args.table, args.scan, args.numRows);
@@ -1796,17 +1796,17 @@ public class THBaseService {
 
   }
 
-  public static class AsyncProcessor<I extends AsyncIface> extends org.apache.thrift.TBaseAsyncProcessor<I> {
+  public static class AsyncProcessor<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseAsyncProcessor<I> {
     private static final org.slf4j.Logger _LOGGER = org.slf4j.LoggerFactory.getLogger(AsyncProcessor.class.getName());
     public AsyncProcessor(I iface) {
-      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, org.apache.thrift.AsyncProcessFunction<I, ? extends org.apache.thrift.TBase, ?>>()));
+      super(iface, getProcessMap(new java.util.HashMap<java.lang.String, com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends com.xiaomi.infra.thirdparty.org.apache.thrift.TBase, ?>>()));
     }
 
-    protected AsyncProcessor(I iface, java.util.Map<java.lang.String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase, ?>> processMap) {
+    protected AsyncProcessor(I iface, java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase, ?>> processMap) {
       super(iface, getProcessMap(processMap));
     }
 
-    private static <I extends AsyncIface> java.util.Map<java.lang.String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase,?>> getProcessMap(java.util.Map<java.lang.String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase, ?>> processMap) {
+    private static <I extends AsyncIface> java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase,?>> getProcessMap(java.util.Map<java.lang.String,  com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, ? extends  com.xiaomi.infra.thirdparty.org.apache.thrift.TBase, ?>> processMap) {
       processMap.put("exists", new exists());
       processMap.put("get", new get());
       processMap.put("getMultiple", new getMultiple());
@@ -1826,7 +1826,7 @@ public class THBaseService {
       return processMap;
     }
 
-    public static class exists<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, exists_args, java.lang.Boolean> {
+    public static class exists<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, exists_args, java.lang.Boolean> {
       public exists() {
         super("exists");
       }
@@ -1835,16 +1835,16 @@ public class THBaseService {
         return new exists_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean>() { 
           public void onComplete(java.lang.Boolean o) {
             exists_result result = new exists_result();
             result.success = o;
             result.setSuccessIsSet(true);
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -1853,25 +1853,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             exists_result result = new exists_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -1887,12 +1887,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, exists_args args, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, exists_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.exists(args.table, args.get,resultHandler);
       }
     }
 
-    public static class get<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, get_args, TResult> {
+    public static class get<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, get_args, TResult> {
       public get() {
         super("get");
       }
@@ -1901,15 +1901,15 @@ public class THBaseService {
         return new get_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<TResult> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<TResult>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult>() { 
           public void onComplete(TResult o) {
             get_result result = new get_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -1918,25 +1918,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             get_result result = new get_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -1952,12 +1952,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, get_args args, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, get_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.get(args.table, args.get,resultHandler);
       }
     }
 
-    public static class getMultiple<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, getMultiple_args, java.util.List<TResult>> {
+    public static class getMultiple<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, getMultiple_args, java.util.List<TResult>> {
       public getMultiple() {
         super("getMultiple");
       }
@@ -1966,15 +1966,15 @@ public class THBaseService {
         return new getMultiple_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>>() { 
           public void onComplete(java.util.List<TResult> o) {
             getMultiple_result result = new getMultiple_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -1983,25 +1983,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             getMultiple_result result = new getMultiple_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2017,12 +2017,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, getMultiple_args args, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, getMultiple_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.getMultiple(args.table, args.gets,resultHandler);
       }
     }
 
-    public static class put<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, put_args, Void> {
+    public static class put<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, put_args, Void> {
       public put() {
         super("put");
       }
@@ -2031,14 +2031,14 @@ public class THBaseService {
         return new put_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<Void>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void>() { 
           public void onComplete(Void o) {
             put_result result = new put_result();
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2047,25 +2047,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             put_result result = new put_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2081,12 +2081,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, put_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, put_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.put(args.table, args.put,resultHandler);
       }
     }
 
-    public static class checkAndPut<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, checkAndPut_args, java.lang.Boolean> {
+    public static class checkAndPut<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, checkAndPut_args, java.lang.Boolean> {
       public checkAndPut() {
         super("checkAndPut");
       }
@@ -2095,16 +2095,16 @@ public class THBaseService {
         return new checkAndPut_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean>() { 
           public void onComplete(java.lang.Boolean o) {
             checkAndPut_result result = new checkAndPut_result();
             result.success = o;
             result.setSuccessIsSet(true);
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2113,25 +2113,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             checkAndPut_result result = new checkAndPut_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2147,12 +2147,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, checkAndPut_args args, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, checkAndPut_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.checkAndPut(args.table, args.row, args.family, args.qualifier, args.value, args.put,resultHandler);
       }
     }
 
-    public static class putMultiple<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, putMultiple_args, Void> {
+    public static class putMultiple<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, putMultiple_args, Void> {
       public putMultiple() {
         super("putMultiple");
       }
@@ -2161,14 +2161,14 @@ public class THBaseService {
         return new putMultiple_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<Void>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void>() { 
           public void onComplete(Void o) {
             putMultiple_result result = new putMultiple_result();
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2177,25 +2177,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             putMultiple_result result = new putMultiple_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2211,12 +2211,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, putMultiple_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, putMultiple_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.putMultiple(args.table, args.puts,resultHandler);
       }
     }
 
-    public static class deleteSingle<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, deleteSingle_args, Void> {
+    public static class deleteSingle<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, deleteSingle_args, Void> {
       public deleteSingle() {
         super("deleteSingle");
       }
@@ -2225,14 +2225,14 @@ public class THBaseService {
         return new deleteSingle_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<Void>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void>() { 
           public void onComplete(Void o) {
             deleteSingle_result result = new deleteSingle_result();
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2241,25 +2241,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             deleteSingle_result result = new deleteSingle_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2275,12 +2275,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, deleteSingle_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, deleteSingle_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.deleteSingle(args.table, args.deleteSingle,resultHandler);
       }
     }
 
-    public static class deleteMultiple<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, deleteMultiple_args, java.util.List<TDelete>> {
+    public static class deleteMultiple<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, deleteMultiple_args, java.util.List<TDelete>> {
       public deleteMultiple() {
         super("deleteMultiple");
       }
@@ -2289,15 +2289,15 @@ public class THBaseService {
         return new deleteMultiple_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>>() { 
           public void onComplete(java.util.List<TDelete> o) {
             deleteMultiple_result result = new deleteMultiple_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2306,25 +2306,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             deleteMultiple_result result = new deleteMultiple_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2340,12 +2340,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, deleteMultiple_args args, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, deleteMultiple_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TDelete>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.deleteMultiple(args.table, args.deletes,resultHandler);
       }
     }
 
-    public static class checkAndDelete<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, checkAndDelete_args, java.lang.Boolean> {
+    public static class checkAndDelete<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, checkAndDelete_args, java.lang.Boolean> {
       public checkAndDelete() {
         super("checkAndDelete");
       }
@@ -2354,16 +2354,16 @@ public class THBaseService {
         return new checkAndDelete_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean>() { 
           public void onComplete(java.lang.Boolean o) {
             checkAndDelete_result result = new checkAndDelete_result();
             result.success = o;
             result.setSuccessIsSet(true);
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2372,25 +2372,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             checkAndDelete_result result = new checkAndDelete_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2406,12 +2406,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, checkAndDelete_args args, org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, checkAndDelete_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Boolean> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.checkAndDelete(args.table, args.row, args.family, args.qualifier, args.value, args.deleteSingle,resultHandler);
       }
     }
 
-    public static class increment<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, increment_args, TResult> {
+    public static class increment<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, increment_args, TResult> {
       public increment() {
         super("increment");
       }
@@ -2420,15 +2420,15 @@ public class THBaseService {
         return new increment_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<TResult> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<TResult>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult>() { 
           public void onComplete(TResult o) {
             increment_result result = new increment_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2437,25 +2437,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             increment_result result = new increment_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2471,12 +2471,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, increment_args args, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, increment_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.increment(args.table, args.increment,resultHandler);
       }
     }
 
-    public static class append<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, append_args, TResult> {
+    public static class append<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, append_args, TResult> {
       public append() {
         super("append");
       }
@@ -2485,15 +2485,15 @@ public class THBaseService {
         return new append_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<TResult> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<TResult>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult>() { 
           public void onComplete(TResult o) {
             append_result result = new append_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2502,25 +2502,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             append_result result = new append_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2536,12 +2536,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, append_args args, org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, append_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<TResult> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.append(args.table, args.append,resultHandler);
       }
     }
 
-    public static class openScanner<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, openScanner_args, java.lang.Integer> {
+    public static class openScanner<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, openScanner_args, java.lang.Integer> {
       public openScanner() {
         super("openScanner");
       }
@@ -2550,16 +2550,16 @@ public class THBaseService {
         return new openScanner_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer>() { 
           public void onComplete(java.lang.Integer o) {
             openScanner_result result = new openScanner_result();
             result.success = o;
             result.setSuccessIsSet(true);
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2568,25 +2568,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             openScanner_result result = new openScanner_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2602,12 +2602,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, openScanner_args args, org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, openScanner_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.lang.Integer> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.openScanner(args.table, args.scan,resultHandler);
       }
     }
 
-    public static class getScannerRows<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, getScannerRows_args, java.util.List<TResult>> {
+    public static class getScannerRows<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, getScannerRows_args, java.util.List<TResult>> {
       public getScannerRows() {
         super("getScannerRows");
       }
@@ -2616,15 +2616,15 @@ public class THBaseService {
         return new getScannerRows_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>>() { 
           public void onComplete(java.util.List<TResult> o) {
             getScannerRows_result result = new getScannerRows_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2633,8 +2633,8 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             getScannerRows_result result = new getScannerRows_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
@@ -2644,18 +2644,18 @@ public class THBaseService {
               result.ia = (TIllegalArgument) e;
               result.setIaIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2671,12 +2671,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, getScannerRows_args args, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, getScannerRows_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.getScannerRows(args.scannerId, args.numRows,resultHandler);
       }
     }
 
-    public static class closeScanner<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, closeScanner_args, Void> {
+    public static class closeScanner<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, closeScanner_args, Void> {
       public closeScanner() {
         super("closeScanner");
       }
@@ -2685,14 +2685,14 @@ public class THBaseService {
         return new closeScanner_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<Void>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void>() { 
           public void onComplete(Void o) {
             closeScanner_result result = new closeScanner_result();
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2701,8 +2701,8 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             closeScanner_result result = new closeScanner_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
@@ -2712,18 +2712,18 @@ public class THBaseService {
               result.ia = (TIllegalArgument) e;
               result.setIaIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2739,12 +2739,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, closeScanner_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, closeScanner_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.closeScanner(args.scannerId,resultHandler);
       }
     }
 
-    public static class mutateRow<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, mutateRow_args, Void> {
+    public static class mutateRow<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, mutateRow_args, Void> {
       public mutateRow() {
         super("mutateRow");
       }
@@ -2753,14 +2753,14 @@ public class THBaseService {
         return new mutateRow_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<Void>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void>() { 
           public void onComplete(Void o) {
             mutateRow_result result = new mutateRow_result();
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2769,25 +2769,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             mutateRow_result result = new mutateRow_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2803,12 +2803,12 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, mutateRow_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, mutateRow_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.mutateRow(args.table, args.rowMutations,resultHandler);
       }
     }
 
-    public static class getScannerResults<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, getScannerResults_args, java.util.List<TResult>> {
+    public static class getScannerResults<I extends AsyncIface> extends com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction<I, getScannerResults_args, java.util.List<TResult>> {
       public getScannerResults() {
         super("getScannerResults");
       }
@@ -2817,15 +2817,15 @@ public class THBaseService {
         return new getScannerResults_args();
       }
 
-      public org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
-        final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>>() { 
+      public com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> getResultHandler(final com.xiaomi.infra.thirdparty.org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final com.xiaomi.infra.thirdparty.org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>>() { 
           public void onComplete(java.util.List<TResult> o) {
             getScannerResults_result result = new getScannerResults_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
-            } catch (org.apache.thrift.transport.TTransportException e) {
+              fcall.sendResponse(fb, result, com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+            } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException e) {
               _LOGGER.error("TTransportException writing to internal frame buffer", e);
               fb.close();
             } catch (java.lang.Exception e) {
@@ -2834,25 +2834,25 @@ public class THBaseService {
             }
           }
           public void onError(java.lang.Exception e) {
-            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
-            org.apache.thrift.TSerializable msg;
+            byte msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.REPLY;
+            com.xiaomi.infra.thirdparty.org.apache.thrift.TSerializable msg;
             getScannerResults_result result = new getScannerResults_result();
             if (e instanceof TIOError) {
               result.io = (TIOError) e;
               result.setIoIsSet(true);
               msg = result;
-            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException) {
               _LOGGER.error("TTransportException inside handler", e);
               fb.close();
               return;
-            } else if (e instanceof org.apache.thrift.TApplicationException) {
+            } else if (e instanceof com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException) {
               _LOGGER.error("TApplicationException inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TApplicationException)e;
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException)e;
             } else {
               _LOGGER.error("Exception inside handler", e);
-              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msgType = com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException(com.xiaomi.infra.thirdparty.org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
               fcall.sendResponse(fb,msg,msgType,seqid);
@@ -2868,33 +2868,33 @@ public class THBaseService {
         return false;
       }
 
-      public void start(I iface, getScannerResults_args args, org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws org.apache.thrift.TException {
+      public void start(I iface, getScannerResults_args args, com.xiaomi.infra.thirdparty.org.apache.thrift.async.AsyncMethodCallback<java.util.List<TResult>> resultHandler) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         iface.getScannerResults(args.table, args.scan, args.numRows,resultHandler);
       }
     }
 
   }
 
-  public static class exists_args implements org.apache.thrift.TBase<exists_args, exists_args._Fields>, java.io.Serializable, Cloneable, Comparable<exists_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("exists_args");
+  public static class exists_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<exists_args, exists_args._Fields>, java.io.Serializable, Cloneable, Comparable<exists_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("exists_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField GET_FIELD_DESC = new org.apache.thrift.protocol.TField("get", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField GET_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("get", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new exists_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new exists_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new exists_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new exists_argsTupleSchemeFactory();
 
     /**
      * the table to check on
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the TGet to check for
      */
-    public @org.apache.thrift.annotation.Nullable TGet get; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TGet get; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to check on
        */
@@ -2915,7 +2915,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -2940,7 +2940,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -2963,15 +2963,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.GET, new org.apache.thrift.meta_data.FieldMetaData("get", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TGet.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.GET, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("get", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TGet.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(exists_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(exists_args.class, metaDataMap);
     }
 
     public exists_args() {
@@ -2982,7 +2982,7 @@ public class THBaseService {
       TGet get)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.get = get;
     }
 
@@ -2991,7 +2991,7 @@ public class THBaseService {
      */
     public exists_args(exists_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetGet()) {
         this.get = new TGet(other.get);
@@ -3012,12 +3012,12 @@ public class THBaseService {
      * the table to check on
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -3028,8 +3028,8 @@ public class THBaseService {
       return this;
     }
 
-    public exists_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public exists_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -3051,7 +3051,7 @@ public class THBaseService {
     /**
      * the TGet to check for
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TGet getGet() {
       return this.get;
     }
@@ -3059,7 +3059,7 @@ public class THBaseService {
     /**
      * the TGet to check for
      */
-    public exists_args setGet(@org.apache.thrift.annotation.Nullable TGet get) {
+    public exists_args setGet(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TGet get) {
       this.get = get;
       return this;
     }
@@ -3079,7 +3079,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -3104,7 +3104,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -3196,7 +3196,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -3206,7 +3206,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetGet()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.get, other.get);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.get, other.get);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -3214,16 +3214,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -3236,7 +3236,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -3251,13 +3251,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (get == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'get' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'get' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (get != null) {
@@ -3267,57 +3267,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class exists_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class exists_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public exists_argsStandardScheme getScheme() {
         return new exists_argsStandardScheme();
       }
     }
 
-    private static class exists_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<exists_args> {
+    private static class exists_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<exists_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, exists_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, exists_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // GET
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.get = new TGet();
                 struct.get.read(iprot);
                 struct.setGetIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -3327,7 +3327,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, exists_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, exists_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -3347,24 +3347,24 @@ public class THBaseService {
 
     }
 
-    private static class exists_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class exists_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public exists_argsTupleScheme getScheme() {
         return new exists_argsTupleScheme();
       }
     }
 
-    private static class exists_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<exists_args> {
+    private static class exists_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<exists_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, exists_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, exists_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.get.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, exists_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, exists_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.get = new TGet();
@@ -3373,25 +3373,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class exists_result implements org.apache.thrift.TBase<exists_result, exists_result._Fields>, java.io.Serializable, Cloneable, Comparable<exists_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("exists_result");
+  public static class exists_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<exists_result, exists_result._Fields>, java.io.Serializable, Cloneable, Comparable<exists_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("exists_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.BOOL, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new exists_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new exists_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new exists_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new exists_resultTupleSchemeFactory();
 
     public boolean success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -3406,7 +3406,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -3431,7 +3431,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -3456,15 +3456,15 @@ public class THBaseService {
     // isset id assignments
     private static final int __SUCCESS_ISSET_ID = 0;
     private byte __isset_bitfield = 0;
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL)));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(exists_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(exists_result.class, metaDataMap);
     }
 
     public exists_result() {
@@ -3513,24 +3513,24 @@ public class THBaseService {
     }
 
     public void unsetSuccess() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     /** Returns true if field success is set (has been assigned a value) and false otherwise */
     public boolean isSetSuccess() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     public void setSuccessIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public exists_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public exists_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -3550,7 +3550,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -3571,7 +3571,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -3661,7 +3661,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -3671,7 +3671,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -3679,16 +3679,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -3712,15 +3712,15 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
@@ -3729,49 +3729,49 @@ public class THBaseService {
       try {
         // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
         __isset_bitfield = 0;
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class exists_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class exists_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public exists_resultStandardScheme getScheme() {
         return new exists_resultStandardScheme();
       }
     }
 
-    private static class exists_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<exists_result> {
+    private static class exists_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<exists_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, exists_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, exists_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.BOOL) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL) {
                 struct.success = iprot.readBool();
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -3781,7 +3781,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, exists_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, exists_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -3801,17 +3801,17 @@ public class THBaseService {
 
     }
 
-    private static class exists_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class exists_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public exists_resultTupleScheme getScheme() {
         return new exists_resultTupleScheme();
       }
     }
 
-    private static class exists_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<exists_result> {
+    private static class exists_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<exists_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, exists_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, exists_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -3829,8 +3829,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, exists_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, exists_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.success = iprot.readBool();
@@ -3844,31 +3844,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class get_args implements org.apache.thrift.TBase<get_args, get_args._Fields>, java.io.Serializable, Cloneable, Comparable<get_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("get_args");
+  public static class get_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<get_args, get_args._Fields>, java.io.Serializable, Cloneable, Comparable<get_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("get_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField GET_FIELD_DESC = new org.apache.thrift.protocol.TField("get", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField GET_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("get", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new get_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new get_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new get_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new get_argsTupleSchemeFactory();
 
     /**
      * the table to get from
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the TGet to fetch
      */
-    public @org.apache.thrift.annotation.Nullable TGet get; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TGet get; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to get from
        */
@@ -3889,7 +3889,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -3914,7 +3914,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -3937,15 +3937,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.GET, new org.apache.thrift.meta_data.FieldMetaData("get", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TGet.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.GET, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("get", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TGet.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(get_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(get_args.class, metaDataMap);
     }
 
     public get_args() {
@@ -3956,7 +3956,7 @@ public class THBaseService {
       TGet get)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.get = get;
     }
 
@@ -3965,7 +3965,7 @@ public class THBaseService {
      */
     public get_args(get_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetGet()) {
         this.get = new TGet(other.get);
@@ -3986,12 +3986,12 @@ public class THBaseService {
      * the table to get from
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -4002,8 +4002,8 @@ public class THBaseService {
       return this;
     }
 
-    public get_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public get_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -4025,7 +4025,7 @@ public class THBaseService {
     /**
      * the TGet to fetch
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TGet getGet() {
       return this.get;
     }
@@ -4033,7 +4033,7 @@ public class THBaseService {
     /**
      * the TGet to fetch
      */
-    public get_args setGet(@org.apache.thrift.annotation.Nullable TGet get) {
+    public get_args setGet(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TGet get) {
       this.get = get;
       return this;
     }
@@ -4053,7 +4053,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -4078,7 +4078,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -4170,7 +4170,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -4180,7 +4180,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetGet()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.get, other.get);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.get, other.get);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -4188,16 +4188,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -4210,7 +4210,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -4225,13 +4225,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (get == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'get' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'get' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (get != null) {
@@ -4241,57 +4241,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class get_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class get_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public get_argsStandardScheme getScheme() {
         return new get_argsStandardScheme();
       }
     }
 
-    private static class get_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<get_args> {
+    private static class get_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<get_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, get_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, get_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // GET
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.get = new TGet();
                 struct.get.read(iprot);
                 struct.setGetIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -4301,7 +4301,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, get_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, get_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -4321,24 +4321,24 @@ public class THBaseService {
 
     }
 
-    private static class get_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class get_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public get_argsTupleScheme getScheme() {
         return new get_argsTupleScheme();
       }
     }
 
-    private static class get_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<get_args> {
+    private static class get_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<get_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, get_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, get_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.get.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, get_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, get_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.get = new TGet();
@@ -4347,25 +4347,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class get_result implements org.apache.thrift.TBase<get_result, get_result._Fields>, java.io.Serializable, Cloneable, Comparable<get_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("get_result");
+  public static class get_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<get_result, get_result._Fields>, java.io.Serializable, Cloneable, Comparable<get_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("get_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.STRUCT, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new get_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new get_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new get_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new get_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TResult success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -4380,7 +4380,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -4405,7 +4405,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -4428,15 +4428,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TResult.class)));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TResult.class)));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(get_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(get_result.class, metaDataMap);
     }
 
     public get_result() {
@@ -4473,12 +4473,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TResult getSuccess() {
       return this.success;
     }
 
-    public get_result setSuccess(@org.apache.thrift.annotation.Nullable TResult success) {
+    public get_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult success) {
       this.success = success;
       return this;
     }
@@ -4498,12 +4498,12 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public get_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public get_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -4523,7 +4523,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -4544,7 +4544,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -4636,7 +4636,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -4646,7 +4646,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -4654,16 +4654,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -4691,7 +4691,7 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
       if (success != null) {
@@ -4701,58 +4701,58 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class get_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class get_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public get_resultStandardScheme getScheme() {
         return new get_resultStandardScheme();
       }
     }
 
-    private static class get_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<get_result> {
+    private static class get_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<get_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, get_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, get_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.success = new TResult();
                 struct.success.read(iprot);
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -4762,7 +4762,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, get_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, get_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -4782,17 +4782,17 @@ public class THBaseService {
 
     }
 
-    private static class get_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class get_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public get_resultTupleScheme getScheme() {
         return new get_resultTupleScheme();
       }
     }
 
-    private static class get_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<get_result> {
+    private static class get_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<get_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, get_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, get_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -4810,8 +4810,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, get_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, get_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.success = new TResult();
@@ -4826,33 +4826,33 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getMultiple_args implements org.apache.thrift.TBase<getMultiple_args, getMultiple_args._Fields>, java.io.Serializable, Cloneable, Comparable<getMultiple_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getMultiple_args");
+  public static class getMultiple_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getMultiple_args, getMultiple_args._Fields>, java.io.Serializable, Cloneable, Comparable<getMultiple_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getMultiple_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField GETS_FIELD_DESC = new org.apache.thrift.protocol.TField("gets", org.apache.thrift.protocol.TType.LIST, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField GETS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("gets", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getMultiple_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getMultiple_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getMultiple_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getMultiple_argsTupleSchemeFactory();
 
     /**
      * the table to get from
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * a list of TGets to fetch, the Result list
      * will have the Results at corresponding positions
      * or null if there was an error
      */
-    public @org.apache.thrift.annotation.Nullable java.util.List<TGet> gets; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TGet> gets; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to get from
        */
@@ -4875,7 +4875,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -4900,7 +4900,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -4923,16 +4923,16 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.GETS, new org.apache.thrift.meta_data.FieldMetaData("gets", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-              new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TGet.class))));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.GETS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("gets", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.ListMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, 
+              new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TGet.class))));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getMultiple_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getMultiple_args.class, metaDataMap);
     }
 
     public getMultiple_args() {
@@ -4943,7 +4943,7 @@ public class THBaseService {
       java.util.List<TGet> gets)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.gets = gets;
     }
 
@@ -4952,7 +4952,7 @@ public class THBaseService {
      */
     public getMultiple_args(getMultiple_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetGets()) {
         java.util.List<TGet> __this__gets = new java.util.ArrayList<TGet>(other.gets.size());
@@ -4977,12 +4977,12 @@ public class THBaseService {
      * the table to get from
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -4993,8 +4993,8 @@ public class THBaseService {
       return this;
     }
 
-    public getMultiple_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public getMultiple_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -5017,7 +5017,7 @@ public class THBaseService {
       return (this.gets == null) ? 0 : this.gets.size();
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.Iterator<TGet> getGetsIterator() {
       return (this.gets == null) ? null : this.gets.iterator();
     }
@@ -5034,7 +5034,7 @@ public class THBaseService {
      * will have the Results at corresponding positions
      * or null if there was an error
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.List<TGet> getGets() {
       return this.gets;
     }
@@ -5044,7 +5044,7 @@ public class THBaseService {
      * will have the Results at corresponding positions
      * or null if there was an error
      */
-    public getMultiple_args setGets(@org.apache.thrift.annotation.Nullable java.util.List<TGet> gets) {
+    public getMultiple_args setGets(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TGet> gets) {
       this.gets = gets;
       return this;
     }
@@ -5064,7 +5064,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -5089,7 +5089,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -5181,7 +5181,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -5191,7 +5191,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetGets()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.gets, other.gets);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.gets, other.gets);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -5199,16 +5199,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -5221,7 +5221,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -5236,65 +5236,65 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (gets == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'gets' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'gets' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getMultiple_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getMultiple_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getMultiple_argsStandardScheme getScheme() {
         return new getMultiple_argsStandardScheme();
       }
     }
 
-    private static class getMultiple_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<getMultiple_args> {
+    private static class getMultiple_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getMultiple_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // GETS
-              if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST) {
                 {
-                  org.apache.thrift.protocol.TList _list132 = iprot.readListBegin();
+                  com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list132 = iprot.readListBegin();
                   struct.gets = new java.util.ArrayList<TGet>(_list132.size);
-                  @org.apache.thrift.annotation.Nullable TGet _elem133;
+                  @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TGet _elem133;
                   for (int _i134 = 0; _i134 < _list132.size; ++_i134)
                   {
                     _elem133 = new TGet();
@@ -5305,11 +5305,11 @@ public class THBaseService {
                 }
                 struct.setGetsIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -5319,7 +5319,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getMultiple_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -5331,7 +5331,7 @@ public class THBaseService {
         if (struct.gets != null) {
           oprot.writeFieldBegin(GETS_FIELD_DESC);
           {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.gets.size()));
+            oprot.writeListBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, struct.gets.size()));
             for (TGet _iter135 : struct.gets)
             {
               _iter135.write(oprot);
@@ -5346,17 +5346,17 @@ public class THBaseService {
 
     }
 
-    private static class getMultiple_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getMultiple_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getMultiple_argsTupleScheme getScheme() {
         return new getMultiple_argsTupleScheme();
       }
     }
 
-    private static class getMultiple_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<getMultiple_args> {
+    private static class getMultiple_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getMultiple_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         {
           oprot.writeI32(struct.gets.size());
@@ -5368,14 +5368,14 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         {
-          org.apache.thrift.protocol.TList _list137 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
+          com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list137 = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
           struct.gets = new java.util.ArrayList<TGet>(_list137.size);
-          @org.apache.thrift.annotation.Nullable TGet _elem138;
+          @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TGet _elem138;
           for (int _i139 = 0; _i139 < _list137.size; ++_i139)
           {
             _elem138 = new TGet();
@@ -5387,25 +5387,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getMultiple_result implements org.apache.thrift.TBase<getMultiple_result, getMultiple_result._Fields>, java.io.Serializable, Cloneable, Comparable<getMultiple_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getMultiple_result");
+  public static class getMultiple_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getMultiple_result, getMultiple_result._Fields>, java.io.Serializable, Cloneable, Comparable<getMultiple_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getMultiple_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.LIST, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getMultiple_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getMultiple_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getMultiple_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getMultiple_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable java.util.List<TResult> success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TResult> success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -5420,7 +5420,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -5445,7 +5445,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -5468,16 +5468,16 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-              new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TResult.class))));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.ListMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, 
+              new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TResult.class))));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getMultiple_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getMultiple_result.class, metaDataMap);
     }
 
     public getMultiple_result() {
@@ -5522,7 +5522,7 @@ public class THBaseService {
       return (this.success == null) ? 0 : this.success.size();
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.Iterator<TResult> getSuccessIterator() {
       return (this.success == null) ? null : this.success.iterator();
     }
@@ -5534,12 +5534,12 @@ public class THBaseService {
       this.success.add(elem);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.List<TResult> getSuccess() {
       return this.success;
     }
 
-    public getMultiple_result setSuccess(@org.apache.thrift.annotation.Nullable java.util.List<TResult> success) {
+    public getMultiple_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TResult> success) {
       this.success = success;
       return this;
     }
@@ -5559,12 +5559,12 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public getMultiple_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public getMultiple_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -5584,7 +5584,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -5605,7 +5605,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -5697,7 +5697,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -5707,7 +5707,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -5715,16 +5715,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -5752,51 +5752,51 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getMultiple_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getMultiple_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getMultiple_resultStandardScheme getScheme() {
         return new getMultiple_resultStandardScheme();
       }
     }
 
-    private static class getMultiple_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<getMultiple_result> {
+    private static class getMultiple_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getMultiple_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST) {
                 {
-                  org.apache.thrift.protocol.TList _list140 = iprot.readListBegin();
+                  com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list140 = iprot.readListBegin();
                   struct.success = new java.util.ArrayList<TResult>(_list140.size);
-                  @org.apache.thrift.annotation.Nullable TResult _elem141;
+                  @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult _elem141;
                   for (int _i142 = 0; _i142 < _list140.size; ++_i142)
                   {
                     _elem141 = new TResult();
@@ -5807,20 +5807,20 @@ public class THBaseService {
                 }
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -5830,14 +5830,14 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getMultiple_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
         if (struct.success != null) {
           oprot.writeFieldBegin(SUCCESS_FIELD_DESC);
           {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
+            oprot.writeListBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
             for (TResult _iter143 : struct.success)
             {
               _iter143.write(oprot);
@@ -5857,17 +5857,17 @@ public class THBaseService {
 
     }
 
-    private static class getMultiple_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getMultiple_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getMultiple_resultTupleScheme getScheme() {
         return new getMultiple_resultTupleScheme();
       }
     }
 
-    private static class getMultiple_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<getMultiple_result> {
+    private static class getMultiple_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getMultiple_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -5891,14 +5891,14 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           {
-            org.apache.thrift.protocol.TList _list145 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
+            com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list145 = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
             struct.success = new java.util.ArrayList<TResult>(_list145.size);
-            @org.apache.thrift.annotation.Nullable TResult _elem146;
+            @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult _elem146;
             for (int _i147 = 0; _i147 < _list145.size; ++_i147)
             {
               _elem146 = new TResult();
@@ -5916,31 +5916,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class put_args implements org.apache.thrift.TBase<put_args, put_args._Fields>, java.io.Serializable, Cloneable, Comparable<put_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("put_args");
+  public static class put_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<put_args, put_args._Fields>, java.io.Serializable, Cloneable, Comparable<put_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("put_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField PUT_FIELD_DESC = new org.apache.thrift.protocol.TField("put", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField PUT_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("put", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new put_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new put_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new put_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new put_argsTupleSchemeFactory();
 
     /**
      * the table to put data in
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the TPut to put
      */
-    public @org.apache.thrift.annotation.Nullable TPut put; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TPut put; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to put data in
        */
@@ -5961,7 +5961,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -5986,7 +5986,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -6009,15 +6009,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.PUT, new org.apache.thrift.meta_data.FieldMetaData("put", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TPut.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.PUT, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("put", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TPut.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(put_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(put_args.class, metaDataMap);
     }
 
     public put_args() {
@@ -6028,7 +6028,7 @@ public class THBaseService {
       TPut put)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.put = put;
     }
 
@@ -6037,7 +6037,7 @@ public class THBaseService {
      */
     public put_args(put_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetPut()) {
         this.put = new TPut(other.put);
@@ -6058,12 +6058,12 @@ public class THBaseService {
      * the table to put data in
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -6074,8 +6074,8 @@ public class THBaseService {
       return this;
     }
 
-    public put_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public put_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -6097,7 +6097,7 @@ public class THBaseService {
     /**
      * the TPut to put
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TPut getPut() {
       return this.put;
     }
@@ -6105,7 +6105,7 @@ public class THBaseService {
     /**
      * the TPut to put
      */
-    public put_args setPut(@org.apache.thrift.annotation.Nullable TPut put) {
+    public put_args setPut(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TPut put) {
       this.put = put;
       return this;
     }
@@ -6125,7 +6125,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -6150,7 +6150,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -6242,7 +6242,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -6252,7 +6252,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetPut()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.put, other.put);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.put, other.put);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -6260,16 +6260,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -6282,7 +6282,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -6297,13 +6297,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (put == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'put' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'put' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (put != null) {
@@ -6313,57 +6313,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class put_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class put_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public put_argsStandardScheme getScheme() {
         return new put_argsStandardScheme();
       }
     }
 
-    private static class put_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<put_args> {
+    private static class put_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<put_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, put_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, put_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // PUT
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.put = new TPut();
                 struct.put.read(iprot);
                 struct.setPutIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -6373,7 +6373,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, put_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, put_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -6393,24 +6393,24 @@ public class THBaseService {
 
     }
 
-    private static class put_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class put_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public put_argsTupleScheme getScheme() {
         return new put_argsTupleScheme();
       }
     }
 
-    private static class put_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<put_args> {
+    private static class put_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<put_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, put_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, put_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.put.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, put_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, put_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.put = new TPut();
@@ -6419,23 +6419,23 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class put_result implements org.apache.thrift.TBase<put_result, put_result._Fields>, java.io.Serializable, Cloneable, Comparable<put_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("put_result");
+  public static class put_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<put_result, put_result._Fields>, java.io.Serializable, Cloneable, Comparable<put_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("put_result");
 
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new put_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new put_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new put_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new put_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       IO((short)1, "io");
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -6449,7 +6449,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // IO
@@ -6472,7 +6472,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -6495,13 +6495,13 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(put_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(put_result.class, metaDataMap);
     }
 
     public put_result() {
@@ -6532,12 +6532,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public put_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public put_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -6557,7 +6557,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case IO:
         if (value == null) {
@@ -6570,7 +6570,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case IO:
@@ -6644,7 +6644,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -6652,16 +6652,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -6681,56 +6681,56 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class put_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class put_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public put_resultStandardScheme getScheme() {
         return new put_resultStandardScheme();
       }
     }
 
-    private static class put_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<put_result> {
+    private static class put_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<put_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, put_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, put_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -6740,7 +6740,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, put_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, put_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -6755,17 +6755,17 @@ public class THBaseService {
 
     }
 
-    private static class put_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class put_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public put_resultTupleScheme getScheme() {
         return new put_resultTupleScheme();
       }
     }
 
-    private static class put_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<put_result> {
+    private static class put_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<put_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, put_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, put_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetIo()) {
           optionals.set(0);
@@ -6777,8 +6777,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, put_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, put_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
           struct.io = new TIOError();
@@ -6788,53 +6788,53 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class checkAndPut_args implements org.apache.thrift.TBase<checkAndPut_args, checkAndPut_args._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndPut_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("checkAndPut_args");
+  public static class checkAndPut_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<checkAndPut_args, checkAndPut_args._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndPut_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("checkAndPut_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField ROW_FIELD_DESC = new org.apache.thrift.protocol.TField("row", org.apache.thrift.protocol.TType.STRING, (short)2);
-    private static final org.apache.thrift.protocol.TField FAMILY_FIELD_DESC = new org.apache.thrift.protocol.TField("family", org.apache.thrift.protocol.TType.STRING, (short)3);
-    private static final org.apache.thrift.protocol.TField QUALIFIER_FIELD_DESC = new org.apache.thrift.protocol.TField("qualifier", org.apache.thrift.protocol.TType.STRING, (short)4);
-    private static final org.apache.thrift.protocol.TField VALUE_FIELD_DESC = new org.apache.thrift.protocol.TField("value", org.apache.thrift.protocol.TType.STRING, (short)5);
-    private static final org.apache.thrift.protocol.TField PUT_FIELD_DESC = new org.apache.thrift.protocol.TField("put", org.apache.thrift.protocol.TType.STRUCT, (short)6);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField ROW_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("row", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField FAMILY_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("family", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)3);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField QUALIFIER_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("qualifier", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)4);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField VALUE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("value", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)5);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField PUT_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("put", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)6);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndPut_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndPut_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndPut_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndPut_argsTupleSchemeFactory();
 
     /**
      * to check in and put to
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * row to check
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row; // required
     /**
      * column family to check
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family; // required
     /**
      * column qualifier to check
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier; // required
     /**
      * the expected value, if not provided the
      * check is for the non-existence of the
      * column in question
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value; // required
     /**
      * the TPut to put if the check succeeds
      */
-    public @org.apache.thrift.annotation.Nullable TPut put; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TPut put; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * to check in and put to
        */
@@ -6873,7 +6873,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -6906,7 +6906,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -6929,23 +6929,23 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.ROW, new org.apache.thrift.meta_data.FieldMetaData("row", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.FAMILY, new org.apache.thrift.meta_data.FieldMetaData("family", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.QUALIFIER, new org.apache.thrift.meta_data.FieldMetaData("qualifier", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.VALUE, new org.apache.thrift.meta_data.FieldMetaData("value", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.PUT, new org.apache.thrift.meta_data.FieldMetaData("put", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TPut.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.ROW, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("row", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.FAMILY, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("family", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.QUALIFIER, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("qualifier", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.VALUE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("value", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.PUT, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("put", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TPut.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndPut_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndPut_args.class, metaDataMap);
     }
 
     public checkAndPut_args() {
@@ -6960,11 +6960,11 @@ public class THBaseService {
       TPut put)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
-      this.row = org.apache.thrift.TBaseHelper.copyBinary(row);
-      this.family = org.apache.thrift.TBaseHelper.copyBinary(family);
-      this.qualifier = org.apache.thrift.TBaseHelper.copyBinary(qualifier);
-      this.value = org.apache.thrift.TBaseHelper.copyBinary(value);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.row = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(row);
+      this.family = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(family);
+      this.qualifier = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(qualifier);
+      this.value = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(value);
       this.put = put;
     }
 
@@ -6973,19 +6973,19 @@ public class THBaseService {
      */
     public checkAndPut_args(checkAndPut_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetRow()) {
-        this.row = org.apache.thrift.TBaseHelper.copyBinary(other.row);
+        this.row = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.row);
       }
       if (other.isSetFamily()) {
-        this.family = org.apache.thrift.TBaseHelper.copyBinary(other.family);
+        this.family = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.family);
       }
       if (other.isSetQualifier()) {
-        this.qualifier = org.apache.thrift.TBaseHelper.copyBinary(other.qualifier);
+        this.qualifier = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.qualifier);
       }
       if (other.isSetValue()) {
-        this.value = org.apache.thrift.TBaseHelper.copyBinary(other.value);
+        this.value = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.value);
       }
       if (other.isSetPut()) {
         this.put = new TPut(other.put);
@@ -7010,12 +7010,12 @@ public class THBaseService {
      * to check in and put to
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -7026,8 +7026,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndPut_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public checkAndPut_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -7050,12 +7050,12 @@ public class THBaseService {
      * row to check
      */
     public byte[] getRow() {
-      setRow(org.apache.thrift.TBaseHelper.rightSize(row));
+      setRow(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(row));
       return row == null ? null : row.array();
     }
 
     public java.nio.ByteBuffer bufferForRow() {
-      return org.apache.thrift.TBaseHelper.copyBinary(row);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(row);
     }
 
     /**
@@ -7066,8 +7066,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndPut_args setRow(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row) {
-      this.row = org.apache.thrift.TBaseHelper.copyBinary(row);
+    public checkAndPut_args setRow(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row) {
+      this.row = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(row);
       return this;
     }
 
@@ -7090,12 +7090,12 @@ public class THBaseService {
      * column family to check
      */
     public byte[] getFamily() {
-      setFamily(org.apache.thrift.TBaseHelper.rightSize(family));
+      setFamily(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(family));
       return family == null ? null : family.array();
     }
 
     public java.nio.ByteBuffer bufferForFamily() {
-      return org.apache.thrift.TBaseHelper.copyBinary(family);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(family);
     }
 
     /**
@@ -7106,8 +7106,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndPut_args setFamily(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family) {
-      this.family = org.apache.thrift.TBaseHelper.copyBinary(family);
+    public checkAndPut_args setFamily(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family) {
+      this.family = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(family);
       return this;
     }
 
@@ -7130,12 +7130,12 @@ public class THBaseService {
      * column qualifier to check
      */
     public byte[] getQualifier() {
-      setQualifier(org.apache.thrift.TBaseHelper.rightSize(qualifier));
+      setQualifier(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(qualifier));
       return qualifier == null ? null : qualifier.array();
     }
 
     public java.nio.ByteBuffer bufferForQualifier() {
-      return org.apache.thrift.TBaseHelper.copyBinary(qualifier);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(qualifier);
     }
 
     /**
@@ -7146,8 +7146,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndPut_args setQualifier(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier) {
-      this.qualifier = org.apache.thrift.TBaseHelper.copyBinary(qualifier);
+    public checkAndPut_args setQualifier(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier) {
+      this.qualifier = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(qualifier);
       return this;
     }
 
@@ -7172,12 +7172,12 @@ public class THBaseService {
      * column in question
      */
     public byte[] getValue() {
-      setValue(org.apache.thrift.TBaseHelper.rightSize(value));
+      setValue(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(value));
       return value == null ? null : value.array();
     }
 
     public java.nio.ByteBuffer bufferForValue() {
-      return org.apache.thrift.TBaseHelper.copyBinary(value);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(value);
     }
 
     /**
@@ -7190,8 +7190,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndPut_args setValue(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value) {
-      this.value = org.apache.thrift.TBaseHelper.copyBinary(value);
+    public checkAndPut_args setValue(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value) {
+      this.value = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(value);
       return this;
     }
 
@@ -7213,7 +7213,7 @@ public class THBaseService {
     /**
      * the TPut to put if the check succeeds
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TPut getPut() {
       return this.put;
     }
@@ -7221,7 +7221,7 @@ public class THBaseService {
     /**
      * the TPut to put if the check succeeds
      */
-    public checkAndPut_args setPut(@org.apache.thrift.annotation.Nullable TPut put) {
+    public checkAndPut_args setPut(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TPut put) {
       this.put = put;
       return this;
     }
@@ -7241,7 +7241,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -7314,7 +7314,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -7478,7 +7478,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -7488,7 +7488,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetRow()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.row, other.row);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.row, other.row);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -7498,7 +7498,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetFamily()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.family, other.family);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.family, other.family);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -7508,7 +7508,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetQualifier()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.qualifier, other.qualifier);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.qualifier, other.qualifier);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -7518,7 +7518,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetValue()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.value, other.value);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.value, other.value);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -7528,7 +7528,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetPut()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.put, other.put);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.put, other.put);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -7536,16 +7536,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -7558,7 +7558,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -7566,7 +7566,7 @@ public class THBaseService {
       if (this.row == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.row, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.row, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -7574,7 +7574,7 @@ public class THBaseService {
       if (this.family == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.family, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.family, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -7582,7 +7582,7 @@ public class THBaseService {
       if (this.qualifier == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.qualifier, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.qualifier, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -7590,7 +7590,7 @@ public class THBaseService {
       if (this.value == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.value, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.value, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -7605,22 +7605,22 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (row == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'row' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'row' was not present! Struct: " + toString());
       }
       if (family == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'family' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'family' was not present! Struct: " + toString());
       }
       if (qualifier == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'qualifier' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'qualifier' was not present! Struct: " + toString());
       }
       if (put == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'put' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'put' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (put != null) {
@@ -7630,89 +7630,89 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class checkAndPut_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndPut_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndPut_argsStandardScheme getScheme() {
         return new checkAndPut_argsStandardScheme();
       }
     }
 
-    private static class checkAndPut_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<checkAndPut_args> {
+    private static class checkAndPut_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<checkAndPut_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, checkAndPut_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, checkAndPut_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // ROW
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.row = iprot.readBinary();
                 struct.setRowIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 3: // FAMILY
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.family = iprot.readBinary();
                 struct.setFamilyIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 4: // QUALIFIER
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.qualifier = iprot.readBinary();
                 struct.setQualifierIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 5: // VALUE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.value = iprot.readBinary();
                 struct.setValueIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 6: // PUT
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.put = new TPut();
                 struct.put.read(iprot);
                 struct.setPutIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -7722,7 +7722,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, checkAndPut_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, checkAndPut_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -7762,17 +7762,17 @@ public class THBaseService {
 
     }
 
-    private static class checkAndPut_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndPut_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndPut_argsTupleScheme getScheme() {
         return new checkAndPut_argsTupleScheme();
       }
     }
 
-    private static class checkAndPut_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<checkAndPut_args> {
+    private static class checkAndPut_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<checkAndPut_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, checkAndPut_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndPut_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         oprot.writeBinary(struct.row);
         oprot.writeBinary(struct.family);
@@ -7789,8 +7789,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, checkAndPut_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndPut_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.row = iprot.readBinary();
@@ -7810,25 +7810,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class checkAndPut_result implements org.apache.thrift.TBase<checkAndPut_result, checkAndPut_result._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndPut_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("checkAndPut_result");
+  public static class checkAndPut_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<checkAndPut_result, checkAndPut_result._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndPut_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("checkAndPut_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.BOOL, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndPut_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndPut_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndPut_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndPut_resultTupleSchemeFactory();
 
     public boolean success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -7843,7 +7843,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -7868,7 +7868,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -7893,15 +7893,15 @@ public class THBaseService {
     // isset id assignments
     private static final int __SUCCESS_ISSET_ID = 0;
     private byte __isset_bitfield = 0;
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL)));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndPut_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndPut_result.class, metaDataMap);
     }
 
     public checkAndPut_result() {
@@ -7950,24 +7950,24 @@ public class THBaseService {
     }
 
     public void unsetSuccess() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     /** Returns true if field success is set (has been assigned a value) and false otherwise */
     public boolean isSetSuccess() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     public void setSuccessIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public checkAndPut_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public checkAndPut_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -7987,7 +7987,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -8008,7 +8008,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -8098,7 +8098,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -8108,7 +8108,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -8116,16 +8116,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -8149,15 +8149,15 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
@@ -8166,49 +8166,49 @@ public class THBaseService {
       try {
         // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
         __isset_bitfield = 0;
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class checkAndPut_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndPut_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndPut_resultStandardScheme getScheme() {
         return new checkAndPut_resultStandardScheme();
       }
     }
 
-    private static class checkAndPut_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<checkAndPut_result> {
+    private static class checkAndPut_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<checkAndPut_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, checkAndPut_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, checkAndPut_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.BOOL) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL) {
                 struct.success = iprot.readBool();
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -8218,7 +8218,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, checkAndPut_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, checkAndPut_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -8238,17 +8238,17 @@ public class THBaseService {
 
     }
 
-    private static class checkAndPut_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndPut_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndPut_resultTupleScheme getScheme() {
         return new checkAndPut_resultTupleScheme();
       }
     }
 
-    private static class checkAndPut_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<checkAndPut_result> {
+    private static class checkAndPut_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<checkAndPut_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, checkAndPut_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndPut_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -8266,8 +8266,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, checkAndPut_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndPut_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.success = iprot.readBool();
@@ -8281,31 +8281,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class putMultiple_args implements org.apache.thrift.TBase<putMultiple_args, putMultiple_args._Fields>, java.io.Serializable, Cloneable, Comparable<putMultiple_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("putMultiple_args");
+  public static class putMultiple_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<putMultiple_args, putMultiple_args._Fields>, java.io.Serializable, Cloneable, Comparable<putMultiple_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("putMultiple_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField PUTS_FIELD_DESC = new org.apache.thrift.protocol.TField("puts", org.apache.thrift.protocol.TType.LIST, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField PUTS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("puts", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new putMultiple_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new putMultiple_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new putMultiple_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new putMultiple_argsTupleSchemeFactory();
 
     /**
      * the table to put data in
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * a list of TPuts to commit
      */
-    public @org.apache.thrift.annotation.Nullable java.util.List<TPut> puts; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TPut> puts; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to put data in
        */
@@ -8326,7 +8326,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -8351,7 +8351,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -8374,16 +8374,16 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.PUTS, new org.apache.thrift.meta_data.FieldMetaData("puts", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-              new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TPut.class))));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.PUTS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("puts", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.ListMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, 
+              new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TPut.class))));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(putMultiple_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(putMultiple_args.class, metaDataMap);
     }
 
     public putMultiple_args() {
@@ -8394,7 +8394,7 @@ public class THBaseService {
       java.util.List<TPut> puts)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.puts = puts;
     }
 
@@ -8403,7 +8403,7 @@ public class THBaseService {
      */
     public putMultiple_args(putMultiple_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetPuts()) {
         java.util.List<TPut> __this__puts = new java.util.ArrayList<TPut>(other.puts.size());
@@ -8428,12 +8428,12 @@ public class THBaseService {
      * the table to put data in
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -8444,8 +8444,8 @@ public class THBaseService {
       return this;
     }
 
-    public putMultiple_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public putMultiple_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -8468,7 +8468,7 @@ public class THBaseService {
       return (this.puts == null) ? 0 : this.puts.size();
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.Iterator<TPut> getPutsIterator() {
       return (this.puts == null) ? null : this.puts.iterator();
     }
@@ -8483,7 +8483,7 @@ public class THBaseService {
     /**
      * a list of TPuts to commit
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.List<TPut> getPuts() {
       return this.puts;
     }
@@ -8491,7 +8491,7 @@ public class THBaseService {
     /**
      * a list of TPuts to commit
      */
-    public putMultiple_args setPuts(@org.apache.thrift.annotation.Nullable java.util.List<TPut> puts) {
+    public putMultiple_args setPuts(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TPut> puts) {
       this.puts = puts;
       return this;
     }
@@ -8511,7 +8511,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -8536,7 +8536,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -8628,7 +8628,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -8638,7 +8638,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetPuts()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.puts, other.puts);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.puts, other.puts);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -8646,16 +8646,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -8668,7 +8668,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -8683,65 +8683,65 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (puts == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'puts' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'puts' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class putMultiple_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class putMultiple_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public putMultiple_argsStandardScheme getScheme() {
         return new putMultiple_argsStandardScheme();
       }
     }
 
-    private static class putMultiple_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<putMultiple_args> {
+    private static class putMultiple_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<putMultiple_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, putMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, putMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // PUTS
-              if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST) {
                 {
-                  org.apache.thrift.protocol.TList _list148 = iprot.readListBegin();
+                  com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list148 = iprot.readListBegin();
                   struct.puts = new java.util.ArrayList<TPut>(_list148.size);
-                  @org.apache.thrift.annotation.Nullable TPut _elem149;
+                  @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TPut _elem149;
                   for (int _i150 = 0; _i150 < _list148.size; ++_i150)
                   {
                     _elem149 = new TPut();
@@ -8752,11 +8752,11 @@ public class THBaseService {
                 }
                 struct.setPutsIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -8766,7 +8766,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, putMultiple_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, putMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -8778,7 +8778,7 @@ public class THBaseService {
         if (struct.puts != null) {
           oprot.writeFieldBegin(PUTS_FIELD_DESC);
           {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.puts.size()));
+            oprot.writeListBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, struct.puts.size()));
             for (TPut _iter151 : struct.puts)
             {
               _iter151.write(oprot);
@@ -8793,17 +8793,17 @@ public class THBaseService {
 
     }
 
-    private static class putMultiple_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class putMultiple_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public putMultiple_argsTupleScheme getScheme() {
         return new putMultiple_argsTupleScheme();
       }
     }
 
-    private static class putMultiple_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<putMultiple_args> {
+    private static class putMultiple_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<putMultiple_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, putMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, putMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         {
           oprot.writeI32(struct.puts.size());
@@ -8815,14 +8815,14 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, putMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, putMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         {
-          org.apache.thrift.protocol.TList _list153 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
+          com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list153 = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
           struct.puts = new java.util.ArrayList<TPut>(_list153.size);
-          @org.apache.thrift.annotation.Nullable TPut _elem154;
+          @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TPut _elem154;
           for (int _i155 = 0; _i155 < _list153.size; ++_i155)
           {
             _elem154 = new TPut();
@@ -8834,23 +8834,23 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class putMultiple_result implements org.apache.thrift.TBase<putMultiple_result, putMultiple_result._Fields>, java.io.Serializable, Cloneable, Comparable<putMultiple_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("putMultiple_result");
+  public static class putMultiple_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<putMultiple_result, putMultiple_result._Fields>, java.io.Serializable, Cloneable, Comparable<putMultiple_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("putMultiple_result");
 
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new putMultiple_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new putMultiple_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new putMultiple_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new putMultiple_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       IO((short)1, "io");
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -8864,7 +8864,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // IO
@@ -8887,7 +8887,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -8910,13 +8910,13 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(putMultiple_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(putMultiple_result.class, metaDataMap);
     }
 
     public putMultiple_result() {
@@ -8947,12 +8947,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public putMultiple_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public putMultiple_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -8972,7 +8972,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case IO:
         if (value == null) {
@@ -8985,7 +8985,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case IO:
@@ -9059,7 +9059,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -9067,16 +9067,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -9096,56 +9096,56 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class putMultiple_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class putMultiple_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public putMultiple_resultStandardScheme getScheme() {
         return new putMultiple_resultStandardScheme();
       }
     }
 
-    private static class putMultiple_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<putMultiple_result> {
+    private static class putMultiple_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<putMultiple_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, putMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, putMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -9155,7 +9155,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, putMultiple_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, putMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -9170,17 +9170,17 @@ public class THBaseService {
 
     }
 
-    private static class putMultiple_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class putMultiple_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public putMultiple_resultTupleScheme getScheme() {
         return new putMultiple_resultTupleScheme();
       }
     }
 
-    private static class putMultiple_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<putMultiple_result> {
+    private static class putMultiple_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<putMultiple_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, putMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, putMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetIo()) {
           optionals.set(0);
@@ -9192,8 +9192,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, putMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, putMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
           struct.io = new TIOError();
@@ -9203,31 +9203,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class deleteSingle_args implements org.apache.thrift.TBase<deleteSingle_args, deleteSingle_args._Fields>, java.io.Serializable, Cloneable, Comparable<deleteSingle_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("deleteSingle_args");
+  public static class deleteSingle_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<deleteSingle_args, deleteSingle_args._Fields>, java.io.Serializable, Cloneable, Comparable<deleteSingle_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("deleteSingle_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField DELETE_SINGLE_FIELD_DESC = new org.apache.thrift.protocol.TField("deleteSingle", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField DELETE_SINGLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("deleteSingle", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteSingle_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteSingle_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteSingle_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteSingle_argsTupleSchemeFactory();
 
     /**
      * the table to delete from
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the TDelete to delete
      */
-    public @org.apache.thrift.annotation.Nullable TDelete deleteSingle; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete deleteSingle; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to delete from
        */
@@ -9248,7 +9248,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -9273,7 +9273,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -9296,15 +9296,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.DELETE_SINGLE, new org.apache.thrift.meta_data.FieldMetaData("deleteSingle", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TDelete.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.DELETE_SINGLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("deleteSingle", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TDelete.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteSingle_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteSingle_args.class, metaDataMap);
     }
 
     public deleteSingle_args() {
@@ -9315,7 +9315,7 @@ public class THBaseService {
       TDelete deleteSingle)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.deleteSingle = deleteSingle;
     }
 
@@ -9324,7 +9324,7 @@ public class THBaseService {
      */
     public deleteSingle_args(deleteSingle_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetDeleteSingle()) {
         this.deleteSingle = new TDelete(other.deleteSingle);
@@ -9345,12 +9345,12 @@ public class THBaseService {
      * the table to delete from
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -9361,8 +9361,8 @@ public class THBaseService {
       return this;
     }
 
-    public deleteSingle_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public deleteSingle_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -9384,7 +9384,7 @@ public class THBaseService {
     /**
      * the TDelete to delete
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TDelete getDeleteSingle() {
       return this.deleteSingle;
     }
@@ -9392,7 +9392,7 @@ public class THBaseService {
     /**
      * the TDelete to delete
      */
-    public deleteSingle_args setDeleteSingle(@org.apache.thrift.annotation.Nullable TDelete deleteSingle) {
+    public deleteSingle_args setDeleteSingle(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete deleteSingle) {
       this.deleteSingle = deleteSingle;
       return this;
     }
@@ -9412,7 +9412,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -9437,7 +9437,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -9529,7 +9529,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -9539,7 +9539,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetDeleteSingle()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.deleteSingle, other.deleteSingle);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.deleteSingle, other.deleteSingle);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -9547,16 +9547,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -9569,7 +9569,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -9584,13 +9584,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (deleteSingle == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'deleteSingle' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'deleteSingle' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (deleteSingle != null) {
@@ -9600,57 +9600,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class deleteSingle_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteSingle_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteSingle_argsStandardScheme getScheme() {
         return new deleteSingle_argsStandardScheme();
       }
     }
 
-    private static class deleteSingle_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<deleteSingle_args> {
+    private static class deleteSingle_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<deleteSingle_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, deleteSingle_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, deleteSingle_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // DELETE_SINGLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.deleteSingle = new TDelete();
                 struct.deleteSingle.read(iprot);
                 struct.setDeleteSingleIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -9660,7 +9660,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, deleteSingle_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, deleteSingle_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -9680,24 +9680,24 @@ public class THBaseService {
 
     }
 
-    private static class deleteSingle_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteSingle_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteSingle_argsTupleScheme getScheme() {
         return new deleteSingle_argsTupleScheme();
       }
     }
 
-    private static class deleteSingle_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<deleteSingle_args> {
+    private static class deleteSingle_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<deleteSingle_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, deleteSingle_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteSingle_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.deleteSingle.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, deleteSingle_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteSingle_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.deleteSingle = new TDelete();
@@ -9706,23 +9706,23 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class deleteSingle_result implements org.apache.thrift.TBase<deleteSingle_result, deleteSingle_result._Fields>, java.io.Serializable, Cloneable, Comparable<deleteSingle_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("deleteSingle_result");
+  public static class deleteSingle_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<deleteSingle_result, deleteSingle_result._Fields>, java.io.Serializable, Cloneable, Comparable<deleteSingle_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("deleteSingle_result");
 
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteSingle_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteSingle_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteSingle_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteSingle_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       IO((short)1, "io");
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -9736,7 +9736,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // IO
@@ -9759,7 +9759,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -9782,13 +9782,13 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteSingle_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteSingle_result.class, metaDataMap);
     }
 
     public deleteSingle_result() {
@@ -9819,12 +9819,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public deleteSingle_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public deleteSingle_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -9844,7 +9844,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case IO:
         if (value == null) {
@@ -9857,7 +9857,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case IO:
@@ -9931,7 +9931,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -9939,16 +9939,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -9968,56 +9968,56 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class deleteSingle_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteSingle_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteSingle_resultStandardScheme getScheme() {
         return new deleteSingle_resultStandardScheme();
       }
     }
 
-    private static class deleteSingle_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<deleteSingle_result> {
+    private static class deleteSingle_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<deleteSingle_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, deleteSingle_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, deleteSingle_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -10027,7 +10027,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, deleteSingle_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, deleteSingle_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -10042,17 +10042,17 @@ public class THBaseService {
 
     }
 
-    private static class deleteSingle_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteSingle_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteSingle_resultTupleScheme getScheme() {
         return new deleteSingle_resultTupleScheme();
       }
     }
 
-    private static class deleteSingle_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<deleteSingle_result> {
+    private static class deleteSingle_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<deleteSingle_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, deleteSingle_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteSingle_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetIo()) {
           optionals.set(0);
@@ -10064,8 +10064,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, deleteSingle_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteSingle_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
           struct.io = new TIOError();
@@ -10075,31 +10075,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class deleteMultiple_args implements org.apache.thrift.TBase<deleteMultiple_args, deleteMultiple_args._Fields>, java.io.Serializable, Cloneable, Comparable<deleteMultiple_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("deleteMultiple_args");
+  public static class deleteMultiple_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<deleteMultiple_args, deleteMultiple_args._Fields>, java.io.Serializable, Cloneable, Comparable<deleteMultiple_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("deleteMultiple_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField DELETES_FIELD_DESC = new org.apache.thrift.protocol.TField("deletes", org.apache.thrift.protocol.TType.LIST, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField DELETES_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("deletes", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteMultiple_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteMultiple_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteMultiple_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteMultiple_argsTupleSchemeFactory();
 
     /**
      * the table to delete from
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * list of TDeletes to delete
      */
-    public @org.apache.thrift.annotation.Nullable java.util.List<TDelete> deletes; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TDelete> deletes; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to delete from
        */
@@ -10120,7 +10120,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -10145,7 +10145,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -10168,16 +10168,16 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.DELETES, new org.apache.thrift.meta_data.FieldMetaData("deletes", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-              new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TDelete.class))));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.DELETES, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("deletes", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.ListMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, 
+              new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TDelete.class))));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteMultiple_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteMultiple_args.class, metaDataMap);
     }
 
     public deleteMultiple_args() {
@@ -10188,7 +10188,7 @@ public class THBaseService {
       java.util.List<TDelete> deletes)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.deletes = deletes;
     }
 
@@ -10197,7 +10197,7 @@ public class THBaseService {
      */
     public deleteMultiple_args(deleteMultiple_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetDeletes()) {
         java.util.List<TDelete> __this__deletes = new java.util.ArrayList<TDelete>(other.deletes.size());
@@ -10222,12 +10222,12 @@ public class THBaseService {
      * the table to delete from
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -10238,8 +10238,8 @@ public class THBaseService {
       return this;
     }
 
-    public deleteMultiple_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public deleteMultiple_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -10262,7 +10262,7 @@ public class THBaseService {
       return (this.deletes == null) ? 0 : this.deletes.size();
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.Iterator<TDelete> getDeletesIterator() {
       return (this.deletes == null) ? null : this.deletes.iterator();
     }
@@ -10277,7 +10277,7 @@ public class THBaseService {
     /**
      * list of TDeletes to delete
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.List<TDelete> getDeletes() {
       return this.deletes;
     }
@@ -10285,7 +10285,7 @@ public class THBaseService {
     /**
      * list of TDeletes to delete
      */
-    public deleteMultiple_args setDeletes(@org.apache.thrift.annotation.Nullable java.util.List<TDelete> deletes) {
+    public deleteMultiple_args setDeletes(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TDelete> deletes) {
       this.deletes = deletes;
       return this;
     }
@@ -10305,7 +10305,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -10330,7 +10330,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -10422,7 +10422,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -10432,7 +10432,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetDeletes()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.deletes, other.deletes);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.deletes, other.deletes);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -10440,16 +10440,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -10462,7 +10462,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -10477,65 +10477,65 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (deletes == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'deletes' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'deletes' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class deleteMultiple_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteMultiple_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteMultiple_argsStandardScheme getScheme() {
         return new deleteMultiple_argsStandardScheme();
       }
     }
 
-    private static class deleteMultiple_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<deleteMultiple_args> {
+    private static class deleteMultiple_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<deleteMultiple_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, deleteMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, deleteMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // DELETES
-              if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST) {
                 {
-                  org.apache.thrift.protocol.TList _list156 = iprot.readListBegin();
+                  com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list156 = iprot.readListBegin();
                   struct.deletes = new java.util.ArrayList<TDelete>(_list156.size);
-                  @org.apache.thrift.annotation.Nullable TDelete _elem157;
+                  @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete _elem157;
                   for (int _i158 = 0; _i158 < _list156.size; ++_i158)
                   {
                     _elem157 = new TDelete();
@@ -10546,11 +10546,11 @@ public class THBaseService {
                 }
                 struct.setDeletesIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -10560,7 +10560,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, deleteMultiple_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, deleteMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -10572,7 +10572,7 @@ public class THBaseService {
         if (struct.deletes != null) {
           oprot.writeFieldBegin(DELETES_FIELD_DESC);
           {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.deletes.size()));
+            oprot.writeListBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, struct.deletes.size()));
             for (TDelete _iter159 : struct.deletes)
             {
               _iter159.write(oprot);
@@ -10587,17 +10587,17 @@ public class THBaseService {
 
     }
 
-    private static class deleteMultiple_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteMultiple_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteMultiple_argsTupleScheme getScheme() {
         return new deleteMultiple_argsTupleScheme();
       }
     }
 
-    private static class deleteMultiple_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<deleteMultiple_args> {
+    private static class deleteMultiple_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<deleteMultiple_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, deleteMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         {
           oprot.writeI32(struct.deletes.size());
@@ -10609,14 +10609,14 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, deleteMultiple_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteMultiple_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         {
-          org.apache.thrift.protocol.TList _list161 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
+          com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list161 = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
           struct.deletes = new java.util.ArrayList<TDelete>(_list161.size);
-          @org.apache.thrift.annotation.Nullable TDelete _elem162;
+          @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete _elem162;
           for (int _i163 = 0; _i163 < _list161.size; ++_i163)
           {
             _elem162 = new TDelete();
@@ -10628,25 +10628,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class deleteMultiple_result implements org.apache.thrift.TBase<deleteMultiple_result, deleteMultiple_result._Fields>, java.io.Serializable, Cloneable, Comparable<deleteMultiple_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("deleteMultiple_result");
+  public static class deleteMultiple_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<deleteMultiple_result, deleteMultiple_result._Fields>, java.io.Serializable, Cloneable, Comparable<deleteMultiple_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("deleteMultiple_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.LIST, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteMultiple_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteMultiple_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new deleteMultiple_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new deleteMultiple_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable java.util.List<TDelete> success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TDelete> success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -10661,7 +10661,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -10686,7 +10686,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -10709,16 +10709,16 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-              new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TDelete.class))));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.ListMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, 
+              new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TDelete.class))));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteMultiple_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(deleteMultiple_result.class, metaDataMap);
     }
 
     public deleteMultiple_result() {
@@ -10763,7 +10763,7 @@ public class THBaseService {
       return (this.success == null) ? 0 : this.success.size();
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.Iterator<TDelete> getSuccessIterator() {
       return (this.success == null) ? null : this.success.iterator();
     }
@@ -10775,12 +10775,12 @@ public class THBaseService {
       this.success.add(elem);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.List<TDelete> getSuccess() {
       return this.success;
     }
 
-    public deleteMultiple_result setSuccess(@org.apache.thrift.annotation.Nullable java.util.List<TDelete> success) {
+    public deleteMultiple_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TDelete> success) {
       this.success = success;
       return this;
     }
@@ -10800,12 +10800,12 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public deleteMultiple_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public deleteMultiple_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -10825,7 +10825,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -10846,7 +10846,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -10938,7 +10938,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -10948,7 +10948,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -10956,16 +10956,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -10993,51 +10993,51 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class deleteMultiple_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteMultiple_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteMultiple_resultStandardScheme getScheme() {
         return new deleteMultiple_resultStandardScheme();
       }
     }
 
-    private static class deleteMultiple_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<deleteMultiple_result> {
+    private static class deleteMultiple_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<deleteMultiple_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, deleteMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, deleteMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST) {
                 {
-                  org.apache.thrift.protocol.TList _list164 = iprot.readListBegin();
+                  com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list164 = iprot.readListBegin();
                   struct.success = new java.util.ArrayList<TDelete>(_list164.size);
-                  @org.apache.thrift.annotation.Nullable TDelete _elem165;
+                  @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete _elem165;
                   for (int _i166 = 0; _i166 < _list164.size; ++_i166)
                   {
                     _elem165 = new TDelete();
@@ -11048,20 +11048,20 @@ public class THBaseService {
                 }
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -11071,14 +11071,14 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, deleteMultiple_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, deleteMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
         if (struct.success != null) {
           oprot.writeFieldBegin(SUCCESS_FIELD_DESC);
           {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
+            oprot.writeListBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
             for (TDelete _iter167 : struct.success)
             {
               _iter167.write(oprot);
@@ -11098,17 +11098,17 @@ public class THBaseService {
 
     }
 
-    private static class deleteMultiple_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class deleteMultiple_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public deleteMultiple_resultTupleScheme getScheme() {
         return new deleteMultiple_resultTupleScheme();
       }
     }
 
-    private static class deleteMultiple_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<deleteMultiple_result> {
+    private static class deleteMultiple_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<deleteMultiple_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, deleteMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -11132,14 +11132,14 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, deleteMultiple_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, deleteMultiple_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           {
-            org.apache.thrift.protocol.TList _list169 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
+            com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list169 = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
             struct.success = new java.util.ArrayList<TDelete>(_list169.size);
-            @org.apache.thrift.annotation.Nullable TDelete _elem170;
+            @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete _elem170;
             for (int _i171 = 0; _i171 < _list169.size; ++_i171)
             {
               _elem170 = new TDelete();
@@ -11157,53 +11157,53 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class checkAndDelete_args implements org.apache.thrift.TBase<checkAndDelete_args, checkAndDelete_args._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndDelete_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("checkAndDelete_args");
+  public static class checkAndDelete_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<checkAndDelete_args, checkAndDelete_args._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndDelete_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("checkAndDelete_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField ROW_FIELD_DESC = new org.apache.thrift.protocol.TField("row", org.apache.thrift.protocol.TType.STRING, (short)2);
-    private static final org.apache.thrift.protocol.TField FAMILY_FIELD_DESC = new org.apache.thrift.protocol.TField("family", org.apache.thrift.protocol.TType.STRING, (short)3);
-    private static final org.apache.thrift.protocol.TField QUALIFIER_FIELD_DESC = new org.apache.thrift.protocol.TField("qualifier", org.apache.thrift.protocol.TType.STRING, (short)4);
-    private static final org.apache.thrift.protocol.TField VALUE_FIELD_DESC = new org.apache.thrift.protocol.TField("value", org.apache.thrift.protocol.TType.STRING, (short)5);
-    private static final org.apache.thrift.protocol.TField DELETE_SINGLE_FIELD_DESC = new org.apache.thrift.protocol.TField("deleteSingle", org.apache.thrift.protocol.TType.STRUCT, (short)6);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField ROW_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("row", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField FAMILY_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("family", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)3);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField QUALIFIER_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("qualifier", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)4);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField VALUE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("value", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)5);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField DELETE_SINGLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("deleteSingle", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)6);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndDelete_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndDelete_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndDelete_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndDelete_argsTupleSchemeFactory();
 
     /**
      * to check in and delete from
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * row to check
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row; // required
     /**
      * column family to check
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family; // required
     /**
      * column qualifier to check
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier; // required
     /**
      * the expected value, if not provided the
      * check is for the non-existence of the
      * column in question
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value; // required
     /**
      * the TDelete to execute if the check succeeds
      */
-    public @org.apache.thrift.annotation.Nullable TDelete deleteSingle; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete deleteSingle; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * to check in and delete from
        */
@@ -11242,7 +11242,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -11275,7 +11275,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -11298,23 +11298,23 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.ROW, new org.apache.thrift.meta_data.FieldMetaData("row", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.FAMILY, new org.apache.thrift.meta_data.FieldMetaData("family", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.QUALIFIER, new org.apache.thrift.meta_data.FieldMetaData("qualifier", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.VALUE, new org.apache.thrift.meta_data.FieldMetaData("value", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.DELETE_SINGLE, new org.apache.thrift.meta_data.FieldMetaData("deleteSingle", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TDelete.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.ROW, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("row", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.FAMILY, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("family", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.QUALIFIER, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("qualifier", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.VALUE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("value", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.DELETE_SINGLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("deleteSingle", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TDelete.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndDelete_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndDelete_args.class, metaDataMap);
     }
 
     public checkAndDelete_args() {
@@ -11329,11 +11329,11 @@ public class THBaseService {
       TDelete deleteSingle)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
-      this.row = org.apache.thrift.TBaseHelper.copyBinary(row);
-      this.family = org.apache.thrift.TBaseHelper.copyBinary(family);
-      this.qualifier = org.apache.thrift.TBaseHelper.copyBinary(qualifier);
-      this.value = org.apache.thrift.TBaseHelper.copyBinary(value);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.row = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(row);
+      this.family = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(family);
+      this.qualifier = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(qualifier);
+      this.value = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(value);
       this.deleteSingle = deleteSingle;
     }
 
@@ -11342,19 +11342,19 @@ public class THBaseService {
      */
     public checkAndDelete_args(checkAndDelete_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetRow()) {
-        this.row = org.apache.thrift.TBaseHelper.copyBinary(other.row);
+        this.row = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.row);
       }
       if (other.isSetFamily()) {
-        this.family = org.apache.thrift.TBaseHelper.copyBinary(other.family);
+        this.family = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.family);
       }
       if (other.isSetQualifier()) {
-        this.qualifier = org.apache.thrift.TBaseHelper.copyBinary(other.qualifier);
+        this.qualifier = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.qualifier);
       }
       if (other.isSetValue()) {
-        this.value = org.apache.thrift.TBaseHelper.copyBinary(other.value);
+        this.value = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.value);
       }
       if (other.isSetDeleteSingle()) {
         this.deleteSingle = new TDelete(other.deleteSingle);
@@ -11379,12 +11379,12 @@ public class THBaseService {
      * to check in and delete from
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -11395,8 +11395,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndDelete_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public checkAndDelete_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -11419,12 +11419,12 @@ public class THBaseService {
      * row to check
      */
     public byte[] getRow() {
-      setRow(org.apache.thrift.TBaseHelper.rightSize(row));
+      setRow(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(row));
       return row == null ? null : row.array();
     }
 
     public java.nio.ByteBuffer bufferForRow() {
-      return org.apache.thrift.TBaseHelper.copyBinary(row);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(row);
     }
 
     /**
@@ -11435,8 +11435,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndDelete_args setRow(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row) {
-      this.row = org.apache.thrift.TBaseHelper.copyBinary(row);
+    public checkAndDelete_args setRow(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer row) {
+      this.row = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(row);
       return this;
     }
 
@@ -11459,12 +11459,12 @@ public class THBaseService {
      * column family to check
      */
     public byte[] getFamily() {
-      setFamily(org.apache.thrift.TBaseHelper.rightSize(family));
+      setFamily(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(family));
       return family == null ? null : family.array();
     }
 
     public java.nio.ByteBuffer bufferForFamily() {
-      return org.apache.thrift.TBaseHelper.copyBinary(family);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(family);
     }
 
     /**
@@ -11475,8 +11475,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndDelete_args setFamily(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family) {
-      this.family = org.apache.thrift.TBaseHelper.copyBinary(family);
+    public checkAndDelete_args setFamily(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer family) {
+      this.family = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(family);
       return this;
     }
 
@@ -11499,12 +11499,12 @@ public class THBaseService {
      * column qualifier to check
      */
     public byte[] getQualifier() {
-      setQualifier(org.apache.thrift.TBaseHelper.rightSize(qualifier));
+      setQualifier(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(qualifier));
       return qualifier == null ? null : qualifier.array();
     }
 
     public java.nio.ByteBuffer bufferForQualifier() {
-      return org.apache.thrift.TBaseHelper.copyBinary(qualifier);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(qualifier);
     }
 
     /**
@@ -11515,8 +11515,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndDelete_args setQualifier(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier) {
-      this.qualifier = org.apache.thrift.TBaseHelper.copyBinary(qualifier);
+    public checkAndDelete_args setQualifier(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier) {
+      this.qualifier = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(qualifier);
       return this;
     }
 
@@ -11541,12 +11541,12 @@ public class THBaseService {
      * column in question
      */
     public byte[] getValue() {
-      setValue(org.apache.thrift.TBaseHelper.rightSize(value));
+      setValue(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(value));
       return value == null ? null : value.array();
     }
 
     public java.nio.ByteBuffer bufferForValue() {
-      return org.apache.thrift.TBaseHelper.copyBinary(value);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(value);
     }
 
     /**
@@ -11559,8 +11559,8 @@ public class THBaseService {
       return this;
     }
 
-    public checkAndDelete_args setValue(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value) {
-      this.value = org.apache.thrift.TBaseHelper.copyBinary(value);
+    public checkAndDelete_args setValue(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value) {
+      this.value = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(value);
       return this;
     }
 
@@ -11582,7 +11582,7 @@ public class THBaseService {
     /**
      * the TDelete to execute if the check succeeds
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TDelete getDeleteSingle() {
       return this.deleteSingle;
     }
@@ -11590,7 +11590,7 @@ public class THBaseService {
     /**
      * the TDelete to execute if the check succeeds
      */
-    public checkAndDelete_args setDeleteSingle(@org.apache.thrift.annotation.Nullable TDelete deleteSingle) {
+    public checkAndDelete_args setDeleteSingle(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TDelete deleteSingle) {
       this.deleteSingle = deleteSingle;
       return this;
     }
@@ -11610,7 +11610,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -11683,7 +11683,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -11847,7 +11847,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -11857,7 +11857,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetRow()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.row, other.row);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.row, other.row);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -11867,7 +11867,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetFamily()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.family, other.family);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.family, other.family);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -11877,7 +11877,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetQualifier()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.qualifier, other.qualifier);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.qualifier, other.qualifier);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -11887,7 +11887,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetValue()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.value, other.value);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.value, other.value);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -11897,7 +11897,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetDeleteSingle()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.deleteSingle, other.deleteSingle);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.deleteSingle, other.deleteSingle);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -11905,16 +11905,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -11927,7 +11927,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -11935,7 +11935,7 @@ public class THBaseService {
       if (this.row == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.row, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.row, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -11943,7 +11943,7 @@ public class THBaseService {
       if (this.family == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.family, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.family, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -11951,7 +11951,7 @@ public class THBaseService {
       if (this.qualifier == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.qualifier, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.qualifier, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -11959,7 +11959,7 @@ public class THBaseService {
       if (this.value == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.value, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.value, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -11974,22 +11974,22 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (row == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'row' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'row' was not present! Struct: " + toString());
       }
       if (family == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'family' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'family' was not present! Struct: " + toString());
       }
       if (qualifier == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'qualifier' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'qualifier' was not present! Struct: " + toString());
       }
       if (deleteSingle == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'deleteSingle' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'deleteSingle' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (deleteSingle != null) {
@@ -11999,89 +11999,89 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class checkAndDelete_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndDelete_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndDelete_argsStandardScheme getScheme() {
         return new checkAndDelete_argsStandardScheme();
       }
     }
 
-    private static class checkAndDelete_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<checkAndDelete_args> {
+    private static class checkAndDelete_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<checkAndDelete_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, checkAndDelete_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, checkAndDelete_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // ROW
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.row = iprot.readBinary();
                 struct.setRowIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 3: // FAMILY
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.family = iprot.readBinary();
                 struct.setFamilyIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 4: // QUALIFIER
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.qualifier = iprot.readBinary();
                 struct.setQualifierIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 5: // VALUE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.value = iprot.readBinary();
                 struct.setValueIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 6: // DELETE_SINGLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.deleteSingle = new TDelete();
                 struct.deleteSingle.read(iprot);
                 struct.setDeleteSingleIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -12091,7 +12091,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, checkAndDelete_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, checkAndDelete_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -12131,17 +12131,17 @@ public class THBaseService {
 
     }
 
-    private static class checkAndDelete_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndDelete_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndDelete_argsTupleScheme getScheme() {
         return new checkAndDelete_argsTupleScheme();
       }
     }
 
-    private static class checkAndDelete_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<checkAndDelete_args> {
+    private static class checkAndDelete_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<checkAndDelete_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, checkAndDelete_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndDelete_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         oprot.writeBinary(struct.row);
         oprot.writeBinary(struct.family);
@@ -12158,8 +12158,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, checkAndDelete_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndDelete_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.row = iprot.readBinary();
@@ -12179,25 +12179,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class checkAndDelete_result implements org.apache.thrift.TBase<checkAndDelete_result, checkAndDelete_result._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndDelete_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("checkAndDelete_result");
+  public static class checkAndDelete_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<checkAndDelete_result, checkAndDelete_result._Fields>, java.io.Serializable, Cloneable, Comparable<checkAndDelete_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("checkAndDelete_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.BOOL, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndDelete_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndDelete_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new checkAndDelete_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new checkAndDelete_resultTupleSchemeFactory();
 
     public boolean success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -12212,7 +12212,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -12237,7 +12237,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -12262,15 +12262,15 @@ public class THBaseService {
     // isset id assignments
     private static final int __SUCCESS_ISSET_ID = 0;
     private byte __isset_bitfield = 0;
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL)));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndDelete_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(checkAndDelete_result.class, metaDataMap);
     }
 
     public checkAndDelete_result() {
@@ -12319,24 +12319,24 @@ public class THBaseService {
     }
 
     public void unsetSuccess() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     /** Returns true if field success is set (has been assigned a value) and false otherwise */
     public boolean isSetSuccess() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     public void setSuccessIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public checkAndDelete_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public checkAndDelete_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -12356,7 +12356,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -12377,7 +12377,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -12467,7 +12467,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -12477,7 +12477,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -12485,16 +12485,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -12518,15 +12518,15 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
@@ -12535,49 +12535,49 @@ public class THBaseService {
       try {
         // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
         __isset_bitfield = 0;
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class checkAndDelete_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndDelete_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndDelete_resultStandardScheme getScheme() {
         return new checkAndDelete_resultStandardScheme();
       }
     }
 
-    private static class checkAndDelete_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<checkAndDelete_result> {
+    private static class checkAndDelete_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<checkAndDelete_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, checkAndDelete_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, checkAndDelete_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.BOOL) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.BOOL) {
                 struct.success = iprot.readBool();
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -12587,7 +12587,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, checkAndDelete_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, checkAndDelete_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -12607,17 +12607,17 @@ public class THBaseService {
 
     }
 
-    private static class checkAndDelete_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class checkAndDelete_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public checkAndDelete_resultTupleScheme getScheme() {
         return new checkAndDelete_resultTupleScheme();
       }
     }
 
-    private static class checkAndDelete_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<checkAndDelete_result> {
+    private static class checkAndDelete_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<checkAndDelete_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, checkAndDelete_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndDelete_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -12635,8 +12635,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, checkAndDelete_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, checkAndDelete_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.success = iprot.readBool();
@@ -12650,31 +12650,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class increment_args implements org.apache.thrift.TBase<increment_args, increment_args._Fields>, java.io.Serializable, Cloneable, Comparable<increment_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("increment_args");
+  public static class increment_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<increment_args, increment_args._Fields>, java.io.Serializable, Cloneable, Comparable<increment_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("increment_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField INCREMENT_FIELD_DESC = new org.apache.thrift.protocol.TField("increment", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField INCREMENT_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("increment", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new increment_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new increment_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new increment_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new increment_argsTupleSchemeFactory();
 
     /**
      * the table to increment the value on
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the TIncrement to increment
      */
-    public @org.apache.thrift.annotation.Nullable TIncrement increment; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIncrement increment; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to increment the value on
        */
@@ -12695,7 +12695,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -12720,7 +12720,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -12743,15 +12743,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.INCREMENT, new org.apache.thrift.meta_data.FieldMetaData("increment", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIncrement.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.INCREMENT, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("increment", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIncrement.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(increment_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(increment_args.class, metaDataMap);
     }
 
     public increment_args() {
@@ -12762,7 +12762,7 @@ public class THBaseService {
       TIncrement increment)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.increment = increment;
     }
 
@@ -12771,7 +12771,7 @@ public class THBaseService {
      */
     public increment_args(increment_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetIncrement()) {
         this.increment = new TIncrement(other.increment);
@@ -12792,12 +12792,12 @@ public class THBaseService {
      * the table to increment the value on
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -12808,8 +12808,8 @@ public class THBaseService {
       return this;
     }
 
-    public increment_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public increment_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -12831,7 +12831,7 @@ public class THBaseService {
     /**
      * the TIncrement to increment
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIncrement getIncrement() {
       return this.increment;
     }
@@ -12839,7 +12839,7 @@ public class THBaseService {
     /**
      * the TIncrement to increment
      */
-    public increment_args setIncrement(@org.apache.thrift.annotation.Nullable TIncrement increment) {
+    public increment_args setIncrement(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIncrement increment) {
       this.increment = increment;
       return this;
     }
@@ -12859,7 +12859,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -12884,7 +12884,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -12976,7 +12976,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -12986,7 +12986,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIncrement()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.increment, other.increment);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.increment, other.increment);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -12994,16 +12994,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -13016,7 +13016,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -13031,13 +13031,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (increment == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'increment' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'increment' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (increment != null) {
@@ -13047,57 +13047,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class increment_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class increment_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public increment_argsStandardScheme getScheme() {
         return new increment_argsStandardScheme();
       }
     }
 
-    private static class increment_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<increment_args> {
+    private static class increment_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<increment_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, increment_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, increment_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // INCREMENT
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.increment = new TIncrement();
                 struct.increment.read(iprot);
                 struct.setIncrementIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -13107,7 +13107,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, increment_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, increment_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -13127,24 +13127,24 @@ public class THBaseService {
 
     }
 
-    private static class increment_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class increment_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public increment_argsTupleScheme getScheme() {
         return new increment_argsTupleScheme();
       }
     }
 
-    private static class increment_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<increment_args> {
+    private static class increment_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<increment_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, increment_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, increment_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.increment.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, increment_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, increment_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.increment = new TIncrement();
@@ -13153,25 +13153,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class increment_result implements org.apache.thrift.TBase<increment_result, increment_result._Fields>, java.io.Serializable, Cloneable, Comparable<increment_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("increment_result");
+  public static class increment_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<increment_result, increment_result._Fields>, java.io.Serializable, Cloneable, Comparable<increment_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("increment_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.STRUCT, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new increment_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new increment_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new increment_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new increment_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TResult success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -13186,7 +13186,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -13211,7 +13211,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -13234,15 +13234,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TResult.class)));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TResult.class)));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(increment_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(increment_result.class, metaDataMap);
     }
 
     public increment_result() {
@@ -13279,12 +13279,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TResult getSuccess() {
       return this.success;
     }
 
-    public increment_result setSuccess(@org.apache.thrift.annotation.Nullable TResult success) {
+    public increment_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult success) {
       this.success = success;
       return this;
     }
@@ -13304,12 +13304,12 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public increment_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public increment_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -13329,7 +13329,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -13350,7 +13350,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -13442,7 +13442,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -13452,7 +13452,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -13460,16 +13460,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -13497,7 +13497,7 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
       if (success != null) {
@@ -13507,58 +13507,58 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class increment_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class increment_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public increment_resultStandardScheme getScheme() {
         return new increment_resultStandardScheme();
       }
     }
 
-    private static class increment_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<increment_result> {
+    private static class increment_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<increment_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, increment_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, increment_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.success = new TResult();
                 struct.success.read(iprot);
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -13568,7 +13568,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, increment_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, increment_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -13588,17 +13588,17 @@ public class THBaseService {
 
     }
 
-    private static class increment_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class increment_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public increment_resultTupleScheme getScheme() {
         return new increment_resultTupleScheme();
       }
     }
 
-    private static class increment_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<increment_result> {
+    private static class increment_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<increment_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, increment_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, increment_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -13616,8 +13616,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, increment_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, increment_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.success = new TResult();
@@ -13632,31 +13632,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class append_args implements org.apache.thrift.TBase<append_args, append_args._Fields>, java.io.Serializable, Cloneable, Comparable<append_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("append_args");
+  public static class append_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<append_args, append_args._Fields>, java.io.Serializable, Cloneable, Comparable<append_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("append_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField APPEND_FIELD_DESC = new org.apache.thrift.protocol.TField("append", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField APPEND_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("append", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new append_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new append_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new append_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new append_argsTupleSchemeFactory();
 
     /**
      * the table to append the value on
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the TAppend to append
      */
-    public @org.apache.thrift.annotation.Nullable TAppend append; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TAppend append; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to append the value on
        */
@@ -13677,7 +13677,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -13702,7 +13702,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -13725,15 +13725,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.APPEND, new org.apache.thrift.meta_data.FieldMetaData("append", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TAppend.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.APPEND, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("append", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TAppend.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(append_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(append_args.class, metaDataMap);
     }
 
     public append_args() {
@@ -13744,7 +13744,7 @@ public class THBaseService {
       TAppend append)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.append = append;
     }
 
@@ -13753,7 +13753,7 @@ public class THBaseService {
      */
     public append_args(append_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetAppend()) {
         this.append = new TAppend(other.append);
@@ -13774,12 +13774,12 @@ public class THBaseService {
      * the table to append the value on
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -13790,8 +13790,8 @@ public class THBaseService {
       return this;
     }
 
-    public append_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public append_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -13813,7 +13813,7 @@ public class THBaseService {
     /**
      * the TAppend to append
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TAppend getAppend() {
       return this.append;
     }
@@ -13821,7 +13821,7 @@ public class THBaseService {
     /**
      * the TAppend to append
      */
-    public append_args setAppend(@org.apache.thrift.annotation.Nullable TAppend append) {
+    public append_args setAppend(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TAppend append) {
       this.append = append;
       return this;
     }
@@ -13841,7 +13841,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -13866,7 +13866,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -13958,7 +13958,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -13968,7 +13968,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetAppend()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.append, other.append);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.append, other.append);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -13976,16 +13976,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -13998,7 +13998,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -14013,13 +14013,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (append == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'append' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'append' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (append != null) {
@@ -14029,57 +14029,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class append_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class append_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public append_argsStandardScheme getScheme() {
         return new append_argsStandardScheme();
       }
     }
 
-    private static class append_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<append_args> {
+    private static class append_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<append_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, append_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, append_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // APPEND
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.append = new TAppend();
                 struct.append.read(iprot);
                 struct.setAppendIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -14089,7 +14089,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, append_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, append_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -14109,24 +14109,24 @@ public class THBaseService {
 
     }
 
-    private static class append_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class append_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public append_argsTupleScheme getScheme() {
         return new append_argsTupleScheme();
       }
     }
 
-    private static class append_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<append_args> {
+    private static class append_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<append_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, append_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, append_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.append.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, append_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, append_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.append = new TAppend();
@@ -14135,25 +14135,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class append_result implements org.apache.thrift.TBase<append_result, append_result._Fields>, java.io.Serializable, Cloneable, Comparable<append_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("append_result");
+  public static class append_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<append_result, append_result._Fields>, java.io.Serializable, Cloneable, Comparable<append_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("append_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.STRUCT, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new append_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new append_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new append_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new append_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TResult success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -14168,7 +14168,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -14193,7 +14193,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -14216,15 +14216,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TResult.class)));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TResult.class)));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(append_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(append_result.class, metaDataMap);
     }
 
     public append_result() {
@@ -14261,12 +14261,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TResult getSuccess() {
       return this.success;
     }
 
-    public append_result setSuccess(@org.apache.thrift.annotation.Nullable TResult success) {
+    public append_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult success) {
       this.success = success;
       return this;
     }
@@ -14286,12 +14286,12 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public append_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public append_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -14311,7 +14311,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -14332,7 +14332,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -14424,7 +14424,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -14434,7 +14434,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -14442,16 +14442,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -14479,7 +14479,7 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
       if (success != null) {
@@ -14489,58 +14489,58 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class append_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class append_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public append_resultStandardScheme getScheme() {
         return new append_resultStandardScheme();
       }
     }
 
-    private static class append_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<append_result> {
+    private static class append_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<append_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, append_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, append_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.success = new TResult();
                 struct.success.read(iprot);
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -14550,7 +14550,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, append_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, append_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -14570,17 +14570,17 @@ public class THBaseService {
 
     }
 
-    private static class append_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class append_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public append_resultTupleScheme getScheme() {
         return new append_resultTupleScheme();
       }
     }
 
-    private static class append_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<append_result> {
+    private static class append_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<append_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, append_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, append_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -14598,8 +14598,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, append_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, append_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.success = new TResult();
@@ -14614,31 +14614,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class openScanner_args implements org.apache.thrift.TBase<openScanner_args, openScanner_args._Fields>, java.io.Serializable, Cloneable, Comparable<openScanner_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("openScanner_args");
+  public static class openScanner_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<openScanner_args, openScanner_args._Fields>, java.io.Serializable, Cloneable, Comparable<openScanner_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("openScanner_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField SCAN_FIELD_DESC = new org.apache.thrift.protocol.TField("scan", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SCAN_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("scan", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new openScanner_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new openScanner_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new openScanner_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new openScanner_argsTupleSchemeFactory();
 
     /**
      * the table to get the Scanner for
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the scan object to get a Scanner for
      */
-    public @org.apache.thrift.annotation.Nullable TScan scan; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TScan scan; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to get the Scanner for
        */
@@ -14659,7 +14659,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -14684,7 +14684,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -14707,15 +14707,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.SCAN, new org.apache.thrift.meta_data.FieldMetaData("scan", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TScan.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.SCAN, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("scan", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TScan.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(openScanner_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(openScanner_args.class, metaDataMap);
     }
 
     public openScanner_args() {
@@ -14726,7 +14726,7 @@ public class THBaseService {
       TScan scan)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.scan = scan;
     }
 
@@ -14735,7 +14735,7 @@ public class THBaseService {
      */
     public openScanner_args(openScanner_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetScan()) {
         this.scan = new TScan(other.scan);
@@ -14756,12 +14756,12 @@ public class THBaseService {
      * the table to get the Scanner for
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -14772,8 +14772,8 @@ public class THBaseService {
       return this;
     }
 
-    public openScanner_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public openScanner_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -14795,7 +14795,7 @@ public class THBaseService {
     /**
      * the scan object to get a Scanner for
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TScan getScan() {
       return this.scan;
     }
@@ -14803,7 +14803,7 @@ public class THBaseService {
     /**
      * the scan object to get a Scanner for
      */
-    public openScanner_args setScan(@org.apache.thrift.annotation.Nullable TScan scan) {
+    public openScanner_args setScan(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TScan scan) {
       this.scan = scan;
       return this;
     }
@@ -14823,7 +14823,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -14848,7 +14848,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -14940,7 +14940,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -14950,7 +14950,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetScan()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.scan, other.scan);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.scan, other.scan);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -14958,16 +14958,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -14980,7 +14980,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -14995,13 +14995,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (scan == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'scan' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'scan' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (scan != null) {
@@ -15011,57 +15011,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class openScanner_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class openScanner_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public openScanner_argsStandardScheme getScheme() {
         return new openScanner_argsStandardScheme();
       }
     }
 
-    private static class openScanner_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<openScanner_args> {
+    private static class openScanner_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<openScanner_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, openScanner_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, openScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // SCAN
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.scan = new TScan();
                 struct.scan.read(iprot);
                 struct.setScanIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -15071,7 +15071,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, openScanner_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, openScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -15091,24 +15091,24 @@ public class THBaseService {
 
     }
 
-    private static class openScanner_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class openScanner_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public openScanner_argsTupleScheme getScheme() {
         return new openScanner_argsTupleScheme();
       }
     }
 
-    private static class openScanner_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<openScanner_args> {
+    private static class openScanner_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<openScanner_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, openScanner_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, openScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.scan.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, openScanner_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, openScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.scan = new TScan();
@@ -15117,25 +15117,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class openScanner_result implements org.apache.thrift.TBase<openScanner_result, openScanner_result._Fields>, java.io.Serializable, Cloneable, Comparable<openScanner_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("openScanner_result");
+  public static class openScanner_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<openScanner_result, openScanner_result._Fields>, java.io.Serializable, Cloneable, Comparable<openScanner_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("openScanner_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.I32, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new openScanner_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new openScanner_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new openScanner_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new openScanner_resultTupleSchemeFactory();
 
     public int success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -15150,7 +15150,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -15175,7 +15175,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -15200,15 +15200,15 @@ public class THBaseService {
     // isset id assignments
     private static final int __SUCCESS_ISSET_ID = 0;
     private byte __isset_bitfield = 0;
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32)));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(openScanner_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(openScanner_result.class, metaDataMap);
     }
 
     public openScanner_result() {
@@ -15257,24 +15257,24 @@ public class THBaseService {
     }
 
     public void unsetSuccess() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     /** Returns true if field success is set (has been assigned a value) and false otherwise */
     public boolean isSetSuccess() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SUCCESS_ISSET_ID);
     }
 
     public void setSuccessIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SUCCESS_ISSET_ID, value);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public openScanner_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public openScanner_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -15294,7 +15294,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -15315,7 +15315,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -15405,7 +15405,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -15415,7 +15415,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -15423,16 +15423,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -15456,15 +15456,15 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
@@ -15473,49 +15473,49 @@ public class THBaseService {
       try {
         // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
         __isset_bitfield = 0;
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class openScanner_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class openScanner_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public openScanner_resultStandardScheme getScheme() {
         return new openScanner_resultStandardScheme();
       }
     }
 
-    private static class openScanner_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<openScanner_result> {
+    private static class openScanner_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<openScanner_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, openScanner_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, openScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.I32) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32) {
                 struct.success = iprot.readI32();
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -15525,7 +15525,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, openScanner_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, openScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -15545,17 +15545,17 @@ public class THBaseService {
 
     }
 
-    private static class openScanner_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class openScanner_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public openScanner_resultTupleScheme getScheme() {
         return new openScanner_resultTupleScheme();
       }
     }
 
-    private static class openScanner_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<openScanner_result> {
+    private static class openScanner_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<openScanner_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, openScanner_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, openScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -15573,8 +15573,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, openScanner_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, openScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.success = iprot.readI32();
@@ -15588,19 +15588,19 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getScannerRows_args implements org.apache.thrift.TBase<getScannerRows_args, getScannerRows_args._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerRows_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getScannerRows_args");
+  public static class getScannerRows_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getScannerRows_args, getScannerRows_args._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerRows_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getScannerRows_args");
 
-    private static final org.apache.thrift.protocol.TField SCANNER_ID_FIELD_DESC = new org.apache.thrift.protocol.TField("scannerId", org.apache.thrift.protocol.TType.I32, (short)1);
-    private static final org.apache.thrift.protocol.TField NUM_ROWS_FIELD_DESC = new org.apache.thrift.protocol.TField("numRows", org.apache.thrift.protocol.TType.I32, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SCANNER_ID_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("scannerId", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField NUM_ROWS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("numRows", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerRows_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerRows_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerRows_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerRows_argsTupleSchemeFactory();
 
     /**
      * the Id of the Scanner to return rows from. This is an Id returned from the openScanner function.
@@ -15612,7 +15612,7 @@ public class THBaseService {
     public int numRows; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the Id of the Scanner to return rows from. This is an Id returned from the openScanner function.
        */
@@ -15633,7 +15633,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // SCANNER_ID
@@ -15658,7 +15658,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -15684,15 +15684,15 @@ public class THBaseService {
     private static final int __SCANNERID_ISSET_ID = 0;
     private static final int __NUMROWS_ISSET_ID = 1;
     private byte __isset_bitfield = 0;
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SCANNER_ID, new org.apache.thrift.meta_data.FieldMetaData("scannerId", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
-      tmpMap.put(_Fields.NUM_ROWS, new org.apache.thrift.meta_data.FieldMetaData("numRows", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SCANNER_ID, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("scannerId", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32)));
+      tmpMap.put(_Fields.NUM_ROWS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("numRows", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerRows_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerRows_args.class, metaDataMap);
     }
 
     public getScannerRows_args() {
@@ -15749,16 +15749,16 @@ public class THBaseService {
     }
 
     public void unsetScannerId() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SCANNERID_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SCANNERID_ISSET_ID);
     }
 
     /** Returns true if field scannerId is set (has been assigned a value) and false otherwise */
     public boolean isSetScannerId() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SCANNERID_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SCANNERID_ISSET_ID);
     }
 
     public void setScannerIdIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SCANNERID_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SCANNERID_ISSET_ID, value);
     }
 
     /**
@@ -15778,19 +15778,19 @@ public class THBaseService {
     }
 
     public void unsetNumRows() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __NUMROWS_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __NUMROWS_ISSET_ID);
     }
 
     /** Returns true if field numRows is set (has been assigned a value) and false otherwise */
     public boolean isSetNumRows() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __NUMROWS_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __NUMROWS_ISSET_ID);
     }
 
     public void setNumRowsIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __NUMROWS_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __NUMROWS_ISSET_ID, value);
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SCANNER_ID:
         if (value == null) {
@@ -15811,7 +15811,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SCANNER_ID:
@@ -15899,7 +15899,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetScannerId()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.scannerId, other.scannerId);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.scannerId, other.scannerId);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -15909,7 +15909,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetNumRows()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.numRows, other.numRows);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.numRows, other.numRows);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -15917,16 +15917,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -15946,7 +15946,7 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // alas, we cannot check 'scannerId' because it's a primitive and you chose the non-beans generator.
       // check for sub-struct validity
@@ -15954,8 +15954,8 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
@@ -15964,48 +15964,48 @@ public class THBaseService {
       try {
         // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
         __isset_bitfield = 0;
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getScannerRows_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerRows_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerRows_argsStandardScheme getScheme() {
         return new getScannerRows_argsStandardScheme();
       }
     }
 
-    private static class getScannerRows_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<getScannerRows_args> {
+    private static class getScannerRows_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getScannerRows_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getScannerRows_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getScannerRows_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // SCANNER_ID
-              if (schemeField.type == org.apache.thrift.protocol.TType.I32) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32) {
                 struct.scannerId = iprot.readI32();
                 struct.setScannerIdIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // NUM_ROWS
-              if (schemeField.type == org.apache.thrift.protocol.TType.I32) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32) {
                 struct.numRows = iprot.readI32();
                 struct.setNumRowsIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -16013,12 +16013,12 @@ public class THBaseService {
 
         // check for required fields of primitive type, which can't be checked in the validate method
         if (!struct.isSetScannerId()) {
-          throw new org.apache.thrift.protocol.TProtocolException("Required field 'scannerId' was not found in serialized data! Struct: " + toString());
+          throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'scannerId' was not found in serialized data! Struct: " + toString());
         }
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getScannerRows_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getScannerRows_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -16034,17 +16034,17 @@ public class THBaseService {
 
     }
 
-    private static class getScannerRows_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerRows_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerRows_argsTupleScheme getScheme() {
         return new getScannerRows_argsTupleScheme();
       }
     }
 
-    private static class getScannerRows_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<getScannerRows_args> {
+    private static class getScannerRows_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getScannerRows_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getScannerRows_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerRows_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeI32(struct.scannerId);
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetNumRows()) {
@@ -16057,8 +16057,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getScannerRows_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerRows_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.scannerId = iprot.readI32();
         struct.setScannerIdIsSet(true);
         java.util.BitSet incoming = iprot.readBitSet(1);
@@ -16069,30 +16069,30 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getScannerRows_result implements org.apache.thrift.TBase<getScannerRows_result, getScannerRows_result._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerRows_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getScannerRows_result");
+  public static class getScannerRows_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getScannerRows_result, getScannerRows_result._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerRows_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getScannerRows_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.LIST, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
-    private static final org.apache.thrift.protocol.TField IA_FIELD_DESC = new org.apache.thrift.protocol.TField("ia", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IA_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("ia", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerRows_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerRows_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerRows_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerRows_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable java.util.List<TResult> success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TResult> success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
     /**
      * if the scannerId is invalid
      */
-    public @org.apache.thrift.annotation.Nullable TIllegalArgument ia; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIllegalArgument ia; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io"),
       /**
@@ -16111,7 +16111,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -16138,7 +16138,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -16161,18 +16161,18 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-              new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TResult.class))));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
-      tmpMap.put(_Fields.IA, new org.apache.thrift.meta_data.FieldMetaData("ia", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIllegalArgument.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.ListMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, 
+              new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TResult.class))));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      tmpMap.put(_Fields.IA, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("ia", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIllegalArgument.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerRows_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerRows_result.class, metaDataMap);
     }
 
     public getScannerRows_result() {
@@ -16223,7 +16223,7 @@ public class THBaseService {
       return (this.success == null) ? 0 : this.success.size();
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.Iterator<TResult> getSuccessIterator() {
       return (this.success == null) ? null : this.success.iterator();
     }
@@ -16235,12 +16235,12 @@ public class THBaseService {
       this.success.add(elem);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.List<TResult> getSuccess() {
       return this.success;
     }
 
-    public getScannerRows_result setSuccess(@org.apache.thrift.annotation.Nullable java.util.List<TResult> success) {
+    public getScannerRows_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TResult> success) {
       this.success = success;
       return this;
     }
@@ -16260,12 +16260,12 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public getScannerRows_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public getScannerRows_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -16288,7 +16288,7 @@ public class THBaseService {
     /**
      * if the scannerId is invalid
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIllegalArgument getIa() {
       return this.ia;
     }
@@ -16296,7 +16296,7 @@ public class THBaseService {
     /**
      * if the scannerId is invalid
      */
-    public getScannerRows_result setIa(@org.apache.thrift.annotation.Nullable TIllegalArgument ia) {
+    public getScannerRows_result setIa(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIllegalArgument ia) {
       this.ia = ia;
       return this;
     }
@@ -16316,7 +16316,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -16345,7 +16345,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -16455,7 +16455,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -16465,7 +16465,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -16475,7 +16475,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIa()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.ia, other.ia);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.ia, other.ia);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -16483,16 +16483,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -16528,51 +16528,51 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getScannerRows_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerRows_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerRows_resultStandardScheme getScheme() {
         return new getScannerRows_resultStandardScheme();
       }
     }
 
-    private static class getScannerRows_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<getScannerRows_result> {
+    private static class getScannerRows_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getScannerRows_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getScannerRows_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getScannerRows_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST) {
                 {
-                  org.apache.thrift.protocol.TList _list172 = iprot.readListBegin();
+                  com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list172 = iprot.readListBegin();
                   struct.success = new java.util.ArrayList<TResult>(_list172.size);
-                  @org.apache.thrift.annotation.Nullable TResult _elem173;
+                  @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult _elem173;
                   for (int _i174 = 0; _i174 < _list172.size; ++_i174)
                   {
                     _elem173 = new TResult();
@@ -16583,29 +16583,29 @@ public class THBaseService {
                 }
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // IA
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.ia = new TIllegalArgument();
                 struct.ia.read(iprot);
                 struct.setIaIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -16615,14 +16615,14 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getScannerRows_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getScannerRows_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
         if (struct.success != null) {
           oprot.writeFieldBegin(SUCCESS_FIELD_DESC);
           {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
+            oprot.writeListBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
             for (TResult _iter175 : struct.success)
             {
               _iter175.write(oprot);
@@ -16647,17 +16647,17 @@ public class THBaseService {
 
     }
 
-    private static class getScannerRows_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerRows_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerRows_resultTupleScheme getScheme() {
         return new getScannerRows_resultTupleScheme();
       }
     }
 
-    private static class getScannerRows_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<getScannerRows_result> {
+    private static class getScannerRows_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getScannerRows_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getScannerRows_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerRows_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -16687,14 +16687,14 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getScannerRows_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerRows_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(3);
         if (incoming.get(0)) {
           {
-            org.apache.thrift.protocol.TList _list177 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
+            com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list177 = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
             struct.success = new java.util.ArrayList<TResult>(_list177.size);
-            @org.apache.thrift.annotation.Nullable TResult _elem178;
+            @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult _elem178;
             for (int _i179 = 0; _i179 < _list177.size; ++_i179)
             {
               _elem178 = new TResult();
@@ -16717,18 +16717,18 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class closeScanner_args implements org.apache.thrift.TBase<closeScanner_args, closeScanner_args._Fields>, java.io.Serializable, Cloneable, Comparable<closeScanner_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("closeScanner_args");
+  public static class closeScanner_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<closeScanner_args, closeScanner_args._Fields>, java.io.Serializable, Cloneable, Comparable<closeScanner_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("closeScanner_args");
 
-    private static final org.apache.thrift.protocol.TField SCANNER_ID_FIELD_DESC = new org.apache.thrift.protocol.TField("scannerId", org.apache.thrift.protocol.TType.I32, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SCANNER_ID_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("scannerId", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new closeScanner_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new closeScanner_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new closeScanner_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new closeScanner_argsTupleSchemeFactory();
 
     /**
      * the Id of the Scanner to close *
@@ -16736,7 +16736,7 @@ public class THBaseService {
     public int scannerId; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the Id of the Scanner to close *
        */
@@ -16753,7 +16753,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // SCANNER_ID
@@ -16776,7 +16776,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -16801,13 +16801,13 @@ public class THBaseService {
     // isset id assignments
     private static final int __SCANNERID_ISSET_ID = 0;
     private byte __isset_bitfield = 0;
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SCANNER_ID, new org.apache.thrift.meta_data.FieldMetaData("scannerId", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SCANNER_ID, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("scannerId", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(closeScanner_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(closeScanner_args.class, metaDataMap);
     }
 
     public closeScanner_args() {
@@ -16856,19 +16856,19 @@ public class THBaseService {
     }
 
     public void unsetScannerId() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SCANNERID_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __SCANNERID_ISSET_ID);
     }
 
     /** Returns true if field scannerId is set (has been assigned a value) and false otherwise */
     public boolean isSetScannerId() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SCANNERID_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __SCANNERID_ISSET_ID);
     }
 
     public void setScannerIdIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SCANNERID_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __SCANNERID_ISSET_ID, value);
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SCANNER_ID:
         if (value == null) {
@@ -16881,7 +16881,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SCANNER_ID:
@@ -16953,7 +16953,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetScannerId()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.scannerId, other.scannerId);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.scannerId, other.scannerId);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -16961,16 +16961,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -16986,7 +16986,7 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // alas, we cannot check 'scannerId' because it's a primitive and you chose the non-beans generator.
       // check for sub-struct validity
@@ -16994,8 +16994,8 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
@@ -17004,40 +17004,40 @@ public class THBaseService {
       try {
         // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
         __isset_bitfield = 0;
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class closeScanner_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class closeScanner_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public closeScanner_argsStandardScheme getScheme() {
         return new closeScanner_argsStandardScheme();
       }
     }
 
-    private static class closeScanner_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<closeScanner_args> {
+    private static class closeScanner_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<closeScanner_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, closeScanner_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, closeScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // SCANNER_ID
-              if (schemeField.type == org.apache.thrift.protocol.TType.I32) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32) {
                 struct.scannerId = iprot.readI32();
                 struct.setScannerIdIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -17045,12 +17045,12 @@ public class THBaseService {
 
         // check for required fields of primitive type, which can't be checked in the validate method
         if (!struct.isSetScannerId()) {
-          throw new org.apache.thrift.protocol.TProtocolException("Required field 'scannerId' was not found in serialized data! Struct: " + toString());
+          throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'scannerId' was not found in serialized data! Struct: " + toString());
         }
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, closeScanner_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, closeScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -17063,50 +17063,50 @@ public class THBaseService {
 
     }
 
-    private static class closeScanner_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class closeScanner_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public closeScanner_argsTupleScheme getScheme() {
         return new closeScanner_argsTupleScheme();
       }
     }
 
-    private static class closeScanner_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<closeScanner_args> {
+    private static class closeScanner_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<closeScanner_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, closeScanner_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, closeScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeI32(struct.scannerId);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, closeScanner_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, closeScanner_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.scannerId = iprot.readI32();
         struct.setScannerIdIsSet(true);
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class closeScanner_result implements org.apache.thrift.TBase<closeScanner_result, closeScanner_result._Fields>, java.io.Serializable, Cloneable, Comparable<closeScanner_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("closeScanner_result");
+  public static class closeScanner_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<closeScanner_result, closeScanner_result._Fields>, java.io.Serializable, Cloneable, Comparable<closeScanner_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("closeScanner_result");
 
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
-    private static final org.apache.thrift.protocol.TField IA_FIELD_DESC = new org.apache.thrift.protocol.TField("ia", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IA_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("ia", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new closeScanner_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new closeScanner_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new closeScanner_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new closeScanner_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
     /**
      * if the scannerId is invalid
      */
-    public @org.apache.thrift.annotation.Nullable TIllegalArgument ia; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIllegalArgument ia; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       IO((short)1, "io"),
       /**
        * if the scannerId is invalid
@@ -17124,7 +17124,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // IO
@@ -17149,7 +17149,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -17172,15 +17172,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
-      tmpMap.put(_Fields.IA, new org.apache.thrift.meta_data.FieldMetaData("ia", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIllegalArgument.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      tmpMap.put(_Fields.IA, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("ia", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIllegalArgument.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(closeScanner_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(closeScanner_result.class, metaDataMap);
     }
 
     public closeScanner_result() {
@@ -17217,12 +17217,12 @@ public class THBaseService {
       this.ia = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public closeScanner_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public closeScanner_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -17245,7 +17245,7 @@ public class THBaseService {
     /**
      * if the scannerId is invalid
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIllegalArgument getIa() {
       return this.ia;
     }
@@ -17253,7 +17253,7 @@ public class THBaseService {
     /**
      * if the scannerId is invalid
      */
-    public closeScanner_result setIa(@org.apache.thrift.annotation.Nullable TIllegalArgument ia) {
+    public closeScanner_result setIa(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIllegalArgument ia) {
       this.ia = ia;
       return this;
     }
@@ -17273,7 +17273,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case IO:
         if (value == null) {
@@ -17294,7 +17294,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case IO:
@@ -17386,7 +17386,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -17396,7 +17396,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIa()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.ia, other.ia);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.ia, other.ia);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -17404,16 +17404,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -17441,65 +17441,65 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class closeScanner_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class closeScanner_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public closeScanner_resultStandardScheme getScheme() {
         return new closeScanner_resultStandardScheme();
       }
     }
 
-    private static class closeScanner_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<closeScanner_result> {
+    private static class closeScanner_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<closeScanner_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, closeScanner_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, closeScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // IA
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.ia = new TIllegalArgument();
                 struct.ia.read(iprot);
                 struct.setIaIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -17509,7 +17509,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, closeScanner_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, closeScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -17529,17 +17529,17 @@ public class THBaseService {
 
     }
 
-    private static class closeScanner_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class closeScanner_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public closeScanner_resultTupleScheme getScheme() {
         return new closeScanner_resultTupleScheme();
       }
     }
 
-    private static class closeScanner_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<closeScanner_result> {
+    private static class closeScanner_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<closeScanner_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, closeScanner_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, closeScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetIo()) {
           optionals.set(0);
@@ -17557,8 +17557,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, closeScanner_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, closeScanner_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           struct.io = new TIOError();
@@ -17573,31 +17573,31 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class mutateRow_args implements org.apache.thrift.TBase<mutateRow_args, mutateRow_args._Fields>, java.io.Serializable, Cloneable, Comparable<mutateRow_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("mutateRow_args");
+  public static class mutateRow_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<mutateRow_args, mutateRow_args._Fields>, java.io.Serializable, Cloneable, Comparable<mutateRow_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("mutateRow_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField ROW_MUTATIONS_FIELD_DESC = new org.apache.thrift.protocol.TField("rowMutations", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField ROW_MUTATIONS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("rowMutations", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new mutateRow_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new mutateRow_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new mutateRow_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new mutateRow_argsTupleSchemeFactory();
 
     /**
      * table to apply the mutations
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * mutations to apply
      */
-    public @org.apache.thrift.annotation.Nullable TRowMutations rowMutations; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TRowMutations rowMutations; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * table to apply the mutations
        */
@@ -17618,7 +17618,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -17643,7 +17643,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -17666,15 +17666,15 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.ROW_MUTATIONS, new org.apache.thrift.meta_data.FieldMetaData("rowMutations", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TRowMutations.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.ROW_MUTATIONS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("rowMutations", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TRowMutations.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(mutateRow_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(mutateRow_args.class, metaDataMap);
     }
 
     public mutateRow_args() {
@@ -17685,7 +17685,7 @@ public class THBaseService {
       TRowMutations rowMutations)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.rowMutations = rowMutations;
     }
 
@@ -17694,7 +17694,7 @@ public class THBaseService {
      */
     public mutateRow_args(mutateRow_args other) {
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetRowMutations()) {
         this.rowMutations = new TRowMutations(other.rowMutations);
@@ -17715,12 +17715,12 @@ public class THBaseService {
      * table to apply the mutations
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -17731,8 +17731,8 @@ public class THBaseService {
       return this;
     }
 
-    public mutateRow_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public mutateRow_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -17754,7 +17754,7 @@ public class THBaseService {
     /**
      * mutations to apply
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TRowMutations getRowMutations() {
       return this.rowMutations;
     }
@@ -17762,7 +17762,7 @@ public class THBaseService {
     /**
      * mutations to apply
      */
-    public mutateRow_args setRowMutations(@org.apache.thrift.annotation.Nullable TRowMutations rowMutations) {
+    public mutateRow_args setRowMutations(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TRowMutations rowMutations) {
       this.rowMutations = rowMutations;
       return this;
     }
@@ -17782,7 +17782,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -17807,7 +17807,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -17899,7 +17899,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -17909,7 +17909,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetRowMutations()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.rowMutations, other.rowMutations);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.rowMutations, other.rowMutations);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -17917,16 +17917,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -17939,7 +17939,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -17954,13 +17954,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (rowMutations == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'rowMutations' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'rowMutations' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (rowMutations != null) {
@@ -17970,57 +17970,57 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class mutateRow_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class mutateRow_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public mutateRow_argsStandardScheme getScheme() {
         return new mutateRow_argsStandardScheme();
       }
     }
 
-    private static class mutateRow_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<mutateRow_args> {
+    private static class mutateRow_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<mutateRow_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, mutateRow_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, mutateRow_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // ROW_MUTATIONS
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.rowMutations = new TRowMutations();
                 struct.rowMutations.read(iprot);
                 struct.setRowMutationsIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -18030,7 +18030,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, mutateRow_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, mutateRow_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -18050,24 +18050,24 @@ public class THBaseService {
 
     }
 
-    private static class mutateRow_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class mutateRow_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public mutateRow_argsTupleScheme getScheme() {
         return new mutateRow_argsTupleScheme();
       }
     }
 
-    private static class mutateRow_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<mutateRow_args> {
+    private static class mutateRow_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<mutateRow_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, mutateRow_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, mutateRow_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.rowMutations.write(oprot);
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, mutateRow_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, mutateRow_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.rowMutations = new TRowMutations();
@@ -18076,23 +18076,23 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class mutateRow_result implements org.apache.thrift.TBase<mutateRow_result, mutateRow_result._Fields>, java.io.Serializable, Cloneable, Comparable<mutateRow_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("mutateRow_result");
+  public static class mutateRow_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<mutateRow_result, mutateRow_result._Fields>, java.io.Serializable, Cloneable, Comparable<mutateRow_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("mutateRow_result");
 
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new mutateRow_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new mutateRow_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new mutateRow_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new mutateRow_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       IO((short)1, "io");
 
       private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
@@ -18106,7 +18106,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // IO
@@ -18129,7 +18129,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -18152,13 +18152,13 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(mutateRow_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(mutateRow_result.class, metaDataMap);
     }
 
     public mutateRow_result() {
@@ -18189,12 +18189,12 @@ public class THBaseService {
       this.io = null;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public mutateRow_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public mutateRow_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -18214,7 +18214,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case IO:
         if (value == null) {
@@ -18227,7 +18227,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case IO:
@@ -18301,7 +18301,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -18309,16 +18309,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -18338,56 +18338,56 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class mutateRow_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class mutateRow_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public mutateRow_resultStandardScheme getScheme() {
         return new mutateRow_resultStandardScheme();
       }
     }
 
-    private static class mutateRow_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<mutateRow_result> {
+    private static class mutateRow_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<mutateRow_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, mutateRow_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, mutateRow_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -18397,7 +18397,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, mutateRow_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, mutateRow_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -18412,17 +18412,17 @@ public class THBaseService {
 
     }
 
-    private static class mutateRow_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class mutateRow_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public mutateRow_resultTupleScheme getScheme() {
         return new mutateRow_resultTupleScheme();
       }
     }
 
-    private static class mutateRow_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<mutateRow_result> {
+    private static class mutateRow_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<mutateRow_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, mutateRow_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, mutateRow_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetIo()) {
           optionals.set(0);
@@ -18434,8 +18434,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, mutateRow_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, mutateRow_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(1);
         if (incoming.get(0)) {
           struct.io = new TIOError();
@@ -18445,36 +18445,36 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getScannerResults_args implements org.apache.thrift.TBase<getScannerResults_args, getScannerResults_args._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerResults_args>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getScannerResults_args");
+  public static class getScannerResults_args implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getScannerResults_args, getScannerResults_args._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerResults_args>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getScannerResults_args");
 
-    private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField SCAN_FIELD_DESC = new org.apache.thrift.protocol.TField("scan", org.apache.thrift.protocol.TType.STRUCT, (short)2);
-    private static final org.apache.thrift.protocol.TField NUM_ROWS_FIELD_DESC = new org.apache.thrift.protocol.TField("numRows", org.apache.thrift.protocol.TType.I32, (short)3);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("table", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SCAN_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("scan", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField NUM_ROWS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("numRows", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32, (short)3);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerResults_argsStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerResults_argsTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerResults_argsStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerResults_argsTupleSchemeFactory();
 
     /**
      * the table to get the Scanner for
      */
-    public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table; // required
     /**
      * the scan object to get a Scanner for
      */
-    public @org.apache.thrift.annotation.Nullable TScan scan; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TScan scan; // required
     /**
      * number of rows to return
      */
     public int numRows; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       /**
        * the table to get the Scanner for
        */
@@ -18499,7 +18499,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 1: // TABLE
@@ -18526,7 +18526,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -18551,17 +18551,17 @@ public class THBaseService {
     // isset id assignments
     private static final int __NUMROWS_ISSET_ID = 0;
     private byte __isset_bitfield = 0;
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING          , true)));
-      tmpMap.put(_Fields.SCAN, new org.apache.thrift.meta_data.FieldMetaData("scan", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TScan.class)));
-      tmpMap.put(_Fields.NUM_ROWS, new org.apache.thrift.meta_data.FieldMetaData("numRows", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.TABLE, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("table", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING          , true)));
+      tmpMap.put(_Fields.SCAN, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("scan", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.REQUIRED, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TScan.class)));
+      tmpMap.put(_Fields.NUM_ROWS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("numRows", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldValueMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerResults_args.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerResults_args.class, metaDataMap);
     }
 
     public getScannerResults_args() {
@@ -18575,7 +18575,7 @@ public class THBaseService {
       int numRows)
     {
       this();
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       this.scan = scan;
       this.numRows = numRows;
       setNumRowsIsSet(true);
@@ -18587,7 +18587,7 @@ public class THBaseService {
     public getScannerResults_args(getScannerResults_args other) {
       __isset_bitfield = other.__isset_bitfield;
       if (other.isSetTable()) {
-        this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
+        this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(other.table);
       }
       if (other.isSetScan()) {
         this.scan = new TScan(other.scan);
@@ -18611,12 +18611,12 @@ public class THBaseService {
      * the table to get the Scanner for
      */
     public byte[] getTable() {
-      setTable(org.apache.thrift.TBaseHelper.rightSize(table));
+      setTable(com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.rightSize(table));
       return table == null ? null : table.array();
     }
 
     public java.nio.ByteBuffer bufferForTable() {
-      return org.apache.thrift.TBaseHelper.copyBinary(table);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
     }
 
     /**
@@ -18627,8 +18627,8 @@ public class THBaseService {
       return this;
     }
 
-    public getScannerResults_args setTable(@org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(table);
+    public getScannerResults_args setTable(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.nio.ByteBuffer table) {
+      this.table = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.copyBinary(table);
       return this;
     }
 
@@ -18650,7 +18650,7 @@ public class THBaseService {
     /**
      * the scan object to get a Scanner for
      */
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TScan getScan() {
       return this.scan;
     }
@@ -18658,7 +18658,7 @@ public class THBaseService {
     /**
      * the scan object to get a Scanner for
      */
-    public getScannerResults_args setScan(@org.apache.thrift.annotation.Nullable TScan scan) {
+    public getScannerResults_args setScan(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TScan scan) {
       this.scan = scan;
       return this;
     }
@@ -18695,19 +18695,19 @@ public class THBaseService {
     }
 
     public void unsetNumRows() {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __NUMROWS_ISSET_ID);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __NUMROWS_ISSET_ID);
     }
 
     /** Returns true if field numRows is set (has been assigned a value) and false otherwise */
     public boolean isSetNumRows() {
-      return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __NUMROWS_ISSET_ID);
+      return com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __NUMROWS_ISSET_ID);
     }
 
     public void setNumRowsIsSet(boolean value) {
-      __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __NUMROWS_ISSET_ID, value);
+      __isset_bitfield = com.xiaomi.infra.thirdparty.org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __NUMROWS_ISSET_ID, value);
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case TABLE:
         if (value == null) {
@@ -18740,7 +18740,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case TABLE:
@@ -18848,7 +18848,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetTable()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.table, other.table);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -18858,7 +18858,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetScan()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.scan, other.scan);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.scan, other.scan);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -18868,7 +18868,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetNumRows()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.numRows, other.numRows);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.numRows, other.numRows);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -18876,16 +18876,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
     }
 
@@ -18898,7 +18898,7 @@ public class THBaseService {
       if (this.table == null) {
         sb.append("null");
       } else {
-        org.apache.thrift.TBaseHelper.toString(this.table, sb);
+        com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.toString(this.table, sb);
       }
       first = false;
       if (!first) sb.append(", ");
@@ -18917,13 +18917,13 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       if (table == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'table' was not present! Struct: " + toString());
       }
       if (scan == null) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'scan' was not present! Struct: " + toString());
+        throw new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolException("Required field 'scan' was not present! Struct: " + toString());
       }
       // check for sub-struct validity
       if (scan != null) {
@@ -18933,8 +18933,8 @@ public class THBaseService {
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
@@ -18943,57 +18943,57 @@ public class THBaseService {
       try {
         // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
         __isset_bitfield = 0;
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getScannerResults_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerResults_argsStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerResults_argsStandardScheme getScheme() {
         return new getScannerResults_argsStandardScheme();
       }
     }
 
-    private static class getScannerResults_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<getScannerResults_args> {
+    private static class getScannerResults_argsStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getScannerResults_args> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getScannerResults_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getScannerResults_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 1: // TABLE
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRING) {
                 struct.table = iprot.readBinary();
                 struct.setTableIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 2: // SCAN
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.scan = new TScan();
                 struct.scan.read(iprot);
                 struct.setScanIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 3: // NUM_ROWS
-              if (schemeField.type == org.apache.thrift.protocol.TType.I32) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.I32) {
                 struct.numRows = iprot.readI32();
                 struct.setNumRowsIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -19003,7 +19003,7 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getScannerResults_args struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getScannerResults_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
@@ -19026,17 +19026,17 @@ public class THBaseService {
 
     }
 
-    private static class getScannerResults_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerResults_argsTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerResults_argsTupleScheme getScheme() {
         return new getScannerResults_argsTupleScheme();
       }
     }
 
-    private static class getScannerResults_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<getScannerResults_args> {
+    private static class getScannerResults_argsTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getScannerResults_args> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getScannerResults_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerResults_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         oprot.writeBinary(struct.table);
         struct.scan.write(oprot);
         java.util.BitSet optionals = new java.util.BitSet();
@@ -19050,8 +19050,8 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getScannerResults_args struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerResults_args struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         struct.table = iprot.readBinary();
         struct.setTableIsSet(true);
         struct.scan = new TScan();
@@ -19065,25 +19065,25 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 
-  public static class getScannerResults_result implements org.apache.thrift.TBase<getScannerResults_result, getScannerResults_result._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerResults_result>   {
-    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("getScannerResults_result");
+  public static class getScannerResults_result implements com.xiaomi.infra.thirdparty.org.apache.thrift.TBase<getScannerResults_result, getScannerResults_result._Fields>, java.io.Serializable, Cloneable, Comparable<getScannerResults_result>   {
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct STRUCT_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TStruct("getScannerResults_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.LIST, (short)0);
-    private static final org.apache.thrift.protocol.TField IO_FIELD_DESC = new org.apache.thrift.protocol.TField("io", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("success", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, (short)0);
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField IO_FIELD_DESC = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField("io", com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
-    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerResults_resultStandardSchemeFactory();
-    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerResults_resultTupleSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new getScannerResults_resultStandardSchemeFactory();
+    private static final com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new getScannerResults_resultTupleSchemeFactory();
 
-    public @org.apache.thrift.annotation.Nullable java.util.List<TResult> success; // required
-    public @org.apache.thrift.annotation.Nullable TIOError io; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TResult> success; // required
+    public @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
-    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+    public enum _Fields implements com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldIdEnum {
       SUCCESS((short)0, "success"),
       IO((short)1, "io");
 
@@ -19098,7 +19098,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
           case 0: // SUCCESS
@@ -19123,7 +19123,7 @@ public class THBaseService {
       /**
        * Find the _Fields constant that matches name, or null if its not found.
        */
-      @org.apache.thrift.annotation.Nullable
+      @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
       public static _Fields findByName(java.lang.String name) {
         return byName.get(name);
       }
@@ -19146,16 +19146,16 @@ public class THBaseService {
     }
 
     // isset id assignments
-    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    public static final java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
-      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-              new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TResult.class))));
-      tmpMap.put(_Fields.IO, new org.apache.thrift.meta_data.FieldMetaData("io", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
+      java.util.Map<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.SUCCESS, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("success", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.ListMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST, 
+              new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TResult.class))));
+      tmpMap.put(_Fields.IO, new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData("io", com.xiaomi.infra.thirdparty.org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.StructMetaData(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, TIOError.class)));
       metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
-      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerResults_result.class, metaDataMap);
+      com.xiaomi.infra.thirdparty.org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(getScannerResults_result.class, metaDataMap);
     }
 
     public getScannerResults_result() {
@@ -19200,7 +19200,7 @@ public class THBaseService {
       return (this.success == null) ? 0 : this.success.size();
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.Iterator<TResult> getSuccessIterator() {
       return (this.success == null) ? null : this.success.iterator();
     }
@@ -19212,12 +19212,12 @@ public class THBaseService {
       this.success.add(elem);
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.util.List<TResult> getSuccess() {
       return this.success;
     }
 
-    public getScannerResults_result setSuccess(@org.apache.thrift.annotation.Nullable java.util.List<TResult> success) {
+    public getScannerResults_result setSuccess(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.util.List<TResult> success) {
       this.success = success;
       return this;
     }
@@ -19237,12 +19237,12 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public TIOError getIo() {
       return this.io;
     }
 
-    public getScannerResults_result setIo(@org.apache.thrift.annotation.Nullable TIOError io) {
+    public getScannerResults_result setIo(@com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TIOError io) {
       this.io = io;
       return this;
     }
@@ -19262,7 +19262,7 @@ public class THBaseService {
       }
     }
 
-    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+    public void setFieldValue(_Fields field, @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable java.lang.Object value) {
       switch (field) {
       case SUCCESS:
         if (value == null) {
@@ -19283,7 +19283,7 @@ public class THBaseService {
       }
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public java.lang.Object getFieldValue(_Fields field) {
       switch (field) {
       case SUCCESS:
@@ -19375,7 +19375,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetSuccess()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.success, other.success);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -19385,7 +19385,7 @@ public class THBaseService {
         return lastComparison;
       }
       if (isSetIo()) {
-        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
+        lastComparison = com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.compareTo(this.io, other.io);
         if (lastComparison != 0) {
           return lastComparison;
         }
@@ -19393,16 +19393,16 @@ public class THBaseService {
       return 0;
     }
 
-    @org.apache.thrift.annotation.Nullable
+    @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable
     public _Fields fieldForId(int fieldId) {
       return _Fields.findByThriftId(fieldId);
     }
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+    public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(iprot).read(iprot, this);
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+    public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       scheme(oprot).write(oprot, this);
       }
 
@@ -19430,51 +19430,51 @@ public class THBaseService {
       return sb.toString();
     }
 
-    public void validate() throws org.apache.thrift.TException {
+    public void validate() throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
       // check for required fields
       // check for sub-struct validity
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
       try {
-        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-      } catch (org.apache.thrift.TException te) {
+        write(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
       try {
-        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-      } catch (org.apache.thrift.TException te) {
+        read(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol(new com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (com.xiaomi.infra.thirdparty.org.apache.thrift.TException te) {
         throw new java.io.IOException(te);
       }
     }
 
-    private static class getScannerResults_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerResults_resultStandardSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerResults_resultStandardScheme getScheme() {
         return new getScannerResults_resultStandardScheme();
       }
     }
 
-    private static class getScannerResults_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<getScannerResults_result> {
+    private static class getScannerResults_resultStandardScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme<getScannerResults_result> {
 
-      public void read(org.apache.thrift.protocol.TProtocol iprot, getScannerResults_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TField schemeField;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol iprot, getScannerResults_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
         while (true)
         {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STOP) { 
             break;
           }
           switch (schemeField.id) {
             case 0: // SUCCESS
-              if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.LIST) {
                 {
-                  org.apache.thrift.protocol.TList _list180 = iprot.readListBegin();
+                  com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list180 = iprot.readListBegin();
                   struct.success = new java.util.ArrayList<TResult>(_list180.size);
-                  @org.apache.thrift.annotation.Nullable TResult _elem181;
+                  @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult _elem181;
                   for (int _i182 = 0; _i182 < _list180.size; ++_i182)
                   {
                     _elem181 = new TResult();
@@ -19485,20 +19485,20 @@ public class THBaseService {
                 }
                 struct.setSuccessIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             case 1: // IO
-              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+              if (schemeField.type == com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT) {
                 struct.io = new TIOError();
                 struct.io.read(iprot);
                 struct.setIoIsSet(true);
               } else { 
-                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+                com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
             default:
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
           iprot.readFieldEnd();
         }
@@ -19508,14 +19508,14 @@ public class THBaseService {
         struct.validate();
       }
 
-      public void write(org.apache.thrift.protocol.TProtocol oprot, getScannerResults_result struct) throws org.apache.thrift.TException {
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol oprot, getScannerResults_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
         if (struct.success != null) {
           oprot.writeFieldBegin(SUCCESS_FIELD_DESC);
           {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
+            oprot.writeListBegin(new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
             for (TResult _iter183 : struct.success)
             {
               _iter183.write(oprot);
@@ -19535,17 +19535,17 @@ public class THBaseService {
 
     }
 
-    private static class getScannerResults_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+    private static class getScannerResults_resultTupleSchemeFactory implements com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.SchemeFactory {
       public getScannerResults_resultTupleScheme getScheme() {
         return new getScannerResults_resultTupleScheme();
       }
     }
 
-    private static class getScannerResults_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<getScannerResults_result> {
+    private static class getScannerResults_resultTupleScheme extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.TupleScheme<getScannerResults_result> {
 
       @Override
-      public void write(org.apache.thrift.protocol.TProtocol prot, getScannerResults_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void write(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerResults_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol oprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet optionals = new java.util.BitSet();
         if (struct.isSetSuccess()) {
           optionals.set(0);
@@ -19569,14 +19569,14 @@ public class THBaseService {
       }
 
       @Override
-      public void read(org.apache.thrift.protocol.TProtocol prot, getScannerResults_result struct) throws org.apache.thrift.TException {
-        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+      public void read(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol prot, getScannerResults_result struct) throws com.xiaomi.infra.thirdparty.org.apache.thrift.TException {
+        com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol iprot = (com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TTupleProtocol) prot;
         java.util.BitSet incoming = iprot.readBitSet(2);
         if (incoming.get(0)) {
           {
-            org.apache.thrift.protocol.TList _list185 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
+            com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList _list185 = new com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TList(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
             struct.success = new java.util.ArrayList<TResult>(_list185.size);
-            @org.apache.thrift.annotation.Nullable TResult _elem186;
+            @com.xiaomi.infra.thirdparty.org.apache.thrift.annotation.Nullable TResult _elem186;
             for (int _i187 = 0; _i187 < _list185.size; ++_i187)
             {
               _elem186 = new TResult();
@@ -19594,8 +19594,8 @@ public class THBaseService {
       }
     }
 
-    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
-      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    private static <S extends com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.IScheme> S scheme(com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol proto) {
+      return (com.xiaomi.infra.thirdparty.org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
     }
   }
 

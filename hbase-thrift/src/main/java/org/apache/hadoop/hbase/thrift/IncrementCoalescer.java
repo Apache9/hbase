@@ -41,7 +41,7 @@ import org.apache.hadoop.hbase.thrift.generated.TIncrement;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.metrics.util.MBeanUtil;
-import org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
 /**
  * This class will coalesce increments from a thift server if

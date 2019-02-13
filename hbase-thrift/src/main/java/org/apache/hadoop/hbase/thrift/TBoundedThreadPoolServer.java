@@ -31,15 +31,15 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.thrift.CallQueue.Call;
 import org.apache.hadoop.hbase.util.Threads;
-import org.apache.thrift.TException;
-import org.apache.thrift.TProcessor;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TServerTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TProcessor;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TThreadPoolServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TServerTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TSocket;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
