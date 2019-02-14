@@ -27,19 +27,21 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.util.Threads;
-import org.apache.thrift.TException;
-import org.apache.thrift.TProcessor;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TServerTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TProcessor;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TThreadPoolServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TServerTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TSocket;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException;
+
 
 /**
  * A bounded thread pool server customized for HBase.

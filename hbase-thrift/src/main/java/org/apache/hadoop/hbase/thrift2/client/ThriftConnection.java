@@ -53,17 +53,17 @@ import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.protocol.HttpContext;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFramedTransport;
-import org.apache.thrift.transport.THttpClient;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TBinaryProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TCompactProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TFramedTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.THttpClient;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TSocket;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException;
 
 @InterfaceAudience.Private
 public class ThriftConnection implements Connection {

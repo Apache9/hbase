@@ -36,10 +36,6 @@ import org.apache.hadoop.hbase.thrift.generated.Hbase;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
 import org.apache.hadoop.hbase.util.IncrementingEnvironmentEdge;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.THttpClient;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -52,6 +48,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.thirdparty.com.google.common.base.Joiner;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TBinaryProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.THttpClient;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransportException;
 
 /**
  * Start the HBase Thrift HTTP server on a random port through the command-line

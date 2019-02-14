@@ -28,12 +28,13 @@ import org.apache.hadoop.hbase.thrift2.generated.THBaseService;
 import org.apache.hadoop.hbase.thrift2.generated.TTableDescriptor;
 import org.apache.hadoop.hbase.thrift2.generated.TTableName;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.THttpClient;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
+
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TBinaryProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocol;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.THttpClient;
 
 @Category({ ClientTests.class, MediumTests.class})
 public class TestThrift2HttpServer extends TestThriftHttpServer {

@@ -43,7 +43,7 @@ import static org.apache.hadoop.hbase.thrift2.ThriftUtilities.tableDescriptorFro
 import static org.apache.hadoop.hbase.thrift2.ThriftUtilities.tableDescriptorsFromHBase;
 import static org.apache.hadoop.hbase.thrift2.ThriftUtilities.tableNameFromThrift;
 import static org.apache.hadoop.hbase.thrift2.ThriftUtilities.tableNamesFromHBase;
-import static org.apache.thrift.TBaseHelper.byteBufferToByteArray;
+import static com.xiaomi.infra.thirdparty.org.apache.thrift.TBaseHelper.byteBufferToByteArray;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -85,10 +85,11 @@ import org.apache.hadoop.hbase.thrift2.generated.TScan;
 import org.apache.hadoop.hbase.thrift2.generated.TTableDescriptor;
 import org.apache.hadoop.hbase.thrift2.generated.TTableName;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.thrift.TException;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
 /**
  * This class is a glue object that connects Thrift RPC calls to the HBase client API primarily

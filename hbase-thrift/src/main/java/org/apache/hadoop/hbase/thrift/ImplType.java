@@ -24,10 +24,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.thrift.server.THsHaServer;
-import org.apache.thrift.server.TNonblockingServer;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadedSelectorServer;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +31,10 @@ import org.slf4j.LoggerFactory;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Option;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.OptionGroup;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.THsHaServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TNonblockingServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TThreadedSelectorServer;
 
 /** An enum of server implementation selections */
 @InterfaceAudience.Private

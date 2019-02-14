@@ -33,7 +33,6 @@ import org.apache.hadoop.hbase.thrift.ThriftMetrics;
 import org.apache.hadoop.hbase.thrift2.generated.THBaseService;
 import org.apache.hadoop.util.Shell;
 import org.apache.hadoop.util.ToolRunner;
-import org.apache.thrift.TProcessor;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.HelpFormatter;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TProcessor;
 
 /**
  * ThriftServer - this class starts up a Thrift server which implements the HBase API specified in the

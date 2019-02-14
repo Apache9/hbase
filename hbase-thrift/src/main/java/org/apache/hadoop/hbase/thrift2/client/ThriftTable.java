@@ -62,12 +62,12 @@ import org.apache.hadoop.hbase.thrift2.generated.TRowMutations;
 import org.apache.hadoop.hbase.thrift2.generated.TScan;
 import org.apache.hadoop.hbase.thrift2.generated.TTableDescriptor;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransport;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 import com.xiaomi.infra.thirdparty.com.google.common.primitives.Booleans;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
 
 @InterfaceAudience.Private
 public class ThriftTable implements Table {

@@ -22,11 +22,12 @@ package org.apache.hadoop.hbase.thrift;
 import java.util.Locale;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.thrift.server.TThreadedSelectorServer;
-import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TThreadedSelectorServer;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TNonblockingServerTransport;
 
 /**
  * A TThreadedSelectorServer.Args that reads hadoop configuration

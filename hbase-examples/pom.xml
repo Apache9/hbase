@@ -147,8 +147,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.thrift</groupId>
-      <artifactId>libthrift</artifactId>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-thrift</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>

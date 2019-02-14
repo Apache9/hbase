@@ -35,9 +35,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authorize.AuthorizationException;
 import org.apache.hadoop.security.authorize.ProxyUsers;
 import org.apache.http.HttpHeaders;
-import org.apache.thrift.TProcessor;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.server.TServlet;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
@@ -47,6 +44,10 @@ import org.ietf.jgss.GSSName;
 import org.ietf.jgss.Oid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TProcessor;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.protocol.TProtocolFactory;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.server.TServlet;
 
 /**
  * Thrift Http Servlet is used for performing Kerberos authentication if security is enabled and

@@ -1500,7 +1500,7 @@
     <spotbugs.version>3.1.0-RC3</spotbugs.version>
     <wagon.ssh.version>2.12</wagon.ssh.version>
     <xml.maven.version>1.0.1</xml.maven.version>
-    <infra-thirdparty.version>2.0.1</infra-thirdparty.version>
+    <infra-thirdparty.version>2.0.2</infra-thirdparty.version>
     <!-- General Packaging -->
     <package.prefix>/usr</package.prefix>
     <package.conf.dir>/etc/hbase</package.conf.dir>
@@ -1931,15 +1931,9 @@
         <version>${jline.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.thrift</groupId>
-        <artifactId>libthrift</artifactId>
-        <version>${thrift.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-          </exclusion>
-        </exclusions>
+        <groupId>com.xiaomi.infra.thirdparty</groupId>
+        <artifactId>infra-shaded-thrift</artifactId>
+        <version>${infra-thirdparty.version}</version>
       </dependency>
       <dependency>
         <groupId>org.jruby</groupId>

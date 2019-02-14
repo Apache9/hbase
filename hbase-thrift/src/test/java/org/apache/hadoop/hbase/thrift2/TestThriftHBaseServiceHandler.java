@@ -102,7 +102,6 @@ import org.apache.hadoop.hbase.thrift2.generated.TTableDescriptor;
 import org.apache.hadoop.hbase.thrift2.generated.TTableName;
 import org.apache.hadoop.hbase.thrift2.generated.TTimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -116,6 +115,7 @@ import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.CollectionUtils;
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
 /**
  * Unit testing for ThriftServer.HBaseServiceHandler, a part of the org.apache.hadoop.hbase.thrift2

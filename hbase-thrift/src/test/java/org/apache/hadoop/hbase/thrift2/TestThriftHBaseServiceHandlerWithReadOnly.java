@@ -51,13 +51,14 @@ import org.apache.hadoop.hbase.thrift2.generated.TPut;
 import org.apache.hadoop.hbase.thrift2.generated.TRowMutations;
 import org.apache.hadoop.hbase.thrift2.generated.TScan;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import com.xiaomi.infra.thirdparty.org.apache.thrift.TException;
 
 @Category({ClientTests.class, MediumTests.class})
 public class TestThriftHBaseServiceHandlerWithReadOnly {

@@ -1472,8 +1472,8 @@ under the License.
   </supplement>
   <supplement>
     <project>
-      <groupId>org.apache.thrift</groupId>
-      <artifactId>libthrift</artifactId>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-thrift</artifactId>
 
       <licenses>
         <license>

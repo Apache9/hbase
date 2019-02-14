@@ -22,8 +22,9 @@ import java.io.IOException;
 
 import org.apache.hadoop.hbase.thrift2.generated.THBaseService;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.thrift.transport.TTransport;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import com.xiaomi.infra.thirdparty.org.apache.thrift.transport.TTransport;
 
 @InterfaceAudience.Private
 public abstract class ThriftClientBuilder {
