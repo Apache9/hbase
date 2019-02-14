@@ -91,6 +91,7 @@ class AsyncMetaRegionLocator {
           metaRelocateFuture.set(null);
           future.complete(locs);
         });
+        return future;
       } else {
         CompletableFuture<RegionLocations> future = metaRelocateFuture.get();
         if (future != null) {
