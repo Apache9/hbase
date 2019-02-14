@@ -100,6 +100,8 @@ class AsyncConnectionImpl implements AsyncConnection {
   private final AtomicReference<CompletableFuture<MasterService.Interface>> masterStubMakeFuture =
     new AtomicReference<>();
 
+  private volatile boolean closed = false;
+
   public AsyncConnectionImpl(Configuration conf, AsyncRegistry registry, String clusterId,
       User user) {
     this.conf = conf;
@@ -127,8 +129,19 @@ class AsyncConnectionImpl implements AsyncConnection {
 
   @Override
   public void close() {
+    // As the code below is safe to be executed in parallel, here we do not use CAS or lock, just a
+    // simple volatile flag.
+    if (closed) {
+      return;
+    }
     IOUtils.closeQuietly(rpcClient);
     IOUtils.closeQuietly(registry);
+    closed = true;
+  }
+
+  @Override
+  public boolean isClosed() {
+    return closed;
   }
 
   @Override
