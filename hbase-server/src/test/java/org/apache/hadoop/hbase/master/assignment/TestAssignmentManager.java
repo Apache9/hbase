@@ -38,6 +38,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.CallQueueTooBigException;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -48,6 +49,7 @@ import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.exceptions.UnexpectedStateException;
+import org.apache.hadoop.hbase.ipc.CallTimeoutException;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.RegionState.State;
@@ -55,8 +57,6 @@ import org.apache.hadoop.hbase.master.procedure.MasterProcedureConstants;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureEnv;
 import org.apache.hadoop.hbase.master.procedure.ProcedureSyncWait;
 import org.apache.hadoop.hbase.master.procedure.RSProcedureDispatcher;
-import org.apache.hadoop.hbase.master.procedure.RSProcedureDispatcher.RegionCloseOperation;
-import org.apache.hadoop.hbase.master.procedure.RSProcedureDispatcher.RegionOpenOperation;
 import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.procedure2.ProcedureMetrics;
 import org.apache.hadoop.hbase.procedure2.ProcedureTestingUtility;
@@ -72,7 +72,6 @@ import org.apache.hadoop.ipc.RemoteException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -217,25 +216,53 @@ public class TestAssignmentManager {
     }
   }
 
-  @Ignore @Test // Disabled for now. Since HBASE-18551, this mock is insufficient.
-  public void testSocketTimeout() throws Exception {
+  @Test
+  public void testAssignSocketTimeout() throws Exception {
     final TableName tableName = TableName.valueOf(this.name.getMethodName());
     final RegionInfo hri = createRegionInfo(tableName, 1);
 
     // collect AM metrics before test
     collectAssignmentManagerMetrics();
 
-    rsDispatcher.setMockRsExecutor(new SocketTimeoutRsExecutor(20, 3));
+    rsDispatcher.setMockRsExecutor(new SocketTimeoutRsExecutor(20));
     waitOnFuture(submitProcedure(am.createAssignProcedure(hri)));
 
-    rsDispatcher.setMockRsExecutor(new SocketTimeoutRsExecutor(20, 1));
-    // exception.expect(ServerCrashException.class);
-    waitOnFuture(submitProcedure(am.createUnassignProcedure(hri, null, false)));
+    assertEquals(assignSubmittedCount + 1, assignProcMetrics.getSubmittedCounter().getCount());
+    assertEquals(assignFailedCount, assignProcMetrics.getFailedCounter().getCount());
+  }
+
+  @Test
+  public void testAssignQueueFullOnce() throws Exception {
+    TableName tableName = TableName.valueOf(this.name.getMethodName());
+    RegionInfo hri = createRegionInfo(tableName, 1);
+
+    // collect AM metrics before test
+    collectAssignmentManagerMetrics();
+
+    rsDispatcher.setMockRsExecutor(new CallQueueTooBigOnceRsExecutor());
+    waitOnFuture(submitProcedure(am.createAssignProcedure(hri)));
+
+    assertEquals(assignSubmittedCount + 1, assignProcMetrics.getSubmittedCounter().getCount());
+    assertEquals(assignFailedCount, assignProcMetrics.getFailedCounter().getCount());
+  }
+
+  @Test
+  public void testTimeoutThenQueueFull() throws Exception {
+    TableName tableName = TableName.valueOf(this.name.getMethodName());
+    RegionInfo hri = createRegionInfo(tableName, 1);
+
+    // collect AM metrics before test
+    collectAssignmentManagerMetrics();
+
+    rsDispatcher.setMockRsExecutor(new TimeoutThenCallQueueTooBigRsExecutor(10));
+    waitOnFuture(submitProcedure(am.createAssignProcedure(hri)));
+    rsDispatcher.setMockRsExecutor(new TimeoutThenCallQueueTooBigRsExecutor(15));
+    waitOnFuture(submitProcedure(am.createUnassignProcedure(hri)));
 
     assertEquals(assignSubmittedCount + 1, assignProcMetrics.getSubmittedCounter().getCount());
     assertEquals(assignFailedCount, assignProcMetrics.getFailedCounter().getCount());
     assertEquals(unassignSubmittedCount + 1, unassignProcMetrics.getSubmittedCounter().getCount());
-    assertEquals(unassignFailedCount + 1, unassignProcMetrics.getFailedCounter().getCount());
+    assertEquals(unassignFailedCount, unassignProcMetrics.getFailedCounter().getCount());
   }
 
   @Test
@@ -264,35 +291,6 @@ public class TestAssignmentManager {
     // Assign the region (without problems)
     rsDispatcher.setMockRsExecutor(new GoodRsExecutor());
     waitOnFuture(submitProcedure(am.createAssignProcedure(hri)));
-
-    // TODO: Currently unassign just keeps trying until it sees a server crash.
-    // There is no count on unassign.
-    /*
-    // Test Unassign operation failure
-    rsDispatcher.setMockRsExecutor(executor);
-    waitOnFuture(submitProcedure(am.createUnassignProcedure(hri, null, false)));
-
-    assertEquals(assignSubmittedCount + 2, assignProcMetrics.getSubmittedCounter().getCount());
-    assertEquals(assignFailedCount + 1, assignProcMetrics.getFailedCounter().getCount());
-    assertEquals(unassignSubmittedCount + 1, unassignProcMetrics.getSubmittedCounter().getCount());
-
-    // TODO: We supposed to have 1 failed assign, 1 successful assign and a failed unassign
-    // operation. But ProcV2 framework marks aborted unassign operation as success. Fix it!
-    assertEquals(unassignFailedCount, unassignProcMetrics.getFailedCounter().getCount());
-    */
-  }
-
-
-  @Test
-  public void testIOExceptionOnAssignment() throws Exception {
-    // collect AM metrics before test
-    collectAssignmentManagerMetrics();
-
-    testFailedOpen(TableName.valueOf("testExceptionOnAssignment"),
-      new FaultyRsExecutor(new IOException("test fault")));
-
-    assertEquals(assignSubmittedCount + 1, assignProcMetrics.getSubmittedCounter().getCount());
-    assertEquals(assignFailedCount + 1, assignProcMetrics.getFailedCounter().getCount());
   }
 
   @Test
@@ -302,6 +300,18 @@ public class TestAssignmentManager {
 
     testFailedOpen(TableName.valueOf("testDoNotRetryExceptionOnAssignment"),
       new FaultyRsExecutor(new DoNotRetryIOException("test do not retry fault")));
+
+    assertEquals(assignSubmittedCount + 1, assignProcMetrics.getSubmittedCounter().getCount());
+    assertEquals(assignFailedCount + 1, assignProcMetrics.getFailedCounter().getCount());
+  }
+
+  @Test
+  public void testCallQueueTooBigExceptionOnAssignment() throws Exception {
+    // collect AM metrics before test
+    collectAssignmentManagerMetrics();
+
+    testFailedOpen(TableName.valueOf("testCallQueueTooBigExceptionOnAssignment"),
+      new FaultyRsExecutor(new CallQueueTooBigException("test do not retry fault")));
 
     assertEquals(assignSubmittedCount + 1, assignProcMetrics.getSubmittedCounter().getCount());
     assertEquals(assignFailedCount + 1, assignProcMetrics.getFailedCounter().getCount());
@@ -608,18 +618,14 @@ public class TestAssignmentManager {
       throw exception;
     }
   }
-
-  private class SocketTimeoutRsExecutor extends GoodRsExecutor {
-    private final int maxSocketTimeoutRetries;
-    private final int maxServerRetries;
+  protected class SocketTimeoutRsExecutor extends GoodRsExecutor {
+    private final int timeoutTimes;
 
     private ServerName lastServer;
-    private int sockTimeoutRetries;
-    private int serverRetries;
+    private int retries;
 
-    public SocketTimeoutRsExecutor(int maxSocketTimeoutRetries, int maxServerRetries) {
-      this.maxServerRetries = maxServerRetries;
-      this.maxSocketTimeoutRetries = maxSocketTimeoutRetries;
+    public SocketTimeoutRsExecutor(int timeoutTimes) {
+      this.timeoutTimes = timeoutTimes;
     }
 
     @Override
@@ -627,19 +633,76 @@ public class TestAssignmentManager {
         throws IOException {
       // SocketTimeoutException should be a temporary problem
       // unless the server will be declared dead.
-      if (sockTimeoutRetries++ < maxSocketTimeoutRetries) {
-        if (sockTimeoutRetries == 1) assertNotEquals(lastServer, server);
+      retries++;
+      if (retries == 1) {
         lastServer = server;
-        LOG.debug("Socket timeout for server=" + server + " retries=" + sockTimeoutRetries);
-        throw new SocketTimeoutException("simulate socket timeout");
-      } else if (serverRetries++ < maxServerRetries) {
-        LOG.info("Mark server=" + server + " as dead. serverRetries=" + serverRetries);
+      }
+      if (retries <= timeoutTimes) {
+        LOG.debug("Socket timeout for server=" + server + " retries=" + retries);
+        // should not change the server if the server is not dead yet.
+        assertEquals(lastServer, server);
+        if (retries == timeoutTimes) {
+          LOG.info("Mark server=" + server + " as dead. retries=" + retries);
         master.getServerManager().moveFromOnlineToDeadServers(server);
-        sockTimeoutRetries = 0;
+        }
         throw new SocketTimeoutException("simulate socket timeout");
       } else {
+        // should select another server
+        assertNotEquals(lastServer, server);
         return super.sendRequest(server, req);
       }
+    }
+  }
+
+  protected class CallQueueTooBigOnceRsExecutor extends GoodRsExecutor {
+
+    private boolean invoked = false;
+
+    private ServerName lastServer;
+
+    @Override
+    public ExecuteProceduresResponse sendRequest(ServerName server, ExecuteProceduresRequest req)
+        throws IOException {
+      if (!invoked) {
+        lastServer = server;
+        invoked = true;
+        throw new CallQueueTooBigException("simulate queue full");
+      }
+      // better select another server since the server is over loaded, but anyway, it is fine to
+      // still select the same server since it is not dead yet...
+      if (lastServer.equals(server)) {
+        LOG.warn("We still select the same server, which is not good.");
+      }
+      return super.sendRequest(server, req);
+    }
+  }
+
+  protected class TimeoutThenCallQueueTooBigRsExecutor extends GoodRsExecutor {
+
+    private final int queueFullTimes;
+
+    private int retries;
+
+    private ServerName lastServer;
+
+    public TimeoutThenCallQueueTooBigRsExecutor(int queueFullTimes) {
+      this.queueFullTimes = queueFullTimes;
+    }
+
+    @Override
+    public ExecuteProceduresResponse sendRequest(ServerName server, ExecuteProceduresRequest req)
+        throws IOException {
+      retries++;
+      if (retries == 1) {
+        lastServer = server;
+        throw new CallTimeoutException("simulate call timeout");
+      }
+      // should always retry on the same server
+      assertEquals(lastServer, server);
+      if (retries < queueFullTimes) {
+        throw new CallQueueTooBigException("simulate queue full");
+      }
+      return super.sendRequest(server, req);
     }
   }
 
