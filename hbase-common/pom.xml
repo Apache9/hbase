@@ -206,6 +206,10 @@
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
     </dependency>
+      <dependency>
+          <groupId>com.xiaomi.infra.thirdparty</groupId>
+          <artifactId>infra-shaded-netty</artifactId>
+      </dependency>
   </dependencies>
 
   <profiles>
