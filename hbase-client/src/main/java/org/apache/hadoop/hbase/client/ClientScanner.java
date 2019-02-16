@@ -74,7 +74,6 @@ public abstract class ClientScanner extends AbstractClientScanner {
   private final ClusterConnection connection;
   protected final TableName tableName;
   protected final int scannerTimeout;
-  protected boolean scanMetricsPublished = false;
   protected RpcRetryingCaller<Result[]> caller;
   protected RpcControllerFactory rpcControllerFactory;
   protected Configuration conf;
@@ -270,27 +269,6 @@ public abstract class ClientScanner extends AbstractClientScanner {
     return rrs;
   }
 
-  /**
-   * Publish the scan metrics. For now, we use scan.setAttribute to pass the metrics back to the
-   * application or TableInputFormat.Later, we could push it to other systems. We don't use metrics
-   * framework because it doesn't support multi-instances of the same metrics on the same machine;
-   * for scan/map reduce scenarios, we will have multiple scans running at the same time. By
-   * default, scan metrics are disabled; if the application wants to collect them, this behavior can
-   * be turned on by calling calling {@link Scan#setScanMetricsEnabled(boolean)}
-   */
-  protected void writeScanMetrics() {
-    if (this.scanMetrics == null || scanMetricsPublished) {
-      return;
-    }
-    // Publish ScanMetrics to the Scan Object.
-    // As we have claimed in the comment of Scan.getScanMetrics, this relies on that user will not
-    // call ResultScanner.getScanMetrics and reset the ScanMetrics. Otherwise the metrics published
-    // to Scan will be messed up.
-    scan.setAttribute(Scan.SCAN_ATTRIBUTES_METRICS_DATA,
-      ProtobufUtil.toScanMetrics(scanMetrics, false).toByteArray());
-    scanMetricsPublished = true;
-  }
-
   protected void initSyncCache() {
     cache = new ArrayDeque<>();
   }
@@ -310,11 +288,6 @@ public abstract class ClientScanner extends AbstractClientScanner {
 
     // try again to load from cache
     result = cache.poll();
-
-    // if we exhausted this scanner before calling close, write out the scan metrics
-    if (result == null) {
-      writeScanMetrics();
-    }
     return result;
   }
 
@@ -548,7 +521,6 @@ public abstract class ClientScanner extends AbstractClientScanner {
 
   @Override
   public void close() {
-    if (!scanMetricsPublished) writeScanMetrics();
     if (callable != null) {
       callable.setClose();
       try {
