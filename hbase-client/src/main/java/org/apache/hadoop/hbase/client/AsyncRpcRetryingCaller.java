@@ -51,6 +51,8 @@ public abstract class AsyncRpcRetryingCaller<T> {
 
   private final Timer retryTimer;
 
+  private final int priority;
+
   private final long startNs;
 
   private final long pauseNs;
@@ -73,10 +75,12 @@ public abstract class AsyncRpcRetryingCaller<T> {
 
   protected final HBaseRpcController controller;
 
-  public AsyncRpcRetryingCaller(Timer retryTimer, AsyncConnectionImpl conn, long pauseNs,
-      int maxAttempts, long operationTimeoutNs, long rpcTimeoutNs, int startLogErrorsCnt) {
+  public AsyncRpcRetryingCaller(Timer retryTimer, AsyncConnectionImpl conn, int priority,
+      long pauseNs, int maxAttempts, long operationTimeoutNs, long rpcTimeoutNs,
+      int startLogErrorsCnt) {
     this.retryTimer = retryTimer;
     this.conn = conn;
+    this.priority = priority;
     this.pauseNs = pauseNs;
     this.maxAttempts = maxAttempts;
     this.operationTimeoutNs = operationTimeoutNs;
@@ -84,6 +88,7 @@ public abstract class AsyncRpcRetryingCaller<T> {
     this.startLogErrorsCnt = startLogErrorsCnt;
     this.future = new CompletableFuture<>();
     this.controller = conn.rpcControllerFactory.newController();
+    this.controller.setPriority(priority);
     this.exceptions = new ArrayList<>();
     this.startNs = System.nanoTime();
   }
@@ -112,7 +117,7 @@ public abstract class AsyncRpcRetryingCaller<T> {
     } else {
       callTimeoutNs = rpcTimeoutNs;
     }
-    resetController(controller, callTimeoutNs);
+    resetController(controller, callTimeoutNs, priority);
   }
 
   private void tryScheduleRetry(Throwable error, Consumer<Throwable> updateCachedLocation) {
