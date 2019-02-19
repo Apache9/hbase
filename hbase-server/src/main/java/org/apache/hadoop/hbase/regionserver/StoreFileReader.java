@@ -94,10 +94,6 @@ public class StoreFileReader {
   @VisibleForTesting
   final boolean shared;
 
-  private volatile Listener listener;
-
-  private boolean closed = false;
-
   private StoreFileReader(HFile.Reader reader, AtomicInteger refCount, boolean shared) {
     this.reader = reader;
     bloomFilterType = BloomType.NONE;
@@ -191,9 +187,6 @@ public class StoreFileReader {
     if (!shared) {
       try {
         reader.close(false);
-        if (this.listener != null) {
-          this.listener.storeFileReaderClosed(this);
-        }
       } catch (IOException e) {
         LOG.warn("failed to close stream reader", e);
       }
@@ -234,16 +227,7 @@ public class StoreFileReader {
   }
 
   public void close(boolean evictOnClose) throws IOException {
-    synchronized (this) {
-      if (closed) {
-        return;
-      }
-      reader.close(evictOnClose);
-      closed = true;
-    }
-    if (listener != null) {
-      listener.storeFileReaderClosed(this);
-    }
+    reader.close(evictOnClose);
   }
 
   /**
@@ -741,14 +725,6 @@ public class StoreFileReader {
 
   void setSkipResetSeqId(boolean skipResetSeqId) {
     this.skipResetSeqId = skipResetSeqId;
-  }
-
-  public void setListener(Listener listener) {
-    this.listener = listener;
-  }
-
-  public interface Listener {
-    void storeFileReaderClosed(StoreFileReader reader);
   }
 
   public int getPrefixLength() {
