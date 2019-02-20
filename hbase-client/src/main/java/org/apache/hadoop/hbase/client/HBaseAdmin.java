@@ -2079,7 +2079,7 @@ public class HBaseAdmin implements Abortable, Closeable {
       protected ClusterStatus rpcCall(MasterService.BlockingInterface master,
           HBaseRpcController controller) throws ServiceException {
         return ClusterStatus.convert(
-            master.getClusterStatus(controller, RequestConverter.buildGetClusterStatusRequest())
+            master.getClusterStatus(controller, RequestConverter.buildGetClusterStatusRequest(options))
                 .getClusterStatus());
       }
     });
