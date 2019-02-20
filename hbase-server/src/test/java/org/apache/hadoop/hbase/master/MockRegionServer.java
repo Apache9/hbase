@@ -631,6 +631,12 @@ ClientProtos.ClientService.BlockingInterface, RegionServerServices {
   }
 
   @Override
+  public AdminProtos.GetRegionLoadResponse getRegionLoad(RpcController controller,
+      AdminProtos.GetRegionLoadRequest request) throws ServiceException {
+    return null;
+  }
+
+  @Override
   public void switchThrottle() {
   }
 

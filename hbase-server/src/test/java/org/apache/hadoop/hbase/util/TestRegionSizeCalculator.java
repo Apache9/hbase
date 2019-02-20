@@ -23,15 +23,19 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -44,24 +48,27 @@ import static org.mockito.Mockito.when;
 @Category(SmallTests.class)
 public class TestRegionSizeCalculator {
 
+  @Rule
+  public TestName testName = new TestName();
+
   private Configuration configuration = new Configuration();
   private final long megabyte = 1024L * 1024L;
 
+  private static final ServerName SERVER0 = ServerName.valueOf("host0,1,1");
+  private static final ServerName SERVER1 = ServerName.valueOf("host1,1,1");
+
   @Test
   public void testSimpleTestCase() throws Exception {
+    TableName tableName = TableName.valueOf(testName.getMethodName());
 
-    HTable table = mockTable("region1", "region2", "region3");
-
-    HBaseAdmin admin = mockAdmin(
-      mockServer(
-        mockRegion("region1", 123),
-        mockRegion("region3", 1232)
-      ),
-      mockServer(
-        mockRegion("region2",  54321),
-        mockRegion("otherTableRegion", 110)
-      )
-    );
+    HTable table = mockTable(tableName, "region1", "region2", "region3");
+    HBaseAdmin admin = Mockito.mock(HBaseAdmin.class);
+    mockServerRegionLoads(admin, SERVER0, tableName,
+        mockRegion("region1", 123), mockRegion("region3", 1232));
+    mockServerRegionLoads(admin, SERVER1, tableName,
+        mockRegion("region2", 54321));
+    mockServerRegionLoads(admin, SERVER1, TableName.valueOf("otherTable"),
+        mockRegion("otherTableRegion", 110));
 
     RegionSizeCalculator calculator = new RegionSizeCalculator(table, admin);
 
@@ -74,21 +81,16 @@ public class TestRegionSizeCalculator {
     assertEquals(3, calculator.getRegionSizeMap().size());
   }
 
-
   /**
    * When size of region in megabytes is larger than largest possible integer there could be
    * error caused by lost of precision.
    * */
   @Test
   public void testLargeRegion() throws Exception {
-
-    HTable table = mockTable("largeRegion");
-
-    HBaseAdmin admin = mockAdmin(
-      mockServer(
-        mockRegion("largeRegion", Integer.MAX_VALUE)
-      )
-    );
+    TableName tableName = TableName.valueOf(testName.getMethodName());
+    HTable table = mockTable(tableName, "largeRegion");
+    HBaseAdmin admin = Mockito.mock(HBaseAdmin.class);
+    mockServerRegionLoads(admin, SERVER0, tableName, mockRegion("largeRegion", Integer.MAX_VALUE));
 
     RegionSizeCalculator calculator = new RegionSizeCalculator(table, admin);
 
@@ -98,14 +100,11 @@ public class TestRegionSizeCalculator {
   /** When calculator is disabled, it should return 0 for each request.*/
   @Test
   public void testDisabled() throws Exception {
+    TableName tableName = TableName.valueOf(testName.getMethodName());
     String regionName = "cz.goout:/index.html";
-    HTable table = mockTable(regionName);
-
-    HBaseAdmin admin = mockAdmin(
-      mockServer(
-        mockRegion(regionName, 999)
-      )
-    );
+    HTable table = mockTable(tableName, regionName);
+    HBaseAdmin admin = Mockito.mock(HBaseAdmin.class);
+    mockServerRegionLoads(admin, SERVER0, tableName, mockRegion(regionName, 999));
 
     //first request on enabled calculator
     RegionSizeCalculator calculator = new RegionSizeCalculator(table, admin);
@@ -122,31 +121,18 @@ public class TestRegionSizeCalculator {
   /**
    * Makes some table with given region names.
    * */
-  private HTable mockTable(String... regionNames) throws IOException {
+  private HTable mockTable(TableName tableName, String... regionNames) throws IOException {
     HTable mockedTable = Mockito.mock(HTable.class);
     when(mockedTable.getConfiguration()).thenReturn(configuration);
-    when(mockedTable.getTableName()).thenReturn("sizeTestTable".getBytes());
-    NavigableMap<HRegionInfo, ServerName> regionLocations = new TreeMap<HRegionInfo, ServerName>();
+    when(mockedTable.getTableName()).thenReturn(tableName.getName());
+    when(mockedTable.getName()).thenReturn(tableName);
+    NavigableMap<HRegionInfo, ServerName> regionLocations = new TreeMap<>();
+    HRegionInfo info0 = Mockito.mock(HRegionInfo.class);
+    regionLocations.put(info0, SERVER0);
+    HRegionInfo info1 = Mockito.mock(HRegionInfo.class);
+    regionLocations.put(info1, SERVER1);
     when(mockedTable.getRegionLocations()).thenReturn(regionLocations);
-
-    for (String regionName : regionNames) {
-      HRegionInfo info = Mockito.mock(HRegionInfo.class);
-      when(info.getRegionName()).thenReturn(regionName.getBytes());
-      regionLocations.put(info, null);//we are not interested in values
-    }
-
     return mockedTable;
-  }
-
-  /**
-   * Creates mock returing ClusterStatus info about given servers.
-  */
-  private HBaseAdmin mockAdmin(ServerLoad... servers) throws Exception {
-    //get clusterstatus
-    HBaseAdmin mockAdmin = Mockito.mock(HBaseAdmin.class);
-    ClusterStatus clusterStatus = mockCluster(servers);
-    when(mockAdmin.getClusterStatus()).thenReturn(clusterStatus);
-    return mockAdmin;
   }
 
   /**
@@ -162,34 +148,8 @@ public class TestRegionSizeCalculator {
     return region;
   }
 
-  private ClusterStatus mockCluster(ServerLoad[] servers) {
-    List<ServerName> serverNames = new ArrayList<ServerName>();
-
-    ClusterStatus clusterStatus = Mockito.mock(ClusterStatus.class);
-    when(clusterStatus.getServers()).thenReturn(serverNames);
-
-    int serverCounter = 0;
-    for (ServerLoad server : servers) {
-      ServerName serverName = mock(ServerName.class);
-      when(serverName.getServerName()).thenReturn("server" + (serverCounter++));
-      serverNames.add(serverName);
-      when(clusterStatus.getLoad(serverName)).thenReturn(server);
-    }
-
-    return clusterStatus;
+  private void mockServerRegionLoads(HBaseAdmin admin, ServerName server, TableName table,
+      RegionLoad... regions) throws Exception {
+    when(admin.getRegionLoads(server, table)).thenReturn(Arrays.asList(regions));
   }
-
-  /** Creates mock of region server with given regions*/
-  private ServerLoad mockServer(RegionLoad... regions) {
-    ServerLoad serverLoad = Mockito.mock(ServerLoad.class);
-    Map<byte[], RegionLoad> regionMap = new TreeMap<byte[], RegionLoad>(Bytes.BYTES_COMPARATOR);
-
-    for (RegionLoad regionName : regions) {
-      regionMap.put(regionName.getName(), regionName);
-    }
-
-    when(serverLoad.getRegionsLoad()).thenReturn(regionMap);
-    return serverLoad;
-  }
-
 }

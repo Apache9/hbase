@@ -27,6 +27,7 @@ option optimize_for = SPEED;
 import "Client.proto";
 import "HBase.proto";
 import "WAL.proto";
+import "ClusterStatus.proto";
 
 message GetRegionInfoRequest {
   required RegionSpecifier region = 1;
@@ -236,6 +237,14 @@ message CompactionEnableResponse {
   optional bool enable = 1;
 }
 
+message GetRegionLoadRequest {
+  optional TableName table_name = 1;
+}
+
+message GetRegionLoadResponse {
+  repeated RegionLoad region_loads = 1;
+}
+
 service AdminService {
   rpc GetRegionInfo(GetRegionInfoRequest)
     returns(GetRegionInfoResponse);
@@ -283,5 +292,8 @@ service AdminService {
     returns(UpdateFavoredNodesResponse);
 
   rpc SwitchCompaction(CompactionEnableRequest)
-    returns(CompactionEnableResponse); 
+    returns(CompactionEnableResponse);
+
+  rpc GetRegionLoad(GetRegionLoadRequest)
+    returns(GetRegionLoadResponse);
 }

@@ -20747,6 +20747,1284 @@ public final class AdminProtos {
     // @@protoc_insertion_point(class_scope:CompactionEnableResponse)
   }
 
+  public interface GetRegionLoadRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional .TableName table_name = 1;
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    boolean hasTableName();
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName getTableName();
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder getTableNameOrBuilder();
+  }
+  /**
+   * Protobuf type {@code GetRegionLoadRequest}
+   */
+  public static final class GetRegionLoadRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements GetRegionLoadRequestOrBuilder {
+    // Use GetRegionLoadRequest.newBuilder() to construct.
+    private GetRegionLoadRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private GetRegionLoadRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final GetRegionLoadRequest defaultInstance;
+    public static GetRegionLoadRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public GetRegionLoadRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private GetRegionLoadRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = tableName_.toBuilder();
+              }
+              tableName_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(tableName_);
+                tableName_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<GetRegionLoadRequest> PARSER =
+        new com.google.protobuf.AbstractParser<GetRegionLoadRequest>() {
+      public GetRegionLoadRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new GetRegionLoadRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<GetRegionLoadRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional .TableName table_name = 1;
+    public static final int TABLE_NAME_FIELD_NUMBER = 1;
+    private org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName tableName_;
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    public boolean hasTableName() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName getTableName() {
+      return tableName_;
+    }
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder getTableNameOrBuilder() {
+      return tableName_;
+    }
+
+    private void initFields() {
+      tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (hasTableName()) {
+        if (!getTableName().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeMessage(1, tableName_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, tableName_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest other = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest) obj;
+
+      boolean result = true;
+      result = result && (hasTableName() == other.hasTableName());
+      if (hasTableName()) {
+        result = result && getTableName()
+            .equals(other.getTableName());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasTableName()) {
+        hash = (37 * hash) + TABLE_NAME_FIELD_NUMBER;
+        hash = (53 * hash) + getTableName().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code GetRegionLoadRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getTableNameFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (tableNameBuilder_ == null) {
+          tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+        } else {
+          tableNameBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest result = new org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        if (tableNameBuilder_ == null) {
+          result.tableName_ = tableName_;
+        } else {
+          result.tableName_ = tableNameBuilder_.build();
+        }
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.getDefaultInstance()) return this;
+        if (other.hasTableName()) {
+          mergeTableName(other.getTableName());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (hasTableName()) {
+          if (!getTableName().isInitialized()) {
+            
+            return false;
+          }
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional .TableName table_name = 1;
+      private org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder> tableNameBuilder_;
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public boolean hasTableName() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName getTableName() {
+        if (tableNameBuilder_ == null) {
+          return tableName_;
+        } else {
+          return tableNameBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder setTableName(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName value) {
+        if (tableNameBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          tableName_ = value;
+          onChanged();
+        } else {
+          tableNameBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder setTableName(
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder builderForValue) {
+        if (tableNameBuilder_ == null) {
+          tableName_ = builderForValue.build();
+          onChanged();
+        } else {
+          tableNameBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder mergeTableName(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName value) {
+        if (tableNameBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001) &&
+              tableName_ != org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance()) {
+            tableName_ =
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.newBuilder(tableName_).mergeFrom(value).buildPartial();
+          } else {
+            tableName_ = value;
+          }
+          onChanged();
+        } else {
+          tableNameBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder clearTableName() {
+        if (tableNameBuilder_ == null) {
+          tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+          onChanged();
+        } else {
+          tableNameBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder getTableNameBuilder() {
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return getTableNameFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder getTableNameOrBuilder() {
+        if (tableNameBuilder_ != null) {
+          return tableNameBuilder_.getMessageOrBuilder();
+        } else {
+          return tableName_;
+        }
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder> 
+          getTableNameFieldBuilder() {
+        if (tableNameBuilder_ == null) {
+          tableNameBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder>(
+                  tableName_,
+                  getParentForChildren(),
+                  isClean());
+          tableName_ = null;
+        }
+        return tableNameBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:GetRegionLoadRequest)
+    }
+
+    static {
+      defaultInstance = new GetRegionLoadRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:GetRegionLoadRequest)
+  }
+
+  public interface GetRegionLoadResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // repeated .RegionLoad region_loads = 1;
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad> 
+        getRegionLoadsList();
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad getRegionLoads(int index);
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    int getRegionLoadsCount();
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder> 
+        getRegionLoadsOrBuilderList();
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder getRegionLoadsOrBuilder(
+        int index);
+  }
+  /**
+   * Protobuf type {@code GetRegionLoadResponse}
+   */
+  public static final class GetRegionLoadResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements GetRegionLoadResponseOrBuilder {
+    // Use GetRegionLoadResponse.newBuilder() to construct.
+    private GetRegionLoadResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private GetRegionLoadResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final GetRegionLoadResponse defaultInstance;
+    public static GetRegionLoadResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public GetRegionLoadResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private GetRegionLoadResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+                regionLoads_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad>();
+                mutable_bitField0_ |= 0x00000001;
+              }
+              regionLoads_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.PARSER, extensionRegistry));
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+          regionLoads_ = java.util.Collections.unmodifiableList(regionLoads_);
+        }
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<GetRegionLoadResponse> PARSER =
+        new com.google.protobuf.AbstractParser<GetRegionLoadResponse>() {
+      public GetRegionLoadResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new GetRegionLoadResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<GetRegionLoadResponse> getParserForType() {
+      return PARSER;
+    }
+
+    // repeated .RegionLoad region_loads = 1;
+    public static final int REGION_LOADS_FIELD_NUMBER = 1;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad> regionLoads_;
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad> getRegionLoadsList() {
+      return regionLoads_;
+    }
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder> 
+        getRegionLoadsOrBuilderList() {
+      return regionLoads_;
+    }
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    public int getRegionLoadsCount() {
+      return regionLoads_.size();
+    }
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad getRegionLoads(int index) {
+      return regionLoads_.get(index);
+    }
+    /**
+     * <code>repeated .RegionLoad region_loads = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder getRegionLoadsOrBuilder(
+        int index) {
+      return regionLoads_.get(index);
+    }
+
+    private void initFields() {
+      regionLoads_ = java.util.Collections.emptyList();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      for (int i = 0; i < getRegionLoadsCount(); i++) {
+        if (!getRegionLoads(i).isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      for (int i = 0; i < regionLoads_.size(); i++) {
+        output.writeMessage(1, regionLoads_.get(i));
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      for (int i = 0; i < regionLoads_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, regionLoads_.get(i));
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse other = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse) obj;
+
+      boolean result = true;
+      result = result && getRegionLoadsList()
+          .equals(other.getRegionLoadsList());
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (getRegionLoadsCount() > 0) {
+        hash = (37 * hash) + REGION_LOADS_FIELD_NUMBER;
+        hash = (53 * hash) + getRegionLoadsList().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code GetRegionLoadResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getRegionLoadsFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (regionLoadsBuilder_ == null) {
+          regionLoads_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000001);
+        } else {
+          regionLoadsBuilder_.clear();
+        }
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_GetRegionLoadResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse result = new org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse(this);
+        int from_bitField0_ = bitField0_;
+        if (regionLoadsBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001)) {
+            regionLoads_ = java.util.Collections.unmodifiableList(regionLoads_);
+            bitField0_ = (bitField0_ & ~0x00000001);
+          }
+          result.regionLoads_ = regionLoads_;
+        } else {
+          result.regionLoads_ = regionLoadsBuilder_.build();
+        }
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.getDefaultInstance()) return this;
+        if (regionLoadsBuilder_ == null) {
+          if (!other.regionLoads_.isEmpty()) {
+            if (regionLoads_.isEmpty()) {
+              regionLoads_ = other.regionLoads_;
+              bitField0_ = (bitField0_ & ~0x00000001);
+            } else {
+              ensureRegionLoadsIsMutable();
+              regionLoads_.addAll(other.regionLoads_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.regionLoads_.isEmpty()) {
+            if (regionLoadsBuilder_.isEmpty()) {
+              regionLoadsBuilder_.dispose();
+              regionLoadsBuilder_ = null;
+              regionLoads_ = other.regionLoads_;
+              bitField0_ = (bitField0_ & ~0x00000001);
+              regionLoadsBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getRegionLoadsFieldBuilder() : null;
+            } else {
+              regionLoadsBuilder_.addAllMessages(other.regionLoads_);
+            }
+          }
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        for (int i = 0; i < getRegionLoadsCount(); i++) {
+          if (!getRegionLoads(i).isInitialized()) {
+            
+            return false;
+          }
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // repeated .RegionLoad region_loads = 1;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad> regionLoads_ =
+        java.util.Collections.emptyList();
+      private void ensureRegionLoadsIsMutable() {
+        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+          regionLoads_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad>(regionLoads_);
+          bitField0_ |= 0x00000001;
+         }
+      }
+
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder> regionLoadsBuilder_;
+
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad> getRegionLoadsList() {
+        if (regionLoadsBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(regionLoads_);
+        } else {
+          return regionLoadsBuilder_.getMessageList();
+        }
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public int getRegionLoadsCount() {
+        if (regionLoadsBuilder_ == null) {
+          return regionLoads_.size();
+        } else {
+          return regionLoadsBuilder_.getCount();
+        }
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad getRegionLoads(int index) {
+        if (regionLoadsBuilder_ == null) {
+          return regionLoads_.get(index);
+        } else {
+          return regionLoadsBuilder_.getMessage(index);
+        }
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder setRegionLoads(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad value) {
+        if (regionLoadsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRegionLoadsIsMutable();
+          regionLoads_.set(index, value);
+          onChanged();
+        } else {
+          regionLoadsBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder setRegionLoads(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder builderForValue) {
+        if (regionLoadsBuilder_ == null) {
+          ensureRegionLoadsIsMutable();
+          regionLoads_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          regionLoadsBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder addRegionLoads(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad value) {
+        if (regionLoadsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRegionLoadsIsMutable();
+          regionLoads_.add(value);
+          onChanged();
+        } else {
+          regionLoadsBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder addRegionLoads(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad value) {
+        if (regionLoadsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRegionLoadsIsMutable();
+          regionLoads_.add(index, value);
+          onChanged();
+        } else {
+          regionLoadsBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder addRegionLoads(
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder builderForValue) {
+        if (regionLoadsBuilder_ == null) {
+          ensureRegionLoadsIsMutable();
+          regionLoads_.add(builderForValue.build());
+          onChanged();
+        } else {
+          regionLoadsBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder addRegionLoads(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder builderForValue) {
+        if (regionLoadsBuilder_ == null) {
+          ensureRegionLoadsIsMutable();
+          regionLoads_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          regionLoadsBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder addAllRegionLoads(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad> values) {
+        if (regionLoadsBuilder_ == null) {
+          ensureRegionLoadsIsMutable();
+          super.addAll(values, regionLoads_);
+          onChanged();
+        } else {
+          regionLoadsBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder clearRegionLoads() {
+        if (regionLoadsBuilder_ == null) {
+          regionLoads_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000001);
+          onChanged();
+        } else {
+          regionLoadsBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public Builder removeRegionLoads(int index) {
+        if (regionLoadsBuilder_ == null) {
+          ensureRegionLoadsIsMutable();
+          regionLoads_.remove(index);
+          onChanged();
+        } else {
+          regionLoadsBuilder_.remove(index);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder getRegionLoadsBuilder(
+          int index) {
+        return getRegionLoadsFieldBuilder().getBuilder(index);
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder getRegionLoadsOrBuilder(
+          int index) {
+        if (regionLoadsBuilder_ == null) {
+          return regionLoads_.get(index);  } else {
+          return regionLoadsBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder> 
+           getRegionLoadsOrBuilderList() {
+        if (regionLoadsBuilder_ != null) {
+          return regionLoadsBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(regionLoads_);
+        }
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder addRegionLoadsBuilder() {
+        return getRegionLoadsFieldBuilder().addBuilder(
+            org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder addRegionLoadsBuilder(
+          int index) {
+        return getRegionLoadsFieldBuilder().addBuilder(
+            index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .RegionLoad region_loads = 1;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder> 
+           getRegionLoadsBuilderList() {
+        return getRegionLoadsFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder> 
+          getRegionLoadsFieldBuilder() {
+        if (regionLoadsBuilder_ == null) {
+          regionLoadsBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoad.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.RegionLoadOrBuilder>(
+                  regionLoads_,
+                  ((bitField0_ & 0x00000001) == 0x00000001),
+                  getParentForChildren(),
+                  isClean());
+          regionLoads_ = null;
+        }
+        return regionLoadsBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:GetRegionLoadResponse)
+    }
+
+    static {
+      defaultInstance = new GetRegionLoadResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:GetRegionLoadResponse)
+  }
+
   /**
    * Protobuf service {@code AdminService}
    */
@@ -20883,6 +22161,14 @@ public final class AdminProtos {
           org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse> done);
 
+      /**
+       * <code>rpc GetRegionLoad(.GetRegionLoadRequest) returns (.GetRegionLoadResponse);</code>
+       */
+      public abstract void getRegionLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -21016,6 +22302,14 @@ public final class AdminProtos {
           impl.switchCompaction(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void getRegionLoad(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse> done) {
+          impl.getRegionLoad(controller, request, done);
+        }
+
       };
     }
 
@@ -21070,6 +22364,8 @@ public final class AdminProtos {
               return impl.updateFavoredNodes(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest)request);
             case 15:
               return impl.switchCompaction(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest)request);
+            case 16:
+              return impl.getRegionLoad(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -21116,6 +22412,8 @@ public final class AdminProtos {
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest.getDefaultInstance();
             case 15:
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.getDefaultInstance();
+            case 16:
+              return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -21162,6 +22460,8 @@ public final class AdminProtos {
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse.getDefaultInstance();
             case 15:
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance();
+            case 16:
+              return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -21298,6 +22598,14 @@ public final class AdminProtos {
         org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse> done);
 
+    /**
+     * <code>rpc GetRegionLoad(.GetRegionLoadRequest) returns (.GetRegionLoadResponse);</code>
+     */
+    public abstract void getRegionLoad(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -21400,6 +22708,11 @@ public final class AdminProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse>specializeCallback(
               done));
           return;
+        case 16:
+          this.getRegionLoad(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -21446,6 +22759,8 @@ public final class AdminProtos {
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest.getDefaultInstance();
         case 15:
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.getDefaultInstance();
+        case 16:
+          return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -21492,6 +22807,8 @@ public final class AdminProtos {
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse.getDefaultInstance();
         case 15:
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance();
+        case 16:
+          return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -21752,6 +23069,21 @@ public final class AdminProtos {
             org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance()));
       }
+
+      public  void getRegionLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(16),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -21838,6 +23170,11 @@ public final class AdminProtos {
       public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse switchCompaction(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse getRegionLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -22039,6 +23376,18 @@ public final class AdminProtos {
           org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse getRegionLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(16),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:AdminService)
@@ -22214,6 +23563,16 @@ public final class AdminProtos {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_CompactionEnableResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_GetRegionLoadRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_GetRegionLoadRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_GetRegionLoadResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_GetRegionLoadResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -22224,95 +23583,100 @@ public final class AdminProtos {
   static {
     java.lang.String[] descriptorData = {
       "\n\013Admin.proto\032\014Client.proto\032\013HBase.proto" +
-      "\032\tWAL.proto\"R\n\024GetRegionInfoRequest\022 \n\006r" +
-      "egion\030\001 \002(\0132\020.RegionSpecifier\022\030\n\020compact" +
-      "ion_state\030\002 \001(\010\"\331\001\n\025GetRegionInfoRespons" +
-      "e\022 \n\013region_info\030\001 \002(\0132\013.RegionInfo\022@\n\020c" +
-      "ompaction_state\030\002 \001(\0162&.GetRegionInfoRes" +
-      "ponse.CompactionState\022\024\n\014isRecovering\030\003 " +
-      "\001(\010\"F\n\017CompactionState\022\010\n\004NONE\020\000\022\t\n\005MINO" +
-      "R\020\001\022\t\n\005MAJOR\020\002\022\023\n\017MAJOR_AND_MINOR\020\003\"G\n\023G" +
-      "etStoreFileRequest\022 \n\006region\030\001 \002(\0132\020.Reg",
-      "ionSpecifier\022\016\n\006family\030\002 \003(\014\"*\n\024GetStore" +
-      "FileResponse\022\022\n\nstore_file\030\001 \003(\t\"\030\n\026GetO" +
-      "nlineRegionRequest\";\n\027GetOnlineRegionRes" +
-      "ponse\022 \n\013region_info\030\001 \003(\0132\013.RegionInfo\"" +
-      "\374\001\n\021OpenRegionRequest\0224\n\topen_info\030\001 \003(\013" +
-      "2!.OpenRegionRequest.RegionOpenInfo\022\027\n\017s" +
-      "erverStartCode\030\002 \001(\004\032\227\001\n\016RegionOpenInfo\022" +
-      "\033\n\006region\030\001 \002(\0132\013.RegionInfo\022\037\n\027version_" +
-      "of_offline_node\030\002 \001(\r\022\"\n\rfavored_nodes\030\003" +
-      " \003(\0132\013.ServerName\022#\n\033openForDistributedL",
-      "ogReplay\030\004 \001(\010\"\235\001\n\022OpenRegionResponse\022=\n" +
-      "\ropening_state\030\001 \003(\0162&.OpenRegionRespons" +
-      "e.RegionOpeningState\"H\n\022RegionOpeningSta" +
-      "te\022\n\n\006OPENED\020\000\022\022\n\016ALREADY_OPENED\020\001\022\022\n\016FA" +
-      "ILED_OPENING\020\002\"\271\001\n\022CloseRegionRequest\022 \n" +
-      "\006region\030\001 \002(\0132\020.RegionSpecifier\022\037\n\027versi" +
-      "on_of_closing_node\030\002 \001(\r\022\036\n\020transition_i" +
-      "n_ZK\030\003 \001(\010:\004true\022\'\n\022destination_server\030\004" +
-      " \001(\0132\013.ServerName\022\027\n\017serverStartCode\030\005 \001" +
-      "(\004\"%\n\023CloseRegionResponse\022\016\n\006closed\030\001 \002(",
-      "\010\"P\n\022FlushRegionRequest\022 \n\006region\030\001 \002(\0132" +
-      "\020.RegionSpecifier\022\030\n\020if_older_than_ts\030\002 " +
-      "\001(\004\"?\n\023FlushRegionResponse\022\027\n\017last_flush" +
-      "_time\030\001 \002(\004\022\017\n\007flushed\030\002 \001(\010\"K\n\022SplitReg" +
-      "ionRequest\022 \n\006region\030\001 \002(\0132\020.RegionSpeci" +
-      "fier\022\023\n\013split_point\030\002 \001(\014\"\025\n\023SplitRegion" +
-      "Response\"W\n\024CompactRegionRequest\022 \n\006regi" +
-      "on\030\001 \002(\0132\020.RegionSpecifier\022\r\n\005major\030\002 \001(" +
-      "\010\022\016\n\006family\030\003 \001(\014\"\027\n\025CompactRegionRespon" +
-      "se\"\262\001\n\031UpdateFavoredNodesRequest\022@\n\013upda",
-      "te_info\030\001 \003(\0132+.UpdateFavoredNodesReques" +
-      "t.RegionUpdateInfo\032S\n\020RegionUpdateInfo\022\033" +
-      "\n\006region\030\001 \002(\0132\013.RegionInfo\022\"\n\rfavored_n" +
-      "odes\030\002 \003(\0132\013.ServerName\".\n\032UpdateFavored" +
-      "NodesResponse\022\020\n\010response\030\001 \001(\r\"v\n\023Merge" +
-      "RegionsRequest\022\"\n\010region_a\030\001 \002(\0132\020.Regio" +
-      "nSpecifier\022\"\n\010region_b\030\002 \002(\0132\020.RegionSpe" +
-      "cifier\022\027\n\010forcible\030\003 \001(\010:\005false\"\026\n\024Merge" +
-      "RegionsResponse\"X\n\010WALEntry\022\024\n\003key\030\001 \002(\013" +
-      "2\007.WALKey\022\027\n\017key_value_bytes\030\002 \003(\014\022\035\n\025as",
-      "sociated_cell_count\030\003 \001(\005\"4\n\030ReplicateWA" +
-      "LEntryRequest\022\030\n\005entry\030\001 \003(\0132\t.WALEntry\"" +
-      "\033\n\031ReplicateWALEntryResponse\"\026\n\024RollWALW" +
-      "riterRequest\"0\n\025RollWALWriterResponse\022\027\n" +
-      "\017region_to_flush\030\001 \003(\014\"#\n\021StopServerRequ" +
-      "est\022\016\n\006reason\030\001 \002(\t\"\024\n\022StopServerRespons" +
-      "e\"\026\n\024GetServerInfoRequest\"B\n\nServerInfo\022" +
-      " \n\013server_name\030\001 \002(\0132\013.ServerName\022\022\n\nweb" +
-      "ui_port\030\002 \001(\r\"9\n\025GetServerInfoResponse\022 " +
-      "\n\013server_info\030\001 \002(\0132\013.ServerInfo\")\n\027Comp",
-      "actionEnableRequest\022\016\n\006enable\030\001 \001(\010\"*\n\030C" +
-      "ompactionEnableResponse\022\016\n\006enable\030\001 \001(\0102" +
-      "\217\010\n\014AdminService\022>\n\rGetRegionInfo\022\025.GetR" +
-      "egionInfoRequest\032\026.GetRegionInfoResponse" +
-      "\022;\n\014GetStoreFile\022\024.GetStoreFileRequest\032\025" +
-      ".GetStoreFileResponse\022D\n\017GetOnlineRegion" +
-      "\022\027.GetOnlineRegionRequest\032\030.GetOnlineReg" +
-      "ionResponse\0225\n\nOpenRegion\022\022.OpenRegionRe" +
-      "quest\032\023.OpenRegionResponse\0228\n\013CloseRegio" +
-      "n\022\023.CloseRegionRequest\032\024.CloseRegionResp",
-      "onse\0228\n\013FlushRegion\022\023.FlushRegionRequest" +
-      "\032\024.FlushRegionResponse\0228\n\013SplitRegion\022\023." +
-      "SplitRegionRequest\032\024.SplitRegionResponse" +
-      "\022>\n\rCompactRegion\022\025.CompactRegionRequest" +
-      "\032\026.CompactRegionResponse\022;\n\014MergeRegions" +
-      "\022\024.MergeRegionsRequest\032\025.MergeRegionsRes" +
-      "ponse\022J\n\021ReplicateWALEntry\022\031.ReplicateWA" +
-      "LEntryRequest\032\032.ReplicateWALEntryRespons" +
-      "e\022?\n\006Replay\022\031.ReplicateWALEntryRequest\032\032" +
-      ".ReplicateWALEntryResponse\022>\n\rRollWALWri",
-      "ter\022\025.RollWALWriterRequest\032\026.RollWALWrit" +
-      "erResponse\022>\n\rGetServerInfo\022\025.GetServerI" +
-      "nfoRequest\032\026.GetServerInfoResponse\0225\n\nSt" +
-      "opServer\022\022.StopServerRequest\032\023.StopServe" +
-      "rResponse\022M\n\022UpdateFavoredNodes\022\032.Update" +
-      "FavoredNodesRequest\032\033.UpdateFavoredNodes" +
-      "Response\022G\n\020SwitchCompaction\022\030.Compactio" +
-      "nEnableRequest\032\031.CompactionEnableRespons" +
-      "eBA\n*org.apache.hadoop.hbase.protobuf.ge" +
-      "neratedB\013AdminProtosH\001\210\001\001\240\001\001"
+      "\032\tWAL.proto\032\023ClusterStatus.proto\"R\n\024GetR" +
+      "egionInfoRequest\022 \n\006region\030\001 \002(\0132\020.Regio" +
+      "nSpecifier\022\030\n\020compaction_state\030\002 \001(\010\"\331\001\n" +
+      "\025GetRegionInfoResponse\022 \n\013region_info\030\001 " +
+      "\002(\0132\013.RegionInfo\022@\n\020compaction_state\030\002 \001" +
+      "(\0162&.GetRegionInfoResponse.CompactionSta" +
+      "te\022\024\n\014isRecovering\030\003 \001(\010\"F\n\017CompactionSt" +
+      "ate\022\010\n\004NONE\020\000\022\t\n\005MINOR\020\001\022\t\n\005MAJOR\020\002\022\023\n\017M" +
+      "AJOR_AND_MINOR\020\003\"G\n\023GetStoreFileRequest\022",
+      " \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\016\n\006fam" +
+      "ily\030\002 \003(\014\"*\n\024GetStoreFileResponse\022\022\n\nsto" +
+      "re_file\030\001 \003(\t\"\030\n\026GetOnlineRegionRequest\"" +
+      ";\n\027GetOnlineRegionResponse\022 \n\013region_inf" +
+      "o\030\001 \003(\0132\013.RegionInfo\"\374\001\n\021OpenRegionReque" +
+      "st\0224\n\topen_info\030\001 \003(\0132!.OpenRegionReques" +
+      "t.RegionOpenInfo\022\027\n\017serverStartCode\030\002 \001(" +
+      "\004\032\227\001\n\016RegionOpenInfo\022\033\n\006region\030\001 \002(\0132\013.R" +
+      "egionInfo\022\037\n\027version_of_offline_node\030\002 \001" +
+      "(\r\022\"\n\rfavored_nodes\030\003 \003(\0132\013.ServerName\022#",
+      "\n\033openForDistributedLogReplay\030\004 \001(\010\"\235\001\n\022" +
+      "OpenRegionResponse\022=\n\ropening_state\030\001 \003(" +
+      "\0162&.OpenRegionResponse.RegionOpeningStat" +
+      "e\"H\n\022RegionOpeningState\022\n\n\006OPENED\020\000\022\022\n\016A" +
+      "LREADY_OPENED\020\001\022\022\n\016FAILED_OPENING\020\002\"\271\001\n\022" +
+      "CloseRegionRequest\022 \n\006region\030\001 \002(\0132\020.Reg" +
+      "ionSpecifier\022\037\n\027version_of_closing_node\030" +
+      "\002 \001(\r\022\036\n\020transition_in_ZK\030\003 \001(\010:\004true\022\'\n" +
+      "\022destination_server\030\004 \001(\0132\013.ServerName\022\027" +
+      "\n\017serverStartCode\030\005 \001(\004\"%\n\023CloseRegionRe",
+      "sponse\022\016\n\006closed\030\001 \002(\010\"P\n\022FlushRegionReq" +
+      "uest\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\030" +
+      "\n\020if_older_than_ts\030\002 \001(\004\"?\n\023FlushRegionR" +
+      "esponse\022\027\n\017last_flush_time\030\001 \002(\004\022\017\n\007flus" +
+      "hed\030\002 \001(\010\"K\n\022SplitRegionRequest\022 \n\006regio" +
+      "n\030\001 \002(\0132\020.RegionSpecifier\022\023\n\013split_point" +
+      "\030\002 \001(\014\"\025\n\023SplitRegionResponse\"W\n\024Compact" +
+      "RegionRequest\022 \n\006region\030\001 \002(\0132\020.RegionSp" +
+      "ecifier\022\r\n\005major\030\002 \001(\010\022\016\n\006family\030\003 \001(\014\"\027" +
+      "\n\025CompactRegionResponse\"\262\001\n\031UpdateFavore",
+      "dNodesRequest\022@\n\013update_info\030\001 \003(\0132+.Upd" +
+      "ateFavoredNodesRequest.RegionUpdateInfo\032" +
+      "S\n\020RegionUpdateInfo\022\033\n\006region\030\001 \002(\0132\013.Re" +
+      "gionInfo\022\"\n\rfavored_nodes\030\002 \003(\0132\013.Server" +
+      "Name\".\n\032UpdateFavoredNodesResponse\022\020\n\010re" +
+      "sponse\030\001 \001(\r\"v\n\023MergeRegionsRequest\022\"\n\010r" +
+      "egion_a\030\001 \002(\0132\020.RegionSpecifier\022\"\n\010regio" +
+      "n_b\030\002 \002(\0132\020.RegionSpecifier\022\027\n\010forcible\030" +
+      "\003 \001(\010:\005false\"\026\n\024MergeRegionsResponse\"X\n\010" +
+      "WALEntry\022\024\n\003key\030\001 \002(\0132\007.WALKey\022\027\n\017key_va",
+      "lue_bytes\030\002 \003(\014\022\035\n\025associated_cell_count" +
+      "\030\003 \001(\005\"4\n\030ReplicateWALEntryRequest\022\030\n\005en" +
+      "try\030\001 \003(\0132\t.WALEntry\"\033\n\031ReplicateWALEntr" +
+      "yResponse\"\026\n\024RollWALWriterRequest\"0\n\025Rol" +
+      "lWALWriterResponse\022\027\n\017region_to_flush\030\001 " +
+      "\003(\014\"#\n\021StopServerRequest\022\016\n\006reason\030\001 \002(\t" +
+      "\"\024\n\022StopServerResponse\"\026\n\024GetServerInfoR" +
+      "equest\"B\n\nServerInfo\022 \n\013server_name\030\001 \002(" +
+      "\0132\013.ServerName\022\022\n\nwebui_port\030\002 \001(\r\"9\n\025Ge" +
+      "tServerInfoResponse\022 \n\013server_info\030\001 \002(\013",
+      "2\013.ServerInfo\")\n\027CompactionEnableRequest" +
+      "\022\016\n\006enable\030\001 \001(\010\"*\n\030CompactionEnableResp" +
+      "onse\022\016\n\006enable\030\001 \001(\010\"6\n\024GetRegionLoadReq" +
+      "uest\022\036\n\ntable_name\030\001 \001(\0132\n.TableName\":\n\025" +
+      "GetRegionLoadResponse\022!\n\014region_loads\030\001 " +
+      "\003(\0132\013.RegionLoad2\317\010\n\014AdminService\022>\n\rGet" +
+      "RegionInfo\022\025.GetRegionInfoRequest\032\026.GetR" +
+      "egionInfoResponse\022;\n\014GetStoreFile\022\024.GetS" +
+      "toreFileRequest\032\025.GetStoreFileResponse\022D" +
+      "\n\017GetOnlineRegion\022\027.GetOnlineRegionReque",
+      "st\032\030.GetOnlineRegionResponse\0225\n\nOpenRegi" +
+      "on\022\022.OpenRegionRequest\032\023.OpenRegionRespo" +
+      "nse\0228\n\013CloseRegion\022\023.CloseRegionRequest\032" +
+      "\024.CloseRegionResponse\0228\n\013FlushRegion\022\023.F" +
+      "lushRegionRequest\032\024.FlushRegionResponse\022" +
+      "8\n\013SplitRegion\022\023.SplitRegionRequest\032\024.Sp" +
+      "litRegionResponse\022>\n\rCompactRegion\022\025.Com" +
+      "pactRegionRequest\032\026.CompactRegionRespons" +
+      "e\022;\n\014MergeRegions\022\024.MergeRegionsRequest\032" +
+      "\025.MergeRegionsResponse\022J\n\021ReplicateWALEn",
+      "try\022\031.ReplicateWALEntryRequest\032\032.Replica" +
+      "teWALEntryResponse\022?\n\006Replay\022\031.Replicate" +
+      "WALEntryRequest\032\032.ReplicateWALEntryRespo" +
+      "nse\022>\n\rRollWALWriter\022\025.RollWALWriterRequ" +
+      "est\032\026.RollWALWriterResponse\022>\n\rGetServer" +
+      "Info\022\025.GetServerInfoRequest\032\026.GetServerI" +
+      "nfoResponse\0225\n\nStopServer\022\022.StopServerRe" +
+      "quest\032\023.StopServerResponse\022M\n\022UpdateFavo" +
+      "redNodes\022\032.UpdateFavoredNodesRequest\032\033.U" +
+      "pdateFavoredNodesResponse\022G\n\020SwitchCompa",
+      "ction\022\030.CompactionEnableRequest\032\031.Compac" +
+      "tionEnableResponse\022>\n\rGetRegionLoad\022\025.Ge" +
+      "tRegionLoadRequest\032\026.GetRegionLoadRespon" +
+      "seBA\n*org.apache.hadoop.hbase.protobuf.g" +
+      "eneratedB\013AdminProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -22523,6 +23887,18 @@ public final class AdminProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CompactionEnableResponse_descriptor,
               new java.lang.String[] { "Enable", });
+          internal_static_GetRegionLoadRequest_descriptor =
+            getDescriptor().getMessageTypes().get(32);
+          internal_static_GetRegionLoadRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_GetRegionLoadRequest_descriptor,
+              new java.lang.String[] { "TableName", });
+          internal_static_GetRegionLoadResponse_descriptor =
+            getDescriptor().getMessageTypes().get(33);
+          internal_static_GetRegionLoadResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_GetRegionLoadResponse_descriptor,
+              new java.lang.String[] { "RegionLoads", });
           return null;
         }
       };
@@ -22532,6 +23908,7 @@ public final class AdminProtos {
           org.apache.hadoop.hbase.protobuf.generated.ClientProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.WALProtos.getDescriptor(),
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.getDescriptor(),
         }, assigner);
   }
 
