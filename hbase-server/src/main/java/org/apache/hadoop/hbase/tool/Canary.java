@@ -27,6 +27,7 @@ import java.net.BindException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,6 +49,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -680,7 +682,8 @@ public final class Canary implements Tool {
 
   private void checkCanaryDistribution() throws IOException {
     if (!isTableExists(Bytes.toBytes(CANARY_TABLE_NAME))) {
-      int numberOfServers = admin.getClusterStatus().getServers().size();
+      int numberOfServers =
+          admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.LIVE_SERVERS)).getServers().size();
       if (numberOfServers == 0) {
         throw new IllegalStateException("No live regionservers");
       }
@@ -691,7 +694,8 @@ public final class Canary implements Tool {
       admin.enableTable(CANARY_TABLE_NAME);
     }
 
-    int numberOfServers = admin.getClusterStatus().getServers().size();
+    int numberOfServers =
+        admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.LIVE_SERVERS)).getServers().size();
     HTable table = new HTable(getConf(), CANARY_TABLE_NAME);
     Collection<ServerName> regionsevers = table.getRegionLocations().values();
     int numberOfRegions = regionsevers.size();

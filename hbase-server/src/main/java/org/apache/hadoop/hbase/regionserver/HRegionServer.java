@@ -162,6 +162,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetServerInfoRequest;
@@ -5988,6 +5990,27 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     CompactionEnableResponse.Builder builder = CompactionEnableResponse.newBuilder();
     builder.setEnable(this.enableCompact);
     this.enableCompact = request.getEnable();
+    return builder.build();
+  }
+
+  @Override
+  public GetRegionLoadResponse getRegionLoad(RpcController controller,
+      GetRegionLoadRequest request) throws ServiceException {
+    Collection<HRegion> regions;
+    if (request.hasTableName()) {
+      TableName tableName = ProtobufUtil.toTableName(request.getTableName());
+      regions = getOnlineRegions(tableName);
+    } else {
+      regions = getOnlineRegionsLocalContext();
+    }
+    List<RegionLoad> rLoads = new ArrayList<>(regions.size());
+    RegionLoad.Builder regionLoadBuilder = ClusterStatusProtos.RegionLoad.newBuilder();
+    RegionSpecifier.Builder regionSpecifier = RegionSpecifier.newBuilder();
+    for (HRegion region : regions) {
+      rLoads.add(createRegionLoad(region, regionLoadBuilder, regionSpecifier));
+    }
+    GetRegionLoadResponse.Builder builder = GetRegionLoadResponse.newBuilder();
+    builder.addAllRegionLoads(rLoads);
     return builder.build();
   }
 

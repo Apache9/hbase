@@ -466,6 +466,40 @@ public class ClusterStatus extends VersionedWritable {
   }
 
   /**
+   * Convert ClusterStatus.Option to ClusterStatusProtos.Option
+   *
+   * @param option a ClusterMetrics.Option
+   * @return converted ClusterStatusProtos.Option
+   */
+  public static ClusterStatusProtos.Option toOption(ClusterStatus.Option option) {
+    switch (option) {
+    case HBASE_VERSION:
+      return ClusterStatusProtos.Option.HBASE_VERSION;
+    case LIVE_SERVERS:
+      return ClusterStatusProtos.Option.LIVE_SERVERS;
+    case DEAD_SERVERS:
+      return ClusterStatusProtos.Option.DEAD_SERVERS;
+    case REGIONS_IN_TRANSITION:
+      return ClusterStatusProtos.Option.REGIONS_IN_TRANSITION;
+    case CLUSTER_ID:
+      return ClusterStatusProtos.Option.CLUSTER_ID;
+    case MASTER_COPROCESSORS:
+      return ClusterStatusProtos.Option.MASTER_COPROCESSORS;
+    case MASTER:
+      return ClusterStatusProtos.Option.MASTER;
+    case BACKUP_MASTERS:
+      return ClusterStatusProtos.Option.BACKUP_MASTERS;
+    case BALANCER_ON:
+      return ClusterStatusProtos.Option.BALANCER_ON;
+    case MASTER_INFO_PORT:
+      return ClusterStatusProtos.Option.MASTER_INFO_PORT;
+    // should not reach here
+    default:
+      throw new IllegalArgumentException("Invalid option: " + option);
+    }
+  }
+
+  /**
    * Convert a list of ClusterStatusProtos.Option to an enum set of ClusterMetrics.Option
    * @param options the pb options
    * @return an enum set of ClusterMetrics.Option
@@ -473,6 +507,15 @@ public class ClusterStatus extends VersionedWritable {
   public static EnumSet<ClusterStatus.Option> toOptions(List<ClusterStatusProtos.Option> options) {
     return options.stream().map(ClusterStatus::toOption)
         .collect(Collectors.toCollection(() -> EnumSet.noneOf(ClusterStatus.Option.class)));
+  }
+
+  /**
+   * Convert an enum set of ClusterStatus.Option to a list of ClusterStatusProtos.Option
+   * @param options the ClusterMetrics options
+   * @return a list of ClusterStatusProtos.Option
+   */
+  public static List<ClusterStatusProtos.Option> toOptions(EnumSet<ClusterStatus.Option> options) {
+    return options.stream().map(ClusterStatus::toOption).collect(Collectors.toList());
   }
 
   /**

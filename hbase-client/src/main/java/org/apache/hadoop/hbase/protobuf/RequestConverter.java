@@ -20,12 +20,14 @@ package org.apache.hadoop.hbase.protobuf;
 import com.google.protobuf.ByteString;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.apache.hadoop.hbase.CellScannable;
+import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -51,11 +53,13 @@ import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetServerInfoRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetStoreFileRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.MergeRegionsRequest;
@@ -1717,5 +1721,30 @@ public final class RequestConverter {
         GetPeerMaxReplicationLoadRequest.newBuilder();
     peerId.ifPresent(id -> builder.setPeerId(id));
     return builder.build();
+  }
+
+  /**
+   * Create a protocol buffer GetRegionLoadRequest for all regions/regions of a table.
+   *
+   * @param tableName the table for which regionLoad should be obtained from RS
+   * @return a protocol buffer GetRegionLoadRequest
+   */
+  public static GetRegionLoadRequest buildGetRegionLoadRequest(final TableName tableName) {
+    GetRegionLoadRequest.Builder builder = GetRegionLoadRequest.newBuilder();
+    if (tableName != null) {
+      builder.setTableName(ProtobufUtil.toProtoTableName(tableName));
+    }
+    return builder.build();
+  }
+
+  /**
+   * Creates a protocol buffer GetClusterStatusRequest
+   *
+   * @return A GetClusterStatusRequest
+   */
+  public static GetClusterStatusRequest buildGetClusterStatusRequest(
+      EnumSet<ClusterStatus.Option> options) {
+    return GetClusterStatusRequest.newBuilder().addAllOptions(ClusterStatus.toOptions(options))
+        .build();
   }
 }

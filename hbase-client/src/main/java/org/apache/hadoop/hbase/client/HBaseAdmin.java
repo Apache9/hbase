@@ -30,6 +30,7 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -56,6 +57,7 @@ import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionException;
+import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
@@ -80,6 +82,7 @@ import org.apache.hadoop.hbase.ipc.RegionServerCoprocessorRpcChannel;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionResponse;
@@ -1707,7 +1710,8 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public boolean setCompactionEnable(final boolean b) throws IOException {
     boolean ret = false;
-    Collection<ServerName> servers = getClusterStatus().getServers();
+    Collection<ServerName> servers =
+        getClusterStatus(EnumSet.of(ClusterStatus.Option.LIVE_SERVERS)).getServers();
     for (ServerName sn : servers) {
       AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
       CompactionEnableRequest.Builder builder = CompactionEnableRequest.newBuilder();
@@ -2065,14 +2069,18 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public ClusterStatus getClusterStatus() throws IOException {
+    return getClusterStatus(EnumSet.allOf(ClusterStatus.Option.class));
+  }
+
+  public ClusterStatus getClusterStatus(EnumSet<ClusterStatus.Option> options) throws IOException {
     return executeCallable(new MasterCallable<ClusterStatus>(getConnection()) {
 
       @Override
       protected ClusterStatus rpcCall(MasterService.BlockingInterface master,
           HBaseRpcController controller) throws ServiceException {
         return ClusterStatus.convert(
-          master.getClusterStatus(controller, RequestConverter.buildGetClusterStatusRequest())
-              .getClusterStatus());
+            master.getClusterStatus(controller, RequestConverter.buildGetClusterStatusRequest())
+                .getClusterStatus());
       }
     });
   }
@@ -2344,7 +2352,8 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   public String[] getMasterCoprocessors() {
     try {
-      return getClusterStatus().getMasterCoprocessors();
+      return getClusterStatus(EnumSet.of(ClusterStatus.Option.MASTER_COPROCESSORS))
+          .getMasterCoprocessors();
     } catch (IOException e) {
       LOG.error("Could not getClusterStatus()", e);
       return null;
@@ -3672,5 +3681,36 @@ public class HBaseAdmin implements Abortable, Closeable {
         return result;
       }
     });
+  }
+
+  /**
+   * Get {@link RegionLoad} of all regions hosted on a regionserver.
+   *
+   * @param serverName region server from which {@link RegionLoad} is required.
+   * @return a {@link RegionLoad} list of all regions hosted on a region server
+   * @throws IOException if a remote or network exception occurs
+   */
+  public List<RegionLoad> getRegionLoads(ServerName serverName) throws IOException {
+    return getRegionLoads(serverName, null);
+  }
+
+  /**
+   * Get {@link RegionLoad} of all regions hosted on a regionserver for a table.
+   *
+   * @param serverName region server from which {@link RegionLoad} is required.
+   * @param tableName get {@link RegionLoad} of regions belonging to the table
+   * @return a {@link RegionLoad} list of all regions of a table hosted on a region server
+   * @throws IOException if a remote or network exception occurs
+   */
+  public List<RegionLoad> getRegionLoads(ServerName serverName, TableName tableName) throws IOException {
+    AdminService.BlockingInterface admin = this.connection.getAdmin(serverName);
+    AdminProtos.GetRegionLoadRequest request =
+        RequestConverter.buildGetRegionLoadRequest(tableName);
+    try {
+      return admin.getRegionLoad(null, request).getRegionLoadsList().stream().map(RegionLoad::new)
+          .collect(Collectors.toList());
+    } catch (ServiceException se) {
+      throw ProtobufUtil.getRemoteException(se);
+    }
   }
 }
