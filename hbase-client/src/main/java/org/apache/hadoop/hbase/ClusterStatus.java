@@ -25,8 +25,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.hadoop.hbase.util.ByteStringer;
@@ -87,6 +89,7 @@ public class ClusterStatus extends VersionedWritable {
   private String clusterId;
   private String[] masterCoprocessors;
   private Boolean balancerOn;
+  private Set<ServerName> serversName;
 
   /**
    * Constructor, for Writable
@@ -104,9 +107,9 @@ public class ClusterStatus extends VersionedWritable {
       final Collection<ServerName> backupMasters,
       final Map<String, RegionState> rit,
       final String[] masterCoprocessors,
-      final Boolean balancerOn) {
+      final Boolean balancerOn,
+      final Set<ServerName> serversName) {
     this.hbaseVersion = hbaseVersion;
-
     this.liveServers = servers;
     this.deadServers = deadServers;
     this.master = master;
@@ -115,6 +118,7 @@ public class ClusterStatus extends VersionedWritable {
     this.clusterId = clusterid;
     this.masterCoprocessors = masterCoprocessors;
     this.balancerOn = balancerOn;
+    this.serversName = serversName;
   }
 
   /**
@@ -224,7 +228,7 @@ public class ClusterStatus extends VersionedWritable {
   }
 
   public Collection<ServerName> getServers() {
-    return Collections.unmodifiableCollection(this.liveServers.keySet());
+    return Collections.unmodifiableCollection(this.serversName);
   }
 
   /**
@@ -371,6 +375,12 @@ public class ClusterStatus extends VersionedWritable {
       builder.setBalancerOn(balancerOn);
     }
 
+    if (serversName != null){
+      for (ServerName serverName : serversName) {
+        builder.addServersName(ProtobufUtil.toServerName(serverName));
+      }
+    }
+
     return builder.build();
   }
 
@@ -426,10 +436,18 @@ public class ClusterStatus extends VersionedWritable {
       }
     }
 
+    Set<ServerName> serversName = null;
+    if (proto.getServersNameList() != null) {
+      serversName = new HashSet<>(proto.getServersNameList().size());
+      for (HBaseProtos.ServerName sn : proto.getServersNameList()) {
+        serversName.add(ProtobufUtil.toServerName(sn));
+      }
+    }
+
     return new ClusterStatus(proto.getHbaseVersion().getVersion(),
-      ClusterId.convert(proto.getClusterId()).toString(),servers,deadServers,
-      ProtobufUtil.toServerName(proto.getMaster()),backupMasters,rit,masterCoprocessors,
-      proto.getBalancerOn());
+        ClusterId.convert(proto.getClusterId()).toString(), servers, deadServers,
+        ProtobufUtil.toServerName(proto.getMaster()), backupMasters, rit, masterCoprocessors,
+        proto.getBalancerOn(), serversName);
   }
 
   /**
@@ -459,6 +477,8 @@ public class ClusterStatus extends VersionedWritable {
         return ClusterStatus.Option.BALANCER_ON;
       case MASTER_INFO_PORT:
         return ClusterStatus.Option.MASTER_INFO_PORT;
+      case SERVERS_NAME:
+        return ClusterStatus.Option.SERVERS_NAME;
       // should not reach here
       default:
         throw new IllegalArgumentException("Invalid option: " + option);
@@ -493,6 +513,8 @@ public class ClusterStatus extends VersionedWritable {
       return ClusterStatusProtos.Option.BALANCER_ON;
     case MASTER_INFO_PORT:
       return ClusterStatusProtos.Option.MASTER_INFO_PORT;
+    case SERVERS_NAME:
+      return ClusterStatusProtos.Option.SERVERS_NAME;
     // should not reach here
     default:
       throw new IllegalArgumentException("Invalid option: " + option);
@@ -561,6 +583,10 @@ public class ClusterStatus extends VersionedWritable {
    /**
     * metrics info port
     */
-   MASTER_INFO_PORT
+   MASTER_INFO_PORT,
+    /**
+     * Only servers name
+     */
+   SERVERS_NAME
  }
 }

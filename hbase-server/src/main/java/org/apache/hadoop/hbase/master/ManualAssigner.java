@@ -23,6 +23,7 @@ package org.apache.hadoop.hbase.master;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -58,7 +60,8 @@ public class ManualAssigner {
   }
 
   private void init() throws IOException {
-    Collection<ServerName> rs = admin.getClusterStatus().getServers();
+    Collection<ServerName> rs =
+        admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers();
     LOG.info("All online region servers: " + rs);
     this.candidates = new HashMap<String, RoundRobinSelector<ServerName>>();
     for (ServerName sn : rs) {

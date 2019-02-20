@@ -45,6 +45,7 @@ public class ClusterStatusBuilder {
   private String[] masterCoprocessors = new String[0];
   @Nullable
   private Boolean balancerOn;
+  private Set<ServerName> serversName = Collections.emptySet();
   
   public static ClusterStatusBuilder newBuilder() {
     return new ClusterStatusBuilder();
@@ -95,8 +96,13 @@ public class ClusterStatusBuilder {
     return this;
   }
 
+  public ClusterStatusBuilder setServersName(Set<ServerName> serversName) {
+    this.serversName = serversName;
+    return this;
+  }
+
   public ClusterStatus build() {
     return new ClusterStatus(hbaseVersion, clusterId, liveServers, deadServers, master,
-        backupMasters, regionsInTransition, masterCoprocessors, balancerOn);
+        backupMasters, regionsInTransition, masterCoprocessors, balancerOn, serversName);
   }
 }

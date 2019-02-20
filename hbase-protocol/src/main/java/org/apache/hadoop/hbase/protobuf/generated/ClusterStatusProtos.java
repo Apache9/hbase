@@ -53,6 +53,10 @@ public final class ClusterStatusProtos {
      * <code>MASTER_INFO_PORT = 9;</code>
      */
     MASTER_INFO_PORT(9, 9),
+    /**
+     * <code>SERVERS_NAME = 10;</code>
+     */
+    SERVERS_NAME(10, 10),
     ;
 
     /**
@@ -95,6 +99,10 @@ public final class ClusterStatusProtos {
      * <code>MASTER_INFO_PORT = 9;</code>
      */
     public static final int MASTER_INFO_PORT_VALUE = 9;
+    /**
+     * <code>SERVERS_NAME = 10;</code>
+     */
+    public static final int SERVERS_NAME_VALUE = 10;
 
 
     public final int getNumber() { return value; }
@@ -111,6 +119,7 @@ public final class ClusterStatusProtos {
         case 7: return REGIONS_IN_TRANSITION;
         case 8: return BALANCER_ON;
         case 9: return MASTER_INFO_PORT;
+        case 10: return SERVERS_NAME;
         default: return null;
       }
     }
@@ -16142,6 +16151,31 @@ public final class ClusterStatusProtos {
      * <code>optional bool balancer_on = 9;</code>
      */
     boolean getBalancerOn();
+
+    // repeated .ServerName servers_name = 10;
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName> 
+        getServersNameList();
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName getServersName(int index);
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    int getServersNameCount();
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder> 
+        getServersNameOrBuilderList();
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder getServersNameOrBuilder(
+        int index);
   }
   /**
    * Protobuf type {@code ClusterStatus}
@@ -16278,6 +16312,14 @@ public final class ClusterStatusProtos {
               balancerOn_ = input.readBool();
               break;
             }
+            case 82: {
+              if (!((mutable_bitField0_ & 0x00000200) == 0x00000200)) {
+                serversName_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName>();
+                mutable_bitField0_ |= 0x00000200;
+              }
+              serversName_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.PARSER, extensionRegistry));
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -16300,6 +16342,9 @@ public final class ClusterStatusProtos {
         }
         if (((mutable_bitField0_ & 0x00000080) == 0x00000080)) {
           backupMasters_ = java.util.Collections.unmodifiableList(backupMasters_);
+        }
+        if (((mutable_bitField0_ & 0x00000200) == 0x00000200)) {
+          serversName_ = java.util.Collections.unmodifiableList(serversName_);
         }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
@@ -16595,6 +16640,42 @@ public final class ClusterStatusProtos {
       return balancerOn_;
     }
 
+    // repeated .ServerName servers_name = 10;
+    public static final int SERVERS_NAME_FIELD_NUMBER = 10;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName> serversName_;
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName> getServersNameList() {
+      return serversName_;
+    }
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder> 
+        getServersNameOrBuilderList() {
+      return serversName_;
+    }
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    public int getServersNameCount() {
+      return serversName_.size();
+    }
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName getServersName(int index) {
+      return serversName_.get(index);
+    }
+    /**
+     * <code>repeated .ServerName servers_name = 10;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder getServersNameOrBuilder(
+        int index) {
+      return serversName_.get(index);
+    }
+
     private void initFields() {
       hbaseVersion_ = org.apache.hadoop.hbase.protobuf.generated.FSProtos.HBaseVersionFileContent.getDefaultInstance();
       liveServers_ = java.util.Collections.emptyList();
@@ -16605,6 +16686,7 @@ public final class ClusterStatusProtos {
       master_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.getDefaultInstance();
       backupMasters_ = java.util.Collections.emptyList();
       balancerOn_ = false;
+      serversName_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -16659,6 +16741,12 @@ public final class ClusterStatusProtos {
           return false;
         }
       }
+      for (int i = 0; i < getServersNameCount(); i++) {
+        if (!getServersName(i).isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
       memoizedIsInitialized = 1;
       return true;
     }
@@ -16692,6 +16780,9 @@ public final class ClusterStatusProtos {
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         output.writeBool(9, balancerOn_);
+      }
+      for (int i = 0; i < serversName_.size(); i++) {
+        output.writeMessage(10, serversName_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -16737,6 +16828,10 @@ public final class ClusterStatusProtos {
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(9, balancerOn_);
+      }
+      for (int i = 0; i < serversName_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(10, serversName_.get(i));
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -16791,6 +16886,8 @@ public final class ClusterStatusProtos {
         result = result && (getBalancerOn()
             == other.getBalancerOn());
       }
+      result = result && getServersNameList()
+          .equals(other.getServersNameList());
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -16839,6 +16936,10 @@ public final class ClusterStatusProtos {
       if (hasBalancerOn()) {
         hash = (37 * hash) + BALANCER_ON_FIELD_NUMBER;
         hash = (53 * hash) + hashBoolean(getBalancerOn());
+      }
+      if (getServersNameCount() > 0) {
+        hash = (37 * hash) + SERVERS_NAME_FIELD_NUMBER;
+        hash = (53 * hash) + getServersNameList().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -16949,6 +17050,7 @@ public final class ClusterStatusProtos {
           getMasterCoprocessorsFieldBuilder();
           getMasterFieldBuilder();
           getBackupMastersFieldBuilder();
+          getServersNameFieldBuilder();
         }
       }
       private static Builder create() {
@@ -17007,6 +17109,12 @@ public final class ClusterStatusProtos {
         }
         balancerOn_ = false;
         bitField0_ = (bitField0_ & ~0x00000100);
+        if (serversNameBuilder_ == null) {
+          serversName_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000200);
+        } else {
+          serversNameBuilder_.clear();
+        }
         return this;
       }
 
@@ -17108,6 +17216,15 @@ public final class ClusterStatusProtos {
           to_bitField0_ |= 0x00000008;
         }
         result.balancerOn_ = balancerOn_;
+        if (serversNameBuilder_ == null) {
+          if (((bitField0_ & 0x00000200) == 0x00000200)) {
+            serversName_ = java.util.Collections.unmodifiableList(serversName_);
+            bitField0_ = (bitField0_ & ~0x00000200);
+          }
+          result.serversName_ = serversName_;
+        } else {
+          result.serversName_ = serversNameBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -17266,6 +17383,32 @@ public final class ClusterStatusProtos {
         if (other.hasBalancerOn()) {
           setBalancerOn(other.getBalancerOn());
         }
+        if (serversNameBuilder_ == null) {
+          if (!other.serversName_.isEmpty()) {
+            if (serversName_.isEmpty()) {
+              serversName_ = other.serversName_;
+              bitField0_ = (bitField0_ & ~0x00000200);
+            } else {
+              ensureServersNameIsMutable();
+              serversName_.addAll(other.serversName_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.serversName_.isEmpty()) {
+            if (serversNameBuilder_.isEmpty()) {
+              serversNameBuilder_.dispose();
+              serversNameBuilder_ = null;
+              serversName_ = other.serversName_;
+              bitField0_ = (bitField0_ & ~0x00000200);
+              serversNameBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getServersNameFieldBuilder() : null;
+            } else {
+              serversNameBuilder_.addAllMessages(other.serversName_);
+            }
+          }
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -17315,6 +17458,12 @@ public final class ClusterStatusProtos {
         }
         for (int i = 0; i < getBackupMastersCount(); i++) {
           if (!getBackupMasters(i).isInitialized()) {
+            
+            return false;
+          }
+        }
+        for (int i = 0; i < getServersNameCount(); i++) {
+          if (!getServersName(i).isInitialized()) {
             
             return false;
           }
@@ -18925,6 +19074,246 @@ public final class ClusterStatusProtos {
         return this;
       }
 
+      // repeated .ServerName servers_name = 10;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName> serversName_ =
+        java.util.Collections.emptyList();
+      private void ensureServersNameIsMutable() {
+        if (!((bitField0_ & 0x00000200) == 0x00000200)) {
+          serversName_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName>(serversName_);
+          bitField0_ |= 0x00000200;
+         }
+      }
+
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder> serversNameBuilder_;
+
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName> getServersNameList() {
+        if (serversNameBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(serversName_);
+        } else {
+          return serversNameBuilder_.getMessageList();
+        }
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public int getServersNameCount() {
+        if (serversNameBuilder_ == null) {
+          return serversName_.size();
+        } else {
+          return serversNameBuilder_.getCount();
+        }
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName getServersName(int index) {
+        if (serversNameBuilder_ == null) {
+          return serversName_.get(index);
+        } else {
+          return serversNameBuilder_.getMessage(index);
+        }
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder setServersName(
+          int index, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName value) {
+        if (serversNameBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureServersNameIsMutable();
+          serversName_.set(index, value);
+          onChanged();
+        } else {
+          serversNameBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder setServersName(
+          int index, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder builderForValue) {
+        if (serversNameBuilder_ == null) {
+          ensureServersNameIsMutable();
+          serversName_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          serversNameBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder addServersName(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName value) {
+        if (serversNameBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureServersNameIsMutable();
+          serversName_.add(value);
+          onChanged();
+        } else {
+          serversNameBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder addServersName(
+          int index, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName value) {
+        if (serversNameBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureServersNameIsMutable();
+          serversName_.add(index, value);
+          onChanged();
+        } else {
+          serversNameBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder addServersName(
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder builderForValue) {
+        if (serversNameBuilder_ == null) {
+          ensureServersNameIsMutable();
+          serversName_.add(builderForValue.build());
+          onChanged();
+        } else {
+          serversNameBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder addServersName(
+          int index, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder builderForValue) {
+        if (serversNameBuilder_ == null) {
+          ensureServersNameIsMutable();
+          serversName_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          serversNameBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder addAllServersName(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName> values) {
+        if (serversNameBuilder_ == null) {
+          ensureServersNameIsMutable();
+          super.addAll(values, serversName_);
+          onChanged();
+        } else {
+          serversNameBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder clearServersName() {
+        if (serversNameBuilder_ == null) {
+          serversName_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000200);
+          onChanged();
+        } else {
+          serversNameBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public Builder removeServersName(int index) {
+        if (serversNameBuilder_ == null) {
+          ensureServersNameIsMutable();
+          serversName_.remove(index);
+          onChanged();
+        } else {
+          serversNameBuilder_.remove(index);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder getServersNameBuilder(
+          int index) {
+        return getServersNameFieldBuilder().getBuilder(index);
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder getServersNameOrBuilder(
+          int index) {
+        if (serversNameBuilder_ == null) {
+          return serversName_.get(index);  } else {
+          return serversNameBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder> 
+           getServersNameOrBuilderList() {
+        if (serversNameBuilder_ != null) {
+          return serversNameBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(serversName_);
+        }
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder addServersNameBuilder() {
+        return getServersNameFieldBuilder().addBuilder(
+            org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder addServersNameBuilder(
+          int index) {
+        return getServersNameFieldBuilder().addBuilder(
+            index, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .ServerName servers_name = 10;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder> 
+           getServersNameBuilderList() {
+        return getServersNameFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder> 
+          getServersNameFieldBuilder() {
+        if (serversNameBuilder_ == null) {
+          serversNameBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ServerNameOrBuilder>(
+                  serversName_,
+                  ((bitField0_ & 0x00000200) == 0x00000200),
+                  getParentForChildren(),
+                  isClean());
+          serversName_ = null;
+        }
+        return serversNameBuilder_;
+      }
+
       // @@protoc_insertion_point(builder_scope:ClusterStatus)
     }
 
@@ -19071,7 +19460,7 @@ public final class ClusterStatusProtos {
       "scan_time_99_percentile\030\022 \001(\004\022 \n\030batch_t" +
       "ime_99_percentile\030\023 \001(\004\"O\n\016LiveServerInf" +
       "o\022\033\n\006server\030\001 \002(\0132\013.ServerName\022 \n\013server" +
-      "_load\030\002 \002(\0132\013.ServerLoad\"\340\002\n\rClusterStat" +
+      "_load\030\002 \002(\0132\013.ServerLoad\"\203\003\n\rClusterStat" +
       "us\022/\n\rhbase_version\030\001 \001(\0132\030.HBaseVersion" +
       "FileContent\022%\n\014live_servers\030\002 \003(\0132\017.Live" +
       "ServerInfo\022!\n\014dead_servers\030\003 \003(\0132\013.Serve",
@@ -19080,14 +19469,15 @@ public final class ClusterStatusProtos {
       "ClusterId\022)\n\023master_coprocessors\030\006 \003(\0132\014" +
       ".Coprocessor\022\033\n\006master\030\007 \001(\0132\013.ServerNam" +
       "e\022#\n\016backup_masters\030\010 \003(\0132\013.ServerName\022\023" +
-      "\n\013balancer_on\030\t \001(\010*\312\001\n\006Option\022\021\n\rHBASE_" +
-      "VERSION\020\000\022\016\n\nCLUSTER_ID\020\001\022\020\n\014LIVE_SERVER" +
-      "S\020\002\022\020\n\014DEAD_SERVERS\020\003\022\n\n\006MASTER\020\004\022\022\n\016BAC" +
-      "KUP_MASTERS\020\005\022\027\n\023MASTER_COPROCESSORS\020\006\022\031" +
-      "\n\025REGIONS_IN_TRANSITION\020\007\022\017\n\013BALANCER_ON",
-      "\020\010\022\024\n\020MASTER_INFO_PORT\020\tBF\n*org.apache.h" +
-      "adoop.hbase.protobuf.generatedB\023ClusterS" +
-      "tatusProtosH\001\240\001\001"
+      "\n\013balancer_on\030\t \001(\010\022!\n\014servers_name\030\n \003(" +
+      "\0132\013.ServerName*\334\001\n\006Option\022\021\n\rHBASE_VERSI" +
+      "ON\020\000\022\016\n\nCLUSTER_ID\020\001\022\020\n\014LIVE_SERVERS\020\002\022\020" +
+      "\n\014DEAD_SERVERS\020\003\022\n\n\006MASTER\020\004\022\022\n\016BACKUP_M" +
+      "ASTERS\020\005\022\027\n\023MASTER_COPROCESSORS\020\006\022\031\n\025REG",
+      "IONS_IN_TRANSITION\020\007\022\017\n\013BALANCER_ON\020\010\022\024\n" +
+      "\020MASTER_INFO_PORT\020\t\022\020\n\014SERVERS_NAME\020\nBF\n" +
+      "*org.apache.hadoop.hbase.protobuf.genera" +
+      "tedB\023ClusterStatusProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -19153,7 +19543,7 @@ public final class ClusterStatusProtos {
           internal_static_ClusterStatus_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ClusterStatus_descriptor,
-              new java.lang.String[] { "HbaseVersion", "LiveServers", "DeadServers", "RegionsInTransition", "ClusterId", "MasterCoprocessors", "Master", "BackupMasters", "BalancerOn", });
+              new java.lang.String[] { "HbaseVersion", "LiveServers", "DeadServers", "RegionsInTransition", "ClusterId", "MasterCoprocessors", "Master", "BackupMasters", "BalancerOn", "ServersName", });
           return null;
         }
       };

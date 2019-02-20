@@ -26,6 +26,8 @@ java_import org.apache.hadoop.hbase.util.Bytes
 java_import org.apache.hadoop.hbase.util.Pair
 java_import org.apache.hadoop.hbase.util.RegionSplitter
 java_import com.xiaomi.infra.galaxy.sds.core.schema.TableSchema
+java_import java.util.EnumSet
+java_import org.apache.hadoop.hbase.ClusterStatus
 
 # Wrapper for org.apache.hadoop.hbase.client.HBaseAdmin
 
@@ -369,12 +371,12 @@ module Hbase
     # Return array of servernames where servername is hostname+port+startcode
     # comma-delimited
     def getServers()
-      serverInfos = @admin.getClusterStatus().getServerInfo()
-      servers = []
-      for server in serverInfos
-        servers << server.getServerName()
+      servers = @admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers()
+      serversName = []
+      for server in servers
+        serversName << server.getServerName()
       end
-      return servers
+      return serversName
     end
 
     #----------------------------------------------------------------------------------------------

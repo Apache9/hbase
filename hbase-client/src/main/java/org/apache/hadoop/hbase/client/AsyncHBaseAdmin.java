@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -346,8 +347,8 @@ class AsyncHBaseAdmin implements AsyncAdmin {
   }
 
   @Override
-  public CompletableFuture<ClusterStatus> getClusterStatus() {
-    return wrap(rawAdmin.getClusterStatus());
+  public CompletableFuture<ClusterStatus> getClusterStatus(EnumSet<ClusterStatus.Option> options) {
+    return wrap(rawAdmin.getClusterStatus(options));
   }
 
   @Override

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -1683,13 +1684,13 @@ class RawAsyncHBaseAdmin implements AsyncAdmin {
   }
 
   @Override
-  public CompletableFuture<ClusterStatus> getClusterStatus() {
+  public CompletableFuture<ClusterStatus> getClusterStatus(EnumSet<ClusterStatus.Option> options) {
     return this
         .<ClusterStatus> newMasterCaller()
         .action(
           (controller, stub) -> this
               .<GetClusterStatusRequest, GetClusterStatusResponse, ClusterStatus> call(controller,
-                stub, RequestConverter.buildGetClusterStatusRequest(),
+                stub, RequestConverter.buildGetClusterStatusRequest(options),
                 (s, c, req, done) -> s.getClusterStatus(c, req, done),
                 resp ->  ClusterStatus.convert(resp.getClusterStatus()))).call();
   }
