@@ -2877,6 +2877,11 @@ MasterServices, Server {
           }
           break;
         }
+        case SERVERS_NAME: {
+          if (serverManager != null) {
+            builder.setServersName(serverManager.getOnlineServers().keySet());
+          }
+        }
       }
     }
     return builder.build();

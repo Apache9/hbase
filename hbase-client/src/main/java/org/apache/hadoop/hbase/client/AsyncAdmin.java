@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.client;
 
 
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -619,27 +620,34 @@ public interface AsyncAdmin {
   /**
    * @return cluster status wrapped by {@link CompletableFuture}
    */
-  CompletableFuture<ClusterStatus> getClusterStatus();
+  default CompletableFuture<ClusterStatus> getClusterStatus() {
+    return getClusterStatus(EnumSet.allOf(ClusterStatus.Option.class));
+  }
+
+  CompletableFuture<ClusterStatus> getClusterStatus(EnumSet<ClusterStatus.Option> options);
 
   /**
    * @return current master server name wrapped by {@link CompletableFuture}
    */
   default CompletableFuture<ServerName> getMaster() {
-    return getClusterStatus().thenApply(ClusterStatus::getMaster);
+    return getClusterStatus(EnumSet.of(ClusterStatus.Option.MASTER))
+        .thenApply(ClusterStatus::getMaster);
   }
 
   /**
    * @return current backup master list wrapped by {@link CompletableFuture}
    */
   default CompletableFuture<Collection<ServerName>> getBackupMasters() {
-    return getClusterStatus().thenApply(ClusterStatus::getBackupMasters);
+    return getClusterStatus(EnumSet.of(ClusterStatus.Option.BACKUP_MASTERS))
+        .thenApply(ClusterStatus::getBackupMasters);
   }
 
   /**
    * @return current live region servers list wrapped by {@link CompletableFuture}
    */
   default CompletableFuture<Collection<ServerName>> getRegionServers() {
-    return getClusterStatus().thenApply(ClusterStatus::getServers);
+    return getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME))
+        .thenApply(ClusterStatus::getServers);
   }
 
   /**

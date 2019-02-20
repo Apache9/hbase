@@ -41,6 +41,8 @@ import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil
 import org.apache.hadoop.hbase.ServerName
 import org.apache.hadoop.hbase.HRegionInfo
+import java.util.EnumSet
+import org.apache.hadoop.hbase.ClusterStatus
 
 # Name of this script
 NAME = "region_mover"
@@ -171,12 +173,12 @@ end
 # Return array of servernames where servername is hostname+port+startcode
 # comma-delimited
 def getServers(admin)
-  serverInfos = admin.getClusterStatus().getServerInfo()
-  servers = []
-  for server in serverInfos
-    servers << server.getServerName()
+  servers = @admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers()
+  serversName = []
+  for server in servers
+    serversName << server.getServerName()
   end
-  return servers
+  return serversName
 end
 
 # Remove the servername whose hostname portion matches from the passed

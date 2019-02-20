@@ -1711,7 +1711,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   public boolean setCompactionEnable(final boolean b) throws IOException {
     boolean ret = false;
     Collection<ServerName> servers =
-        getClusterStatus(EnumSet.of(ClusterStatus.Option.LIVE_SERVERS)).getServers();
+        getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers();
     for (ServerName sn : servers) {
       AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
       CompactionEnableRequest.Builder builder = CompactionEnableRequest.newBuilder();

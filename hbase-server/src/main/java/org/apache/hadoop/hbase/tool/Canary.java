@@ -683,7 +683,7 @@ public final class Canary implements Tool {
   private void checkCanaryDistribution() throws IOException {
     if (!isTableExists(Bytes.toBytes(CANARY_TABLE_NAME))) {
       int numberOfServers =
-          admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.LIVE_SERVERS)).getServers().size();
+          admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers().size();
       if (numberOfServers == 0) {
         throw new IllegalStateException("No live regionservers");
       }
@@ -695,7 +695,7 @@ public final class Canary implements Tool {
     }
 
     int numberOfServers =
-        admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.LIVE_SERVERS)).getServers().size();
+        admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers().size();
     HTable table = new HTable(getConf(), CANARY_TABLE_NAME);
     Collection<ServerName> regionsevers = table.getRegionLocations().values();
     int numberOfRegions = regionsevers.size();

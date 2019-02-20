@@ -289,6 +289,7 @@ message ClusterStatus {
   optional ServerName master = 7;
   repeated ServerName backup_masters = 8;
   optional bool balancer_on = 9;
+  repeated ServerName servers_name = 10;
 }
 
 enum Option {
@@ -302,4 +303,5 @@ enum Option {
   REGIONS_IN_TRANSITION = 7;
   BALANCER_ON = 8;
   MASTER_INFO_PORT = 9;
+  SERVERS_NAME = 10;
 }

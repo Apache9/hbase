@@ -151,14 +151,8 @@ public class ClusterStatusPublisher extends Chore {
     // This could be extended in the future, for example if we want to send stuff like the
     //  hbase:meta server name.
     ClusterStatus cs = new ClusterStatus(VersionInfo.getVersion(),
-        master.getMasterFileSystem().getClusterId().toString(),
-        null,
-        sns,
-        master.getServerName(),
-        null,
-        null,
-        null,
-        null);
+        master.getMasterFileSystem().getClusterId().toString(), null, sns, master.getServerName(),
+        null, null, null, null, null);
 
 
     publisher.publish(cs);
