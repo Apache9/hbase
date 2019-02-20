@@ -2881,6 +2881,7 @@ MasterServices, Server {
           if (serverManager != null) {
             builder.setServersName(serverManager.getOnlineServers().keySet());
           }
+          break;
         }
       }
     }
