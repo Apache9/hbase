@@ -36,6 +36,7 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.regionserver.wal.AbstractFSWAL;
+import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
@@ -43,6 +44,7 @@ import org.apache.hadoop.hbase.wal.WALSplitter;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -187,7 +189,7 @@ public class MasterWalManager {
    * @return List of all RegionServer WAL dirs; i.e. this.rootDir/HConstants.HREGION_LOGDIR_NAME.
    */
   public FileStatus[] getWALDirPaths(final PathFilter filter) throws IOException {
-    Path walDirPath = new Path(rootDir, HConstants.HREGION_LOGDIR_NAME);
+    Path walDirPath = new Path(CommonFSUtils.getWALRootDir(conf), HConstants.HREGION_LOGDIR_NAME);
     FileStatus[] walDirForServerNames = FSUtils.listStatus(fs, walDirPath, filter);
     return walDirForServerNames == null? new FileStatus[0]: walDirForServerNames;
   }
