@@ -803,7 +803,7 @@ public final class HConstants {
   /**
    * Default value of {@link #HBASE_CLIENT_PREFETCH}.
    */
-  public static boolean DEFAULT_HBASE_CLIENT_PREFETCH = true;
+  public static boolean DEFAULT_HBASE_CLIENT_PREFETCH = false;
 
   /**
    * Parameter name for client prefetch limit, used as the maximum number of regions
