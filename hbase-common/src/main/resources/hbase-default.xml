@@ -532,7 +532,7 @@ possible configurations would overwhelm and obscure the important.
   </property>
   <property>
     <name>hbase.client.prefetch</name>
-    <value>true</value>
+    <value>false</value>
     <description>Toggles region location prefetching on or off.</description>
   </property>
   <property>
