@@ -2055,7 +2055,7 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
   /* ---- Protobuf AccessControlService implementation ---- */
 
   /**
-   * @deprecated Use {@link Admin#grant(UserPermission, boolean)} instead.
+   * @deprecated Use {@link Admin#grant(String, Permission, boolean)} instead.
    */
   @Deprecated
   @Override
@@ -2078,7 +2078,8 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
         preGrantOrRevoke(caller, "grant", perm);
 
         // regionEnv is set at #start. Hopefully not null at this point.
-        regionEnv.getConnection().getAdmin().grant(perm, request.getMergeExistingPermissions());
+        regionEnv.getConnection().getAdmin().grant(perm.getUser(), perm.getPermission(),
+          request.getMergeExistingPermissions());
         if (AUDITLOG.isTraceEnabled()) {
           // audit log should store permission changes in addition to auth results
           AUDITLOG.trace("Granted permission " + perm.toString());
@@ -2096,7 +2097,7 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
   }
 
   /**
-   * @deprecated Use {@link Admin#revoke(UserPermission)} instead.
+   * @deprecated Use {@link Admin#revoke(String, Permission)} instead.
    */
   @Deprecated
   @Override
@@ -2117,7 +2118,7 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
         }
         preGrantOrRevoke(caller, "revoke", perm);
         // regionEnv is set at #start. Hopefully not null here.
-        regionEnv.getConnection().getAdmin().revoke(perm);
+        regionEnv.getConnection().getAdmin().revoke(perm.getUser(), perm.getPermission());
         if (AUDITLOG.isTraceEnabled()) {
           // audit log should record all permission changes
           AUDITLOG.trace("Revoked permission " + perm.toString());
