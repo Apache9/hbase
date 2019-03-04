@@ -637,25 +637,25 @@ public class RpcServer implements RpcServerInterface {
         if (!force && (currentTime - lastCleanupRunTime) < cleanupInterval) {
           return;
         }
-        int start = 0;
-        int end = numConnections - 1;
+        long start = 0;
+        long end = numConnections - 1;
         if (!force) {
           start = rand.nextInt() % numConnections;
           end = rand.nextInt() % numConnections;
-          int temp;
+          long temp;
           if (end < start) {
             temp = start;
             start = end;
             end = temp;
           }
         }
-        int i = start;
+        long i = start;
         int numNuked = 0;
         while (i <= end) {
           Connection c;
           synchronized (connectionList) {
             try {
-              c = connectionList.get(i);
+              c = connectionList.get((int) i);
             } catch (Exception e) {return;}
           }
           if (c.timedOut(currentTime)) {
