@@ -109,7 +109,7 @@ public class TestCoprocessorWhitelistMasterObserver extends SecureTestUtil {
     UTIL.waitUntilAllRegionsAssigned(TEST_TABLE);
     Connection connection = ConnectionFactory.createConnection(conf);
     Table t = connection.getTable(TEST_TABLE);
-    HTableDescriptor htd = new HTableDescriptor(t.getTableDescriptor());
+    HTableDescriptor htd = new HTableDescriptor(t.getDescriptor());
     htd.addCoprocessor("net.clayb.hbase.coprocessor.NotWhitelisted",
       new Path(coprocessorPath),
       Coprocessor.PRIORITY_USER, null);
@@ -121,7 +121,7 @@ public class TestCoprocessorWhitelistMasterObserver extends SecureTestUtil {
       // swallow exception from coprocessor
     }
     LOG.info("Done Modifying Table");
-    assertEquals(0, t.getTableDescriptor().getCoprocessors().size());
+    assertEquals(0, t.getDescriptor().getCoprocessorDescriptors().size());
   }
 
   /**
@@ -155,13 +155,13 @@ public class TestCoprocessorWhitelistMasterObserver extends SecureTestUtil {
     // coprocessor file
     admin.disableTable(TEST_TABLE);
     Table t = connection.getTable(TEST_TABLE);
-    HTableDescriptor htd = new HTableDescriptor(t.getTableDescriptor());
+    HTableDescriptor htd = new HTableDescriptor(t.getDescriptor());
     htd.addCoprocessor("net.clayb.hbase.coprocessor.Whitelisted",
       new Path(coprocessorPath),
       Coprocessor.PRIORITY_USER, null);
     LOG.info("Modifying Table");
     admin.modifyTable(TEST_TABLE, htd);
-    assertEquals(1, t.getTableDescriptor().getCoprocessors().size());
+    assertEquals(1, t.getDescriptor().getCoprocessorDescriptors().size());
     LOG.info("Done Modifying Table");
   }
 
@@ -327,6 +327,6 @@ public class TestCoprocessorWhitelistMasterObserver extends SecureTestUtil {
     // ensure table was created and coprocessor is added to table
     LOG.info("Done Creating Table");
     Table t = connection.getTable(TEST_TABLE);
-    assertEquals(1, t.getTableDescriptor().getCoprocessors().size());
+    assertEquals(1, t.getDescriptor().getCoprocessorDescriptors().size());
   }
 }

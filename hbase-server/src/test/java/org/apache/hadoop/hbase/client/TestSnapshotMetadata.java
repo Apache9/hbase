@@ -318,7 +318,7 @@ public class TestSnapshotMetadata {
     Table original = UTIL.getConnection().getTable(originalTableName);
     try {
       assertTrue(originalTableDescriptor.equals(admin.getTableDescriptor(originalTableName)));
-      assertTrue(originalTableDescriptor.equals(original.getTableDescriptor()));
+      assertTrue(originalTableDescriptor.equals(new HTableDescriptor(original.getDescriptor())));
     } finally {
       original.close();
     }

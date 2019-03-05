@@ -89,6 +89,7 @@ import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.ShadedAccessControlUtil;
 import org.apache.hadoop.hbase.security.access.UserPermission;
@@ -2424,8 +2425,8 @@ public class HBaseAdmin implements Admin {
 
     // Check ZK first.
     // If the connection exists, we may have a connection to ZK that does not work anymore
-    try (ConnectionImplementation connection =
-      (ConnectionImplementation) ConnectionFactory.createConnection(copyOfConf)) {
+    try (ConnectionImplementation connection = ConnectionFactory.createConnectionImpl(copyOfConf,
+      null, UserProvider.instantiate(copyOfConf).getCurrent())) {
       // can throw MasterNotRunningException
       connection.isMasterRunning();
     }

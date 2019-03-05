@@ -335,7 +335,7 @@ public class TestSnapshotCloneIndependence {
     // get a description of the cloned table
     // get a list of its families
     // assert that the family is there
-    HTableDescriptor originalTableDescriptor = originalTable.getTableDescriptor();
+    HTableDescriptor originalTableDescriptor = new HTableDescriptor(originalTable.getDescriptor());
     HTableDescriptor clonedTableDescriptor = admin.getTableDescriptor(cloneTableName);
 
     Assert.assertTrue("The original family was not found. There is something wrong. ",
