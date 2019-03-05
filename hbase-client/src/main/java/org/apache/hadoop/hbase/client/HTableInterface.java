@@ -685,4 +685,8 @@ public interface HTableInterface extends Closeable {
   default boolean isSharedConnection() {
     return true;
   }
+
+  default void setBufferedMutator(AsyncBufferedMutator bufferedMutator){
+    throw new UnsupportedOperationException();
+  }
 }
