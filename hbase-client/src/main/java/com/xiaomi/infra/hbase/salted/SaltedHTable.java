@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.AsyncBufferedMutator;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
@@ -947,5 +948,10 @@ public class SaltedHTable implements HTableInterface{
       wrappedFilter = ((SkipFilter)filter).getFilter();
     }
     return wrappedFilter;
+  }
+
+  @Override
+  public void setBufferedMutator(AsyncBufferedMutator bufferedMutator) {
+    table.setBufferedMutator(bufferedMutator);
   }
 }
