@@ -29,8 +29,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CompareOperator;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Delete;
@@ -49,7 +47,6 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Call;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
-import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 
 /**
@@ -80,12 +77,6 @@ public class RegionAsTable implements Table {
   @Override
   public Configuration getConfiguration() {
     throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public HTableDescriptor getTableDescriptor() throws IOException {
-    return new HTableDescriptor(this.region.getTableDescriptor());
   }
 
   @Override
@@ -213,29 +204,6 @@ public class RegionAsTable implements Table {
   }
 
   @Override
-  @Deprecated
-  public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier, byte[] value, Put put)
-  throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier, CompareOp compareOp,
-      byte[] value, Put put)
-  throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
-                             CompareOperator compareOp, byte[] value, Put put)
-  throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public void delete(Delete delete) throws IOException {
     this.region.delete(delete);
   }
@@ -243,29 +211,6 @@ public class RegionAsTable implements Table {
   @Override
   public void delete(List<Delete> deletes) throws IOException {
     for(Delete delete: deletes) delete(delete);
-  }
-
-  @Override
-  public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier, byte[] value,
-      Delete delete)
-  throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Delete delete)
-  throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-                                CompareOperator compareOp, byte[] value, Delete delete)
-  throws IOException {
-    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -343,46 +288,9 @@ public class RegionAsTable implements Table {
   }
 
   @Override
-  @Deprecated
-  public boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier, CompareOp compareOp,
-      byte[] value, RowMutations mutation)
-  throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier,
-      CompareOperator compareOp, byte[] value, RowMutations mutation) throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public void setOperationTimeout(int operationTimeout) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public int getOperationTimeout() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public void setRpcTimeout(int rpcTimeout) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public long getReadRpcTimeout(TimeUnit unit) {
     throw new UnsupportedOperationException();
   }
-
-  @Override
-  @Deprecated
-  public void setWriteRpcTimeout(int writeRpcTimeout) {throw new UnsupportedOperationException(); }
 
   @Override
   public long getOperationTimeout(TimeUnit unit) {
@@ -390,34 +298,12 @@ public class RegionAsTable implements Table {
   }
 
   @Override
-  @Deprecated
-  public void setReadRpcTimeout(int readRpcTimeout) {throw new UnsupportedOperationException(); }
-
-  @Override
   public long getWriteRpcTimeout(TimeUnit unit) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  @Deprecated
-  public int getRpcTimeout() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public long getRpcTimeout(TimeUnit unit) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public int getWriteRpcTimeout() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  @Deprecated
-  public int getReadRpcTimeout() {
     throw new UnsupportedOperationException();
   }
 
