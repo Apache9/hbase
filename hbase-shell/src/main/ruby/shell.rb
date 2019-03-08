@@ -363,6 +363,7 @@ Shell.load_command_group(
     update_peer_config
     set_peer_exclude_tableCFs
     set_peer_exclude_namespaces
+    show_peer_configuration
   ]
 )
 
