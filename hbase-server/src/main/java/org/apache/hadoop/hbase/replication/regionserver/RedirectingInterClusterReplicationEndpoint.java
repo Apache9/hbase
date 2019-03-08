@@ -47,6 +47,10 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
  * ENDPOINT_CLASSNAME =>
  * 'org.apache.hadoop.hbase.replication.regionserver.RedirectingInterClusterReplicationEndpoint',
  * CONFIG => {"ns1:t1" => "ns1:t2", "ns2:t2" => "ns3:t2"}
+ *
+ * Notice: Just for safe. All replicated entries should be redirect when use this. If a entry's
+ * table name can't be found in redirect configurations, it will throw exception to make the
+ * replication stuck. So better to use this with NAMESPACES filter or TABLE_CFS filter.
  */
 @InterfaceAudience.Private
 public class RedirectingInterClusterReplicationEndpoint
@@ -88,28 +92,26 @@ public class RedirectingInterClusterReplicationEndpoint
    * @param entries {@link java.util.List} of WAL {@link org.apache.hadoop.hbase.regionserver.wal.HLog.Entry}
    *                that are redirected if a corresponding redirection rule
    *                has been configured
-   * @return Number of redirected entries
    */
-  private int redirectEntries(final List<Entry> entries) {
-    int count = 0;
+  private void redirectEntries(final List<Entry> entries) throws IOException {
     for (Entry e : entries) {
-      TableName redirectedTablename = tableRedirectionsMap.get(e.getKey().getTablename());
-      if (redirectedTablename != null) {
-        e.getKey().setTablename(redirectedTablename);
-        count++;
+      TableName tableName = e.getKey().getTablename();
+      TableName redirectedTableName = tableRedirectionsMap.get(tableName);
+      if (redirectedTableName != null) {
+        e.getKey().setTablename(redirectedTableName);
+      } else {
+        throw new IOException("Table " + tableName +
+            " WAL entries can't be redirected! Please check the redirect configuration");
       }
     }
-    return count;
   }
 
   @Override
   protected void replicateWALEntry(List<Entry> entries, ReplicationSinkManager.SinkPeer sinkPeer)
       throws IOException {
     // Redirect the edits to another table in the target
-    int redirected = this.redirectEntries(entries);
-    if (redirected != 0) {
-      LOG.info("Redirected " + redirected + " WAL entries to peer");
-    }
+    this.redirectEntries(entries);
+    LOG.debug("Redirected " + entries.size() + " WAL entries to peer");
     ReplicationProtbufUtil
         .replicateWALEntry(sinkPeer.getRegionServer(), entries.toArray(new Entry[entries.size()]));
   }

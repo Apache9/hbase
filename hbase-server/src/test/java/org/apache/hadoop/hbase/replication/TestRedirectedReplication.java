@@ -141,7 +141,7 @@ public class TestRedirectedReplication extends TestReplicationBase {
     LOG.info("Starting RedirectedReplication test");
     HTable htabLeftNs1T1 = new HTable(conf1, ns1T1);
     HTable htabLeftNs2T1 = new HTable(conf1, ns2T1);
-    HTable htabRightNs1T1 = new HTable(conf2, ns1T1);
+    HTable htabRightNs2T1 = new HTable(conf2, ns2T1);
     HTable htabRightNs1T2 = new HTable(conf2, ns1T2);
     HTable htabRightNs2T2 = new HTable(conf2, ns2T2);
 
@@ -166,7 +166,18 @@ public class TestRedirectedReplication extends TestReplicationBase {
     ensureRowNotExisted(htabRightNs2T2, row, f1Name);
     rpc.getConfiguration().remove(ns1T1Name);
 
-    // Step 3: "Multiple redirection rules work at the same time"
+    // Step 3: Replication will stuck if table not in redirect configuration
+    // And replication will work after add table to redirect configuration
+    put(htabLeftNs2T1, row, f1Name);
+    ensureRowExisted(htabLeftNs2T1, row, f1Name);
+    ensureRowNotExisted(htabRightNs2T1, row, f1Name);
+    // Add a redirect config for ns2:t1
+    rpc.getConfiguration().put(ns2T1Name, ns2T1Name);
+    admin1.updateReplicationPeerConfig(SPECIAL_PEER_ID, rpc);
+    ensureRowExisted(htabRightNs2T1, row, f1Name);
+    rpc.getConfiguration().remove(ns2T1Name);
+
+    // Step 4: "Multiple redirection rules work at the same time"
     rpc.getConfiguration().putAll(new HashMap<String, String>() {
       {
         put(ns1T1Name, ns1T2Name);
