@@ -73,12 +73,12 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HealthCheckChore;
 import org.apache.hadoop.hbase.MetaTableAccessor;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.PleaseHoldException;
 import org.apache.hadoop.hbase.ScheduledChore;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.ZNodeClearer;
@@ -270,7 +270,7 @@ public class HRegionServer extends HasThread implements
   /**
    * Go here to get table descriptors.
    */
-  protected TableDescriptors tableDescriptors;
+  protected MutableTableDescriptors tableDescriptors;
 
   // Replication services. If no replication, this handler will be null.
   protected ReplicationSourceService replicationSourceHandler;
@@ -717,7 +717,7 @@ public class HRegionServer extends HasThread implements
     this.tableDescriptors = getFsTableDescriptors();
   }
 
-  protected TableDescriptors getFsTableDescriptors() throws IOException {
+  protected MutableTableDescriptors getFsTableDescriptors() throws IOException {
     return new FSTableDescriptors(this.conf,
       this.fs, this.rootDir, !canUpdateTableDescriptor(), false, getMetaTableObserver());
   }
@@ -3663,7 +3663,7 @@ public class HRegionServer extends HasThread implements
    * @return Return table descriptors implementation.
    */
   @Override
-  public TableDescriptors getTableDescriptors() {
+  public MutableTableDescriptors getTableDescriptors() {
     return this.tableDescriptors;
   }
 

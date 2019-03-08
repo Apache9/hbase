@@ -281,7 +281,7 @@ public class RegionStateStore {
   }
 
   private TableDescriptor getTableDescriptor(TableName tableName) throws IOException {
-    return master.getTableDescriptors().get(tableName);
+    return master.getTableDescriptors().get(tableName).orElse(null);
   }
 
   // ==========================================================================

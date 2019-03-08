@@ -430,7 +430,7 @@ public class CatalogJanitor extends ScheduledChore {
 
   private TableDescriptor getTableDescriptor(final TableName tableName)
       throws FileNotFoundException, IOException {
-    return this.services.getTableDescriptors().get(tableName);
+    return this.services.getTableDescriptors().get(tableName).orElse(null);
   }
 
   /**

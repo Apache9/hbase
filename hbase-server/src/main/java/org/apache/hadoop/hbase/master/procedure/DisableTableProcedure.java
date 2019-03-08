@@ -109,7 +109,7 @@ public class DisableTableProcedure
           setNextState(DisableTableState.DISABLE_TABLE_ADD_REPLICATION_BARRIER);
           break;
         case DISABLE_TABLE_ADD_REPLICATION_BARRIER:
-          if (env.getMasterServices().getTableDescriptors().get(tableName)
+          if (env.getMasterServices().getTableDescriptors().get(tableName).get()
             .hasGlobalReplicationScope()) {
             FileSystem walFS = env.getMasterServices().getMasterWalManager().getFileSystem();
             try (BufferedMutator mutator = env.getMasterServices().getConnection()

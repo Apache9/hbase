@@ -26,8 +26,8 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.Server;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.locking.EntityLock;
@@ -268,7 +268,7 @@ public interface RegionServerServices extends Server, MutableOnlineRegions, Favo
   /**
    * @return Return table descriptors implementation.
    */
-  TableDescriptors getTableDescriptors();
+  MutableTableDescriptors getTableDescriptors();
 
   /**
    * @return The block cache instance.

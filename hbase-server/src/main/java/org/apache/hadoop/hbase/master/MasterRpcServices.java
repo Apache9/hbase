@@ -1716,7 +1716,8 @@ public class MasterRpcServices extends RSRpcServices
     }
     boolean allFiles = false;
     List<ColumnFamilyDescriptor> compactedColumns = new ArrayList<>();
-    ColumnFamilyDescriptor[] hcds = master.getTableDescriptors().get(tableName).getColumnFamilies();
+    ColumnFamilyDescriptor[] hcds =
+      master.getTableDescriptors().get(tableName).get().getColumnFamilies();
     byte[] family = null;
     if (request.hasFamily()) {
       family = request.getFamily().toByteArray();

@@ -424,7 +424,7 @@ public abstract class HBaseTestCase extends TestCase {
   protected void createMetaRegion() throws IOException {
     FSTableDescriptors fsTableDescriptors = new FSTableDescriptors(conf);
     meta = HBaseTestingUtility.createRegionAndWAL(HRegionInfo.FIRST_META_REGIONINFO, testDir,
-        conf, fsTableDescriptors.get(TableName.META_TABLE_NAME));
+        conf, fsTableDescriptors.get(TableName.META_TABLE_NAME).get());
   }
 
   protected void closeRootAndMeta() throws IOException {

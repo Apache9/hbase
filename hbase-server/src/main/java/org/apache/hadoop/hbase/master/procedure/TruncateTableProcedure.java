@@ -102,7 +102,7 @@ public class TruncateTableProcedure
           break;
         case TRUNCATE_TABLE_REMOVE_FROM_META:
           tableDescriptor = env.getMasterServices().getTableDescriptors()
-              .get(tableName);
+              .get(tableName).get();
           DeleteTableProcedure.deleteFromMeta(env, getTableName(), regions);
           DeleteTableProcedure.deleteAssignmentState(env, getTableName());
           setNextState(TruncateTableState.TRUNCATE_TABLE_CLEAR_FS_LAYOUT);

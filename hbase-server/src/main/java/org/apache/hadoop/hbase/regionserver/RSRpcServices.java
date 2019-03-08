@@ -2069,7 +2069,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
         if (previous == null || !previous.booleanValue()) {
           htd = htds.get(region.getTable());
           if (htd == null) {
-            htd = regionServer.tableDescriptors.get(region.getTable());
+            htd = regionServer.tableDescriptors.get(region.getTable()).orElse(null);
             htds.put(region.getTable(), htd);
           }
           if (htd == null) {
@@ -2146,7 +2146,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
         LOG.debug("Warming up Region " + region.getRegionNameAsString());
       }
 
-      htd = regionServer.tableDescriptors.get(region.getTable());
+      htd = regionServer.tableDescriptors.get(region.getTable()).get();
 
       if (regionServer.getRegionsInTransitionInRS().containsKey(encodedNameBytes)) {
         LOG.info("Region is in transition. Skipping warmup " + region);
@@ -3700,7 +3700,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       TableDescriptor tableDesc = tdCache.get(regionInfo.getTable());
       if (tableDesc == null) {
         try {
-          tableDesc = regionServer.getTableDescriptors().get(regionInfo.getTable());
+          tableDesc = regionServer.getTableDescriptors().get(regionInfo.getTable()).orElse(null);
         } catch (IOException e) {
           // Here we do not fail the whole method since we also need deal with other
           // procedures, and we can not ignore this one, so we still schedule a

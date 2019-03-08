@@ -102,12 +102,9 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
   public static String getUserTables(HMaster master, List<TableDescriptor> tables){
     if (master.isInitialized()){
       try {
-        Map<String, TableDescriptor> descriptorMap = master.getTableDescriptors().getAll();
-        if (descriptorMap != null) {
-          for (TableDescriptor desc : descriptorMap.values()) {
-            if (!desc.getTableName().isSystemTable()) {
-             tables.add(desc);
-            }
+        for (TableDescriptor desc : master.getTableDescriptors().getAll()) {
+          if (!desc.getTableName().isSystemTable()) {
+           tables.add(desc);
           }
         }
       } catch (IOException e) {

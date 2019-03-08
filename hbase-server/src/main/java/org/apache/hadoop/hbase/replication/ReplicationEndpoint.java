@@ -29,7 +29,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
-import org.apache.hadoop.hbase.TableDescriptors;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.replication.regionserver.MetricsSource;
 
@@ -56,7 +56,7 @@ public interface ReplicationEndpoint extends ReplicationPeerConfigListener {
     private final Configuration localConf;
     private final Configuration conf;
     private final FileSystem fs;
-    private final TableDescriptors tableDescriptors;
+    private final MutableTableDescriptors tableDescriptors;
     private final ReplicationPeer replicationPeer;
     private final String peerId;
     private final UUID clusterId;
@@ -72,7 +72,7 @@ public interface ReplicationEndpoint extends ReplicationPeerConfigListener {
         final UUID clusterId,
         final ReplicationPeer replicationPeer,
         final MetricsSource metrics,
-        final TableDescriptors tableDescriptors,
+        final MutableTableDescriptors tableDescriptors,
         final Abortable abortable) {
       this.localConf = localConf;
       this.conf = conf;
@@ -108,7 +108,7 @@ public interface ReplicationEndpoint extends ReplicationPeerConfigListener {
     public MetricsSource getMetrics() {
       return metrics;
     }
-    public TableDescriptors getTableDescriptors() {
+    public MutableTableDescriptors getTableDescriptors() {
       return tableDescriptors;
     }
     public Abortable getAbortable() { return abortable; }

@@ -39,8 +39,8 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.RegionLocations;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.ClusterConnection;
@@ -92,7 +92,7 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
 
   private Configuration conf;
   private ClusterConnection connection;
-  private TableDescriptors tableDescriptors;
+  private MutableTableDescriptors tableDescriptors;
 
   // Reuse WALSplitter constructs as a WAL pipe
   private PipelineController controller;
@@ -269,12 +269,12 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
 
   static class RegionReplicaOutputSink extends OutputSink {
     private final RegionReplicaSinkWriter sinkWriter;
-    private final TableDescriptors tableDescriptors;
+    private final MutableTableDescriptors tableDescriptors;
     private final Cache<TableName, Boolean> memstoreReplicationEnabled;
 
-    public RegionReplicaOutputSink(PipelineController controller, TableDescriptors tableDescriptors,
-        EntryBuffers entryBuffers, ClusterConnection connection, ExecutorService pool,
-        int numWriters, int operationTimeout) {
+    public RegionReplicaOutputSink(PipelineController controller,
+        MutableTableDescriptors tableDescriptors, EntryBuffers entryBuffers,
+        ClusterConnection connection, ExecutorService pool, int numWriters, int operationTimeout) {
       super(controller, entryBuffers, numWriters);
       this.sinkWriter =
           new RegionReplicaSinkWriter(this, connection, pool, operationTimeout, tableDescriptors);
@@ -358,8 +358,8 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
       if (requiresReplication == null) {
         // check if the table requires memstore replication
         // some unit-test drop the table, so we should do a bypass check and always replicate.
-        TableDescriptor htd = tableDescriptors.get(tableName);
-        requiresReplication = htd == null || htd.hasRegionMemStoreReplication();
+        requiresReplication = tableDescriptors.get(tableName)
+          .map(TableDescriptor::hasRegionMemStoreReplication).orElse(true);
         memstoreReplicationEnabled.put(tableName, requiresReplication);
       }
 
@@ -391,10 +391,10 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
     int operationTimeout;
     ExecutorService pool;
     Cache<TableName, Boolean> disabledAndDroppedTables;
-    TableDescriptors tableDescriptors;
+    MutableTableDescriptors tableDescriptors;
 
     public RegionReplicaSinkWriter(RegionReplicaOutputSink sink, ClusterConnection connection,
-        ExecutorService pool, int operationTimeout, TableDescriptors tableDescriptors) {
+        ExecutorService pool, int operationTimeout, MutableTableDescriptors tableDescriptors) {
       this.sink = sink;
       this.connection = connection;
       this.operationTimeout = operationTimeout;
@@ -529,7 +529,7 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
               disabledAndDroppedTables.put(tableName, Boolean.TRUE); // put to cache for later.
               canBeSkipped = true;
             } else if (tableDescriptors != null) {
-              TableDescriptor tableDescriptor = tableDescriptors.get(tableName);
+              TableDescriptor tableDescriptor = tableDescriptors.get(tableName).orElse(null);
               if (tableDescriptor != null
                   //(replicaId + 1) as no task is added for primary replica for replication
                   && tableDescriptor.getRegionReplication() <= (replicaId + 1)) {

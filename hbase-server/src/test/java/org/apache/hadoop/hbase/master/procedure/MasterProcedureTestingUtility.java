@@ -213,7 +213,7 @@ public class MasterProcedureTestingUtility {
     assertEquals(regions.length, countMetaRegions(master, tableName));
 
     // check htd
-    TableDescriptor htd = master.getTableDescriptors().get(tableName);
+    TableDescriptor htd = master.getTableDescriptors().get(tableName).orElse(null);
     assertTrue("table descriptor not found", htd != null);
     for (int i = 0; i < family.length; ++i) {
       assertTrue("family not found " + family[i], htd.getColumnFamily(Bytes.toBytes(family[i])) != null);
@@ -233,8 +233,8 @@ public class MasterProcedureTestingUtility {
     assertEquals(0, countMetaRegions(master, tableName));
 
     // check htd
-    assertTrue("found htd of deleted table",
-      master.getTableDescriptors().get(tableName) == null);
+    assertFalse("found htd of deleted table",
+      master.getTableDescriptors().get(tableName).isPresent());
   }
 
   private static int countMetaRegions(final HMaster master, final TableName tableName)
@@ -286,7 +286,7 @@ public class MasterProcedureTestingUtility {
 
   public static void validateColumnFamilyAddition(final HMaster master, final TableName tableName,
       final String family) throws IOException {
-    TableDescriptor htd = master.getTableDescriptors().get(tableName);
+    TableDescriptor htd = master.getTableDescriptors().get(tableName).orElse(null);
     assertTrue(htd != null);
 
     assertTrue(htd.hasColumnFamily(Bytes.toBytes(family)));
@@ -295,7 +295,7 @@ public class MasterProcedureTestingUtility {
   public static void validateColumnFamilyDeletion(final HMaster master, final TableName tableName,
       final String family) throws IOException {
     // verify htd
-    TableDescriptor htd = master.getTableDescriptors().get(tableName);
+    TableDescriptor htd = master.getTableDescriptors().get(tableName).orElse(null);
     assertTrue(htd != null);
     assertFalse(htd.hasColumnFamily(Bytes.toBytes(family)));
 
@@ -311,7 +311,7 @@ public class MasterProcedureTestingUtility {
   public static void validateColumnFamilyModification(final HMaster master,
       final TableName tableName, final String family, ColumnFamilyDescriptor columnDescriptor)
       throws IOException {
-    TableDescriptor htd = master.getTableDescriptors().get(tableName);
+    TableDescriptor htd = master.getTableDescriptors().get(tableName).orElse(null);
     assertTrue(htd != null);
 
     ColumnFamilyDescriptor hcfd = htd.getColumnFamily(Bytes.toBytes(family));

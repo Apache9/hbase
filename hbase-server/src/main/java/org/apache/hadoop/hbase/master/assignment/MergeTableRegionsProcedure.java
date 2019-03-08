@@ -523,7 +523,7 @@ public class MergeTableRegionsProcedure
       return false;
     }
 
-    if (!env.getMasterServices().getTableDescriptors().get(getTableName()).isMergeEnabled()) {
+    if (!env.getMasterServices().getTableDescriptors().get(getTableName()).get().isMergeEnabled()) {
       String regionsStr = Arrays.deepToString(regionsToMerge);
       LOG.warn("Merge is disabled for the table! Skipping merge of {}", regionsStr);
       super.setFailure(getClass().getSimpleName(), new IOException(
@@ -644,7 +644,8 @@ public class MergeTableRegionsProcedure
       throws IOException {
     final MasterFileSystem mfs = env.getMasterServices().getMasterFileSystem();
     final Configuration conf = env.getMasterConfiguration();
-    final TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName());
+    final TableDescriptor htd =
+      env.getMasterServices().getTableDescriptors().get(getTableName()).get();
 
     for (String family : regionFs.getFamilies()) {
       final ColumnFamilyDescriptor hcd = htd.getColumnFamily(Bytes.toBytes(family));
@@ -697,7 +698,8 @@ public class MergeTableRegionsProcedure
   }
 
   private int getRegionReplication(final MasterProcedureEnv env) throws IOException {
-    final TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName());
+    final TableDescriptor htd =
+      env.getMasterServices().getTableDescriptors().get(getTableName()).get();
     return htd.getRegionReplication();
   }
 

@@ -104,13 +104,13 @@ public class TestRegionInfoBuilder {
     // Create a region.  That'll write the .regioninfo file.
     FSTableDescriptors fsTableDescriptors = new FSTableDescriptors(htu.getConfiguration());
     HRegion r = HBaseTestingUtility.createRegionAndWAL(convert(ri), basedir, htu.getConfiguration(),
-        fsTableDescriptors.get(TableName.META_TABLE_NAME));
+      fsTableDescriptors.get(TableName.META_TABLE_NAME).get());
     // Get modtime on the file.
     long modtime = getModTime(r);
     HBaseTestingUtility.closeRegionAndWAL(r);
     Thread.sleep(1001);
-    r = HRegion.openHRegion(basedir, convert(ri), fsTableDescriptors.get(TableName.META_TABLE_NAME),
-        null, htu.getConfiguration());
+    r = HRegion.openHRegion(basedir, convert(ri),
+      fsTableDescriptors.get(TableName.META_TABLE_NAME).get(), null, htu.getConfiguration());
     // Ensure the file is not written for a second time.
     long modtime2 = getModTime(r);
     assertEquals(modtime, modtime2);

@@ -264,7 +264,7 @@ public class TestRegionServerNoMaster {
         hri.getEncodedNameAsBytes()));
 
     // Let's start the open handler
-    TableDescriptor htd = getRS().tableDescriptors.get(hri.getTable());
+    TableDescriptor htd = getRS().tableDescriptors.get(hri.getTable()).get();
 
     getRS().executorService.submit(new OpenRegionHandler(getRS(), getRS(), hri, htd, -1));
 

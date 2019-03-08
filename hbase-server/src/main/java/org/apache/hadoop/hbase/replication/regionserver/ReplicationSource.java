@@ -41,9 +41,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RSRpcServices;
@@ -278,7 +278,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
   private void initAndStartReplicationEndpoint(ReplicationEndpoint replicationEndpoint)
       throws IOException, TimeoutException {
-    TableDescriptors tableDescriptors = null;
+    MutableTableDescriptors tableDescriptors = null;
     if (server instanceof HRegionServer) {
       tableDescriptors = ((HRegionServer) server).getTableDescriptors();
     }

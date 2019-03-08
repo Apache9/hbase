@@ -18,14 +18,8 @@
 
 package org.apache.hadoop.hbase.master;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.hadoop.hbase.ScheduledChore;
-import org.apache.hadoop.hbase.TableDescriptors;
-import org.apache.yetus.audience.InterfaceAudience;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.master.locking.LockManager;
@@ -33,6 +27,9 @@ import org.apache.hadoop.hbase.mob.ExpiredMobFileCleaner;
 import org.apache.hadoop.hbase.mob.MobConstants;
 import org.apache.hadoop.hbase.mob.MobUtils;
 import org.apache.hadoop.hbase.procedure2.LockType;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The Class ExpiredMobFileCleanerChore for running cleaner regularly to remove the expired
@@ -60,9 +57,7 @@ public class ExpiredMobFileCleanerChore extends ScheduledChore {
     justification="Intentional")
   protected void chore() {
     try {
-      TableDescriptors htds = master.getTableDescriptors();
-      Map<String, TableDescriptor> map = htds.getAll();
-      for (TableDescriptor htd : map.values()) {
+      for (TableDescriptor htd : master.getTableDescriptors().getAll()) {
         for (ColumnFamilyDescriptor hcd : htd.getColumnFamilies()) {
           if (hcd.isMobEnabled() && hcd.getMinVersions() == 0) {
             // clean only for mob-enabled column.

@@ -28,12 +28,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
@@ -407,11 +408,11 @@ public class RSGroupableBalancerTestBase {
   }
 
   protected static MasterServices getMockedMaster() throws IOException {
-    TableDescriptors tds = Mockito.mock(TableDescriptors.class);
-    Mockito.when(tds.get(tables[0])).thenReturn(tableDescs.get(0));
-    Mockito.when(tds.get(tables[1])).thenReturn(tableDescs.get(1));
-    Mockito.when(tds.get(tables[2])).thenReturn(tableDescs.get(2));
-    Mockito.when(tds.get(tables[3])).thenReturn(tableDescs.get(3));
+    MutableTableDescriptors tds = Mockito.mock(MutableTableDescriptors.class);
+    Mockito.when(tds.get(tables[0])).thenReturn(Optional.of(tableDescs.get(0)));
+    Mockito.when(tds.get(tables[1])).thenReturn(Optional.of(tableDescs.get(1)));
+    Mockito.when(tds.get(tables[2])).thenReturn(Optional.of(tableDescs.get(2)));
+    Mockito.when(tds.get(tables[3])).thenReturn(Optional.of(tableDescs.get(3)));
     MasterServices services = Mockito.mock(HMaster.class);
     Mockito.when(services.getTableDescriptors()).thenReturn(tds);
     AssignmentManager am = Mockito.mock(AssignmentManager.class);

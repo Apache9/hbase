@@ -18,13 +18,11 @@
 package org.apache.hadoop.hbase.master;
 
 import com.google.protobuf.Service;
-
 import java.io.IOException;
 import java.util.List;
-
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -320,7 +318,7 @@ public interface MasterServices extends Server {
   /**
    * @return Return table descriptors implementation.
    */
-  TableDescriptors getTableDescriptors();
+  MutableTableDescriptors getTableDescriptors();
 
   /**
    * Registers a new protocol buffer {@link Service} subclass as a master coprocessor endpoint.

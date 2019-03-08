@@ -161,7 +161,8 @@ public class SimpleRegionNormalizer implements RegionNormalizer {
     int targetRegionCount = -1;
     long targetRegionSize = -1;
     try {
-      TableDescriptor tableDescriptor = masterServices.getTableDescriptors().get(table);
+      TableDescriptor tableDescriptor =
+        masterServices.getTableDescriptors().get(table).orElse(null);
       if(tableDescriptor != null) {
         targetRegionCount =
             tableDescriptor.getNormalizerTargetRegionCount();

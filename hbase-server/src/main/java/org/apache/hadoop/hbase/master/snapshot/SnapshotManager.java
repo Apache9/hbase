@@ -611,7 +611,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
     TableDescriptor desc = null;
     try {
       desc = master.getTableDescriptors().get(
-          TableName.valueOf(snapshot.getTable()));
+          TableName.valueOf(snapshot.getTable())).orElse(null);
     } catch (FileNotFoundException e) {
       String msg = "Table:" + snapshot.getTable() + " info doesn't exist!";
       LOG.error(msg);

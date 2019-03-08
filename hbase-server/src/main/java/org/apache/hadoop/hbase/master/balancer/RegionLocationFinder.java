@@ -210,14 +210,12 @@ class RegionLocationFinder {
    * return TableDescriptor for a given tableName
    *
    * @param tableName the table name
-   * @return TableDescriptor
-   * @throws IOException
    */
   protected TableDescriptor getTableDescriptor(TableName tableName) throws IOException {
     TableDescriptor tableDescriptor = null;
     try {
       if (this.services != null && this.services.getTableDescriptors() != null) {
-        tableDescriptor = this.services.getTableDescriptors().get(tableName);
+        tableDescriptor = this.services.getTableDescriptors().get(tableName).orElse(null);
       }
     } catch (FileNotFoundException fnfe) {
       LOG.debug("tableName={}", tableName, fnfe);

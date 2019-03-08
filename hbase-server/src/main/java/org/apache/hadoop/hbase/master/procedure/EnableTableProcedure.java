@@ -107,7 +107,7 @@ public class EnableTableProcedure
           // we will need to get the tableDescriptor here to see if there is a change in the replica
           // count
           TableDescriptor hTableDescriptor =
-              env.getMasterServices().getTableDescriptors().get(tableName);
+            env.getMasterServices().getTableDescriptors().get(tableName).get();
 
           // Get the replica count
           int regionReplicaCount = hTableDescriptor.getRegionReplication();

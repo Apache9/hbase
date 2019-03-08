@@ -140,7 +140,7 @@ public abstract class ModifyPeerProcedure extends AbstractPeerProcedure<PeerModi
     ReplicationPeerConfig peerConfig = getNewPeerConfig();
     ReplicationPeerConfig oldPeerConfig = getOldPeerConfig();
     TableStateManager tsm = env.getMasterServices().getTableStateManager();
-    for (TableDescriptor td : env.getMasterServices().getTableDescriptors().getAll().values()) {
+    for (TableDescriptor td : env.getMasterServices().getTableDescriptors().getAll()) {
       if (!td.hasGlobalReplicationScope()) {
         continue;
       }

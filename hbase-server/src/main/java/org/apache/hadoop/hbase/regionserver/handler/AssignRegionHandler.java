@@ -120,8 +120,8 @@ public class AssignRegionHandler extends EventHandler {
     }
     HRegion region;
     try {
-      TableDescriptor htd =
-        tableDesc != null ? tableDesc : rs.getTableDescriptors().get(regionInfo.getTable());
+      TableDescriptor htd = tableDesc != null ? tableDesc
+        : rs.getTableDescriptors().get(regionInfo.getTable()).orElse(null);
       if (htd == null) {
         throw new IOException("Missing table descriptor for " + regionName);
       }

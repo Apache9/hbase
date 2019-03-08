@@ -426,8 +426,8 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
 
     // refresh default group, prune
     NavigableSet<TableName> orphanTables = new TreeSet<>();
-    for (String entry : masterServices.getTableDescriptors().getAll().keySet()) {
-      orphanTables.add(TableName.valueOf(entry));
+    for (TableDescriptor entry : masterServices.getTableDescriptors().getAll()) {
+      orphanTables.add(entry.getTableName());
     }
     for (RSGroupInfo group : groupList) {
       if (!group.getName().equals(RSGroupInfo.DEFAULT_GROUP)) {

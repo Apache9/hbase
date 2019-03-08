@@ -125,7 +125,7 @@ public class SplitTableRegionProcedure
         .setSplit(false)
         .setRegionId(rid)
         .build();
-    TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName());
+    TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName()).get();
     if(htd.getRegionSplitPolicyClassName() != null) {
       // Since we don't have region reference here, creating the split policy instance without it.
       // This can be used to invoke methods which don't require Region reference. This instantiation
@@ -504,11 +504,11 @@ public class SplitTableRegionProcedure
       return false;
     }
 
-    if (!env.getMasterServices().getTableDescriptors().get(getTableName()).isSplitEnabled()) {
+    if (!env.getMasterServices().getTableDescriptors().get(getTableName()).get().isSplitEnabled()) {
       LOG.warn("pid={}, split is disabled for the table! Skipping split of {}", getProcId(),
         parentHRI);
-      setFailure(new IOException("Split region " + parentHRI.getRegionNameAsString()
-          + " failed as region split is disabled for the table"));
+      setFailure(new IOException("Split region " + parentHRI.getRegionNameAsString() +
+        " failed as region split is disabled for the table"));
       return false;
     }
 
@@ -644,7 +644,7 @@ public class SplitTableRegionProcedure
       maxThreads, Threads.getNamedThreadFactory("StoreFileSplitter-%1$d"));
     final List<Future<Pair<Path,Path>>> futures = new ArrayList<Future<Pair<Path,Path>>>(nbFiles);
 
-    TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName());
+    TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName()).get();
     // Split each store file.
     for (Map.Entry<String, Collection<StoreFileInfo>> e : files.entrySet()) {
       byte[] familyName = Bytes.toBytes(e.getKey());
@@ -839,7 +839,8 @@ public class SplitTableRegionProcedure
   }
 
   private int getRegionReplication(final MasterProcedureEnv env) throws IOException {
-    final TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName());
+    final TableDescriptor htd =
+      env.getMasterServices().getTableDescriptors().get(getTableName()).get();
     return htd.getRegionReplication();
   }
 

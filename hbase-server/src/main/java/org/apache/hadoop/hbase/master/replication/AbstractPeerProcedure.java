@@ -113,7 +113,7 @@ public abstract class AbstractPeerProcedure<TState> extends AbstractPeerNoLockPr
   protected final void setLastPushedSequenceId(MasterProcedureEnv env,
       ReplicationPeerConfig peerConfig) throws IOException, ReplicationException {
     Map<String, Long> lastSeqIds = new HashMap<String, Long>();
-    for (TableDescriptor td : env.getMasterServices().getTableDescriptors().getAll().values()) {
+    for (TableDescriptor td : env.getMasterServices().getTableDescriptors().getAll()) {
       if (!td.hasGlobalReplicationScope()) {
         continue;
       }

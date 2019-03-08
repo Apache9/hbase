@@ -1840,7 +1840,7 @@ public class HMaster extends HRegionServer implements MasterServices {
           return false;
         }
 
-        TableDescriptor tblDesc = getTableDescriptors().get(table);
+        TableDescriptor tblDesc = getTableDescriptors().get(table).orElse(null);
         if (table.isSystemTable() || (tblDesc != null &&
             !tblDesc.isNormalizationEnabled())) {
           LOG.trace("Skipping normalization for {}, as it's either system"
@@ -2498,7 +2498,7 @@ public class HMaster extends HRegionServer implements MasterServices {
 
       @Override
       public TableDescriptor get() throws IOException {
-        TableDescriptor old = getTableDescriptors().get(tableName);
+        TableDescriptor old = getTableDescriptors().get(tableName).get();
         if (old.hasColumnFamily(column.getName())) {
           throw new InvalidFamilyOperationException("Column family '" + column.getNameAsString()
               + "' in table '" + tableName + "' already exists so cannot be added");
@@ -2525,7 +2525,7 @@ public class HMaster extends HRegionServer implements MasterServices {
 
       @Override
       public TableDescriptor get() throws IOException {
-        TableDescriptor old = getTableDescriptors().get(tableName);
+        TableDescriptor old = getTableDescriptors().get(tableName).get();
         if (!old.hasColumnFamily(descriptor.getName())) {
           throw new InvalidFamilyOperationException("Family '" + descriptor.getNameAsString()
               + "' does not exist, so it cannot be modified");
@@ -2546,7 +2546,7 @@ public class HMaster extends HRegionServer implements MasterServices {
 
       @Override
       public TableDescriptor get() throws IOException {
-        TableDescriptor old = getTableDescriptors().get(tableName);
+        TableDescriptor old = getTableDescriptors().get(tableName).get();
 
         if (!old.hasColumnFamily(columnName)) {
           throw new InvalidFamilyOperationException("Family '" + Bytes.toString(columnName)
@@ -2654,35 +2654,36 @@ public class HMaster extends HRegionServer implements MasterServices {
       final TableDescriptorGetter newDescriptorGetter, final long nonceGroup, final long nonce,
       final boolean shouldCheckDescriptor) throws IOException {
     return MasterProcedureUtil
-        .submitProcedure(new MasterProcedureUtil.NonceProcedureRunnable(this, nonceGroup, nonce) {
-          @Override
-          protected void run() throws IOException {
-            TableDescriptor oldDescriptor = getMaster().getTableDescriptors().get(tableName);
-            TableDescriptor newDescriptor = getMaster().getMasterCoprocessorHost()
-                .preModifyTable(tableName, oldDescriptor, newDescriptorGetter.get());
-            sanityCheckTableDescriptor(newDescriptor);
-            LOG.info("{} modify table {} from {} to {}", getClientIdAuditPrefix(), tableName,
-                oldDescriptor, newDescriptor);
+      .submitProcedure(new MasterProcedureUtil.NonceProcedureRunnable(this, nonceGroup, nonce) {
+        @Override
+        protected void run() throws IOException {
+          TableDescriptor oldDescriptor =
+            getMaster().getTableDescriptors().get(tableName).orElse(null);
+          TableDescriptor newDescriptor = getMaster().getMasterCoprocessorHost()
+            .preModifyTable(tableName, oldDescriptor, newDescriptorGetter.get());
+          sanityCheckTableDescriptor(newDescriptor);
+          LOG.info("{} modify table {} from {} to {}", getClientIdAuditPrefix(), tableName,
+            oldDescriptor, newDescriptor);
 
-            // Execute the operation synchronously - wait for the operation completes before
-            // continuing.
-            //
-            // We need to wait for the procedure to potentially fail due to "prepare" sanity
-            // checks. This will block only the beginning of the procedure. See HBASE-19953.
-            ProcedurePrepareLatch latch = ProcedurePrepareLatch.createBlockingLatch();
-            submitProcedure(new ModifyTableProcedure(procedureExecutor.getEnvironment(),
-                newDescriptor, latch, oldDescriptor, shouldCheckDescriptor));
-            latch.await();
+          // Execute the operation synchronously - wait for the operation completes before
+          // continuing.
+          //
+          // We need to wait for the procedure to potentially fail due to "prepare" sanity
+          // checks. This will block only the beginning of the procedure. See HBASE-19953.
+          ProcedurePrepareLatch latch = ProcedurePrepareLatch.createBlockingLatch();
+          submitProcedure(new ModifyTableProcedure(procedureExecutor.getEnvironment(),
+            newDescriptor, latch, oldDescriptor, shouldCheckDescriptor));
+          latch.await();
 
-            getMaster().getMasterCoprocessorHost().postModifyTable(tableName, oldDescriptor,
-              newDescriptor);
-          }
+          getMaster().getMasterCoprocessorHost().postModifyTable(tableName, oldDescriptor,
+            newDescriptor);
+        }
 
-          @Override
-          protected String getDescription() {
-            return "ModifyTableProcedure";
-          }
-        });
+        @Override
+        protected String getDescription() {
+          return "ModifyTableProcedure";
+        }
+      });
 
   }
 
@@ -3504,9 +3505,9 @@ public class HMaster extends HRegionServer implements MasterServices {
       if (namespace != null && namespace.length() > 0) {
         // Do a check on the namespace existence. Will fail if does not exist.
         this.clusterSchemaService.getNamespace(namespace);
-        allHtds = tableDescriptors.getByNamespace(namespace).values();
+        allHtds = tableDescriptors.getByNamespace(namespace);
       } else {
-        allHtds = tableDescriptors.getAll().values();
+        allHtds = tableDescriptors.getAll();
       }
       for (TableDescriptor desc: allHtds) {
         if (tableStateManager.isTablePresent(desc.getTableName())
@@ -3517,10 +3518,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     } else {
       for (TableName s: tableNameList) {
         if (tableStateManager.isTablePresent(s)) {
-          TableDescriptor desc = tableDescriptors.get(s);
-          if (desc != null) {
-            htds.add(desc);
-          }
+          tableDescriptors.get(s).ifPresent(htds::add);
         }
       }
     }

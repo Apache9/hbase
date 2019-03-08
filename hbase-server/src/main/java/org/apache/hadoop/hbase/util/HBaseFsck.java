@@ -1536,7 +1536,7 @@ public class HBaseFsck extends Configured implements Closeable {
     Path rootdir = FSUtils.getRootDir(getConf());
     Configuration c = getConf();
     RegionInfo metaHRI = RegionInfoBuilder.FIRST_META_REGIONINFO;
-    TableDescriptor metaDescriptor = new FSTableDescriptors(c).get(TableName.META_TABLE_NAME);
+    TableDescriptor metaDescriptor = new FSTableDescriptors(c).get(TableName.META_TABLE_NAME).get();
     MasterFileSystem.setInfoFamilyCachingForMeta(metaDescriptor, false);
     // The WAL subsystem will use the default rootDir rather than the passed in rootDir
     // unless I pass along via the conf.
@@ -2723,8 +2723,7 @@ public class HBaseFsck extends Configured implements Closeable {
    * regions reported for the table, but table dir is there in hdfs
    */
   private void loadTableInfosForTablesWithNoRegion() throws IOException {
-    Map<String, TableDescriptor> allTables = new FSTableDescriptors(getConf()).getAll();
-    for (TableDescriptor htd : allTables.values()) {
+    for (TableDescriptor htd : new FSTableDescriptors(getConf()).getAll()) {
       if (checkMetaOnly && !htd.isMetaTable()) {
         continue;
       }

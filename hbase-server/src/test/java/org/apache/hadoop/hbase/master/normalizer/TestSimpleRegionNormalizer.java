@@ -19,23 +19,28 @@ package org.apache.hadoop.hbase.master.normalizer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseIOException;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.RegionMetrics;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Size;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.master.MasterRpcServices;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
@@ -368,8 +373,17 @@ public class TestSimpleRegionNormalizer {
     assertEquals(hri4, ((SplitNormalizationPlan) plan).getRegionInfo());
   }
 
+
+  private void mockTargetRegionSize(long targetRegionSize) throws IOException {
+    TableDescriptor td = mock(TableDescriptor.class);
+    when(td.getNormalizerTargetRegionSize()).thenReturn(targetRegionSize);
+    MutableTableDescriptors tds = mock(MutableTableDescriptors.class);
+    when(tds.get(any())).thenReturn(Optional.of(td));
+    when(masterServices.getTableDescriptors()).thenReturn(tds);
+  }
+
   @Test
-  public void testSplitWithTargetRegionCount() throws Exception {
+  public void testSplitWithTargetRegionSize() throws Exception {
     final TableName tableName = TableName.valueOf(name.getMethodName());
     List<RegionInfo> RegionInfo = new ArrayList<>();
     Map<byte[], Integer> regionSizes = new HashMap<>();
@@ -407,8 +421,7 @@ public class TestSimpleRegionNormalizer {
     setupMocksForNormalizer(regionSizes, RegionInfo);
 
     // test when target region size is 20
-    when(masterServices.getTableDescriptors().get(any()).getNormalizerTargetRegionSize())
-        .thenReturn(20L);
+    mockTargetRegionSize(20);
     List<NormalizationPlan> plans = normalizer.computePlanForTable(tableName);
     Assert.assertEquals(4, plans.size());
 
@@ -417,8 +430,7 @@ public class TestSimpleRegionNormalizer {
     }
 
     // test when target region size is 200
-    when(masterServices.getTableDescriptors().get(any()).getNormalizerTargetRegionSize())
-        .thenReturn(200L);
+    mockTargetRegionSize(200);
     plans = normalizer.computePlanForTable(tableName);
     Assert.assertEquals(2, plans.size());
     NormalizationPlan plan = plans.get(0);
@@ -427,8 +439,16 @@ public class TestSimpleRegionNormalizer {
     assertEquals(hri2, ((MergeNormalizationPlan) plan).getSecondRegion());
   }
 
+  private void mockTargetRegionCount(int targetRegionCount) throws IOException {
+    TableDescriptor td = mock(TableDescriptor.class);
+    when(td.getNormalizerTargetRegionCount()).thenReturn(targetRegionCount);
+    MutableTableDescriptors tds = mock(MutableTableDescriptors.class);
+    when(tds.get(any())).thenReturn(Optional.of(td));
+    when(masterServices.getTableDescriptors()).thenReturn(tds);
+  }
+
   @Test
-  public void testSplitWithTargetRegionSize() throws Exception {
+  public void testSplitWithTargetRegionCount() throws Exception {
     final TableName tableName = TableName.valueOf(name.getMethodName());
     List<RegionInfo> RegionInfo = new ArrayList<>();
     Map<byte[], Integer> regionSizes = new HashMap<>();
@@ -456,8 +476,7 @@ public class TestSimpleRegionNormalizer {
     setupMocksForNormalizer(regionSizes, RegionInfo);
 
     // test when target region count is 8
-    when(masterServices.getTableDescriptors().get(any()).getNormalizerTargetRegionCount())
-        .thenReturn(8);
+    mockTargetRegionCount(8);
     List<NormalizationPlan> plans = normalizer.computePlanForTable(tableName);
     Assert.assertEquals(2, plans.size());
 
@@ -466,8 +485,7 @@ public class TestSimpleRegionNormalizer {
     }
 
     // test when target region count is 3
-    when(masterServices.getTableDescriptors().get(any()).getNormalizerTargetRegionCount())
-        .thenReturn(3);
+    mockTargetRegionCount(3);
     plans = normalizer.computePlanForTable(tableName);
     Assert.assertEquals(1, plans.size());
     NormalizationPlan plan = plans.get(0);
@@ -476,11 +494,10 @@ public class TestSimpleRegionNormalizer {
     assertEquals(hri2, ((MergeNormalizationPlan) plan).getSecondRegion());
   }
 
-  @SuppressWarnings("MockitoCast")
-  protected void setupMocksForNormalizer(Map<byte[], Integer> regionSizes,
+  private void setupMocksForNormalizer(Map<byte[], Integer> regionSizes,
                                          List<RegionInfo> RegionInfo) {
-    masterServices = Mockito.mock(MasterServices.class, RETURNS_DEEP_STUBS);
-    masterRpcServices = Mockito.mock(MasterRpcServices.class, RETURNS_DEEP_STUBS);
+    masterServices = mock(MasterServices.class, RETURNS_DEEP_STUBS);
+    masterRpcServices = mock(MasterRpcServices.class, RETURNS_DEEP_STUBS);
 
     // for simplicity all regions are assumed to be on one server; doesn't matter to us
     ServerName sn = ServerName.valueOf("localhost", 0, 1L);

@@ -299,7 +299,7 @@ public class MasterFileSystem {
     // meta table is a system table, so descriptors are predefined,
     // we should get them from registry.
     FSTableDescriptors fsd = new FSTableDescriptors(c, fs, rd);
-    fsd.createTableDescriptor(fsd.get(TableName.META_TABLE_NAME));
+    fsd.createTableDescriptor(fsd.get(TableName.META_TABLE_NAME).get());
 
     return rd;
   }
@@ -398,9 +398,10 @@ public class MasterFileSystem {
       // created here in bootstrap and it'll need to be cleaned up.  Better to
       // not make it in first place.  Turn off block caching for bootstrap.
       // Enable after.
-      TableDescriptor metaDescriptor = new FSTableDescriptors(c).get(TableName.META_TABLE_NAME);
-      HRegion meta = HRegion.createHRegion(RegionInfoBuilder.FIRST_META_REGIONINFO, rd,
-          c, setInfoFamilyCachingForMeta(metaDescriptor, false), null);
+      TableDescriptor metaDescriptor =
+        new FSTableDescriptors(c).get(TableName.META_TABLE_NAME).get();
+      HRegion meta = HRegion.createHRegion(RegionInfoBuilder.FIRST_META_REGIONINFO, rd, c,
+        setInfoFamilyCachingForMeta(metaDescriptor, false), null);
       meta.close();
     } catch (IOException e) {
         e = e instanceof RemoteException ?

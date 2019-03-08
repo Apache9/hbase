@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.MetaMutationAnnotation;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.SharedConnection;
+import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.MasterSwitchType;
@@ -115,6 +116,11 @@ public class MasterCoprocessorHost
     public void shutdown() {
       super.shutdown();
       MetricsCoprocessor.removeRegistry(this.metricRegistry);
+    }
+
+    @Override
+    public TableDescriptors getTableDescriptors() {
+      return services.getTableDescriptors();
     }
   }
 

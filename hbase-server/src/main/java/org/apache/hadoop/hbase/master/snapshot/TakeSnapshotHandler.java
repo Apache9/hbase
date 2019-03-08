@@ -138,10 +138,8 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
       "Taking " + snapshot.getType() + " snapshot on table: " + snapshotTable);
   }
 
-  private TableDescriptor loadTableDescriptor()
-      throws FileNotFoundException, IOException {
-    TableDescriptor htd =
-      this.master.getTableDescriptors().get(snapshotTable);
+  private TableDescriptor loadTableDescriptor() throws FileNotFoundException, IOException {
+    TableDescriptor htd = this.master.getTableDescriptors().get(snapshotTable).orElse(null);
     if (htd == null) {
       throw new IOException("TableDescriptor missing for " + snapshotTable);
     }

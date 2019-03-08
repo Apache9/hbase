@@ -19,16 +19,15 @@ package org.apache.hadoop.hbase.util;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import edu.umd.cs.findbugs.annotations.Nullable;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -37,26 +36,27 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
+import org.apache.hadoop.hbase.Coprocessor;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
+import org.apache.hadoop.hbase.TableInfoMissingException;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.CoprocessorDescriptorBuilder;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
+import org.apache.hadoop.hbase.exceptions.DeserializationException;
+import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
-import org.apache.hadoop.hbase.client.TableDescriptor;
-import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
-import org.apache.hadoop.hbase.Coprocessor;
-import org.apache.hadoop.hbase.exceptions.DeserializationException;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.regionserver.BloomType;
+
 import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.apache.hbase.thirdparty.com.google.common.primitives.Ints;
-import org.apache.hadoop.hbase.TableDescriptors;
-import org.apache.hadoop.hbase.TableInfoMissingException;
-import org.apache.hadoop.hbase.TableName;
 
 /**
- * Implementation of {@link TableDescriptors} that reads descriptors from the
+ * Implementation of {@link MutableTableDescriptors} that reads descriptors from the
  * passed filesystem.  It expects descriptors to be in a file in the
  * {@link #TABLEINFO_DIR} subdir of the table's directory in FS.  Can be read-only
  *  -- i.e. does not modify the filesystem or can be read and write.
@@ -74,7 +74,7 @@ import org.apache.hadoop.hbase.TableName;
  * the below needs a bit of a reworking and perhaps some supporting api in hdfs.
  */
 @InterfaceAudience.Private
-public class FSTableDescriptors implements TableDescriptors {
+public class FSTableDescriptors implements MutableTableDescriptors {
   private static final Logger LOG = LoggerFactory.getLogger(FSTableDescriptors.class);
   private final FileSystem fs;
   private final Path rootdir;
@@ -218,24 +218,22 @@ public class FSTableDescriptors implements TableDescriptors {
   }
 
   /**
-   * Get the current table descriptor for the given table, or null if none exists.
-   *
-   * Uses a local cache of the descriptor but still checks the filesystem on each call
-   * to see if a newer file has been created since the cached one was read.
+   * Get the current table descriptor for the given table.
+   * <p/>
+   * Uses a local cache of the descriptor but still checks the filesystem on each call to see if a
+   * newer file has been created since the cached one was read.
    */
   @Override
-  @Nullable
-  public TableDescriptor get(final TableName tablename)
-  throws IOException {
+  public Optional<TableDescriptor> get(TableName tablename) throws IOException {
     invocations++;
     if (TableName.META_TABLE_NAME.equals(tablename)) {
       cachehits++;
-      return metaTableDescriptor;
+      return Optional.of(metaTableDescriptor);
     }
     // hbase:meta is already handled. If some one tries to get the descriptor for
     // .logs, .oldlogs or .corrupt throw an exception.
     if (HConstants.HBASE_NON_USER_TABLE_DIRS.contains(tablename.getNameAsString())) {
-       throw new IOException("No descriptor found for non table = " + tablename);
+      throw new IOException("No descriptor found for non table = " + tablename);
     }
 
     if (usecache) {
@@ -243,59 +241,53 @@ public class FSTableDescriptors implements TableDescriptors {
       TableDescriptor cachedtdm = this.cache.get(tablename);
       if (cachedtdm != null) {
         cachehits++;
-        return cachedtdm;
+        return Optional.of(cachedtdm);
       }
     }
     TableDescriptor tdmt = null;
     try {
       tdmt = getTableDescriptorFromFs(fs, rootdir, tablename);
     } catch (NullPointerException e) {
-      LOG.debug("Exception during readTableDecriptor. Current table name = "
-          + tablename, e);
+      LOG.debug("Exception during readTableDecriptor. Current table name = " + tablename, e);
     } catch (TableInfoMissingException e) {
       // ignore. This is regular operation
     } catch (IOException ioe) {
-      LOG.debug("Exception during readTableDecriptor. Current table name = "
-          + tablename, ioe);
+      LOG.debug("Exception during readTableDecriptor. Current table name = " + tablename, ioe);
     }
     // last HTD written wins
     if (usecache && tdmt != null) {
       this.cache.put(tablename, tdmt);
     }
 
-    return tdmt;
+    return Optional.ofNullable(tdmt);
   }
 
   /**
    * Returns a map from table name to table descriptor for all tables.
    */
   @Override
-  public Map<String, TableDescriptor> getAll()
-  throws IOException {
-    Map<String, TableDescriptor> tds = new TreeMap<>();
-
+  public List<TableDescriptor> getAll() throws IOException {
+    List<TableDescriptor> tds = new ArrayList<>();
     if (fsvisited && usecache) {
-      for (Map.Entry<TableName, TableDescriptor> entry: this.cache.entrySet()) {
-        tds.put(entry.getKey().toString(), entry.getValue());
-      }
+      tds.addAll(this.cache.values());
       // add hbase:meta to the response
-      tds.put(this.metaTableDescriptor.getTableName().getNameAsString(), metaTableDescriptor);
+      tds.add(metaTableDescriptor);
     } else {
       LOG.trace("Fetching table descriptors from the filesystem.");
       boolean allvisited = true;
       for (Path d : FSUtils.getTableDirs(fs, rootdir)) {
-        TableDescriptor htd = null;
+        Optional<TableDescriptor> htd = Optional.empty();
         try {
           htd = get(FSUtils.getTableName(d));
         } catch (FileNotFoundException fnfe) {
           // inability of retrieving one HTD shouldn't stop getting the remaining
           LOG.warn("Trouble retrieving htd", fnfe);
         }
-        if (htd == null) {
+        if (htd.isPresent()) {
+          tds.add(htd.get());
+        } else {
           allvisited = false;
           continue;
-        } else {
-          tds.put(htd.getTableName().getNameAsString(), htd);
         }
         fsvisited = allvisited;
       }
@@ -305,24 +297,20 @@ public class FSTableDescriptors implements TableDescriptors {
 
   /**
     * Find descriptors by namespace.
-    * @see #get(org.apache.hadoop.hbase.TableName)
     */
   @Override
-  public Map<String, TableDescriptor> getByNamespace(String name)
-  throws IOException {
-    Map<String, TableDescriptor> htds = new TreeMap<>();
-    List<Path> tableDirs =
-        FSUtils.getLocalTableDirs(fs, FSUtils.getNamespaceDir(rootdir, name));
-    for (Path d: tableDirs) {
-      TableDescriptor htd = null;
+  public List<TableDescriptor> getByNamespace(String name) throws IOException {
+    List<TableDescriptor> htds = new ArrayList<>();
+    List<Path> tableDirs = FSUtils.getLocalTableDirs(fs, FSUtils.getNamespaceDir(rootdir, name));
+    for (Path d : tableDirs) {
+      Optional<TableDescriptor> htd = Optional.empty();
       try {
         htd = get(FSUtils.getTableName(d));
       } catch (FileNotFoundException fnfe) {
         // inability of retrieving one HTD shouldn't stop getting the remaining
         LOG.warn("Trouble retrieving htd", fnfe);
       }
-      if (htd == null) continue;
-      htds.put(FSUtils.getTableName(d).getNameAsString(), htd);
+      htd.ifPresent(htds::add);
     }
     return htds;
   }
@@ -349,13 +337,11 @@ public class FSTableDescriptors implements TableDescriptors {
   }
 
   /**
-   * Removes the table descriptor from the local cache and returns it.
-   * If not in read only mode, it also deletes the entire table directory(!)
-   * from the FileSystem.
+   * Removes the table descriptor from the local cache and returns it. If not in read only mode, it
+   * also deletes the entire table directory(!) from the FileSystem.
    */
   @Override
-  public TableDescriptor remove(final TableName tablename)
-  throws IOException {
+  public Optional<TableDescriptor> remove(final TableName tablename) throws IOException {
     if (fsreadonly) {
       throw new NotImplementedException("Cannot remove a table descriptor - in read only mode");
     }
@@ -365,8 +351,7 @@ public class FSTableDescriptors implements TableDescriptors {
         throw new IOException("Failed delete of " + tabledir.toString());
       }
     }
-    TableDescriptor descriptor = this.cache.remove(tablename);
-    return descriptor;
+    return Optional.ofNullable(this.cache.remove(tablename));
   }
 
   /**

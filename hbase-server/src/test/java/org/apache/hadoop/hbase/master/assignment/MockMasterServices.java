@@ -21,15 +21,15 @@ import static org.mockito.ArgumentMatchers.any;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Optional;
 import java.util.SortedSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.CoordinatedStateManager;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.ServerMetricsBuilder;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.ClusterConnection;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
@@ -309,29 +309,29 @@ public class MockMasterServices extends MockNoopMasterServices {
   }
 
   @Override
-  public TableDescriptors getTableDescriptors() {
-    return new TableDescriptors() {
+  public MutableTableDescriptors getTableDescriptors() {
+    return new MutableTableDescriptors() {
       @Override
-      public TableDescriptor remove(TableName tablename) throws IOException {
+      public Optional<TableDescriptor> remove(TableName tablename) throws IOException {
         // noop
         return null;
       }
 
       @Override
-      public Map<String, TableDescriptor> getAll() throws IOException {
+      public List<TableDescriptor> getAll() throws IOException {
         // noop
         return null;
       }
 
       @Override
-      public TableDescriptor get(TableName tablename) throws IOException {
+      public Optional<TableDescriptor> get(TableName tablename) throws IOException {
         TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(tablename);
         builder.setColumnFamily(ColumnFamilyDescriptorBuilder.of(DEFAULT_COLUMN_FAMILY_NAME));
-        return builder.build();
+        return Optional.of(builder.build());
       }
 
       @Override
-      public Map<String, TableDescriptor> getByNamespace(String name) throws IOException {
+      public List<TableDescriptor> getByNamespace(String name) throws IOException {
         return null;
       }
 

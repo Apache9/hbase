@@ -18,35 +18,37 @@
 package org.apache.hadoop.hbase;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.apache.yetus.audience.InterfaceStability;
 
 /**
- * Get table descriptors.
+ * Get, remove and modify table descriptors.
  * <p/>
- * Can be used by coprocessors.
+ * Used by servers to host descriptors.
  */
-@InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.COPROC)
-@InterfaceStability.Evolving
-public interface TableDescriptors {
+@InterfaceAudience.Private
+public interface MutableTableDescriptors extends TableDescriptors {
 
   /**
-   * @return TableDescriptor for tablename
+   * Add or update descriptor
+   * @param htd Descriptor to set into TableDescriptors
    */
-  Optional<TableDescriptor> get(TableName tableName) throws IOException;
+  void add(final TableDescriptor htd) throws IOException;
 
   /**
-   * Get all descriptors for a given namespace.
-   * @return Map of all descriptors.
+   * @param tablename
+   * @return Instance of table descriptor or none if not found.
    */
-  List<TableDescriptor> getByNamespace(String name) throws IOException;
+  Optional<TableDescriptor> remove(final TableName tablename) throws IOException;
 
   /**
-   * Get all TableDescriptors. Populates the descriptor cache as a side effect.
-   * @return List of all descriptors.
+   * Enables the tabledescriptor cache
    */
-  List<TableDescriptor> getAll() throws IOException;
+  void setCacheOn() throws IOException;
+
+  /**
+   * Disables the tabledescriptor cache
+   */
+  void setCacheOff() throws IOException;
 }

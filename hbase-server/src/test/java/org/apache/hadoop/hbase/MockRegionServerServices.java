@@ -355,7 +355,7 @@ public class MockRegionServerServices implements RegionServerServices {
   }
 
   @Override
-  public TableDescriptors getTableDescriptors() {
+  public MutableTableDescriptors getTableDescriptors() {
     return null;
   }
 

@@ -263,17 +263,17 @@ public class ModifyTableProcedure
     // for comparison in order to update the descriptor.
     if (shouldCheckDescriptor) {
       if (TableDescriptor.COMPARATOR.compare(unmodifiedTableDescriptor,
-        env.getMasterServices().getTableDescriptors().get(getTableName())) != 0) {
-        LOG.error("Error while modifying table '" + getTableName().toString()
-            + "' Skipping procedure : " + this);
+        env.getMasterServices().getTableDescriptors().get(getTableName()).get()) != 0) {
+        LOG.error("Error while modifying table '" + getTableName().toString() +
+          "' Skipping procedure : " + this);
         throw new ConcurrentTableModificationException(
-            "Skipping modify table operation on table '" + getTableName().toString()
-                + "' as it has already been modified by some other concurrent operation, "
-                + "Please retry.");
+          "Skipping modify table operation on table '" + getTableName().toString() +
+            "' as it has already been modified by some other concurrent operation, " +
+            "Please retry.");
       }
     } else {
       this.unmodifiedTableDescriptor =
-          env.getMasterServices().getTableDescriptors().get(getTableName());
+        env.getMasterServices().getTableDescriptors().get(getTableName()).get();
     }
 
     if (env.getMasterServices().getTableStateManager()

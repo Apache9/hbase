@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import org.apache.hadoop.hbase.MetaTableAccessor;
-import org.apache.hadoop.hbase.TableDescriptors;
+import org.apache.hadoop.hbase.MutableTableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Connection;
@@ -263,34 +263,33 @@ public class TableStateManager {
   }
 
   public void start() throws IOException {
-    TableDescriptors tableDescriptors = master.getTableDescriptors();
+    MutableTableDescriptors tableDescriptors = master.getTableDescriptors();
     migrateZooKeeper();
     Connection connection = master.getConnection();
     fixTableStates(tableDescriptors, connection);
   }
 
-  private void fixTableStates(TableDescriptors tableDescriptors, Connection connection)
+  private void fixTableStates(MutableTableDescriptors tableDescriptors, Connection connection)
       throws IOException {
-    Map<String, TableDescriptor> allDescriptors = tableDescriptors.getAll();
-    Map<String, TableState> states = new HashMap<>();
+    Map<TableName, TableState> states = new HashMap<>();
     // NOTE: Full hbase:meta table scan!
     MetaTableAccessor.fullScanTables(connection, new MetaTableAccessor.Visitor() {
       @Override
       public boolean visit(Result r) throws IOException {
         TableState state = MetaTableAccessor.getTableState(r);
-        states.put(state.getTableName().getNameAsString(), state);
+        states.put(state.getTableName(), state);
         return true;
       }
     });
-    for (Map.Entry<String, TableDescriptor> entry : allDescriptors.entrySet()) {
-      TableName tableName = TableName.valueOf(entry.getKey());
+    for (TableDescriptor td : tableDescriptors.getAll()) {
+      TableName tableName = td.getTableName();
       if (TableName.isMetaTableName(tableName)) {
         // This table is always enabled. No fixup needed. No entry in hbase:meta needed.
         // Call through to fixTableState though in case a super class wants to do something.
         fixTableState(new TableState(tableName, TableState.State.ENABLED));
         continue;
       }
-      TableState tableState = states.get(entry.getKey());
+      TableState tableState = states.get(td.getTableName());
       if (tableState == null) {
         LOG.warn(tableName + " has no table state in hbase:meta, assuming ENABLED");
         MetaTableAccessor.updateTableState(connection, tableName, TableState.State.ENABLED);
@@ -327,7 +326,7 @@ public class TableStateManager {
     try {
       for (Map.Entry<TableName, TableState.State> entry : ZKDataMigrator
         .queryForTableStates(this.master.getZooKeeper()).entrySet()) {
-        if (this.master.getTableDescriptors().get(entry.getKey()) == null) {
+        if (!this.master.getTableDescriptors().get(entry.getKey()).isPresent()) {
           deleteZooKeeper(entry.getKey());
           LOG.info("Purged table state entry from zookeepr for table not in hbase:meta: " +
             entry.getKey());

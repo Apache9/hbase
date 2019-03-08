@@ -211,7 +211,7 @@ public class TestRegionMergeTransactionOnCluster {
           .getTableRegionsAndLocations(MASTER.getConnection(), tableName);
       RegionInfo mergedRegionInfo = tableRegions.get(0).getFirst();
       TableDescriptor tableDescriptor = MASTER.getTableDescriptors().get(
-          tableName);
+          tableName).get();
       Result mergedRegionResult = MetaTableAccessor.getRegionResult(
         MASTER.getConnection(), mergedRegionInfo.getRegionName());
 

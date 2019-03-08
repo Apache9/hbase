@@ -123,7 +123,7 @@ public class UpdatePeerConfigProcedure extends ModifyPeerProcedure {
     Connection conn = env.getMasterServices().getConnection();
     Map<String, Long> lastSeqIds = new HashMap<String, Long>();
     List<String> encodedRegionNames = new ArrayList<>();
-    for (TableDescriptor td : env.getMasterServices().getTableDescriptors().getAll().values()) {
+    for (TableDescriptor td : env.getMasterServices().getTableDescriptors().getAll()) {
       if (!td.hasGlobalReplicationScope()) {
         continue;
       }
