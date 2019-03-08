@@ -100,6 +100,8 @@ public class TestRedirectedReplication extends TestReplicationBase {
     rpc.setReplicateAllUserTables(true);
     rpc.setReplicationEndpointImpl(
         RedirectingInterClusterReplicationEndpoint.class.getName());
+    // Init the replication peer with redirect config
+    rpc.getConfiguration().put(ns1T1Name, ns1T2Name);
     admin1.addReplicationPeer(SPECIAL_PEER_ID, rpc);
 
     admin1.createTable(tabLeftNs1T1);
@@ -134,7 +136,6 @@ public class TestRedirectedReplication extends TestReplicationBase {
     TestReplicationBase.tearDownAfterClass();
   }
 
-
   @Test
   public void testRedirectedReplication() throws Exception {
     LOG.info("Starting RedirectedReplication test");
@@ -144,29 +145,17 @@ public class TestRedirectedReplication extends TestReplicationBase {
     HTable htabRightNs1T2 = new HTable(conf2, ns1T2);
     HTable htabRightNs2T2 = new HTable(conf2, ns2T2);
 
-    // Step 1: "No redirection config, no redirection"
-    ReplicationPeerConfig rpc = admin1.getReplicationPeerConfig(SPECIAL_PEER_ID);
-    put(htabLeftNs1T1, row, f1Name);
-    ensureRowExisted(htabLeftNs1T1, row, f1Name);
-    ensureRowExisted(htabRightNs1T1, row, f1Name);
-    ensureRowNotExisted(htabRightNs1T2, row, f1Name);
-    delete(htabLeftNs1T1, row, f1Name);
-    ensureRowNotExisted(htabLeftNs1T1, row, f1Name);
-    ensureRowNotExisted(htabRightNs1T1, row, f1Name);
-
-    // Step 2: "Redirection to different table name works"
-    rpc.getConfiguration().put(ns1T1Name, ns1T2Name);
-    admin1.updateReplicationPeerConfig(SPECIAL_PEER_ID, rpc);
+    // Step 1: "Redirection to different table name works"
+    // The redirect table map was configured when init the replication peer
     put(htabLeftNs1T1, row, f1Name);
     ensureRowExisted(htabLeftNs1T1, row, f1Name);
     ensureRowExisted(htabRightNs1T2, row, f1Name);
     delete(htabLeftNs1T1, row, f1Name);
     ensureRowNotExisted(htabLeftNs1T1, row, f1Name);
     ensureRowNotExisted(htabRightNs1T2, row, f1Name);
-    rpc.getConfiguration().remove(ns1T1Name);
 
-    // Step 3: "Redirection to different namespace works"
-
+    // Step 2: "Redirection to different namespace works"
+    ReplicationPeerConfig rpc = admin1.getReplicationPeerConfig(SPECIAL_PEER_ID);
     rpc.getConfiguration().put(ns1T1Name, ns2T2Name);
     admin1.updateReplicationPeerConfig(SPECIAL_PEER_ID, rpc);
     put(htabLeftNs1T1, row, f1Name);
@@ -177,7 +166,7 @@ public class TestRedirectedReplication extends TestReplicationBase {
     ensureRowNotExisted(htabRightNs2T2, row, f1Name);
     rpc.getConfiguration().remove(ns1T1Name);
 
-    // Step 4: "Multiple redirection rules work at the same time"
+    // Step 3: "Multiple redirection rules work at the same time"
     rpc.getConfiguration().putAll(new HashMap<String, String>() {
       {
         put(ns1T1Name, ns1T2Name);

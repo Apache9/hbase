@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.TableName;
@@ -223,6 +224,13 @@ public class ReplicationPeerConfig {
     builder.append("rpcProtocol=").append(protocol.name()).append(",");
     builder.append("bandwidth=").append(bandwidth).append(",");
     builder.append("serial=").append(serial);
+    if (!configuration.isEmpty()) {
+      builder.append(",");
+      builder.append("configuration={");
+      StringJoiner sj = new StringJoiner(",");
+      configuration.forEach((k, v) -> sj.add(k + "=>" + v));
+      builder.append(sj.toString()).append("}");
+    }
     return builder.toString();
   }
 }

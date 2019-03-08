@@ -51,13 +51,24 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 @InterfaceAudience.Private
 public class RedirectingInterClusterReplicationEndpoint
     extends HBaseInterClusterReplicationEndpoint {
-  private Map<TableName, TableName> tableRedirectionsMap = null;
+  private Map<TableName, TableName> tableRedirectionsMap = new HashMap<>();
   private static final Log LOG =
       LogFactory.getLog(RedirectingInterClusterReplicationEndpoint.class);
 
+
+  @Override
+  public void init(Context context) throws IOException {
+    super.init(context);
+    parseTableRedirectionsMap(context.getPeerConfig());
+  }
+
   @Override
   public void peerConfigUpdated(ReplicationPeerConfig rpc){
-    tableRedirectionsMap = new HashMap<>();;
+    parseTableRedirectionsMap(rpc);
+  }
+
+  private void parseTableRedirectionsMap(ReplicationPeerConfig rpc) {
+    tableRedirectionsMap.clear();
     Iterator<String> keys = rpc.getConfiguration().keySet().iterator();
     while (keys.hasNext()){
       String key = keys.next();
