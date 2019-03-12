@@ -42,7 +42,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesti
  * variable-length long numbers.
  */
 @SuppressWarnings("restriction")
-@InterfaceAudience.Public
+@InterfaceAudience.Private
 public final class ByteBufferUtils {
   // "Compressed integer" serialization helper constants.
   public final static int VALUE_MASK = 0x7f;
