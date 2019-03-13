@@ -303,8 +303,10 @@ public final class ReadOnlyZKClient implements Closeable {
         break;
       }
       if (task == null) {
-        LOG.info(getId() + " no activities for " + keepAliveTimeMs +
-            " ms, close active connection. Will reconnect next time when there are new requests.");
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(getId() + " no activities for " + keepAliveTimeMs +
+              " ms, close active connection. Will reconnect next time when there are new requests.");
+        }
         closeZk();
         continue;
       }
