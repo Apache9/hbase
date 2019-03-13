@@ -54,6 +54,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CompoundConfiguration;
@@ -92,10 +93,12 @@ import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.security.EncryptionUtil;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.util.StringUtils;
 
 /**
@@ -634,10 +637,13 @@ public class HStore implements Store {
   public void assertBulkLoadHFileOk(Path srcPath) throws IOException {
     HFile.Reader reader  = null;
     try {
-      LOG.info("Validating hfile at " + srcPath + " for inclusion in "
-          + "store " + this + " region " + this.getRegionInfo().getRegionNameAsString());
-      reader = HFile.createReader(srcPath.getFileSystem(conf),
-          srcPath, cacheConf, conf);
+      LOG.info("Validating hfile at " + srcPath + " for inclusion in store " + this + " region "
+          + this.getRegionInfo().getRegionNameAsString());
+      FileSystem srcFs = srcPath.getFileSystem(conf);
+      // Ensure HBase user has read+write permission on source HFile.
+      FSUtils.checkAccess(UserProvider.instantiate(conf).getCurrent().getUGI(),
+        srcFs.getFileStatus(srcPath), FsAction.READ_WRITE);
+      reader = HFile.createReader(srcFs, srcPath, cacheConf, conf);
       reader.loadFileInfo();
 
       byte[] firstKey = reader.getFirstRowKey();

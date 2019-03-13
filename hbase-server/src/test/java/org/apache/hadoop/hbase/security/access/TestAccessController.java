@@ -27,6 +27,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -179,10 +180,11 @@ public class TestAccessController extends SecureTestUtil {
     // setup configuration
     conf = TEST_UTIL.getConfiguration();
     conf.set("hbase.master.hfilecleaner.plugins",
-      "org.apache.hadoop.hbase.master.cleaner.HFileLinkCleaner," +
-      "org.apache.hadoop.hbase.master.snapshot.SnapshotHFileCleaner");
+      "org.apache.hadoop.hbase.master.cleaner.HFileLinkCleaner,"
+          + "org.apache.hadoop.hbase.master.snapshot.SnapshotHFileCleaner");
     conf.set("hbase.master.logcleaner.plugins",
       "org.apache.hadoop.hbase.master.snapshot.SnapshotLogCleaner");
+    conf.set("fs.permissions.umask-mode", "000");
     // Enable security
     enableSecurity(conf);
     // In this particular test case, we can't use SecureBulkLoadEndpoint because its doAs will fail
@@ -875,13 +877,12 @@ public class TestAccessController extends SecureTestUtil {
       public Object run() throws Exception {
         int numRows = 3;
 
-        //Making the assumption that the test table won't split between the range
-        byte[][][] hfileRanges = {{{(byte)0}, {(byte)9}}};
+        // Making the assumption that the test table won't split between the range
+        byte[][][] hfileRanges = { { { (byte) 0 }, { (byte) 9 } } };
 
         Path bulkLoadBasePath = new Path(dir, new Path(User.getCurrent().getName()));
-        new BulkLoadHelper(bulkLoadBasePath)
-            .bulkLoadHFile(TEST_TABLE.getTableName(), TEST_FAMILY, TEST_QUALIFIER, hfileRanges, numRows);
-
+        new BulkLoadHelper(bulkLoadBasePath).initHFileData(TEST_FAMILY, TEST_QUALIFIER, hfileRanges,
+          numRows, FsPermission.valueOf("-rwxrwxrwx")).bulkLoadHFile(TEST_TABLE.getTableName());
         return null;
       }
     };
@@ -896,7 +897,50 @@ public class TestAccessController extends SecureTestUtil {
     TEST_UTIL.getHBaseAdmin().enableTable(TEST_TABLE.getTableName());
   }
 
-  public class BulkLoadHelper {
+  private class BulkLoadAccessTestAction implements AccessTestAction {
+    private FsPermission filePermission;
+    private Path testDataDir;
+
+    public BulkLoadAccessTestAction(FsPermission perm, Path testDataDir) {
+      this.filePermission = perm;
+      this.testDataDir = testDataDir;
+    }
+
+    @Override
+    public Object run() throws Exception {
+      // Making the assumption that the test table won't split between the range
+      byte[][][] hfileRanges = { { { (byte) 0 }, { (byte) 9 } } };
+      Path bulkLoadBasePath = new Path(testDataDir, new Path(User.getCurrent().getName()));
+      new BulkLoadHelper(bulkLoadBasePath)
+          .initHFileData(TEST_FAMILY, TEST_QUALIFIER, hfileRanges, 3, filePermission)
+          .bulkLoadHFile(TEST_TABLE.getTableName());
+      return null;
+    }
+  }
+
+  @Test
+  public void testBulkLoadWithoutWritePermission() throws Exception {
+    // Use the USER_CREATE to initialize the source directory.
+    Path testDataDir0 = TEST_UTIL.getDataTestDirOnTestFS("testBulkLoadWithoutWritePermission0");
+    Path testDataDir1 = TEST_UTIL.getDataTestDirOnTestFS("testBulkLoadWithoutWritePermission1");
+    AccessTestAction bulkLoadAction1 =
+        new BulkLoadAccessTestAction(FsPermission.valueOf("-r-xr-xr-x"), testDataDir0);
+    AccessTestAction bulkLoadAction2 =
+        new BulkLoadAccessTestAction(FsPermission.valueOf("-rwxrwxrwx"), testDataDir1);
+    FileSystem fs = TEST_UTIL.getTestFileSystem();
+    // Test the incorrect case.
+    fs.mkdirs(testDataDir0, FsPermission.valueOf("-rwxrwxrwx"));
+    try {
+      USER_CREATE.runAs(bulkLoadAction1);
+      fail("Should fail because the hbase user has no write permission on hfiles.");
+    } catch (IOException e) {
+    }
+    // Ensure the correct case.
+    fs.mkdirs(testDataDir1, FsPermission.valueOf("-rwxrwxrwx"));
+    USER_CREATE.runAs(bulkLoadAction2);
+  }
+
+  private static class BulkLoadHelper {
     private final FileSystem fs;
     private final Path loadPath;
     private final Configuration conf;
@@ -908,67 +952,64 @@ public class TestAccessController extends SecureTestUtil {
       this.loadPath = loadPath;
     }
 
-    private void createHFile(Path path,
-        byte[] family, byte[] qualifier,
-        byte[] startKey, byte[] endKey, int numRows) throws IOException {
-
+    private void createHFile(Path path, byte[] family, byte[] qualifier, byte[] startKey,
+        byte[] endKey, int numRows) throws IOException {
       HFile.Writer writer = null;
       long now = System.currentTimeMillis();
       try {
         HFileContext context = new HFileContextBuilder().build();
-        writer = HFile.getWriterFactory(conf, new CacheConfig(conf))
-            .withPath(fs, path)
-            .withFileContext(context)
-            .create();
+        writer = HFile.getWriterFactory(conf, new CacheConfig(conf)).withPath(fs, path)
+            .withFileContext(context).create();
         // subtract 2 since numRows doesn't include boundary keys
-        for (byte[] key : Bytes.iterateOnSplits(startKey, endKey, true, numRows-2)) {
+        for (byte[] key : Bytes.iterateOnSplits(startKey, endKey, true, numRows - 2)) {
           KeyValue kv = new KeyValue(key, family, qualifier, now, key);
           writer.append(kv);
         }
       } finally {
-        if(writer != null)
+        if (writer != null) {
           writer.close();
+        }
       }
     }
 
-    private void bulkLoadHFile(
-        TableName tableName,
-        byte[] family,
-        byte[] qualifier,
-        byte[][][] hfileRanges,
-        int numRowsPerRange) throws Exception {
-
+    private BulkLoadHelper initHFileData(byte[] family, byte[] qualifier, byte[][][] hfileRanges,
+        int numRowsPerRange, FsPermission filePermission) throws Exception {
       Path familyDir = new Path(loadPath, Bytes.toString(family));
       fs.mkdirs(familyDir);
       int hfileIdx = 0;
+      List<Path> hfiles = new ArrayList<>();
       for (byte[][] range : hfileRanges) {
         byte[] from = range[0];
         byte[] to = range[1];
-        createHFile(new Path(familyDir, "hfile_"+(hfileIdx++)),
-            family, qualifier, from, to, numRowsPerRange);
+        Path hfile = new Path(familyDir, "hfile_" + (hfileIdx++));
+        hfiles.add(hfile);
+        createHFile(hfile, family, qualifier, from, to, numRowsPerRange);
       }
-      //set global read so RegionServer can move it
-      setPermission(loadPath, FsPermission.valueOf("-rwxrwxrwx"));
+      // set global read so RegionServer can move it
+      setPermission(fs, loadPath, FsPermission.valueOf("-rwxrwxrwx"));
+      // Ensure the file permission as requested.
+      for (Path hfile : hfiles) {
+        setPermission(fs, hfile, filePermission);
+      }
+      return this;
+    }
 
-      HTable table = new HTable(conf, tableName);
-      try {
-        HBaseAdmin admin = new HBaseAdmin(TEST_UTIL.getConfiguration());
-        TEST_UTIL.waitTableEnabled(admin, tableName.getName());
+    private void bulkLoadHFile(TableName tableName) throws Exception {
+      try (HTable table = new HTable(TEST_UTIL.getConfiguration(), tableName)) {
+        TEST_UTIL.waitUntilAllRegionsAssigned(tableName);
         LoadIncrementalHFiles loader = new LoadIncrementalHFiles(conf);
         loader.doBulkLoad(loadPath, table);
-      } finally {
-        table.close();
       }
     }
 
-    public void setPermission(Path dir, FsPermission perm) throws IOException {
-      if(!fs.getFileStatus(dir).isDir()) {
-        fs.setPermission(dir,perm);
-      }
-      else {
-        for(FileStatus el : fs.listStatus(dir)) {
+    private static void setPermission(FileSystem fs, Path dir, FsPermission perm)
+        throws IOException {
+      if (!fs.getFileStatus(dir).isDir()) {
+        fs.setPermission(dir, perm);
+      } else {
+        for (FileStatus el : fs.listStatus(dir)) {
           fs.setPermission(el.getPath(), perm);
-          setPermission(el.getPath() , perm);
+          setPermission(fs, el.getPath(), perm);
         }
       }
     }
