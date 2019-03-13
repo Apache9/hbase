@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.replication.regionserver;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.protobuf.ReplicationProtbufUtil;
+import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
@@ -92,27 +94,34 @@ public class RedirectingInterClusterReplicationEndpoint
    * @param entries {@link java.util.List} of WAL {@link org.apache.hadoop.hbase.regionserver.wal.HLog.Entry}
    *                that are redirected if a corresponding redirection rule
    *                has been configured
+   * @return the new list of redirected entries
    */
-  private void redirectEntries(final List<Entry> entries) throws IOException {
+  private List<Entry> toRedirectedEntries(final List<Entry> entries) throws IOException {
+    List<Entry> newEntries = new LinkedList<>();
     for (Entry e : entries) {
       TableName tableName = e.getKey().getTablename();
       TableName redirectedTableName = tableRedirectionsMap.get(tableName);
       if (redirectedTableName != null) {
-        e.getKey().setTablename(redirectedTableName);
+        HLogKey key = e.getKey();
+        HLogKey newKey =
+            new HLogKey(key.getEncodedRegionName(), redirectedTableName, key.getLogSeqNum(),
+                key.getWriteTime(), key.getClusterIds(), key.getNonceGroup(), key.getNonce());
+        newEntries.add(new Entry(newKey, e.getEdit(), e.getSpan()));
       } else {
         throw new IOException("Table " + tableName +
             " WAL entries can't be redirected! Please check the redirect configuration");
       }
     }
+    return newEntries;
   }
 
   @Override
   protected void replicateWALEntry(List<Entry> entries, ReplicationSinkManager.SinkPeer sinkPeer)
       throws IOException {
     // Redirect the edits to another table in the target
-    this.redirectEntries(entries);
-    LOG.debug("Redirected " + entries.size() + " WAL entries to peer");
-    ReplicationProtbufUtil
-        .replicateWALEntry(sinkPeer.getRegionServer(), entries.toArray(new Entry[entries.size()]));
+    List<Entry> newEntries = this.toRedirectedEntries(entries);
+    LOG.debug("Redirected " + newEntries.size() + " WAL entries to peer");
+    ReplicationProtbufUtil.replicateWALEntry(sinkPeer.getRegionServer(),
+        newEntries.toArray(new Entry[newEntries.size()]));
   }
 }
