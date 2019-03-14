@@ -21,7 +21,12 @@ package org.apache.hadoop.hbase.client;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -31,9 +36,13 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
+import org.apache.hadoop.hbase.io.HFileLink;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest.FamilyFiles;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
-import org.mortbay.log.Log;
+import org.apache.hadoop.hbase.regionserver.Store;
+import com.google.protobuf.ByteString;
 
 /**
  * A client scanner for a region opened for read-only on the client side. Assumes region data
@@ -41,14 +50,16 @@ import org.mortbay.log.Log;
  */
 @InterfaceAudience.Private
 public class ClientSideRegionScanner extends AbstractClientScanner {
+  private static final Log LOG = LogFactory.getLog(ClientSideRegionScanner.class);
 
   private HRegion region;
   private Scan scan;
   RegionScanner scanner;
   List<Cell> values;
 
-  public ClientSideRegionScanner(Configuration conf, FileSystem fs,
-      Path rootDir, HTableDescriptor htd, HRegionInfo hri, Scan scan, ScanMetrics scanMetrics) throws IOException {
+  public ClientSideRegionScanner(Configuration conf, FileSystem fs, Path rootDir,
+      HTableDescriptor htd, HRegionInfo hri, Scan scan, ScanMetrics scanMetrics,
+      SnapshotRegionManifest snapshotRegionManifest) throws IOException {
 
     this.scan = scan;
 
@@ -59,6 +70,8 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
 
     // open region from the snapshot directory
     this.region = HRegion.openHRegion(conf, fs, rootDir, hri, htd, null, null, null);
+    // check store files between restore directory and snapshot manifest
+    checkStoreFiles(region, snapshotRegionManifest, rootDir);
 
     // create an internal region scanner
     this.scanner = region.getScanner(scan);
@@ -70,6 +83,44 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
       this.scanMetrics = scanMetrics;
     }
     region.startRegionOperation();
+  }
+
+  private void checkStoreFiles(HRegion region, SnapshotRegionManifest snapshotRegionManifest, Path rootDir)
+      throws IOException {
+    if (snapshotRegionManifest != null) {
+      Map<byte[], Store> regionStores = region.getStores();
+      for (FamilyFiles snapshotFamilyFiles : snapshotRegionManifest.getFamilyFilesList()) {
+        // family
+        ByteString snapshotFamily = snapshotFamilyFiles.getFamilyName();
+        // reference files read from snapshot manifest
+        Set<String> snapshotStoreFiles = snapshotFamilyFiles.getStoreFilesList().stream()
+            .map(storeFile -> storeFile.getName()).collect(Collectors.toSet());
+        // reference files read from restore directory
+        if (regionStores.get(snapshotFamily.toByteArray()) == null) {
+          throw new IOException("Family {" + snapshotFamily.toStringUtf8()
+              + "} is not in restored region but in snapshot manifest, region{"
+              + region.getRegionInfo().getRegionNameAsString() + "}, restoreDir {"
+              + rootDir.toString() + "}");
+        }
+        Set<String> restoredStoreFiles = regionStores.get(snapshotFamily.toByteArray())
+            .getStorefiles().stream().map(storeFile -> storeFile.getPath().getName())
+            .map(storeFileName -> HFileLink.isHFileLink(storeFileName)
+                ? HFileLink.getReferencedHFileName(storeFileName)
+                : storeFileName)
+            .collect(Collectors.toSet());
+        for (String snapshotStoreFile : snapshotStoreFiles) {
+          if (!restoredStoreFiles.contains(snapshotStoreFile)) {
+            throw new IOException("Storefile {" + snapshotStoreFile
+                + "} is not in restored region but in snapshot manifest, region {"
+                + region.getRegionInfo().getRegionNameAsString() + "}, column {"
+                + snapshotFamily.toStringUtf8() + "}, restoreDir {" + rootDir.toString() + "}");
+          }
+        }
+      }
+    } else {
+      LOG.error(
+        "snapshot region manifest is NULL and skip check storefiles when open a restored region");
+    }
   }
 
   @Override
@@ -103,7 +154,7 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
         this.scanner.close();
         this.scanner = null;
       } catch (IOException ex) {
-        Log.warn("Exception while closing scanner", ex);
+        LOG.warn("Exception while closing scanner", ex);
       }
     }
     if (this.region != null) {
@@ -112,7 +163,7 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
         this.region.close(true);
         this.region = null;
       } catch (IOException ex) {
-        Log.warn("Exception while closing region", ex);
+        LOG.warn("Exception while closing region", ex);
       }
     }
   }

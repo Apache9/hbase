@@ -1314,6 +1314,12 @@ MasterServices, Server {
       hdfsAclManager = new HdfsAclManager(conf);
       hdfsAclManager.start();
       // start snapshot restore file cleaner
+      if (conf.getStrings(
+        SnapshotRestoreFileCleaner.MASTER_SNAPSHOT_RESTORE_FILE_CLEANER_PLUGINS) == null) {
+        // Set default snapshot restore directory cleaner if it's not configured
+        conf.set(SnapshotRestoreFileCleaner.MASTER_SNAPSHOT_RESTORE_FILE_CLEANER_PLUGINS,
+          SnapshotRestoreFileCleaner.class.getName());
+      }
       int cleanerInterval =
           conf.getInt(SnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_INTERVAL,
             SnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_INTERVAL_DEFAULT);

@@ -181,6 +181,33 @@ public class TestTableSnapshotInputFormat extends TableSnapshotInputFormatTestBa
     }
   }
 
+  @Test
+  public void testCheckStoreFiles() throws Exception {
+    setupCluster();
+    TableName tableName = TableName.valueOf("testCheckStoreFiles");
+    String snapshotName = "testCheckStoreFiles";
+    try {
+      createTableAndSnapshot(UTIL, tableName, snapshotName, getStartRow(), getEndRow(), 1);
+
+      Job job = new Job(UTIL.getConfiguration());
+      Path tmpTableDir = UTIL.getDataTestDirOnTestFS(snapshotName);
+      Scan scan = new Scan(getStartRow(), getEndRow()); // limit the scan
+      TableMapReduceUtil.initTableSnapshotMapperJob(snapshotName, scan,
+        TestTableSnapshotMapper.class, ImmutableBytesWritable.class, NullWritable.class, job, false,
+        tmpTableDir);
+      // delete restore dir
+      UTIL.getTestFileSystem().delete(tmpTableDir, true);
+      verifyWithMockedMapReduce(job, 1, 1, getStartRow(), getEndRow());
+      Assert.fail("Should not come here");
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      UTIL.getHBaseAdmin().deleteSnapshot(snapshotName);
+      UTIL.deleteTable(tableName);
+      tearDownCluster();
+    }
+  }
+
   public void testWithMockedMapReduce(HBaseTestingUtility util, String snapshotName,
       int numRegions, int numSplitsPerRegion, int expectedNumSplits) throws Exception {
     setupCluster();
