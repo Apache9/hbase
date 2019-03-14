@@ -107,12 +107,13 @@ public class TableSnapshotInputFormatImpl {
     private String[] locations;
     private String scan;
     private String restoreDir;
+    private SnapshotRegionManifest regionManifest;
 
     // constructor for mapreduce framework / Writable
     public InputSplit() { }
 
     public InputSplit(HTableDescriptor htd, HRegionInfo regionInfo, List<String> locations,
-        Scan scan, Path restoreDir) {
+        Scan scan, Path restoreDir, SnapshotRegionManifest regionManifest) {
       this.htd = htd;
       this.regionInfo = regionInfo;
       if (locations == null || locations.isEmpty()) {
@@ -128,6 +129,7 @@ public class TableSnapshotInputFormatImpl {
       }
 
       this.restoreDir = restoreDir.toString();
+      this.regionManifest = regionManifest;
     }
 
     public String toString() {
@@ -158,6 +160,10 @@ public class TableSnapshotInputFormatImpl {
 
     public String getRestoreDir() {
       return restoreDir;
+    }
+
+    public SnapshotRegionManifest getRegionManifest() {
+      return regionManifest;
     }
 
     @Override
@@ -229,8 +235,8 @@ public class TableSnapshotInputFormatImpl {
       scan.setIsolationLevel(IsolationLevel.READ_UNCOMMITTED);
       // disable caching of data blocks
       scan.setCacheBlocks(false);
-      scanner =
-          new ClientSideRegionScanner(conf, fs, new Path(split.restoreDir), htd, hri, scan, null);
+      scanner = new ClientSideRegionScanner(conf, fs, new Path(split.restoreDir), htd, hri, scan,
+          null, split.getRegionManifest());
     }
 
     public boolean nextKeyValue() throws IOException {
@@ -377,7 +383,8 @@ public class TableSnapshotInputFormatImpl {
             Scan boundedScan = new Scan(scan);
             boundedScan.setStartRow(sp[i]);
             boundedScan.setStopRow(sp[i + 1]);
-            splits.add(new InputSplit(htd, hri, hosts, boundedScan, restoreDir));
+            splits.add(new InputSplit(htd, hri, hosts, boundedScan, restoreDir,
+                manifest.getRegionManifestsMap().get(hri.getEncodedName())));
           }
         }
       } else {
@@ -390,7 +397,8 @@ public class TableSnapshotInputFormatImpl {
 
           int len = Math.min(3, hosts.size());
           hosts = hosts.subList(0, len);
-          splits.add(new InputSplit(htd, hri, hosts, scan, restoreDir));
+          splits.add(new InputSplit(htd, hri, hosts, scan, restoreDir,
+              manifest.getRegionManifestsMap().get(hri.getEncodedName())));
         }
       }
     }

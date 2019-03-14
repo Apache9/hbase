@@ -20,10 +20,12 @@ package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
@@ -124,6 +126,43 @@ public class TestTableSnapshotScanner {
   @Test
   public void testWithOfflineHBaseMultiRegion() throws Exception {
     testScanner(UTIL, "testWithMultiRegion", 20, true);
+  }
+
+  @Test
+  public void testCheckStoreFiles() throws Exception {
+    setupCluster();
+    TableName tableName = TableName.valueOf("testCheckStoreFiles");
+    String snapshotName = "testCheckStoreFiles";
+    int numRegions = 3;
+    createTableAndSnapshot(UTIL, tableName, snapshotName, numRegions);
+    Path restoreDir = UTIL.getDataTestDirOnTestFS(snapshotName);
+    Scan scan = new Scan().withStartRow(bbb).withStopRow(yyy);
+
+    try {
+      TableSnapshotScanner scanner =
+          new TableSnapshotScanner(UTIL.getConfiguration(), restoreDir, snapshotName, scan);
+      // delete reference file of restored region
+      restoreDir = fs.listStatus(restoreDir)[0].getPath();
+      Path restoreTableDir = FSUtils.getTableDir(restoreDir, tableName);
+      List<Path> restoreRegionDirs = FSUtils.getRegionDirs(fs, restoreTableDir);
+      for (Path restoreRegionDir : restoreRegionDirs) {
+        Path familyDir1 = new Path(restoreRegionDir, "f1");
+        for (FileStatus status : fs.listStatus(familyDir1)) {
+          fs.delete(status.getPath(), false);
+          break;
+        }
+        Path familyDir2 = new Path(restoreRegionDir, "f2");
+        for (FileStatus status : fs.listStatus(familyDir2)) {
+          fs.delete(status.getPath(), false);
+          break;
+        }
+      }
+      verifyScanner(scanner, bbb, yyy);
+      scanner.close();
+      Assert.fail("Should not come here");
+    } catch (IOException e) {
+      LOG.error("Catch check store files error", e);
+    }
   }
 
   private void testScanner(HBaseTestingUtility util, String snapshotName, int numRegions,

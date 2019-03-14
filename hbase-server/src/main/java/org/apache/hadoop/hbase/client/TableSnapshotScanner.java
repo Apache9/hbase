@@ -86,7 +86,7 @@ public class TableSnapshotScanner extends AbstractClientScanner {
   private Path rootDir;
   private Path restoreDir;
   private Scan scan;
-  private List<HRegionInfo> regions;
+  private List<SnapshotRegionManifest> regionManifests;
   private HTableDescriptor htd;
   private boolean snapshotAlreadyRestored = false;
   private long maxBytesPerSec = 0;
@@ -180,8 +180,9 @@ public class TableSnapshotScanner extends AbstractClientScanner {
       throw new IllegalArgumentException("Snapshot seems empty, snapshotName: " + snapshotName);
     }
 
-    regions = regionManifests.stream().map(r -> HRegionInfo.convert(r.getRegionInfo()))
-        .filter(this::isValidRegion).sorted().collect(Collectors.toList());
+    this.regionManifests = regionManifests.stream()
+        .filter(rmf -> isValidRegion(HRegionInfo.convert(rmf.getRegionInfo())))
+        .collect(Collectors.toList());
     htd = manifest.getTableDescriptor();
   }
 
@@ -196,13 +197,13 @@ public class TableSnapshotScanner extends AbstractClientScanner {
     while (true) {
       if (currentRegionScanner == null) {
         currentRegion++;
-        if (currentRegion >= regions.size()) {
+        if (currentRegion >= regionManifests.size()) {
           return null;
         }
 
-        HRegionInfo hri = regions.get(currentRegion);
-        currentRegionScanner =
-            new ClientSideRegionScanner(conf, fs, restoreDir, htd, hri, scan, scanMetrics);
+        HRegionInfo hri = HRegionInfo.convert(regionManifests.get(currentRegion).getRegionInfo());
+        currentRegionScanner = new ClientSideRegionScanner(conf, fs, restoreDir, htd, hri, scan,
+            scanMetrics, regionManifests.get(currentRegion));
         if (this.scanMetrics != null) {
           this.scanMetrics.countOfRegions.incrementAndGet();
         }
