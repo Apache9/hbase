@@ -24,6 +24,12 @@ import static org.apache.hadoop.hbase.util.FutureUtils.unwrapCompletionException
 
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcChannel;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcCallback;
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
+import com.xiaomi.infra.thirdparty.io.netty.util.TimerTask;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -86,7 +92,6 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
-import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.ShadedAccessControlUtil;
 import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
@@ -98,13 +103,6 @@ import org.apache.hadoop.hbase.util.ForeignExceptionUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
-import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
-import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcCallback;
-import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
-import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
-import com.xiaomi.infra.thirdparty.io.netty.util.TimerTask;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
@@ -3771,24 +3769,21 @@ class RawAsyncHBaseAdmin implements AsyncAdmin {
   }
 
   @Override
-  public CompletableFuture<Void> grant(String userName, Permission permission,
+  public CompletableFuture<Void> grant(UserPermission userPermission,
       boolean mergeExistingPermissions) {
     return this.<Void> newMasterCaller()
-        .action(
-          (controller, stub) -> this.<GrantRequest, GrantResponse, Void> call(controller, stub,
-            ShadedAccessControlUtil.buildGrantRequest(new UserPermission(userName, permission),
-              mergeExistingPermissions),
-            (s, c, req, done) -> s.grant(c, req, done), resp -> null))
+        .action((controller, stub) -> this.<GrantRequest, GrantResponse, Void> call(controller,
+          stub, ShadedAccessControlUtil.buildGrantRequest(userPermission, mergeExistingPermissions),
+          (s, c, req, done) -> s.grant(c, req, done), resp -> null))
         .call();
   }
 
   @Override
-  public CompletableFuture<Void> revoke(String userName, Permission permission) {
+  public CompletableFuture<Void> revoke(UserPermission userPermission) {
     return this.<Void> newMasterCaller()
-        .action(
-          (controller, stub) -> this.<RevokeRequest, RevokeResponse, Void> call(controller, stub,
-            ShadedAccessControlUtil.buildRevokeRequest(new UserPermission(userName, permission)),
-            (s, c, req, done) -> s.revoke(c, req, done), resp -> null))
+        .action((controller, stub) -> this.<RevokeRequest, RevokeResponse, Void> call(controller,
+          stub, ShadedAccessControlUtil.buildRevokeRequest(userPermission),
+          (s, c, req, done) -> s.revoke(c, req, done), resp -> null))
         .call();
   }
 }
