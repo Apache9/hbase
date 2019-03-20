@@ -306,7 +306,8 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
     return config.getInt(HConstants.HBASE_CLIENT_IPC_POOL_SIZE, 1);
   }
 
-  private int nextCallId() {
+  @VisibleForTesting
+  int nextCallId() {
     int id, next;
     do {
       id = callIdCnt.get();

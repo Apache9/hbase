@@ -187,6 +187,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.GetServerIn
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.GetServerInfoResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.GetStoreFileRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.GetStoreFileResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.MasterFenceRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.MasterFenceResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.OpenRegionRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.OpenRegionRequest.RegionOpenInfo;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.OpenRegionResponse;
@@ -3776,8 +3778,17 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     }
   }
 
+  @Override
+  @QosPriority(priority = HConstants.ADMIN_QOS)
+  public MasterFenceResponse masterFence(RpcController controller, MasterFenceRequest request)
+      throws ServiceException {
+    // TODO Implement AdminProtos.AdminService.BlockingInterface.masterFence
+    return null;
+  }
+
   @VisibleForTesting
   public RpcScheduler getRpcScheduler() {
     return rpcServer.getScheduler();
   }
+
 }
