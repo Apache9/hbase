@@ -49,27 +49,18 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-source-plugin</artifactId>
         </plugin>
-          <plugin>
-              <groupId>net.revelc.code</groupId>
-              <artifactId>warbucks-maven-plugin</artifactId>
-          </plugin>
-        </plugins>
-      <pluginManagement>
-        <plugins>
-          <!--This plugin's configuration is used to store Eclipse m2e settings
-               only. It has no influence on the Maven build itself.-->
-          <plugin>
-            <groupId>org.eclipse.m2e</groupId>
-            <artifactId>lifecycle-mapping</artifactId>
-            <configuration>
-              <lifecycleMappingMetadata>
-                <pluginExecutions>
-                </pluginExecutions>
-              </lifecycleMappingMetadata>
-            </configuration>
-          </plugin>
-        </plugins>
-      </pluginManagement>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <configuration>
+            <failOnViolation>true</failOnViolation>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>net.revelc.code</groupId>
+          <artifactId>warbucks-maven-plugin</artifactId>
+        </plugin>
+      </plugins>
     </build>
 
     <dependencies>
@@ -119,6 +110,32 @@
                 <surefire.skipSecondPart>true</surefire.skipSecondPart>
             </properties>
         </profile>
+      <profile>
+        <id>eclipse-specific</id>
+        <activation>
+          <property>
+            <name>m2e.version</name>
+          </property>
+        </activation>
+        <build>
+          <pluginManagement>
+            <plugins>
+              <!--This plugin's configuration is used to store Eclipse m2e settings
+                   only. It has no influence on the Maven build itself.-->
+              <plugin>
+                <groupId>org.eclipse.m2e</groupId>
+                <artifactId>lifecycle-mapping</artifactId>
+                <configuration>
+                  <lifecycleMappingMetadata>
+                    <pluginExecutions>
+                    </pluginExecutions>
+                  </lifecycleMappingMetadata>
+                </configuration>
+              </plugin>
+            </plugins>
+          </pluginManagement>
+        </build>
+      </profile>
     </profiles>
 
 </project>
