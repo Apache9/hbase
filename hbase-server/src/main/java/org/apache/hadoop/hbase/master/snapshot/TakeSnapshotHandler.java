@@ -276,6 +276,7 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
     URI workingURI = workingDirFs.getUri();
     URI rootURI = fs.getUri();
     if ((!workingURI.getScheme().equals(rootURI.getScheme()) ||
+        workingURI.getAuthority() == null ||
         !workingURI.getAuthority().equals(rootURI.getAuthority()) ||
         workingURI.getUserInfo() == null ||
         !workingURI.getUserInfo().equals(rootURI.getUserInfo()) ||
@@ -364,5 +365,4 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
   public ForeignException getException() {
     return monitor.getException();
   }
-
 }
