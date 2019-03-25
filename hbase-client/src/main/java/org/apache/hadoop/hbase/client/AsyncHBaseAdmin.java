@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.security.access.GetUserPermissionsRequest;
 import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -817,5 +818,11 @@ class AsyncHBaseAdmin implements AsyncAdmin {
   @Override
   public CompletableFuture<Void> revoke(UserPermission userPermission) {
     return wrap(rawAdmin.revoke(userPermission));
+  }
+
+  @Override
+  public CompletableFuture<List<UserPermission>>
+      getUserPermissions(GetUserPermissionsRequest getUserPermissionsRequest) {
+    return wrap(rawAdmin.getUserPermissions(getUserPermissionsRequest));
   }
 }
