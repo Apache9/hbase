@@ -2522,6 +2522,10 @@
             <version>${hadoop-two.version}</version>
             <exclusions>
               <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>io.netty</groupId>
                 <artifactId>netty</artifactId>
               </exclusion>
@@ -2557,6 +2561,10 @@
             <version>${hadoop-two.version}</version>
             <exclusions>
               <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>io.netty</groupId>
                 <artifactId>netty</artifactId>
               </exclusion>
@@ -2582,6 +2590,10 @@
             <scope>test</scope>
             <exclusions>
               <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>io.netty</groupId>
                 <artifactId>netty</artifactId>
               </exclusion>
@@ -2604,6 +2616,10 @@
             <artifactId>hadoop-hdfs</artifactId>
             <version>${hadoop-two.version}</version>
             <exclusions>
+              <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+              </exclusion>
               <exclusion>
                 <groupId>javax.servlet.jsp</groupId>
                 <artifactId>jsp-api</artifactId>
@@ -2691,7 +2707,11 @@
               </exclusion>
               <exclusion>
                 <groupId>tomcat</groupId>
-                <artifactId>jasper-runtime</artifactId>
+		<artifactId>jasper-runtime</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
               </exclusion>
             </exclusions>
           </dependency>
@@ -2705,6 +2725,10 @@
             <artifactId>hadoop-common</artifactId>
             <version>${hadoop-two.version}</version>
             <exclusions>
+              <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+              </exclusion>
               <exclusion>
                 <groupId>commons-beanutils</groupId>
                 <artifactId>commons-beanutils</artifactId>
@@ -2778,6 +2802,23 @@
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop-two.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
             <version>${hadoop-two.version}</version>
           </dependency>
@@ -2788,6 +2829,18 @@
             <artifactId>hadoop-minicluster</artifactId>
             <version>${hadoop-two.version}</version>
             <exclusions>
+              <!--If we comment this in, a few tests in hbase-mapreduce
+                   fail. They depend on jersey-core somehow. But excluding
+                   jersey-core here messes up hbase-it because jersey-core
+                   implements a 1.x jaxrs Response Interface when we depend
+                   on the 2.x Interface... . Letting this jar come in
+                   transitively here but will exclude it down in hbase-it.
+                   See HBASE-22029.
+              <exclusion>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-core</artifactId>
+              </exclusion>
+              -->
               <exclusion>
                 <groupId>commons-httpclient</groupId>
                 <artifactId>commons-httpclient</artifactId>
@@ -2832,6 +2885,11 @@
             <version>${hadoop-two.version}</version>
             <scope>test</scope>
           </dependency>
+         <dependency>
+           <groupId>org.apache.hadoop</groupId>
+           <artifactId>hadoop-annotations</artifactId>
+           <version>${hadoop-two.version}</version>
+         </dependency>
         </dependencies>
       </dependencyManagement>
     </profile>
@@ -2868,6 +2926,10 @@
            <version>${hadoop-three.version}</version>
            <exclusions>
              <exclusion>
+               <groupId>com.sun.jersey</groupId>
+               <artifactId>jersey-core</artifactId>
+             </exclusion>
+             <exclusion>
                <groupId>io.netty</groupId>
                <artifactId>netty</artifactId>
              </exclusion>
@@ -2899,6 +2961,10 @@
            <version>${hadoop-three.version}</version>
            <exclusions>
              <exclusion>
+               <groupId>com.sun.jersey</groupId>
+               <artifactId>jersey-core</artifactId>
+             </exclusion>
+             <exclusion>
                <groupId>io.netty</groupId>
                <artifactId>netty</artifactId>
              </exclusion>
@@ -2911,6 +2977,10 @@
            <type>test-jar</type>
            <scope>test</scope>
            <exclusions>
+             <exclusion>
+               <groupId>com.sun.jersey</groupId>
+               <artifactId>jersey-core</artifactId>
+             </exclusion>
              <exclusion>
                <groupId>io.netty</groupId>
                <artifactId>netty</artifactId>
@@ -3097,9 +3167,13 @@
                <artifactId>jersey-core</artifactId>
              </exclusion>
              <exclusion>
-                <groupId>com.xiaomi.infra</groupId>
-                <artifactId>scribe-log4j</artifactId>
-              </exclusion>
+               <groupId>com.xiaomi.infra</groupId>
+               <artifactId>scribe-log4j</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.google.code.findbugs</groupId>
+               <artifactId>jsr305</artifactId>
+             </exclusion>
            </exclusions>
          </dependency>
          <dependency>
@@ -3119,6 +3193,18 @@
            <artifactId>hadoop-minicluster</artifactId>
            <version>${hadoop-three.version}</version>
            <exclusions>
+              <!--If we comment this in, a few tests in hbase-mapreduce
+                   fail. They depend on jersey-core somehow. But excluding
+                   jersey-core here messes up hbase-it because jersey-core
+                   implements a 1.x jaxrs Response Interface when we depend
+                   on the 2.x Interface... . Letting this jar come in
+                   transitively here but will exclude it down in hbase-it.
+                   See HBASE-22029.
+             <exclusion>
+               <groupId>com.sun.jersey</groupId>
+               <artifactId>jersey-core</artifactId>
+             </exclusion>
+             -->
              <exclusion>
                <groupId>commons-httpclient</groupId>
                <artifactId>commons-httpclient</artifactId>
