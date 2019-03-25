@@ -116,6 +116,7 @@ import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
+import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
@@ -1680,12 +1681,12 @@ public class HBaseFsck extends Configured {
     FileStatus[] files = fs.listStatus(hbaseDir);
     for (FileStatus file : files) {
       try {
-        FSUtils.checkAccess(ugi, file, FsAction.WRITE);
-      } catch (AccessDeniedException ace) {
+        fs.access(file.getPath(), FsAction.WRITE);
+      } catch (AccessControlException ace) {
         LOG.warn("Got AccessDeniedException when preCheckPermission ", ace);
-        errors.reportError(ERROR_CODE.WRONG_USAGE, "Current user " + ugi.getUserName()
-          + " does not have write perms to " + file.getPath()
-          + ". Please rerun hbck as hdfs user " + file.getOwner());
+        errors.reportError(ERROR_CODE.WRONG_USAGE,
+          "Current user " + ugi.getUserName() + " does not have write perms to " + file.getPath()
+              + ". Please rerun hbck as hdfs user " + file.getOwner());
         throw ace;
       }
     }

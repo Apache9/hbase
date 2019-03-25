@@ -37,7 +37,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -59,7 +58,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.ClusterId;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -74,7 +72,6 @@ import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.master.RegionPlacementMaintainer;
 import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
-import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.FSProtos;
 import org.apache.hadoop.hbase.regionserver.HRegion;
@@ -84,7 +81,6 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.FSConstants;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.SequenceFile;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
@@ -1681,42 +1677,6 @@ public abstract class FSUtils {
    */
   public static boolean isExists(final FileSystem fs, final Path path) throws IOException {
     return fs.exists(path);
-  }
-
-  /**
-   * Throw an exception if an action is not permitted by a user on a file.
-   *
-   * @param ugi
-   *          the user
-   * @param file
-   *          the file
-   * @param action
-   *          the action
-   */
-  public static void checkAccess(UserGroupInformation ugi, FileStatus file,
-      FsAction action) throws AccessDeniedException {
-    if (ugi.getShortUserName().equals(file.getOwner())) {
-      if (file.getPermission().getUserAction().implies(action)) {
-        return;
-      }
-    } else if (contains(ugi.getGroupNames(), file.getGroup())) {
-      if (file.getPermission().getGroupAction().implies(action)) {
-        return;
-      }
-    } else if (file.getPermission().getOtherAction().implies(action)) {
-      return;
-    }
-    throw new AccessDeniedException("Permission denied:" + " action=" + action
-        + " path=" + file.getPath() + " user=" + ugi.getShortUserName());
-  }
-
-  private static boolean contains(String[] groups, String user) {
-    for (String group : groups) {
-      if (group.equals(user)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**
