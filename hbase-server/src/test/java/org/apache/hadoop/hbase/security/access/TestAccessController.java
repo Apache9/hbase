@@ -928,13 +928,10 @@ public class TestAccessController extends SecureTestUtil {
     AccessTestAction bulkLoadAction2 =
         new BulkLoadAccessTestAction(FsPermission.valueOf("-rwxrwxrwx"), testDataDir1);
     FileSystem fs = TEST_UTIL.getTestFileSystem();
-    // Test the incorrect case.
+    // Test the incorrect case: even if we have not the write permission, the LoadIncrementalHFiles
+    // tool will ensure the write permission.
     fs.mkdirs(testDataDir0, FsPermission.valueOf("-rwxrwxrwx"));
-    try {
-      USER_CREATE.runAs(bulkLoadAction1);
-      fail("Should fail because the hbase user has no write permission on hfiles.");
-    } catch (IOException e) {
-    }
+    USER_CREATE.runAs(bulkLoadAction1);
     // Ensure the correct case.
     fs.mkdirs(testDataDir1, FsPermission.valueOf("-rwxrwxrwx"));
     USER_CREATE.runAs(bulkLoadAction2);

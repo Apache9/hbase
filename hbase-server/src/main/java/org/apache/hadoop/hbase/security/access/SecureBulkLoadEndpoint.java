@@ -289,6 +289,7 @@ public class SecureBulkLoadEndpoint extends SecureBulkLoadService
             return env.getRegion().bulkLoadHFiles(familyPaths, true,
                 new SecureBulkLoadListener(fs, bulkToken, conf));
           } catch (Exception e) {
+            ResponseConverter.setControllerException(controller, new IOException(e));
             LOG.error("Failed to complete bulk load", e);
           }
           return false;

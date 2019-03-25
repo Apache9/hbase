@@ -56,6 +56,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
@@ -128,7 +129,8 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
   private LoadIncrementalHFiles() {}
 
   public LoadIncrementalHFiles(Configuration conf) throws Exception {
-    super(conf);
+    super(HBaseConfiguration.create(conf));
+    ensureUMask(getConf());
     initialize();
   }
 
@@ -517,7 +519,6 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     splitStoreFile(getConf(), hfilePath, familyDesc, splitKey,
         botOut, topOut);
 
-    FileSystem fs = tmpDir.getFileSystem(getConf());
     fs.setPermission(tmpDir, FsPermission.valueOf("-rwxrwxrwx"));
     fs.setPermission(topOut, FsPermission.valueOf("-rwxrwxrwx"));
     fs.setPermission(botOut, FsPermission.valueOf("-rwxrwxrwx"));
@@ -647,6 +648,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     final List<Pair<byte[], String>> famPaths =
       new ArrayList<Pair<byte[], String>>(lqis.size());
     for (LoadQueueItem lqi : lqis) {
+      fs.setPermission(lqi.hfilePath, FsPermission.valueOf("-rwxrwxrwx"));
       famPaths.add(Pair.newPair(lqi.family, lqi.hfilePath.toString()));
     }
 
@@ -946,10 +948,16 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     return 0;
   }
 
+  private static void ensureUMask(Configuration conf) {
+    conf.setBoolean(HConstants.ENABLE_DATA_FILE_UMASK, true);
+    conf.set(HConstants.DATA_FILE_UMASK_KEY, "000");
+    conf.set(CommonConfigurationKeys.FS_PERMISSIONS_UMASK_KEY, "000");
+  }
+
   public static void main(String[] args) throws Exception {
     Configuration conf = HBaseConfiguration.create();
+    ensureUMask(conf);
     int ret = ToolRunner.run(conf, new LoadIncrementalHFiles(), args);
     System.exit(ret);
   }
-
 }

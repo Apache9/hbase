@@ -93,12 +93,10 @@ import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.security.EncryptionUtil;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.util.StringUtils;
 
 /**
@@ -641,8 +639,7 @@ public class HStore implements Store {
           + this.getRegionInfo().getRegionNameAsString());
       FileSystem srcFs = srcPath.getFileSystem(conf);
       // Ensure HBase user has read+write permission on source HFile.
-      FSUtils.checkAccess(UserProvider.instantiate(conf).getCurrent().getUGI(),
-        srcFs.getFileStatus(srcPath), FsAction.READ_WRITE);
+      srcFs.access(srcPath, FsAction.READ_WRITE);
       reader = HFile.createReader(srcFs, srcPath, cacheConf, conf);
       reader.loadFileInfo();
 
