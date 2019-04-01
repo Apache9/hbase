@@ -86,6 +86,10 @@ public class ReplicationSink implements THBaseService.Iface {
   private final String clusterId;
   private ThriftServer thriftServer;
 
+  public static final String REPLICATION_SINK_BATCH_LIMIT = "hbase.replication.sink.batch.limit";
+  public static final int DEFAULT_REPLICATION_SINK_BATCH_LIMIT = 1000;
+  private final int batchLimit;
+
   /**
    * Create a sink for replication
    *
@@ -100,6 +104,8 @@ public class ReplicationSink implements THBaseService.Iface {
     decorateConf();
     this.metrics = new MetricsSink();
     this.sharedHtableCon = HConnectionManager.createConnection(this.conf);
+    this.batchLimit =
+        this.conf.getInt(REPLICATION_SINK_BATCH_LIMIT, DEFAULT_REPLICATION_SINK_BATCH_LIMIT);
   }
 
   /**
@@ -138,8 +144,7 @@ public class ReplicationSink implements THBaseService.Iface {
       long totalReplicated = 0;
       // Map of table => list of Rows, grouped by cluster id, we only want to flushCommits once per
       // invocation of this method per table and cluster id.
-      Map<TableName, Map<List<UUID>, List<Row>>> rowMap =
-          new TreeMap<TableName, Map<List<UUID>, List<Row>>>();
+      Map<TableName, Map<List<UUID>, List<Row>>> rowMap = new TreeMap<>();
       for (WALEntry entry : entries) {
         TableName table =
             TableName.valueOf(entry.getKey().getTableName().toByteArray());
@@ -173,7 +178,7 @@ public class ReplicationSink implements THBaseService.Iface {
         }
         totalReplicated++;
       }
-      for (Entry<TableName, Map<List<UUID>,List<Row>>> entry : rowMap.entrySet()) {
+      for (Entry<TableName, Map<List<UUID>, List<Row>>> entry : rowMap.entrySet()) {
         batch(entry.getKey(), entry.getValue().values());
       }
       int size = entries.size();
@@ -249,24 +254,26 @@ public class ReplicationSink implements THBaseService.Iface {
     if (allRows.isEmpty()) {
       return;
     }
-    HTableInterface table = null;
-    try {
-      table = this.sharedHtableCon.getTable(tableName);
+    try (HTableInterface table = this.sharedHtableCon.getTable(tableName)) {
       for (List<Row> rows : allRows) {
         // for salted table, the hash prefix has been added to rowkey in source cluster, should put
         // directly in replication
         if (table instanceof SaltedHTable) {
-          ((SaltedHTable)table).getRawTable().batch(rows);
+          batchWithLimit(((SaltedHTable) table).getRawTable(), rows);
         } else {
-          table.batch(rows);
+          batchWithLimit(table, rows);
         }
       }
     } catch (InterruptedException ix) {
-      throw (InterruptedIOException)new InterruptedIOException().initCause(ix);
-    } finally {
-      if (table != null) {
-        table.close();
-      }
+      throw (InterruptedIOException) new InterruptedIOException().initCause(ix);
+    }
+  }
+
+  private void batchWithLimit(HTableInterface table, List<Row> rows)
+      throws IOException, InterruptedException {
+    int count = rows.size();
+    for (int i = 0; i * batchLimit < count; i++) {
+      table.batch(rows.subList(i * batchLimit, Math.min(count, (i + 1) * batchLimit)));
     }
   }
 
