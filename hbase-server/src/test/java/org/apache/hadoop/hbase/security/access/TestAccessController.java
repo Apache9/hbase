@@ -2142,8 +2142,7 @@ public class TestAccessController extends SecureTestUtil {
       AccessTestAction moveAction = new AccessTestAction() {
         @Override
         public Object run() throws Exception {
-          admin.move(hri.getEncodedNameAsBytes(),
-            Bytes.toBytes(newRs.getServerName().getServerName()));
+          admin.move(hri.getEncodedNameAsBytes(), newRs.getServerName());
           return null;
         }
       };

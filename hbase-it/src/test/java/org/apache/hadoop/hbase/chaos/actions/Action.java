@@ -225,7 +225,7 @@ public class Action {
         break;
       }
       int targetIx = RandomUtils.nextInt(0, toServers.size());
-      admin.move(victimRegion, Bytes.toBytes(toServers.get(targetIx).getServerName()));
+      admin.move(victimRegion, toServers.get(targetIx));
     }
   }
 
