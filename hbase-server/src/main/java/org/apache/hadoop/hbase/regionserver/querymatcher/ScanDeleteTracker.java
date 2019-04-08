@@ -32,17 +32,11 @@ import org.apache.hadoop.hbase.util.Bytes;
  * higher level.
  * <p>
  * This class is utilized through three methods:
-<<<<<<< HEAD:hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/ScanDeleteTracker.java
- * <ul><li>{@link #add} when encountering a Delete or DeleteColumn
- * <li>{@link #isDeleted} when checking if a Put KeyValue has been deleted
- * <li>{@link #update} when reaching the end of a StoreFile or row for scans
-=======
  * <ul>
  * <li>{@link #add} when encountering a Delete or DeleteColumn</li>
  * <li>{@link #isDeleted} when checking if a Put KeyValue has been deleted</li>
  * <li>{@link #update} when reaching the end of a StoreFile or row for scans</li>
  * </ul>
->>>>>>> dc56aa2... HBASE-16225 Refactor ScanQueryMatcher:hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/querymatcher/ScanDeleteTracker.java
  * <p>
  * This class is NOT thread-safe as queries are never multi-threaded
  */
