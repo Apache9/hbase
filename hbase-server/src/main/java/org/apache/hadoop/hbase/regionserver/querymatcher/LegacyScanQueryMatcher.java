@@ -338,6 +338,7 @@ public class LegacyScanQueryMatcher extends ScanQueryMatcher {
 
   @Override
   protected void reset() {
+    deletes.reset();
     checkPartialDropDeleteRange(currentRow);
   }
 
