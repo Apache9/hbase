@@ -396,7 +396,7 @@ public class TestHFileOutputFormat2  {
       HFile.Reader rd =
           HFile.createReader(fs, file[0].getPath(), new CacheConfig(conf), true, conf);
       Map<byte[],byte[]> finfo = rd.loadFileInfo();
-      byte[] range = finfo.get("TIMERANGE".getBytes("UTF-8"));
+      byte[] range = finfo.get(Bytes.toBytes("TIMERANGE"));
       assertNotNull(range);
 
       // unmarshall and check values.
@@ -819,7 +819,7 @@ public class TestHFileOutputFormat2  {
       for (Entry<String, Algorithm> entry : familyToCompression.entrySet()) {
         assertEquals("Compression configuration incorrect for column family:"
             + entry.getKey(), entry.getValue(),
-            retrievedFamilyToCompressionMap.get(entry.getKey().getBytes("UTF-8")));
+            retrievedFamilyToCompressionMap.get(Bytes.toBytes(entry.getKey())));
       }
     }
   }
@@ -893,7 +893,7 @@ public class TestHFileOutputFormat2  {
       for (Entry<String, BloomType> entry : familyToBloomType.entrySet()) {
         assertEquals("BloomType configuration incorrect for column family:"
             + entry.getKey(), entry.getValue(),
-            retrievedFamilyToBloomTypeMap.get(entry.getKey().getBytes("UTF-8")));
+            retrievedFamilyToBloomTypeMap.get(Bytes.toBytes(entry.getKey())));
       }
     }
   }
@@ -966,7 +966,7 @@ public class TestHFileOutputFormat2  {
           ) {
         assertEquals("BlockSize configuration incorrect for column family:"
             + entry.getKey(), entry.getValue(),
-            retrievedFamilyToBlockSizeMap.get(entry.getKey().getBytes("UTF-8")));
+            retrievedFamilyToBlockSizeMap.get(Bytes.toBytes(entry.getKey())));
       }
     }
   }
@@ -1043,7 +1043,7 @@ public class TestHFileOutputFormat2  {
       for (Entry<String, DataBlockEncoding> entry : familyToDataBlockEncoding.entrySet()) {
         assertEquals("DataBlockEncoding configuration incorrect for column family:"
             + entry.getKey(), entry.getValue(),
-            retrievedFamilyToDataBlockEncodingMap.get(entry.getKey().getBytes("UTF-8")));
+            retrievedFamilyToDataBlockEncodingMap.get(Bytes.toBytes(entry.getKey())));
       }
     }
   }
