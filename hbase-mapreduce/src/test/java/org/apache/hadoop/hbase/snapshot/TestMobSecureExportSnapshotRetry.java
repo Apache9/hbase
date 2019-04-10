@@ -21,7 +21,7 @@ import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.mob.MobConstants;
 import org.apache.hadoop.hbase.security.HadoopSecurityEnabledUserProviderForTesting;
 import org.apache.hadoop.hbase.security.UserProvider;
-import org.apache.hadoop.hbase.security.access.AccessControlLists;
+import org.apache.hadoop.hbase.security.access.PermissionStorage;
 import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MapReduceTests;
@@ -55,6 +55,6 @@ public class TestMobSecureExportSnapshotRetry extends TestMobExportSnapshotRetry
     TEST_UTIL.startMiniMapReduceCluster();
 
     // Wait for the ACL table to become available
-    TEST_UTIL.waitTableEnabled(AccessControlLists.ACL_TABLE_NAME);
+    TEST_UTIL.waitTableEnabled(PermissionStorage.ACL_TABLE_NAME);
   }
 }

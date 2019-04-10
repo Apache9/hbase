@@ -146,10 +146,9 @@ public final class AuthManager implements Closeable {
   public void refreshTableCacheFromWritable(TableName table, byte[] data) throws IOException {
     if (data != null && data.length > 0) {
       try {
-        ListMultimap<String, Permission> perms =
-          AccessControlLists.readPermissions(data, conf);
+        ListMultimap<String, Permission> perms = PermissionStorage.readPermissions(data, conf);
         if (perms != null) {
-          if (Bytes.equals(table.getName(), AccessControlLists.ACL_GLOBAL_NAME)) {
+          if (Bytes.equals(table.getName(), PermissionStorage.ACL_GLOBAL_NAME)) {
             updateGlobalCache(perms);
           } else {
             updateTableCache(table, perms);
@@ -172,8 +171,7 @@ public final class AuthManager implements Closeable {
   public void refreshNamespaceCacheFromWritable(String namespace, byte[] data) throws IOException {
     if (data != null && data.length > 0) {
       try {
-        ListMultimap<String, Permission> perms =
-          AccessControlLists.readPermissions(data, conf);
+        ListMultimap<String, Permission> perms = PermissionStorage.readPermissions(data, conf);
         if (perms != null) {
           updateNamespaceCache(namespace, perms);
         }
@@ -323,7 +321,7 @@ public final class AuthManager implements Closeable {
       return false;
     }
     if (table == null) {
-      table = AccessControlLists.ACL_TABLE_NAME;
+      table = PermissionStorage.ACL_TABLE_NAME;
     }
     if (authorizeUserNamespace(user, table.getNamespaceAsString(), action)) {
       return true;
@@ -392,7 +390,7 @@ public final class AuthManager implements Closeable {
       return false;
     }
     if (table == null) {
-      table = AccessControlLists.ACL_TABLE_NAME;
+      table = PermissionStorage.ACL_TABLE_NAME;
     }
     if (authorizeUserNamespace(user, table.getNamespaceAsString(), action)) {
       return true;
@@ -472,7 +470,7 @@ public final class AuthManager implements Closeable {
    */
   public boolean authorizeCell(User user, TableName table, Cell cell, Permission.Action action) {
     try {
-      List<Permission> perms = AccessControlLists.getCellPermissionsForUser(user, cell);
+      List<Permission> perms = PermissionStorage.getCellPermissionsForUser(user, cell);
       if (LOG.isTraceEnabled()) {
         LOG.trace("Perms for user {} in table {} in cell {}: {}",
           user.getShortName(), table, cell, (perms != null ? perms : ""));
