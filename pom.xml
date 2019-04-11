@@ -1416,7 +1416,7 @@
     <java.min.version>${compileSource}</java.min.version>
     <!-- Dependencies -->
     <!--<hadoop-two.version>2.7.4</hadoop-two.version>-->
-    <hadoop-two.version>2.6.0-mdh3.12.9-jre8</hadoop-two.version>
+    <hadoop-two.version>2.6.0-mdh3.12.14-jre8</hadoop-two.version>
     <hadoop-three.version>3.0.0</hadoop-three.version>
     <hadoop-security.version>1.0.1-jdk8</hadoop-security.version>
     <!-- These must be defined here for downstream build tools that don't look at profiles.
@@ -1514,7 +1514,7 @@
     <spotbugs.version>3.1.11</spotbugs.version>
     <wagon.ssh.version>2.12</wagon.ssh.version>
     <xml.maven.version>1.0.1</xml.maven.version>
-    <infra-thirdparty.version>2.0.2</infra-thirdparty.version>
+    <infra-thirdparty.version>2.2.0</infra-thirdparty.version>
     <!-- General Packaging -->
     <package.prefix>/usr</package.prefix>
     <package.conf.dir>/etc/hbase</package.conf.dir>
