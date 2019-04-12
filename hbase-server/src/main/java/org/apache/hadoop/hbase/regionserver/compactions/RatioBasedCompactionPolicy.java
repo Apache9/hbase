@@ -122,7 +122,7 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
     candidateSelection, boolean tryingMajor, boolean mayUseOffPeak, boolean mayBeStuck)
     throws IOException {
     if (!tryingMajor) {
-      candidateSelection = filterBulk(candidateSelection);
+      filterBulk(candidateSelection);
       candidateSelection = applyCompactionPolicy(candidateSelection, mayUseOffPeak, mayBeStuck);
       candidateSelection = checkMinFilesCriteria(candidateSelection,
         comConf.getMinFilesToCompact());
