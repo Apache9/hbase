@@ -124,7 +124,7 @@ public class TestClientPushback {
     byte[] regionName = region.getRegionInfo().getRegionName();
 
     // check to see we found some load on the memstore
-    ServerStatistics serverStats = stats.getServerStatsForTesting(server);
+    ServerStatistics serverStats = stats.getStats(server);
     ServerStatistics.RegionStatistics regionStats = serverStats.getStatsForRegion(regionName);
     assertEquals("We did not find some load on the memstore", load,
       regionStats.getMemStoreLoadPercent());
@@ -200,7 +200,7 @@ public class TestClientPushback {
     byte[] regionName = region.getRegionInfo().getRegionName();
 
     // check to see we found some load on the memstore
-    ServerStatistics serverStats = stats.getServerStatsForTesting(server);
+    ServerStatistics serverStats = stats.getStats(server);
     ServerStatistics.RegionStatistics regionStats = serverStats.getStatsForRegion(regionName);
 
     assertNotNull(regionStats);
