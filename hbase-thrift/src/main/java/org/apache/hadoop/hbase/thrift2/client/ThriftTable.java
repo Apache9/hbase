@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Row;
@@ -488,4 +489,8 @@ public class ThriftTable implements Table {
     throw new NotImplementedException("coprocessorService not supported in ThriftTable");
   }
 
+  @Override
+  public RegionLocator getRegionLocator() throws IOException {
+    throw new NotImplementedException("getRegionLocator not supported in ThriftTable");
+  }
 }

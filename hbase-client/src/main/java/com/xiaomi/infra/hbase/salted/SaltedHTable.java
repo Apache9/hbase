@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Row;
@@ -972,5 +973,11 @@ public class SaltedHTable implements Table {
       wrappedFilter = ((SkipFilter)filter).getFilter();
     }
     return wrappedFilter;
+  }
+
+  @Override
+  public RegionLocator getRegionLocator() throws IOException {
+    // The locator for SaltedHTable seems useless, so throw UNOE for now.
+    throw new UnsupportedOperationException();
   }
 }

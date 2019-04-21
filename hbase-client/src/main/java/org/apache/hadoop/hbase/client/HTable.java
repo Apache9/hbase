@@ -1214,6 +1214,7 @@ public class HTable implements Table {
     }
   }
 
+  @Override
   public RegionLocator getRegionLocator() {
     return this.locator;
   }
