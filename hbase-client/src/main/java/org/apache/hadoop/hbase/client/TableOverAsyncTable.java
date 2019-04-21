@@ -489,4 +489,8 @@ class TableOverAsyncTable implements Table {
   public long getOperationTimeout(TimeUnit unit) {
     return table.getOperationTimeout(unit);
   }
+
+  public RegionLocator getRegionLocator() throws IOException {
+    return conn.toConnection().getRegionLocator(getName());
+  }
 }
