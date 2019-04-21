@@ -36,6 +36,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicy;
+import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicyFactory;
 import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
@@ -98,6 +100,9 @@ class AsyncConnectionImpl implements AsyncConnection {
   private final AtomicReference<CompletableFuture<MasterService.Interface>> masterStubMakeFuture =
     new AtomicReference<>();
 
+  private final Optional<ServerStatisticTracker> stats;
+  private final ClientBackoffPolicy backoffPolicy;
+
   private volatile boolean closed = false;
 
   private final Optional<MetricsConnection> metrics;
@@ -125,6 +130,8 @@ class AsyncConnectionImpl implements AsyncConnection {
     } else {
       nonceGenerator = NO_NONCE_GENERATOR;
     }
+    this.stats = Optional.ofNullable(ServerStatisticTracker.create(conf));
+    this.backoffPolicy = ClientBackoffPolicyFactory.create(conf);
   }
 
   @Override
@@ -215,6 +222,14 @@ class AsyncConnectionImpl implements AsyncConnection {
 
   void clearMasterStubCache(MasterService.Interface stub) {
     masterStub.compareAndSet(stub, null);
+  }
+
+  Optional<ServerStatisticTracker> getStatisticsTracker() {
+    return stats;
+  }
+
+  ClientBackoffPolicy getBackoffPolicy() {
+    return backoffPolicy;
   }
 
   @Override
