@@ -202,6 +202,7 @@ import org.apache.hadoop.hbase.replication.master.ReplicationHFileCleaner;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
+import org.apache.hadoop.hbase.security.SecurityConstants;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
@@ -695,8 +696,8 @@ public class HMaster extends HRegionServer implements MasterServices {
     try {
       super.login(user, host);
     } catch (IOException ie) {
-      user.login("hbase.master.keytab.file",
-        "hbase.master.kerberos.principal", host);
+      user.login(SecurityConstants.MASTER_KRB_KEYTAB_FILE,
+              SecurityConstants.MASTER_KRB_PRINCIPAL, host);
     }
   }
 
