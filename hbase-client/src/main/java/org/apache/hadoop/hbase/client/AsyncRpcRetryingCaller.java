@@ -30,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.apache.hadoop.hbase.CallQueueTooBigException;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.TableName;
@@ -58,6 +59,8 @@ public abstract class AsyncRpcRetryingCaller<T> {
 
   private final long pauseNs;
 
+  private final long pauseForCQTBENs;
+
   private int tries = 1;
 
   private final int maxAttempts;
@@ -77,12 +80,13 @@ public abstract class AsyncRpcRetryingCaller<T> {
   protected final HBaseRpcController controller;
 
   public AsyncRpcRetryingCaller(Timer retryTimer, AsyncConnectionImpl conn, int priority,
-      long pauseNs, int maxAttempts, long operationTimeoutNs, long rpcTimeoutNs,
-      int startLogErrorsCnt) {
+      long pauseNs, long pauseForCQTBENs, int maxAttempts, long operationTimeoutNs,
+      long rpcTimeoutNs, int startLogErrorsCnt) {
     this.retryTimer = retryTimer;
     this.conn = conn;
     this.priority = priority;
     this.pauseNs = pauseNs;
+    this.pauseForCQTBENs = pauseForCQTBENs;
     this.maxAttempts = maxAttempts;
     this.operationTimeoutNs = operationTimeoutNs;
     this.rpcTimeoutNs = rpcTimeoutNs;
@@ -122,6 +126,7 @@ public abstract class AsyncRpcRetryingCaller<T> {
   }
 
   private void tryScheduleRetry(Throwable error, Consumer<Throwable> updateCachedLocation) {
+    long pauseNsToUse = error instanceof CallQueueTooBigException ? pauseForCQTBENs : pauseNs;
     long delayNs;
     if (operationTimeoutNs > 0) {
       long maxDelayNs = remainingTimeNs() - SLEEP_DELTA_NS;
@@ -129,9 +134,9 @@ public abstract class AsyncRpcRetryingCaller<T> {
         completeExceptionally();
         return;
       }
-      delayNs = Math.min(maxDelayNs, getPauseTime(pauseNs, tries - 1));
+      delayNs = Math.min(maxDelayNs, getPauseTime(pauseNsToUse, tries - 1));
     } else {
-      delayNs = getPauseTime(pauseNs, tries - 1);
+      delayNs = getPauseTime(pauseNsToUse, tries - 1);
     }
     tries++;
     retryTimer.newTimeout(t -> doCall(), delayNs, TimeUnit.NANOSECONDS);
