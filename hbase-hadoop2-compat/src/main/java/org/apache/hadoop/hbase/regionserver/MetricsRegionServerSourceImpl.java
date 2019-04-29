@@ -568,7 +568,22 @@ public class MetricsRegionServerSourceImpl
             .addGauge(Interns.info(MOB_FILE_CACHE_COUNT, MOB_FILE_CACHE_COUNT_DESC),
                     rsWrap.getMobFileCacheCount())
             .addGauge(Interns.info(MOB_FILE_CACHE_HIT_PERCENT, MOB_FILE_CACHE_HIT_PERCENT_DESC),
-                    rsWrap.getMobFileCacheHitPercent());
+                    rsWrap.getMobFileCacheHitPercent())
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_NUM,
+                BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_NUM_DESC),
+                rsWrap.getByteBuffAllocatorHeapAllocationNum())
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_POOL_ALLOCATION_NUM,
+                BYTE_BUFF_ALLOCATOR_POOL_ALLOCATION_NUM_DESC),
+                rsWrap.getByteBuffAllocatorPoolAllocationNum())
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_HEAP_ALLOACTION_RATIO,
+                BYTE_BUFF_ALLOCATOR_HEAP_ALLOACTION_RATIO_DESC),
+                rsWrap.getByteBuffAllocatorHeapAllocRatio())
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_TOTAL_BUFFER_COUNT,
+                BYTE_BUFF_ALLOCATOR_TOTAL_BUFFER_COUNT_DESC),
+                rsWrap.getByteBuffAllocatorTotalBufferCount())
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_FREE_BUFFER_COUNT,
+                BYTE_BUFF_ALLOCATOR_FREE_BUFFER_COUNT_DESC),
+                rsWrap.getByteBuffAllocatorFreeBufferCount());
   }
 
   @Override
