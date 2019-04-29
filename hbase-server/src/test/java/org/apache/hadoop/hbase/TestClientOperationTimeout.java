@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase;
 
 import java.io.IOException;
-
 import java.net.SocketTimeoutException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Get;
@@ -32,16 +31,15 @@ import org.apache.hadoop.hbase.regionserver.RSRpcServices;
 import org.apache.hadoop.hbase.testclassification.ClientTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
-import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
 
@@ -72,14 +70,13 @@ public class TestClientOperationTimeout {
   private static int DELAY_SCAN;
   private static int DELAY_MUTATE;
 
-  private final byte[] FAMILY = Bytes.toBytes("family");
-  private final byte[] ROW = Bytes.toBytes("row");
-  private final byte[] QUALIFIER = Bytes.toBytes("qualifier");
-  private final byte[] VALUE = Bytes.toBytes("value");
+  private static final byte[] FAMILY = Bytes.toBytes("family");
+  private static final byte[] ROW = Bytes.toBytes("row");
+  private static final byte[] QUALIFIER = Bytes.toBytes("qualifier");
+  private static final byte[] VALUE = Bytes.toBytes("value");
 
-  @Rule
-  public TestName name = new TestName();
-  private Table table;
+  private static final TableName TABLE_NAME = TableName.valueOf("Timeout");
+  private static Table TABLE;
 
   @BeforeClass
   public static void setUpClass() throws Exception {
@@ -87,11 +84,12 @@ public class TestClientOperationTimeout {
     TESTING_UTIL.getConfiguration().setLong(HConstants.HBASE_CLIENT_META_OPERATION_TIMEOUT, 500);
     TESTING_UTIL.getConfiguration().setLong(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD, 500);
     TESTING_UTIL.getConfiguration().setLong(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
-
     // Set RegionServer class and use default values for other options.
-    StartMiniClusterOption option = StartMiniClusterOption.builder()
-        .rsClass(DelayedRegionServer.class).build();
+    StartMiniClusterOption option =
+      StartMiniClusterOption.builder().rsClass(DelayedRegionServer.class).build();
     TESTING_UTIL.startMiniCluster(option);
+
+    TABLE = TESTING_UTIL.createTable(TABLE_NAME, FAMILY);
   }
 
   @Before
@@ -99,11 +97,6 @@ public class TestClientOperationTimeout {
     DELAY_GET = 0;
     DELAY_SCAN = 0;
     DELAY_MUTATE = 0;
-
-    table = TESTING_UTIL.createTable(TableName.valueOf(name.getMethodName()), FAMILY);
-    Put put = new Put(ROW);
-    put.addColumn(FAMILY, QUALIFIER, VALUE);
-    table.put(put);
   }
 
   @AfterClass
@@ -112,17 +105,17 @@ public class TestClientOperationTimeout {
   }
 
   /**
-   * Tests that a get on a table throws {@link SocketTimeoutException} when the operation takes
+   * Tests that a get on a table throws {@link RetriesExhaustedException} when the operation takes
    * longer than 'hbase.client.operation.timeout'.
    */
   @Test(expected = RetriesExhaustedException.class)
   public void testGetTimeout() throws Exception {
     DELAY_GET = 600;
-    table.get(new Get(ROW));
+    TABLE.get(new Get(ROW));
   }
 
   /**
-   * Tests that a put on a table throws {@link SocketTimeoutException} when the operation takes
+   * Tests that a put on a table throws {@link RetriesExhaustedException} when the operation takes
    * longer than 'hbase.client.operation.timeout'.
    */
   @Test(expected = RetriesExhaustedException.class)
@@ -131,7 +124,7 @@ public class TestClientOperationTimeout {
 
     Put put = new Put(ROW);
     put.addColumn(FAMILY, QUALIFIER, VALUE);
-    table.put(put);
+    TABLE.put(put);
   }
 
   /**
@@ -141,7 +134,7 @@ public class TestClientOperationTimeout {
   @Test(expected = RetriesExhaustedException.class)
   public void testScanTimeout() throws Exception {
     DELAY_SCAN = 600;
-    ResultScanner scanner = table.getScanner(new Scan());
+    ResultScanner scanner = TABLE.getScanner(new Scan());
     scanner.next();
   }
 
