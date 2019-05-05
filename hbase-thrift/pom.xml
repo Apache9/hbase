@@ -399,6 +399,31 @@
               </execution>
             </executions>
           </plugin>
+          <plugin>
+            <groupId>com.google.code.maven-replacer-plugin</groupId>
+            <artifactId>replacer</artifactId>
+            <version>1.5.3</version>
+            <executions>
+              <execution>
+                <phase>process-sources</phase>
+                <goals>
+                  <goal>replace</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <basedir>${basedir}/src/main/java/org/apache/hadoop/hbase</basedir>
+              <includes>
+                <include>**/generated/*.java</include>
+              </includes>
+              <replacements>
+                <replacement>
+                  <token>([^\.])org.apache.thrift</token>
+                  <value>$1com.xiaomi.infra.thirdparty.org.apache.thrift</value>
+                </replacement>
+              </replacements>
+            </configuration>
+          </plugin>
         </plugins>
       </build>
     </profile>
