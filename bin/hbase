@@ -68,56 +68,59 @@ esac
 # Detect if we are in hbase sources dir
 in_dev_env=false
 if [ -d "${HBASE_HOME}/target" ]; then
-  in_dev_env=true
+in_dev_env=true
 fi
 
 # Detect if we are in the omnibus tarball
 in_omnibus_tarball="false"
 if [ -f "${HBASE_HOME}/bin/hbase-daemons.sh" ]; then
-  in_omnibus_tarball="true"
+in_omnibus_tarball="true"
 fi
 
 read -d '' options_string << EOF
 Options:
-  --config DIR         Configuration direction to use. Default: ./conf
-  --hosts HOSTS        Override the list in 'regionservers' file
-  --auth-as-server     Authenticate to ZooKeeper using servers configuration
-  --internal-classpath Skip attempting to use client facing jars (WARNING: unstable results between versions)
+--config DIR         Configuration direction to use. Default: ./conf
+--hosts HOSTS        Override the list in 'regionservers' file
+--auth-as-server     Authenticate to ZooKeeper using servers configuration
+--internal-classpath Skip attempting to use client facing jars (WARNING: unstable results between versions)
 EOF
 # if no args specified, show usage
 if [ $# = 0 ]; then
-  echo "Usage: hbase [<options>] <command> [<args>]"
-  echo "$options_string"
-  echo ""
-  echo "Commands:"
-  echo "Some commands take arguments. Pass no args or -h for usage."
-  echo "  shell           Run the HBase shell"
-  echo "  hbck            Run the HBase 'fsck' tool. Defaults read-only hbck1."
-  echo "                  Pass '-j /path/to/HBCK2.jar' to run hbase-2.x HBCK2."
-  echo "  snapshot        Tool for managing snapshots"
-  if [ "${in_omnibus_tarball}" = "true" ]; then
-    echo "  wal             Write-ahead-log analyzer"
-    echo "  hfile           Store file analyzer"
-    echo "  zkcli           Run the ZooKeeper shell"
-    echo "  master          Run an HBase HMaster node"
-    echo "  regionserver    Run an HBase HRegionServer node"
-    echo "  zookeeper       Run a ZooKeeper server"
-    echo "  rest            Run an HBase REST server"
-    echo "  thrift          Run the HBase Thrift server"
-    echo "  thrift2         Run the HBase Thrift2 server"
-    echo "  clean           Run the HBase clean up script"
-  fi
-  echo "  classpath       Dump hbase CLASSPATH"
-  echo "  mapredcp        Dump CLASSPATH entries required by mapreduce"
-  echo "  pe              Run PerformanceEvaluation"
-  echo "  ltt             Run LoadTestTool"
-  echo "  canary          Run the Canary tool"
-  echo "  version         Print the version"
-  echo "  regionsplitter  Run RegionSplitter tool"
-  echo "  rowcounter      Run RowCounter tool"
-  echo "  cellcounter     Run CellCounter tool"
-  echo "  pre-upgrade     Run Pre-Upgrade validator tool"
-  echo "  CLASSNAME       Run the class named CLASSNAME"
+echo "Usage: hbase [<options>] <command> [<args>]"
+echo "$options_string"
+echo ""
+echo "Commands:"
+echo "Some commands take arguments. Pass no args or -h for usage."
+echo "  shell            Run the HBase shell"
+echo "  hbck             Run the HBase 'fsck' tool. Defaults read-only hbck1."
+echo "                   Pass '-j /path/to/HBCK2.jar' to run hbase-2.x HBCK2."
+echo "  snapshot         Tool for managing snapshots"
+if [ "${in_omnibus_tarball}" = "true" ]; then
+echo "  wal              Write-ahead-log analyzer"
+echo "  hfile            Store file analyzer"
+echo "  zkcli            Run the ZooKeeper shell"
+echo "  master           Run an HBase HMaster node"
+echo "  regionserver     Run an HBase HRegionServer node"
+echo "  zookeeper        Run a ZooKeeper server"
+echo "  rest             Run an HBase REST server"
+echo "  thrift           Run the HBase Thrift server"
+echo "  thrift2          Run the HBase Thrift2 server"
+echo "  clean            Run the HBase clean up script"
+fi
+  echo "  classpath        Dump hbase CLASSPATH"
+  echo "  mapredcp         Dump CLASSPATH entries required by mapreduce"
+  echo "  pe               Run PerformanceEvaluation"
+  echo "  ltt              Run LoadTestTool"
+  echo "  canary           Run the Canary tool"
+  echo "  version          Print the version"
+  echo "  backup           Backup tables for recovery"
+  echo "  restore          Restore tables from existing backup image"
+  echo "  completebulkload Run BulkLoadHFiles tool"
+  echo "  regionsplitter   Run RegionSplitter tool"
+  echo "  rowcounter       Run RowCounter tool"
+  echo "  cellcounter      Run CellCounter tool"
+  echo "  pre-upgrade      Run Pre-Upgrade validator tool"
+  echo "  CLASSNAME        Run the class named CLASSNAME"
   exit 1
 fi
 
@@ -617,6 +620,8 @@ elif [ "$COMMAND" = "cellcounter" ] ; then
   CLASS='org.apache.hadoop.hbase.mapreduce.CellCounter'
 elif [ "$COMMAND" = "pre-upgrade" ] ; then
   CLASS='org.apache.hadoop.hbase.tool.PreUpgradeValidator'
+elif [ "$COMMAND" = "completebulkload" ] ; then
+  CLASS='org.apache.hadoop.hbase.tool.BulkLoadHFilesTool'
 else
   CLASS=$COMMAND
 fi
