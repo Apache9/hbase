@@ -53,8 +53,7 @@ import org.slf4j.LoggerFactory;
  * Impl for exposing HRegionServer Information through Hadoop's metrics 2 system.
  */
 @InterfaceAudience.Private
-class MetricsRegionServerWrapperImpl
-    implements MetricsRegionServerWrapper {
+class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
 
   private static final Logger LOG = LoggerFactory.getLogger(MetricsRegionServerWrapperImpl.class);
 
@@ -1055,14 +1054,13 @@ class MetricsRegionServerWrapperImpl
     return this.readRawCellCountPerSecond;
   }
 
-  @Override
-  public long getByteBuffAllocatorHeapAllocationNum() {
-    return this.allocator.getHeapAllocationNum();
+  public long getByteBuffAllocatorHeapAllocationBytes() {
+    return this.allocator.getHeapAllocationBytes();
   }
 
   @Override
-  public long getByteBuffAllocatorPoolAllocationNum() {
-    return this.allocator.getPoolAllocationNum();
+  public long getByteBuffAllocatorPoolAllocationBytes() {
+    return this.allocator.getPoolAllocationBytes();
   }
 
   @Override
@@ -1076,7 +1074,7 @@ class MetricsRegionServerWrapperImpl
   }
 
   @Override
-  public long getByteBuffAllocatorFreeBufferCount() {
-    return this.allocator.getFreeBufferCount();
+  public long getByteBuffAllocatorUsedBufferCount() {
+    return this.allocator.getUsedBufferCount();
   }
 }

@@ -536,13 +536,13 @@ public interface MetricsRegionServerWrapper {
 
   long getReadRawCellCountPerSecond();
 
-  long getByteBuffAllocatorHeapAllocationNum();
+  long getByteBuffAllocatorHeapAllocationBytes();
 
-  long getByteBuffAllocatorPoolAllocationNum();
+  long getByteBuffAllocatorPoolAllocationBytes();
 
   double getByteBuffAllocatorHeapAllocRatio();
 
   long getByteBuffAllocatorTotalBufferCount();
 
-  long getByteBuffAllocatorFreeBufferCount();
+  long getByteBuffAllocatorUsedBufferCount();
 }

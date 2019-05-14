@@ -569,21 +569,21 @@ public class MetricsRegionServerSourceImpl
                     rsWrap.getMobFileCacheCount())
             .addGauge(Interns.info(MOB_FILE_CACHE_HIT_PERCENT, MOB_FILE_CACHE_HIT_PERCENT_DESC),
                     rsWrap.getMobFileCacheHitPercent())
-            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_NUM,
-                BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_NUM_DESC),
-                rsWrap.getByteBuffAllocatorHeapAllocationNum())
-            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_POOL_ALLOCATION_NUM,
-                BYTE_BUFF_ALLOCATOR_POOL_ALLOCATION_NUM_DESC),
-                rsWrap.getByteBuffAllocatorPoolAllocationNum())
-            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_HEAP_ALLOACTION_RATIO,
-                BYTE_BUFF_ALLOCATOR_HEAP_ALLOACTION_RATIO_DESC),
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_BYTES,
+                  BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_BYTES_DESC),
+                rsWrap.getByteBuffAllocatorHeapAllocationBytes())
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_POOL_ALLOCATION_BYTES,
+                  BYTE_BUFF_ALLOCATOR_POOL_ALLOCATION_BYTES_DESC),
+                rsWrap.getByteBuffAllocatorPoolAllocationBytes())
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_RATIO,
+                  BYTE_BUFF_ALLOCATOR_HEAP_ALLOCATION_RATIO_DESC),
                 rsWrap.getByteBuffAllocatorHeapAllocRatio())
             .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_TOTAL_BUFFER_COUNT,
                 BYTE_BUFF_ALLOCATOR_TOTAL_BUFFER_COUNT_DESC),
                 rsWrap.getByteBuffAllocatorTotalBufferCount())
-            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_FREE_BUFFER_COUNT,
-                BYTE_BUFF_ALLOCATOR_FREE_BUFFER_COUNT_DESC),
-                rsWrap.getByteBuffAllocatorFreeBufferCount());
+            .addGauge(Interns.info(BYTE_BUFF_ALLOCATOR_USED_BUFFER_COUNT,
+                BYTE_BUFF_ALLOCATOR_USED_BUFFER_COUNT_DESC),
+                rsWrap.getByteBuffAllocatorUsedBufferCount());
   }
 
   @Override
