@@ -256,6 +256,7 @@ class NettyRpcDuplexHandler extends ChannelDuplexHandler {
               }
             }, conn.getPingTimeout(), TimeUnit.MILLISECONDS);
           }
+          break;
         }
         case WRITER_IDLE:
           if (id2Call.isEmpty()) {
