@@ -3179,7 +3179,7 @@ public class TestAccessController extends SecureTestUtil {
     verifyDenied(action, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER, USER_ADMIN);
   }
 
-  @Test(timeout = 180000)
+  @Test
   public void testGetUserPermissions() throws Throwable {
     Connection conn = null;
     try {
@@ -3307,7 +3307,7 @@ public class TestAccessController extends SecureTestUtil {
     }
   }
 
-  @Test(timeout = 180000)
+  @Test
   public void testHasPermission() throws Throwable {
     Connection conn = null;
     try {
