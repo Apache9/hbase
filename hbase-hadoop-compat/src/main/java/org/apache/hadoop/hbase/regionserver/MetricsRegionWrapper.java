@@ -156,6 +156,11 @@ public interface MetricsRegionWrapper {
    */
   int getReplicaId();
 
+  /**
+   * @return the number of references active on the store
+   */
+  long getStoreRefCount();
+
   long getReadRequestsPerSecond();
 
   long getWriteRequestsPerSecond();

@@ -144,20 +144,26 @@ message RegionLoad {
   /** the current total filtered read requests made to region */
   optional uint64 filtered_read_requests_count = 19;
 
+  /** master defines cp_requests_count = 20, the current total coprocessor
+      requests made to region */
+
+  /** the number of references active on the store */
+  optional int32 store_ref_count = 21 [default = 0];
+
   /** Requests per second **/
-  optional uint64 read_requests_per_second = 20;
-  optional uint64 write_requests_per_second = 21;
-  optional uint64 get_requests_per_second = 22;
-  optional uint64 scan_requests_per_second = 23;
-  optional uint64 scan_rows_per_second = 24;
+  optional uint64 read_requests_per_second = 80;
+  optional uint64 write_requests_per_second = 81;
+  optional uint64 get_requests_per_second = 82;
+  optional uint64 scan_requests_per_second = 83;
+  optional uint64 scan_rows_per_second = 84;
 
   /** read/write bytes per second **/
-  optional uint64 read_requests_by_capacity_unit_per_second = 25;
-  optional uint64 write_requests_by_capacity_unit_per_second = 26;
+  optional uint64 read_requests_by_capacity_unit_per_second = 85;
+  optional uint64 write_requests_by_capacity_unit_per_second = 86;
 
   /** read cells & read raw cells per second **/
-  optional uint64 read_cell_count_per_second = 27;
-  optional uint64 read_raw_cell_count_perSecond = 28;
+  optional uint64 read_cell_count_per_second = 87;
+  optional uint64 read_raw_cell_count_perSecond = 88;
 }
 
 /* Server-level protobufs */
