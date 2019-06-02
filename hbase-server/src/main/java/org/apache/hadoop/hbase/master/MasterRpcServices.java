@@ -666,8 +666,9 @@ public class MasterRpcServices extends RSRpcServices
     TableDescriptor tableDescriptor = ProtobufUtil.toTableDescriptor(req.getTableSchema());
     byte [][] splitKeys = ProtobufUtil.getSplitKeysArray(req);
     try {
-      if (master.getConfiguration().getBoolean(HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE,
-        IGNORE_SPLITS_WHEN_CREATE_TABLE_DEFAULT)) {
+      if (!tableDescriptor.getTableName().isSystemTable() && master.getConfiguration()
+          .getBoolean(HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE,
+              IGNORE_SPLITS_WHEN_CREATE_TABLE_DEFAULT)) {
         splitKeys = null;
         TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(tableDescriptor)
             .setValue(TableDescriptorBuilder.IGNORE_SPLITS_WHEN_CREATING_KEY,
