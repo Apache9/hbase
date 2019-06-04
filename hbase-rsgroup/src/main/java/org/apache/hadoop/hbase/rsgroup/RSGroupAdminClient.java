@@ -55,7 +55,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
  * Client used for managing region server group information.
  */
 @InterfaceAudience.Private
-class RSGroupAdminClient implements RSGroupAdmin {
+public class RSGroupAdminClient implements RSGroupAdmin {
   private RSGroupAdminService.BlockingInterface stub;
   private Admin admin;
 
