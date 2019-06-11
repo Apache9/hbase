@@ -1721,6 +1721,12 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
       }
 
       @Override
+      public AddReplicationPeerResponse addReplicationPeerForBranch2(RpcController controller,
+          ReplicationProtos.AddReplicationPeerRequest request) throws ServiceException {
+        return stub.addReplicationPeerForBranch2(controller, request);
+      }
+
+      @Override
       public RemoveReplicationPeerResponse removeReplicationPeer(RpcController controller,
           RemoveReplicationPeerRequest request) throws ServiceException {
         return stub.removeReplicationPeer(controller, request);
@@ -1771,9 +1777,22 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
       }
 
       @Override
+      public UpdateReplicationPeerConfigResponse updateReplicationPeerConfigForBranch2(
+          RpcController controller, ReplicationProtos.UpdateReplicationPeerConfigRequest request)
+          throws ServiceException {
+        return stub.updateReplicationPeerConfigForBranch2(controller, request);
+      }
+
+      @Override
       public ListReplicationPeersResponse listReplicationPeers(RpcController controller,
           ListReplicationPeersRequest request) throws ServiceException {
         return stub.listReplicationPeers(controller, request);
+      }
+
+      @Override
+      public ReplicationProtos.ListReplicationPeersResponse listReplicationPeersForBranch2(
+          RpcController controller, ListReplicationPeersRequest request) throws ServiceException {
+        return stub.listReplicationPeersForBranch2(controller, request);
       }
 
       @Override

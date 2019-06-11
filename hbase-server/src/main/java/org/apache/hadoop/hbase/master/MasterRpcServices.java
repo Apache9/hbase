@@ -2074,6 +2074,28 @@ public class MasterRpcServices extends RSRpcServices
     }
   }
 
+  /**
+   * Used by 0.98 client
+   */
+  @Override
+  public UpdateReplicationPeerConfigResponse updateReplicationPeerConfigForBranch2(
+      RpcController controller, ReplicationProtos.UpdateReplicationPeerConfigRequest request)
+      throws ServiceException {
+    return updateReplicationPeerConfig(controller, request);
+  }
+
+  @Override
+  public AddReplicationPeerResponse addReplicationPeerForBranch2(RpcController controller,
+      ReplicationProtos.AddReplicationPeerRequest request) throws ServiceException {
+    return addReplicationPeer(controller, request);
+  }
+
+  @Override
+  public ReplicationProtos.ListReplicationPeersResponse listReplicationPeersForBranch2(
+      RpcController controller, ListReplicationPeersRequest request) throws ServiceException {
+    return listReplicationPeers(controller, request);
+  }
+
   @Override
   public TransitReplicationPeerSyncReplicationStateResponse
       transitReplicationPeerSyncReplicationState(RpcController controller,
