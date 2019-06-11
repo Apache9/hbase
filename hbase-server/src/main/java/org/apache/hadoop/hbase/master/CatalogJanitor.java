@@ -194,11 +194,14 @@ public class CatalogJanitor extends Chore {
       LOG.warn("Merged region does not exist: " + mergedRegion.getEncodedName());
     }
     if (regionFs == null || !regionFs.hasReferences(htd)) {
-      LOG.debug("Deleting region " + regionA.getRegionNameAsString() + " and "
-          + regionB.getRegionNameAsString()
-          + " from fs because merged region no longer holds references");
+      LOG.info("Deleting region " + regionA.getRegionNameAsString() + " and " +
+          regionB.getRegionNameAsString() +
+          " from fs because merged region no longer holds references");
       HFileArchiver.archiveRegion(this.services.getConfiguration(), fs, regionA);
       HFileArchiver.archiveRegion(this.services.getConfiguration(), fs, regionB);
+      // Delete region from meta again for safe
+      MetaEditor.deleteRegion(server.getCatalogTracker(), regionA);
+      MetaEditor.deleteRegion(server.getCatalogTracker(), regionB);
       MetaEditor.deleteMergeQualifiers(server.getCatalogTracker(), mergedRegion);
       return true;
     }
