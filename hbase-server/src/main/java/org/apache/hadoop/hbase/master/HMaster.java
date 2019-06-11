@@ -4272,6 +4272,25 @@ MasterServices, Server {
   }
 
   @Override
+  public ReplicationProtos.NewListReplicationPeersResponse listReplicationPeersForBranch2(
+      RpcController controller, ListReplicationPeersRequest request) throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, call listReplicationPeers instead");
+  }
+
+  @Override
+  public AddReplicationPeerResponse addReplicationPeerForBranch2(RpcController controller,
+      ReplicationProtos.NewAddReplicationPeerRequest request) throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, call addReplicationPeer instead");
+  }
+
+  @Override
+  public UpdateReplicationPeerConfigResponse updateReplicationPeerConfigForBranch2(
+      RpcController controller, ReplicationProtos.NewUpdateReplicationPeerConfigRequest request)
+      throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, call updateReplicationPeerConfig instead");
+  }
+
+  @Override
   public ReplicationManager getReplicationManager() {
     return this.replicationManager;
   }

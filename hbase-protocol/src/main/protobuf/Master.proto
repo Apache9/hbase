@@ -625,4 +625,13 @@ service MasterService {
   /** Returns a list of replication loads */
   rpc GetPeerMaxReplicationLoad(GetPeerMaxReplicationLoadRequest)
     returns(GetPeerMaxReplicationLoadResponse);
+
+  rpc ListReplicationPeersForBranch2(ListReplicationPeersRequest)
+    returns(NewListReplicationPeersResponse);
+
+  rpc AddReplicationPeerForBranch2(NewAddReplicationPeerRequest)
+    returns(AddReplicationPeerResponse);
+
+  rpc UpdateReplicationPeerConfigForBranch2(NewUpdateReplicationPeerConfigRequest)
+    returns(UpdateReplicationPeerConfigResponse);
 }

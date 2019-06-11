@@ -3327,6 +3327,19 @@ public class HBaseAdmin implements Abortable, Closeable {
     });
   }
 
+  public void addReplicationPeerForBranch2(String peerId, ReplicationPeerConfig peerConfig,
+      boolean enabled) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        master.addReplicationPeerForBranch2(controller,
+          RequestConverter.buildNewAddReplicationPeerRequest(peerId, peerConfig, enabled));
+        return null;
+      }
+    });
+  }
+
   public void removeReplicationPeer(String peerId) throws IOException {
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
@@ -3383,6 +3396,19 @@ public class HBaseAdmin implements Abortable, Closeable {
     });
   }
 
+  public void updateReplicationPeerConfigForBranch2(final String peerId,
+      final ReplicationPeerConfig peerConfig) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        master.updateReplicationPeerConfigForBranch2(controller,
+          RequestConverter.buildNewUpdateReplicationPeerConfigRequest(peerId, peerConfig));
+        return null;
+      }
+    });
+  }
+
   public void appendReplicationPeerTableCFs(String id,
       Map<TableName, ? extends Collection<String>> tableCfs) throws ReplicationException,
       IOException {
@@ -3424,6 +3450,24 @@ public class HBaseAdmin implements Abortable, Closeable {
         List<ReplicationPeerDescription> result = new ArrayList<>(peersList.size());
         for (ReplicationProtos.ReplicationPeerDescription peer : peersList) {
           result.add(ReplicationSerDeHelper.toReplicationPeerDescription(peer));
+        }
+        return result;
+      }
+    });
+  }
+
+  public List<ReplicationPeerDescription> listReplicationPeersForBranch2() throws IOException {
+    Pattern pattern = null;
+    return executeCallable(new MasterCallable<List<ReplicationPeerDescription>>(getConnection()) {
+      @Override
+      protected List<ReplicationPeerDescription> rpcCall(BlockingInterface master,
+          HBaseRpcController controller) throws Exception {
+        List<ReplicationProtos.NewReplicationPeerDescription> peersList =
+            master.listReplicationPeersForBranch2(controller,
+              RequestConverter.buildListReplicationPeersRequest(pattern)).getPeerDescList();
+        List<ReplicationPeerDescription> result = new ArrayList<>(peersList.size());
+        for (ReplicationProtos.NewReplicationPeerDescription peer : peersList) {
+          result.add(ReplicationSerDeHelper.toNewReplicationPeerDescription(peer));
         }
         return result;
       }
