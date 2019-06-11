@@ -441,6 +441,14 @@ public final class ReplicationSerDeHelper {
     return new ReplicationPeerDescription(desc.getId(), enabled, config);
   }
 
+  public static ReplicationPeerDescription
+      toNewReplicationPeerDescription(ReplicationProtos.NewReplicationPeerDescription desc) {
+    boolean enabled =
+        ReplicationProtos.ReplicationState.State.ENABLED == desc.getState().getState();
+    ReplicationPeerConfig peerConfig = convertFromNewProtobuf(desc.getConfig());
+    return new ReplicationPeerDescription(desc.getId(), enabled, peerConfig);
+  }
+
   public static ReplicationProtos.ReplicationPeerDescription toProtoReplicationPeerDescription(
       ReplicationPeerDescription desc) {
     ReplicationProtos.ReplicationPeerDescription.Builder builder = ReplicationProtos.ReplicationPeerDescription
@@ -584,6 +592,71 @@ public final class ReplicationSerDeHelper {
     return peerConfig;
   }
 
+  private static ReplicationPeerConfig
+      convertFromNewProtobuf(ReplicationProtos.NewReplicationPeer peer) {
+    ReplicationPeerConfig peerConfig = new ReplicationPeerConfig();
+    if (peer.hasClusterkey()) {
+      peerConfig.setClusterKey(peer.getClusterkey());
+    }
+    if (peer.hasReplicationEndpointImpl()) {
+      peerConfig.setReplicationEndpointImpl(peer.getReplicationEndpointImpl());
+    }
+
+    for (HBaseProtos.BytesBytesPair pair : peer.getDataList()) {
+      peerConfig.getPeerData().put(pair.getFirst().toByteArray(), pair.getSecond().toByteArray());
+    }
+
+    for (HBaseProtos.NameStringPair pair : peer.getConfigurationList()) {
+      peerConfig.getConfiguration().put(pair.getName(), pair.getValue());
+    }
+
+    peerConfig.setProtocol(ReplicationPeer.PeerProtocol.NATIVE);
+
+    if (peer.hasBandwidth()) {
+      peerConfig.setBandwidth(peer.getBandwidth());
+    }
+
+    Map<TableName, ? extends Collection<String>> tableCFsMap = convert2Map(
+      peer.getTableCfsList().toArray(new ReplicationProtos.TableCF[peer.getTableCfsCount()]));
+    if (tableCFsMap != null) {
+      peerConfig.setTableCFsMap(tableCFsMap);
+    }
+
+    List<ByteString> namespacesList = peer.getNamespacesList();
+    if (namespacesList != null && namespacesList.size() != 0) {
+      Set<String> namespaces = new HashSet<>();
+      for (ByteString namespace : namespacesList) {
+        namespaces.add(namespace.toStringUtf8());
+      }
+      peerConfig.setNamespaces(namespaces);
+    }
+
+    if (peer.hasReplicateAll()) {
+      peerConfig.setReplicateAllUserTables(peer.getReplicateAll());
+    }
+
+    Map<TableName, ? extends Collection<String>> excludeTableCFsMap =
+        convert2Map(peer.getExcludeTableCfsList()
+            .toArray(new ReplicationProtos.TableCF[peer.getExcludeTableCfsCount()]));
+    if (excludeTableCFsMap != null) {
+      peerConfig.setExcludeTableCFsMap(excludeTableCFsMap);
+    }
+
+    List<ByteString> excludeNamespacesList = peer.getExcludeNamespacesList();
+    if (excludeNamespacesList != null && excludeNamespacesList.size() != 0) {
+      Set<String> excludeNamespaces = new HashSet<>();
+      for (ByteString namespace : excludeNamespacesList) {
+        excludeNamespaces.add(namespace.toStringUtf8());
+      }
+      peerConfig.setExcludeNamespaces(excludeNamespaces);
+    }
+
+    if (peer.hasSerial()) {
+      peerConfig.setSerial(peer.getSerial());
+    }
+    return peerConfig;
+  }
+
   private static Map<TableName, List<String>> convert2MapFromNewProtobuf(
       NewReplicationProtos.TableCF[] tableCFs) {
     if (tableCFs == null || tableCFs.length == 0) {
@@ -654,6 +727,64 @@ public final class ReplicationSerDeHelper {
 
     NewReplicationProtos.TableCF[] excludeTableCFs =
         convertToNewProtobuf(peerConfig.getExcludeTableCFsMap());
+    if (excludeTableCFs != null) {
+      for (int i = 0; i < excludeTableCFs.length; i++) {
+        builder.addExcludeTableCfs(excludeTableCFs[i]);
+      }
+    }
+
+    Set<String> excludeNamespaces = peerConfig.getExcludeNamespaces();
+    if (excludeNamespaces != null) {
+      for (String namespace : excludeNamespaces) {
+        builder.addExcludeNamespaces(ByteString.copyFromUtf8(namespace));
+      }
+    }
+
+    builder.setSerial(peerConfig.isSerial());
+    return builder.build();
+  }
+
+  public static ReplicationProtos.NewReplicationPeer
+      convertPeerConfigToNewProto(ReplicationPeerConfig peerConfig) {
+    ReplicationProtos.NewReplicationPeer.Builder builder =
+        ReplicationProtos.NewReplicationPeer.newBuilder();
+    if (peerConfig.getClusterKey() != null) {
+      builder.setClusterkey(peerConfig.getClusterKey());
+    }
+    if (peerConfig.getReplicationEndpointImpl() != null) {
+      builder.setReplicationEndpointImpl(peerConfig.getReplicationEndpointImpl());
+    }
+
+    for (Map.Entry<byte[], byte[]> entry : peerConfig.getPeerData().entrySet()) {
+      builder.addData(
+        HBaseProtos.BytesBytesPair.newBuilder().setFirst(ByteString.copyFrom(entry.getKey()))
+            .setSecond(ByteString.copyFrom(entry.getValue())).build());
+    }
+
+    for (Map.Entry<String, String> entry : peerConfig.getConfiguration().entrySet()) {
+      builder.addConfiguration(HBaseProtos.NameStringPair.newBuilder().setName(entry.getKey())
+          .setValue(entry.getValue()).build());
+    }
+
+    builder.setBandwidth(peerConfig.getBandwidth());
+
+    ReplicationProtos.TableCF[] tableCFs = convert(peerConfig.getTableCFsMap());
+    if (tableCFs != null) {
+      for (int i = 0; i < tableCFs.length; i++) {
+        builder.addTableCfs(tableCFs[i]);
+      }
+    }
+
+    Set<String> namespaces = peerConfig.getNamespaces();
+    if (namespaces != null) {
+      for (String namespace : namespaces) {
+        builder.addNamespaces(ByteString.copyFromUtf8(namespace));
+      }
+    }
+
+    builder.setReplicateAll(peerConfig.replicateAllUserTables());
+
+    ReplicationProtos.TableCF[] excludeTableCFs = convert(peerConfig.getExcludeTableCFsMap());
     if (excludeTableCFs != null) {
       for (int i = 0; i < excludeTableCFs.length; i++) {
         builder.addExcludeTableCfs(excludeTableCFs[i]);

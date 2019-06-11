@@ -53,7 +53,6 @@ import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest;
@@ -1697,6 +1696,29 @@ public final class RequestConverter {
         .newBuilder();
     builder.setPeerId(peerId);
     builder.setPeerConfig(ReplicationSerDeHelper.convert(peerConfig));
+    return builder.build();
+  }
+
+  public static ReplicationProtos.NewAddReplicationPeerRequest buildNewAddReplicationPeerRequest(
+      String peerId, ReplicationPeerConfig peerConfig, boolean enabled) {
+    ReplicationProtos.NewAddReplicationPeerRequest.Builder builder =
+        ReplicationProtos.NewAddReplicationPeerRequest.newBuilder();
+    builder.setPeerId(peerId);
+    builder.setPeerConfig(ReplicationSerDeHelper.convertPeerConfigToNewProto(peerConfig));
+    ReplicationProtos.ReplicationState.Builder stateBuilder =
+        ReplicationProtos.ReplicationState.newBuilder();
+    stateBuilder
+        .setState(enabled ? ReplicationState.State.ENABLED : ReplicationState.State.DISABLED);
+    builder.setPeerState(stateBuilder.build());
+    return builder.build();
+  }
+
+  public static ReplicationProtos.NewUpdateReplicationPeerConfigRequest
+      buildNewUpdateReplicationPeerConfigRequest(String peerId, ReplicationPeerConfig peerConfig) {
+    ReplicationProtos.NewUpdateReplicationPeerConfigRequest.Builder builder =
+        ReplicationProtos.NewUpdateReplicationPeerConfigRequest.newBuilder();
+    builder.setPeerId(peerId);
+    builder.setPeerConfig(ReplicationSerDeHelper.convertPeerConfigToNewProto(peerConfig));
     return builder.build();
   }
 

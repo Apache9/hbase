@@ -1782,6 +1782,25 @@ public class HConnectionImplementation implements HConnection, Closeable {
           throws ServiceException {
         return stub.getPeerMaxReplicationLoad(controller, request);
       }
+
+      @Override
+      public ReplicationProtos.NewListReplicationPeersResponse listReplicationPeersForBranch2(
+          RpcController controller, ListReplicationPeersRequest request) throws ServiceException {
+        return stub.listReplicationPeersForBranch2(controller, request);
+      }
+
+      @Override
+      public AddReplicationPeerResponse addReplicationPeerForBranch2(RpcController controller,
+          ReplicationProtos.NewAddReplicationPeerRequest request) throws ServiceException {
+        return stub.addReplicationPeerForBranch2(controller, request);
+      }
+
+      @Override
+      public UpdateReplicationPeerConfigResponse updateReplicationPeerConfigForBranch2(
+          RpcController controller, ReplicationProtos.NewUpdateReplicationPeerConfigRequest request)
+          throws ServiceException {
+        return stub.updateReplicationPeerConfigForBranch2(controller, request);
+      }
     };
   }
 
