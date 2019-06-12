@@ -324,6 +324,11 @@
       <groupId>com.xiaomi.infra</groupId>
       <artifactId>scribe-log4j</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.sun.xml.ws</groupId>
+      <artifactId>jaxws-ri</artifactId>
+      <type>pom</type>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>
