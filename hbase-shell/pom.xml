@@ -178,6 +178,10 @@
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-client</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.hbase</groupId>
+          <artifactId>hbase-endpoint</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <!-- General dependencies -->
