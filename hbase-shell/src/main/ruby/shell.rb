@@ -282,6 +282,13 @@ Shell.load_command_group(
     locate_region
     list_regions
     clone_table_schema
+    galaxy_describe
+    galaxy_create
+    galaxy_create_slave
+    galaxy_alter
+    galaxy_alter_slave
+    galaxy_alter_async
+    galaxy_alter_async_slave
   ],
   aliases: {
     'describe' => ['desc']

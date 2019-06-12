@@ -170,6 +170,16 @@
       <artifactId>hbase-testing-util</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra.galaxy</groupId>
+      <artifactId>galaxy-sds-core</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- General dependencies -->
     <dependency>
       <groupId>org.slf4j</groupId>
