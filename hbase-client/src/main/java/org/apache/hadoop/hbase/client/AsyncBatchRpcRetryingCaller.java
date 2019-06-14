@@ -327,7 +327,7 @@ class AsyncBatchRpcRetryingCaller<T> {
       }
     });
     if (!failedActions.isEmpty()) {
-      tryResubmit(failedActions.stream(), tries);
+      tryResubmit(failedActions.stream(), tries, getPauseTime(pauseNs, tries - 1));
     }
   }
 
@@ -395,20 +395,18 @@ class AsyncBatchRpcRetryingCaller<T> {
     List<Action<Row>> copiedActions = actionsByRegion.values().stream()
         .flatMap(r -> r.actions.stream()).collect(Collectors.toList());
     addError(copiedActions, error, serverName);
-    tryResubmit(copiedActions.stream(), tries);
+    // Only handle ThrottlingException here, as the multi operation will be throttled together
+    tryResubmit(copiedActions.stream(), tries, getPauseTime(pauseNs, tries - 1, error));
   }
 
-  private void tryResubmit(Stream<Action<Row>> actions, int tries) {
-    long delayNs;
+  private void tryResubmit(Stream<Action<Row>> actions, int tries, long delayNs) {
     if (operationTimeoutNs > 0) {
       long maxDelayNs = remainingTimeNs() - SLEEP_DELTA_NS;
       if (maxDelayNs <= 0) {
         failAll(actions, tries);
         return;
       }
-      delayNs = Math.min(maxDelayNs, getPauseTime(pauseNs, tries - 1));
-    } else {
-      delayNs = getPauseTime(pauseNs, tries - 1);
+      delayNs = Math.min(maxDelayNs, delayNs);
     }
     retryTimer.newTimeout(t -> groupAndSend(actions, tries + 1), delayNs, TimeUnit.NANOSECONDS);
   }
@@ -447,7 +445,7 @@ class AsyncBatchRpcRetryingCaller<T> {
             send(actionsByServer, tries);
           }
           if (!locateFailed.isEmpty()) {
-            tryResubmit(locateFailed.stream(), tries);
+            tryResubmit(locateFailed.stream(), tries, getPauseTime(pauseNs, tries - 1));
           }
         });
   }
