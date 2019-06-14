@@ -40,6 +40,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
@@ -58,6 +59,21 @@ import org.apache.hadoop.net.DNS;
 public class ConnectionUtils {
 
   private static final Log LOG = LogFactory.getLog(ConnectionUtils.class);
+
+  /**
+   * Calculate pause time. Will handle the special case for DoNotRetryNowIOException.
+   * @param pause
+   * @param tries
+   * @param t
+   * @return How long to wait after <code>tries</code> retries
+   */
+  public static long getPauseTime(final long pause, final int tries, final Throwable t) {
+    if (t instanceof DoNotRetryNowIOException) {
+      return ((DoNotRetryNowIOException) t).getWaitInterval() + addJitter(pause, 1.0f);
+    } else {
+      return getPauseTime(pause, tries);
+    }
+  }
 
   /**
    * Calculate pause time. Built on {@link HConstants#RETRY_BACKOFF}.
