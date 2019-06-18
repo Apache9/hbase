@@ -22,6 +22,17 @@ import static org.apache.hadoop.hbase.HConstants.DEFAULT_HBASE_SPLIT_WAL_MAX_SPL
 import static org.apache.hadoop.hbase.HConstants.HBASE_SPLIT_WAL_COORDINATED_BY_ZK;
 import static org.apache.hadoop.hbase.HConstants.HBASE_SPLIT_WAL_MAX_SPLITTER;
 
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.Cache;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingRpcChannel;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.TextFormat;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.management.MemoryType;
@@ -188,18 +199,6 @@ import org.slf4j.LoggerFactory;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
-import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
-import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
-import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
-import com.xiaomi.infra.thirdparty.com.google.common.cache.Cache;
-import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheBuilder;
-import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
-import com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingRpcChannel;
-import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
-import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
-import com.xiaomi.infra.thirdparty.com.google.protobuf.TextFormat;
-import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
-
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CoprocessorServiceCall;
@@ -358,6 +357,11 @@ public class HRegionServer extends HasThread implements
   final int numRetries;
   protected final int threadWakeFrequency;
   protected final int msgInterval;
+
+  private static final String PERIOD_COMPACTION = "hbase.regionserver.compaction.check.period";
+  private final int compactionCheckFrequency;
+  private static final String PERIOD_FLUSH = "hbase.regionserver.flush.check.period";
+  private final int flushCheckFrequency;
 
   protected final int numRegionsToReport;
 
@@ -582,6 +586,8 @@ public class HRegionServer extends HasThread implements
       this.numRetries = this.conf.getInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
           HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
       this.threadWakeFrequency = conf.getInt(HConstants.THREAD_WAKE_FREQUENCY, 10 * 1000);
+      this.compactionCheckFrequency = conf.getInt(PERIOD_COMPACTION, this.threadWakeFrequency);
+      this.flushCheckFrequency = conf.getInt(PERIOD_FLUSH, this.threadWakeFrequency);
       this.msgInterval = conf.getInt("hbase.regionserver.msginterval", 3 * 1000);
 
       this.sleeper = new Sleeper(this.msgInterval, this);
@@ -2032,8 +2038,8 @@ public class HRegionServer extends HasThread implements
 
     // Background thread to check for compactions; needed if region has not gotten updates
     // in a while. It will take care of not checking too frequently on store-by-store basis.
-    this.compactionChecker = new CompactionChecker(this, this.threadWakeFrequency, this);
-    this.periodicFlusher = new PeriodicMemStoreFlusher(this.threadWakeFrequency, this);
+    this.compactionChecker = new CompactionChecker(this, this.compactionCheckFrequency, this);
+    this.periodicFlusher = new PeriodicMemStoreFlusher(this.flushCheckFrequency, this);
     if (QueueFullDetector.isEnabled(conf)) {
       this.queueFullDetector = new QueueFullDetector(this, conf);
     }
