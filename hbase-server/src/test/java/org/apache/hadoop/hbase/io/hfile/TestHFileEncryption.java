@@ -17,6 +17,12 @@
  */
 package org.apache.hadoop.hbase.io.hfile;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -39,7 +45,7 @@ import org.apache.hadoop.hbase.io.crypto.Cipher;
 import org.apache.hadoop.hbase.io.crypto.Encryption;
 import org.apache.hadoop.hbase.io.crypto.KeyProviderForTesting;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.test.RedundantKVGenerator;
 
@@ -47,9 +53,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import static org.junit.Assert.*;
-
-@Category(SmallTests.class)
+@Category(MediumTests.class)
 public class TestHFileEncryption {
   private static final Log LOG = LogFactory.getLog(TestHFileEncryption.class);
   private static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
@@ -114,7 +118,7 @@ public class TestHFileEncryption {
     return b.getOnDiskSizeWithHeader();
   }
 
-  @Test(timeout=20000)
+  @Test
   public void testDataBlockEncryption() throws IOException {
     final int blocks = 10;
     final int[] blockSizes = new int[blocks];
@@ -150,7 +154,7 @@ public class TestHFileEncryption {
     }
   }
 
-  @Test(timeout=20000)
+  @Test
   public void testHFileEncryptionMetadata() throws Exception {
     Configuration conf = TEST_UTIL.getConfiguration();
     CacheConfig cacheConf = new CacheConfig(conf);
@@ -181,7 +185,7 @@ public class TestHFileEncryption {
       cryptoContext.getKeyBytes()));
   }
 
-  @Test(timeout=60000)
+  @Test
   public void testHFileEncryption() throws Exception {
     // Create 1000 random test KVs
     RedundantKVGenerator generator = new RedundantKVGenerator();
