@@ -556,7 +556,7 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     org.apache.log4j.Logger.getLogger(org.apache.hadoop.metrics2.impl.MetricsSystemImpl.class).
         setLevel(org.apache.log4j.Level.ERROR);
 
-
+    this.conf.set("dfs.namenode.http-address", "0.0.0.0:0");
     this.dfsCluster = new MiniDFSCluster(0, this.conf, servers, true, true,
       true, null, null, hosts, null);
 
