@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.master;
 
 import static org.apache.hadoop.hbase.HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE_DEFAULT;
+import static org.apache.hadoop.hbase.io.ByteBuffAllocator.ALLOCATOR_POOL_ENABLED_KEY;
 import static org.apache.hadoop.hbase.master.MasterWalManager.META_FILTER;
 
 import java.io.IOException;
@@ -395,7 +396,7 @@ public class MasterRpcServices extends RSRpcServices
       RpcSchedulerFactory rpcSchedulerFactory, InetSocketAddress bindAddress, String name)
       throws IOException {
     // RpcServer at HM by default enable ByteBufferPool iff HM having user table region in it
-    boolean reservoirEnabled = conf.getBoolean(RESERVOIR_ENABLED_KEY,
+    boolean reservoirEnabled = conf.getBoolean(ALLOCATOR_POOL_ENABLED_KEY,
         (LoadBalancer.isTablesOnMaster(conf) && !LoadBalancer.isSystemTablesOnlyOnMaster(conf)));
     try {
       return RpcServerFactory.createRpcServer(server, name, getServices(),
