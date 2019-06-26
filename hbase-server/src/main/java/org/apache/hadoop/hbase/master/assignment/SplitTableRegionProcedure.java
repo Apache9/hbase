@@ -679,6 +679,11 @@ public class SplitTableRegionProcedure
     for (Map.Entry<String, Collection<StoreFileInfo>> e : files.entrySet()) {
       byte[] familyName = Bytes.toBytes(e.getKey());
       final ColumnFamilyDescriptor hcd = htd.getColumnFamily(familyName);
+      if (hcd == null) {
+        LOG.warn("Skip to split column family {} storefiles for table {}", familyName,
+            htd.getTableName());
+        continue;
+      }
       final Collection<StoreFileInfo> storeFiles = e.getValue();
       if (storeFiles != null && storeFiles.size() > 0) {
         for (StoreFileInfo storeFileInfo : storeFiles) {
