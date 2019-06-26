@@ -4590,7 +4590,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           }
           Get get = ProtobufUtil.toGet(action.getGet());
           r = region.get(get);
-          if (isQuotaEnabled()) {
+          if (isQuotaEnabled() && r != null) {
             this.rsQuotaManager.grabQuota(region, r);
           }
         } else if (action.hasServiceCall()) {
