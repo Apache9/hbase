@@ -486,26 +486,28 @@ public class QuotaUtil extends QuotaTableUtil {
 
   public static long calculateResultSize(final Result result) {
     long size = 0;
-    for (Cell cell : result.rawCells()) {
-      size += KeyValueUtil.length(cell);
+    if (result != null && !result.isEmpty()) {
+      size += calculateCellsSize(result.listCells());
     }
     return size;
   }
 
   public static long calculateResultSize(final List<Result> results) {
     long size = 0;
-    for (Result result: results) {
-      for (Cell cell : result.rawCells()) {
-        size += KeyValueUtil.length(cell);
-      }
+    for (Result result : results) {
+      size += calculateResultSize(result);
     }
     return size;
   }
 
   public static long calculateCellsSize(final List<Cell> cells) {
     long size = 0;
-    for (Cell cell : cells) {
-      size += CellUtil.estimatedSizeOf(cell);
+    if (cells != null && !cells.isEmpty()) {
+      for (Cell cell : cells) {
+        if (cell != null) {
+          size += CellUtil.estimatedSizeOf(cell);
+        }
+      }
     }
     return size;
   }
