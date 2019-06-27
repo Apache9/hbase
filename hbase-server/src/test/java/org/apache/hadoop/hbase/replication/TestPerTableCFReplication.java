@@ -512,6 +512,56 @@ public class TestPerTableCFReplication {
     admin1.removePeer("3");
   }
 
+  @Test
+  public void testExcludeTableCFsWithEmptyList() throws Exception {
+    HBaseAdmin admin = new HBaseAdmin(conf1);
+
+    HTable htab1B = new HTable(conf1, tabBName);
+    HTable htab2B = new HTable(conf2, tabBName);
+
+    HTable htab1C = new HTable(conf1, tabCName);
+    HTable htab2C = new HTable(conf2, tabCName);
+
+    // A. add cluster2 as peers to cluster1
+    ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
+    rpc2.setClusterKey(utility2.getClusterKey());
+    rpc2.setReplicateAllUserTables(true);
+    // exclude tableC and tableB:f1,f3
+    Map<TableName, List<String>> tableCFs = new HashMap<>();
+    tableCFs.put(tabCName, new ArrayList<>());
+    rpc2.setExcludeTableCFsMap(tableCFs);
+    admin.addReplicationPeer("2", rpc2);
+
+    // A1. tableC cannot replicate to cluster2
+    putAndWaitWithFamily(row1, f1Name, htab1C);
+    ensureRowNotReplicated(row1, f1Name, htab2C);
+    deleteAndWaitWithFamily(row1, f1Name, htab1C);
+
+    putAndWaitWithFamily(row1, f2Name, htab1C);
+    ensureRowNotReplicated(row1, f2Name, htab2C);
+    deleteAndWaitWithFamily(row1, f2Name, htab1C);
+
+    putAndWaitWithFamily(row1, f3Name, htab1C);
+    ensureRowNotReplicated(row1, f3Name, htab2C);
+    deleteAndWaitWithFamily(row1, f3Name, htab1C);
+
+    // A2. tableB can not replicate to cluster2
+    tableCFs.put(tableName, new ArrayList<>());
+    admin.updateReplicationPeerConfig("2", rpc2);
+
+    putAndWaitWithFamily(row1, f1Name, htab1B);
+    ensureRowNotReplicated(row1, f1Name, htab2B);
+    deleteAndWaitWithFamily(row1, f1Name, htab1B);
+
+    putAndWaitWithFamily(row1, f2Name, htab1B);
+    ensureRowNotReplicated(row1, f2Name, htab2B);
+    deleteAndWaitWithFamily(row1, f2Name, htab1B);
+
+    putAndWaitWithFamily(row1, f3Name, htab1B);
+    ensureRowNotReplicated(row1, f3Name, htab2B);
+    deleteAndWaitWithFamily(row1, f3Name, htab1B);
+  }
+
   @Test(timeout = 300000)
   public void testExcludeTableCFsReplication() throws Exception {
     LOG.info("testPerTableCFReplication");
