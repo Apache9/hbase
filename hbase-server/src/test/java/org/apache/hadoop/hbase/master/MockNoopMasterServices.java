@@ -486,4 +486,9 @@ public class MockNoopMasterServices implements MasterServices {
   public ZKPermissionWatcher getZKPermissionWatcher() {
     return null;
   }
+
+  @Override
+  public List<RegionPlan> executeRegionPlansWithThrottling(List<RegionPlan> plans) {
+    return null;
+  }
 }

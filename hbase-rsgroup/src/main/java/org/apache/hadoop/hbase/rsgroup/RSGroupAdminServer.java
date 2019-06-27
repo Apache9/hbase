@@ -463,7 +463,6 @@ public class RSGroupAdminServer implements RSGroupAdmin {
   @Override
   public boolean balanceRSGroup(String groupName) throws IOException {
     ServerManager serverManager = master.getServerManager();
-    AssignmentManager assignmentManager = master.getAssignmentManager();
     LoadBalancer balancer = master.getLoadBalancer();
 
     synchronized (balancer) {
@@ -502,16 +501,11 @@ public class RSGroupAdminServer implements RSGroupAdmin {
           plans.addAll(partialPlans);
         }
       }
-      long startTime = System.currentTimeMillis();
       boolean balancerRan = !plans.isEmpty();
       if (balancerRan) {
-        LOG.info("RSGroup balance " + groupName + " starting with plan count: " + plans.size());
-        for (RegionPlan plan: plans) {
-          LOG.info("balance " + plan);
-          assignmentManager.moveAsync(plan);
-        }
-        LOG.info("RSGroup balance " + groupName + " completed after " +
-            (System.currentTimeMillis()-startTime) + " seconds");
+        LOG.info("RSGroup balance {} starting with plan count: {}", groupName, plans.size());
+        master.executeRegionPlansWithThrottling(plans);
+        LOG.info("RSGroup balance " + groupName + " completed");
       }
       return balancerRan;
     }
