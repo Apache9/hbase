@@ -23,16 +23,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NamespaceTableCfWALEntryFilter implements WALEntryFilter {
 
-  public static final Log LOG = LogFactory.getLog(NamespaceTableCfWALEntryFilter.class);
+  public static final Logger LOG = LoggerFactory.getLogger(NamespaceTableCfWALEntryFilter.class);
   private final ReplicationPeer peer;
 
   public NamespaceTableCfWALEntryFilter(ReplicationPeer peer) {
@@ -70,7 +70,7 @@ public class NamespaceTableCfWALEntryFilter implements WALEntryFilter {
       } else {
         List<String> cfs = excludeTableCFs.get(tabName);
         // empty cfs means all cfs of this table are exclude
-        if (cfs == null) {
+        if (cfs == null || cfs.isEmpty()) {
           return null;
         }
         for (int i = size - 1; i >= 0; i--) {

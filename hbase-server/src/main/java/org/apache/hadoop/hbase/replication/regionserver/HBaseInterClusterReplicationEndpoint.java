@@ -46,6 +46,8 @@ import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSinkManager.SinkPeer;
 import org.apache.hadoop.ipc.RemoteException;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * A {@link ReplicationEndpoint} implementation for replicating to another HBase cluster.
  * For the slave cluster it selects a random number of peers
@@ -178,6 +180,28 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
   }
 
   /**
+   * Check if there's an {@link TableNotFoundException} in the caused by stacktrace.
+   */
+  @VisibleForTesting
+  public static boolean isTableNotFoundException(Throwable io) {
+    if (io instanceof RemoteException) {
+      io = ((RemoteException) io).unwrapRemoteException();
+    }
+    if (io != null && io.getMessage().contains("TableNotFoundException")) {
+      return true;
+    }
+    for (;;) {
+      if (io == null) {
+        return false;
+      }
+      if (io instanceof TableNotFoundException) {
+        return true;
+      }
+      io = io.getCause();
+    }
+  }
+
+  /**
    * Do the shipping logic
    */
   @Override
@@ -218,9 +242,7 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
         LOG.warn("Replicate edites to peer cluster failed.", ioe);
         // Didn't ship anything, but must still age the last time we did
         this.metrics.refreshAgeOfLastShippedOp();
-        if ((ioe instanceof RemoteException && ((RemoteException) ioe)
-            .unwrapRemoteException() instanceof TableNotFoundException)
-            || ioe instanceof TableNotFoundException) {
+        if (isTableNotFoundException(ioe)) {
           if (dropOnDeletedTables) {
             // Only filter the edits to replicate and don't change the entries in replicateContext
             // as the upper layer rely on it.
@@ -236,9 +258,10 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
             // This exception means we waited for more than 60s and nothing
             // happened, the cluster is alive and calling it right away
             // even for a test just makes things worse.
-            sleepForRetries("Encountered a SocketTimeoutException. Since the " +
-              "call to the remote cluster timed out, which is usually " +
-              "caused by a machine failure or a massive slowdown",
+            sleepForRetries(
+              "Encountered a SocketTimeoutException. Since the "
+                  + "call to the remote cluster timed out, which is usually "
+                  + "caused by a machine failure or a massive slowdown",
               this.socketTimeoutMultiplier);
           } else if (ioe instanceof ConnectException) {
             LOG.warn("Peer is unavailable, rechecking all sinks: ", ioe);

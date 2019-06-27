@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
@@ -34,15 +35,22 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
+import org.apache.hadoop.hbase.ipc.RemoteWithExtrasException;
+import org.apache.hadoop.hbase.replication.regionserver.HBaseInterClusterReplicationEndpoint;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.apache.hadoop.util.StringUtils;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.fail;
+
+import java.util.Arrays;
 
 /**
  * Replication with dropped table will stuck as the default REPLICATION_DROP_ON_DELETED_TABLE_KEY
@@ -108,6 +116,38 @@ public class TestReplicationStuckWithDroppedTable {
     admin1.createTable(desc);
     utility1.waitUntilAllRegionsAssigned(tableName);
     utility2.waitUntilAllRegionsAssigned(tableName);
+  }
+
+  @Test
+  public void testBatchTableNotFoundException() throws Exception {
+    TableName tb = TableName.valueOf("testBatchTableNotFoundException");
+    utility1.createTable(tb, Bytes.toBytes("f"));
+    Configuration conf = HBaseConfiguration.create(conf1);
+    conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
+    try (HConnection conn = HConnectionManager.createConnection(conf1);
+        HTableInterface table = conn.getTable(tb)) {
+      // getTable before because we need to cache the table descriptor in cache for salting
+      // checking, so that we won't throw the exception when getTable in the next conn.getTable.
+      admin1.disableTable(tb);
+      admin1.deleteTable(tb);
+
+      HTableInterface newTable = conn.getTable(tb);
+
+      Put put = new Put(ROW).add(FAMILY, QUALIFIER, VALUE);
+      boolean caughtTableNotFoundException = false;
+      try {
+        newTable.batch(Arrays.asList(put));
+      } catch (Exception e) {
+        LOG.info("caught the exception when batching: ", e);
+        caughtTableNotFoundException = true;
+        Assert.assertTrue(e instanceof RetriesExhaustedWithDetailsException);
+        Assert.assertTrue(e.getCause() instanceof TableNotFoundException);
+        RemoteWithExtrasException re = new RemoteWithExtrasException(e.getClass().getName(),
+            StringUtils.stringifyException(e), false);
+        Assert.assertTrue(HBaseInterClusterReplicationEndpoint.isTableNotFoundException(re));
+      }
+      Assert.assertTrue(caughtTableNotFoundException);
+    }
   }
 
   @Test
