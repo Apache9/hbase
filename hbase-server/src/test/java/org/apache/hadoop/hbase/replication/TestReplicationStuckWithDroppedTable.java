@@ -17,6 +17,10 @@
  */
 package org.apache.hadoop.hbase.replication;
 
+import static org.junit.Assert.fail;
+
+import java.util.Arrays;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -37,6 +41,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
 import org.apache.hadoop.hbase.ipc.RemoteWithExtrasException;
+import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
 import org.apache.hadoop.hbase.replication.regionserver.HBaseInterClusterReplicationEndpoint;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -48,17 +53,14 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import static org.junit.Assert.fail;
-
-import java.util.Arrays;
-
 /**
  * Replication with dropped table will stuck as the default REPLICATION_DROP_ON_DELETED_TABLE_KEY
  * is false.
  */
 @Category({ LargeTests.class })
 public class TestReplicationStuckWithDroppedTable {
-  private static final Log LOG = LogFactory.getLog(TestReplicationEditsDroppedWithDroppedTable.class);
+  private static final Log LOG =
+      LogFactory.getLog(TestReplicationEditsDroppedWithDroppedTable.class);
 
   private static Configuration conf1 = HBaseConfiguration.create();
   private static Configuration conf2 = HBaseConfiguration.create();
@@ -142,11 +144,47 @@ public class TestReplicationStuckWithDroppedTable {
         caughtTableNotFoundException = true;
         Assert.assertTrue(e instanceof RetriesExhaustedWithDetailsException);
         Assert.assertTrue(e.getCause() instanceof TableNotFoundException);
-        RemoteWithExtrasException re = new RemoteWithExtrasException(e.getClass().getName(),
-            StringUtils.stringifyException(e), false);
+        RemoteWithExtrasException re =
+            new RemoteWithExtrasException(e.getClass().getName(), StringUtils.stringifyException(e),
+                false);
         Assert.assertTrue(HBaseInterClusterReplicationEndpoint.isTableNotFoundException(re));
       }
       Assert.assertTrue(caughtTableNotFoundException);
+    }
+  }
+
+  @Test
+  public void testBatchNoSuchColumnFamilyException() throws Exception {
+    TableName tb = TableName.valueOf("testBatchNoSuchColumnFamilyException");
+    String normalCF = "f";
+    String noSuchCF = "noSuch";
+    byte[][] cfs = { Bytes.toBytes(normalCF), Bytes.toBytes(noSuchCF) };
+    utility1.createTable(tb, cfs);
+    Configuration conf = HBaseConfiguration.create(conf1);
+    conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
+    try (HConnection conn = HConnectionManager.createConnection(conf1);
+        HTableInterface table = conn.getTable(tb)) {
+      // getTable before because we need to cache the table descriptor in cache for salting
+      // checking, so that we won't throw the exception when getTable in the next conn.getTable.
+      admin1.deleteColumn(tb.getName(), noSuchCF);
+
+      HTableInterface newTable = conn.getTable(tb);
+
+      Put put = new Put(ROW).add(Bytes.toBytes(noSuchCF), QUALIFIER, VALUE);
+      boolean caughtNoSuchColumnFamilyException = false;
+      try {
+        newTable.batch(Arrays.asList(put));
+      } catch (Exception e) {
+        LOG.info("caught the exception when batching: ", e);
+        caughtNoSuchColumnFamilyException = true;
+        Assert.assertTrue(e instanceof RetriesExhaustedWithDetailsException);
+        Assert.assertTrue(e.getCause() instanceof NoSuchColumnFamilyException);
+        RemoteWithExtrasException re =
+            new RemoteWithExtrasException(e.getClass().getName(), StringUtils.stringifyException(e),
+                false);
+        Assert.assertTrue(HBaseInterClusterReplicationEndpoint.isNoSuchColumnFamilyException(re));
+      }
+      Assert.assertTrue(caughtNoSuchColumnFamilyException);
     }
   }
 
