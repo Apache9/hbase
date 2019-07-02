@@ -50,6 +50,8 @@ public abstract class HBaseReplicationEndpoint extends BaseReplicationEndpoint
 
   public static final String REPLICATION_DROP_ON_DELETED_TABLE_KEY =
       "hbase.replication.drop.on.deleted.table";
+  public static final String REPLICATION_DROP_ON_DELETED_COLUMN_FAMILY_KEY =
+      "hbase.replication.drop.on.deleted.columnfamily";
 
   private ZooKeeperWatcher zkw = null;
 

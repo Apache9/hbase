@@ -22,28 +22,36 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.protobuf.ReplicationProtbufUtil;
+import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
+import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.HBaseReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSinkManager.SinkPeer;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.ipc.RemoteException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -78,6 +86,7 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
   protected ReplicationSinkManager replicationSinkMgr;
   private boolean peersSelected = false;
   private boolean dropOnDeletedTables;
+  private boolean dropOnDeletedColumnFamilies;
 
   private static final String REPLICATION_ENDPOINT_RPC_TIMEOUT =
       "hbase.replication.endpoint.rpc.timeout";
@@ -95,10 +104,11 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     // replication and make replication specific settings such as compression or codec to use
     // passing Cells.
     this.conn = HConnectionManager.createConnection(this.conf);
-    this.sleepForRetries =
-        this.conf.getLong("replication.source.sleepforretries", 1000);
+    this.sleepForRetries = this.conf.getLong("replication.source.sleepforretries", 1000);
     this.dropOnDeletedTables =
         this.conf.getBoolean(HBaseReplicationEndpoint.REPLICATION_DROP_ON_DELETED_TABLE_KEY, false);
+    this.dropOnDeletedColumnFamilies = this.conf
+        .getBoolean(HBaseReplicationEndpoint.REPLICATION_DROP_ON_DELETED_COLUMN_FAMILY_KEY, false);
     this.metrics = context.getMetrics();
     // ReplicationQueueInfo parses the peerId out of the znode for us
     this.replicationSinkMgr = new ReplicationSinkManager(conn, ctx.getPeerId(), this, this.conf);
@@ -128,7 +138,6 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
       }
     }
   }
-
 
   private void reconnectToPeerCluster() {
     HConnection connection = null;
@@ -168,8 +177,58 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
           // and add a table filter there; but that would break the encapsulation,
           // so we're doing the filtering here.
           LOG.warn(
-              "Missing table detected at sink, local table also does not exist, filtering edits for table '"
-                  + tableName + "'");
+              "Missing table detected at sink, local table also does not exist, filtering edits "
+                  + "for table '" + tableName + "'");
+        }
+      }
+    } catch (IOException iox) {
+      LOG.warn("Exception when creating connection to check local table", iox);
+      return oldEntries;
+    }
+    return entries;
+  }
+
+  private List<Entry> filterNotExistColumnFamilyEdits(final List<Entry> oldEntries) {
+    List<Entry> entries = new ArrayList<>();
+    Map<TableName, Set<String>> existColumnFamilyMap = new HashMap<>();
+    try (HConnection localConn = HConnectionManager.createConnection(ctx.getLocalConfiguration());
+        HBaseAdmin localAdmin = new HBaseAdmin(localConn)) {
+      for (Entry e : oldEntries) {
+        TableName tableName = e.getKey().getTablename();
+        Set<String> existColumnFamilies = existColumnFamilyMap.computeIfAbsent(tableName, cfs -> {
+          try {
+            return localAdmin.getTableDescriptor(tableName).getFamiliesKeys().stream()
+                .map(Bytes::toString).collect(Collectors.toSet());
+          } catch (IOException ex) {
+            LOG.warn("Exception getting cf names for local table " + tableName, ex);
+            return Collections.emptySet();
+          }
+        });
+        List<Cell> cells = e.getEdit().getCells();
+        Map<Boolean, List<Cell>> partitionedCells = cells.stream().collect(Collectors
+            .partitioningBy(
+                cell -> existColumnFamilies.contains(Bytes.toString(CellUtil.cloneFamily(cell)))));
+        List<Cell> existCFCells = partitionedCells.get(true);
+        if (!existCFCells.isEmpty()) {
+          if (cells.size() != existCFCells.size()) {
+            WALEdit walEdit = new WALEdit();
+            walEdit.getCells().addAll(existCFCells);
+            Entry newEntry = new Entry(e.getKey(), walEdit, e.getSpan());
+            entries.add(newEntry);
+          } else {
+            entries.add(e);
+          }
+        } else {
+          // Would potentially be better to retry in one of the outer loops
+          // and add a table filter there; but that would break the encapsulation,
+          // so we're doing the filtering here.
+          String missingCFs =
+              partitionedCells.get(false).stream().map(CellUtil::cloneFamily).map(Bytes::toString)
+                  .distinct().collect(Collectors.joining(","));
+          LOG.warn(
+              "Missing column family detected at sink, local column family also does not exist,"
+                  + "filtering edits for table '" + tableName + "',column family '" + missingCFs
+                  + "'");
         }
       }
     } catch (IOException iox) {
@@ -190,11 +249,33 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     if (io != null && io.getMessage().contains("TableNotFoundException")) {
       return true;
     }
-    for (;;) {
+    for (; ; ) {
       if (io == null) {
         return false;
       }
       if (io instanceof TableNotFoundException) {
+        return true;
+      }
+      io = io.getCause();
+    }
+  }
+
+  /**
+   * Check if there's an {@link NoSuchColumnFamilyException} in the caused by stacktrace.
+   */
+  @VisibleForTesting
+  public static boolean isNoSuchColumnFamilyException(Throwable io) {
+    if (io instanceof RemoteException) {
+      io = ((RemoteException) io).unwrapRemoteException();
+    }
+    if (io != null && io.getMessage().contains("NoSuchColumnFamilyException")) {
+      return true;
+    }
+    for (; ; ) {
+      if (io == null) {
+        return false;
+      }
+      if (io instanceof NoSuchColumnFamilyException) {
         return true;
       }
       io = io.getCause();
@@ -229,13 +310,13 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
       try {
         sinkPeer = replicationSinkMgr.getReplicationSink();
         if (LOG.isTraceEnabled()) {
-          LOG.trace("Replicating " + entries.size() +
-              " entries of total size " + replicateContext.getSize());
+          LOG.trace("Replicating " + entries.size() + " entries of total size " + replicateContext
+              .getSize());
         }
         replicateWALEntry(entries, sinkPeer);
 
         // update metrics
-        this.metrics.setAgeOfLastShippedOp(entries.get(entries.size()-1).getKey().getWriteTime());
+        this.metrics.setAgeOfLastShippedOp(entries.get(entries.size() - 1).getKey().getWriteTime());
         return true;
 
       } catch (IOException ioe) {
@@ -253,16 +334,22 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
             }
           }
           // fall through and sleep below
+        } else if (dropOnDeletedColumnFamilies && isNoSuchColumnFamilyException(ioe)) {
+          entries = filterNotExistColumnFamilyEdits(entries);
+          if (entries.isEmpty()) {
+            LOG.warn(
+                "After filter not exist column family's edits, 0 edits to replicate, just return");
+            return true;
+          }
         } else {
           if (ioe instanceof SocketTimeoutException) {
             // This exception means we waited for more than 60s and nothing
             // happened, the cluster is alive and calling it right away
             // even for a test just makes things worse.
-            sleepForRetries(
-              "Encountered a SocketTimeoutException. Since the "
-                  + "call to the remote cluster timed out, which is usually "
-                  + "caused by a machine failure or a massive slowdown",
-              this.socketTimeoutMultiplier);
+            sleepForRetries("Encountered a SocketTimeoutException. Since the "
+                    + "call to the remote cluster timed out, which is usually "
+                    + "caused by a machine failure or a massive slowdown",
+                this.socketTimeoutMultiplier);
           } else if (ioe instanceof ConnectException) {
             LOG.warn("Peer is unavailable, rechecking all sinks: ", ioe);
             replicationSinkMgr.chooseSinks();
@@ -282,12 +369,10 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     return false; // in case we exited before replicating
   }
 
-  protected void replicateWALEntry(List<Entry> entries,
-      SinkPeer sinkPeer) throws IOException {
-    ReplicationProtbufUtil.replicateWALEntry(sinkPeer.getRegionServer(),
-        entries.toArray(new Entry[entries.size()]));
+  protected void replicateWALEntry(List<Entry> entries, SinkPeer sinkPeer) throws IOException {
+    ReplicationProtbufUtil
+        .replicateWALEntry(sinkPeer.getRegionServer(), entries.toArray(new Entry[entries.size()]));
   }
-
 
   @Override
   protected void doStop() {
