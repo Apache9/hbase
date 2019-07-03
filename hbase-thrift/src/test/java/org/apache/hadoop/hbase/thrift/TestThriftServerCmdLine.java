@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.thrift.generated.Hbase;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
 import org.apache.hadoop.hbase.util.IncrementingEnvironmentEdge;
+import org.apache.hadoop.hbase.util.TableDescriptorChecker;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -125,7 +126,7 @@ public class TestThriftServerCmdLine {
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    TEST_UTIL.getConfiguration().setBoolean("hbase.table.sanity.checks", false);
+    TEST_UTIL.getConfiguration().setBoolean(TableDescriptorChecker.TABLE_SANITY_CHECKS, false);
     TEST_UTIL.startMiniCluster();
     //ensure that server time increments every time we do an operation, otherwise
     //successive puts having the same timestamp will override each other
