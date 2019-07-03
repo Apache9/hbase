@@ -21,9 +21,12 @@ import java.util.Arrays;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
+@Category({SmallTests.class})
 public class TestQuotaUtil {
 
   @Test
