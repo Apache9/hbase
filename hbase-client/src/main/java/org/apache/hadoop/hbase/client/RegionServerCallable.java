@@ -33,11 +33,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -156,13 +154,11 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
       // if thrown these exceptions, we clear all the cache entries that
       // map to that slow/dead server; otherwise, let cache miss and ask
       // hbase:meta again to find the new location
-      if (this.location != null) getConnection().clearCaches(location.getServerName());
-    } else if (t instanceof RegionMovedException) {
+      if (this.location != null) {
+        getConnection().clearCaches(location.getServerName());
+      }
+    } else if (location != null) {
       getConnection().updateCachedLocations(tableName, row, t, location);
-    } else if (t instanceof NotServingRegionException) {
-      // Purge cache entries for this specific region from hbase:meta cache
-      // since we don't call connect(true) when number of retries is 1.
-      getConnection().deleteCachedRegionLocation(location);
     }
   }
 
