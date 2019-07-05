@@ -1919,9 +1919,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
     }
 
     HRegionInfo regionInfo = oldLocation.getRegionInfo();
-    Throwable cause = HConnectionManager.findException(exception);
+    Throwable cause = ClientExceptionsUtil.findException(exception);
     if (cause != null) {
-      if (!ClientExceptionsUtil.isMetaClearingException(cause)) {
+      if (ClientExceptionsUtil.regionDefinitelyOnTheRegionServerException(cause)) {
         // We know that the region is still on this region server
         return;
       }

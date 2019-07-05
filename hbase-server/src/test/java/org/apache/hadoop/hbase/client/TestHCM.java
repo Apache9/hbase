@@ -63,6 +63,7 @@ import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
+import org.apache.hadoop.hbase.exceptions.ClientExceptionsUtil;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -79,6 +80,7 @@ import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
 import org.apache.hadoop.hbase.util.Threads;
@@ -805,7 +807,7 @@ public class TestHCM {
       LOG.info("Put done, exception caught: " + e.getClass());
 
       // Check that we unserialized the exception as expected
-      Throwable cause = HConnectionManager.findException(e.getCause());
+      Throwable cause = ClientExceptionsUtil.findException(e.getCause());
       assertNotNull(cause);
       assertTrue(cause instanceof RegionMovedException);
     }

@@ -51,20 +51,17 @@ public final class ClientExceptionsUtil {
 
   public static boolean isMetaClearingException(Throwable cur) {
     cur = findException(cur);
-
     if (cur == null) {
       return true;
     }
-    return !isSpecialException(cur) || (cur instanceof RegionMovedException)
-        || cur instanceof NotServingRegionException;
+    return !regionDefinitelyOnTheRegionServerException(cur);
   }
 
-  public static boolean isSpecialException(Throwable cur) {
-    return (cur instanceof RegionMovedException || cur instanceof RegionOpeningException
-        || cur instanceof RegionTooBusyException || cur instanceof ThrottlingException
-        || cur instanceof RpcThrottlingException || cur instanceof MultiActionResultTooLarge
-        || cur instanceof RetryImmediatelyException || cur instanceof NotServingRegionException
-        || cur instanceof CallDroppedException || cur instanceof TooManyRegionScannersException);
+  public static boolean regionDefinitelyOnTheRegionServerException(Throwable cur) {
+    return (cur instanceof RegionOpeningException || cur instanceof RegionTooBusyException ||
+        cur instanceof ThrottlingException || cur instanceof MultiActionResultTooLarge ||
+        cur instanceof RetryImmediatelyException || cur instanceof CallDroppedException ||
+        cur instanceof TooManyRegionScannersException || cur instanceof RpcThrottlingException);
   }
 
   /**
@@ -82,7 +79,8 @@ public final class ClientExceptionsUtil {
     }
     Throwable cur = (Throwable) exception;
     while (cur != null) {
-      if (isSpecialException(cur)) {
+      if (cur instanceof RegionMovedException || cur instanceof NotServingRegionException ||
+          regionDefinitelyOnTheRegionServerException(cur)) {
         return cur;
       }
       if (cur instanceof RemoteException) {
