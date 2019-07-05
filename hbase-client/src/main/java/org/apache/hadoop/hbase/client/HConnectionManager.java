@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.exceptions.RegionOpeningException;
+import org.apache.hadoop.hbase.quotas.RpcThrottlingException;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -499,7 +500,8 @@ public class HConnectionManager {
     }
 
     boolean canRetryMore(int numRetry, Throwable t) {
-      if (ignoreThrottlingException && t instanceof ThrottlingException) {
+      if (ignoreThrottlingException && (t instanceof ThrottlingException
+          || t instanceof RpcThrottlingException)) {
         return true;
       }
       return canRetryMore(numRetry);
@@ -557,7 +559,7 @@ public class HConnectionManager {
   /**
    * Look for an exception we know in the remote exception: - hadoop.ipc wrapped exceptions - nested
    * exceptions Looks for: RegionMovedException / RegionOpeningException / RegionTooBusyException /
-   * ThrottlingException
+   * ThrottlingException / RpcThrottlingException
    * @return null if we didn't find the exception, the exception otherwise.
    */
   public static Throwable findException(Object exception) {
@@ -568,7 +570,7 @@ public class HConnectionManager {
     while (cur != null) {
       if (cur instanceof RegionMovedException || cur instanceof RegionOpeningException
           || cur instanceof RegionTooBusyException || cur instanceof ThrottlingException
-          || cur instanceof RetryImmediatelyException) {
+          || cur instanceof RpcThrottlingException || cur instanceof RetryImmediatelyException) {
         return cur;
       }
       if (cur instanceof RemoteException) {

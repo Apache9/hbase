@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.ipc.CallTimeoutException;
+import org.apache.hadoop.hbase.quotas.RpcThrottlingException;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
@@ -240,7 +241,8 @@ public class RpcRetryingCaller<T> {
   }
 
   private boolean handleException(Throwable t) {
-    if (ignoreThrottlingException && t instanceof ThrottlingException) {
+    if (ignoreThrottlingException && (t instanceof ThrottlingException
+        || t instanceof RpcThrottlingException)) {
       return true;
     }
     return false;
