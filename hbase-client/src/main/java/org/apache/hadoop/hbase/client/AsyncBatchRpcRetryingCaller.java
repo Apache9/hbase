@@ -23,7 +23,6 @@ import static org.apache.hadoop.hbase.client.ConnectionUtils.getPauseTime;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.resetController;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.translateException;
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsent;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.CellScannable;
@@ -55,6 +55,7 @@ import org.apache.hadoop.hbase.protobuf.ResponseConverter;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
+import org.apache.hadoop.hbase.quotas.RpcThrottlingException;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -163,7 +164,8 @@ class AsyncBatchRpcRetryingCaller<T> {
   }
 
   private boolean canRetry(Throwable error, int tries) {
-    if (ignoreThrottlingException && error instanceof ThrottlingException) {
+	  if (ignoreThrottlingException && (error instanceof ThrottlingException
+			  || error instanceof RpcThrottlingException)) {
       return true;
     }
     if (error instanceof DoNotRetryIOException) {
@@ -395,7 +397,8 @@ class AsyncBatchRpcRetryingCaller<T> {
     List<Action<Row>> copiedActions = actionsByRegion.values().stream()
         .flatMap(r -> r.actions.stream()).collect(Collectors.toList());
     addError(copiedActions, error, serverName);
-    // Only handle ThrottlingException here, as the multi operation will be throttled together
+	  // Only handle ThrottlingException / RpcThrottlingException here, as the multi operation will
+	  // be throttled together
     tryResubmit(copiedActions.stream(), tries, getPauseTime(pauseNs, tries - 1, error));
   }
 

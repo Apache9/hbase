@@ -33,12 +33,13 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTooBusyException;
-import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.RetryImmediatelyException;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.ipc.CallTimeoutException;
 import org.apache.hadoop.hbase.ipc.FailedServerException;
+import org.apache.hadoop.hbase.quotas.RpcThrottlingException;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.ipc.RemoteException;
 
@@ -61,9 +62,9 @@ public final class ClientExceptionsUtil {
   public static boolean isSpecialException(Throwable cur) {
     return (cur instanceof RegionMovedException || cur instanceof RegionOpeningException
         || cur instanceof RegionTooBusyException || cur instanceof ThrottlingException
-        || cur instanceof MultiActionResultTooLarge || cur instanceof RetryImmediatelyException
-        || cur instanceof NotServingRegionException || cur instanceof CallDroppedException
-        || cur instanceof TooManyRegionScannersException);
+        || cur instanceof RpcThrottlingException || cur instanceof MultiActionResultTooLarge
+        || cur instanceof RetryImmediatelyException || cur instanceof NotServingRegionException
+        || cur instanceof CallDroppedException || cur instanceof TooManyRegionScannersException);
   }
 
   /**
@@ -72,7 +73,7 @@ public final class ClientExceptionsUtil {
    * - nested exceptions
    *
    * Looks for: RegionMovedException / RegionOpeningException / RegionTooBusyException /
-   *            ThrottlingException
+   *            ThrottlingException / RpcThrottlingException
    * @return null if we didn't find the exception, the exception otherwise.
    */
   public static Throwable findException(Object exception) {
