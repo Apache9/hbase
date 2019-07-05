@@ -21,14 +21,22 @@ import com.google.common.collect.Sets;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.AclEntry;
+import org.apache.hadoop.fs.permission.AclEntryScope;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import static org.apache.hadoop.fs.permission.AclEntryScope.ACCESS;
+import static org.apache.hadoop.fs.permission.AclEntryScope.DEFAULT;
+import static org.apache.hadoop.fs.permission.AclEntryType.USER;
+import static org.apache.hadoop.fs.permission.FsAction.READ_EXECUTE;
 
 public class PresetHdfsAclTool {
 
@@ -372,6 +380,94 @@ public class PresetHdfsAclTool {
     }
   }
 
+  private void fixTmpDirectoryAcls() {
+    try {
+      init();
+      fixTmpDirectoryAcls(conf, fs);
+    } catch (Exception e) {
+      LOG.error("Fix tmp directory acl error", e);
+    }
+  }
+
+  /**
+   * Fix tmp directory default and access acls, because master deletes this dir when start and lose
+   * these acls.
+   */
+  @VisibleForTesting
+  void fixTmpDirectoryAcls(Configuration conf, FileSystem fs) throws IOException {
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      HdfsAclManager.PathHelper pathHelper = new HdfsAclManager.PathHelper(conf);
+      for (Map.Entry<byte[], ListMultimap<String, TablePermission>> entry : AccessControlLists
+          .loadAll(conf).entrySet()) {
+        byte[] permissionEntry = entry.getKey();
+        Set<String> users = getUsersWithReadPermission(entry.getValue());
+        List<AclEntry> defaultAndAccessAclEntries = getDefaultAndAccessAclEntries(users);
+        if (AccessControlLists.isGlobalEntry(permissionEntry)) {
+          Path tmpDataDir = pathHelper.getTmpDataDir();
+          setAclRecursive(fs, tmpDataDir, defaultAndAccessAclEntries);
+        } else if (AccessControlLists.isNamespaceEntry(permissionEntry)) {
+          String namespace = Bytes.toString(AccessControlLists.fromNamespaceEntry(permissionEntry));
+          Path tmpNsDir = pathHelper.getTmpNsDir(namespace);
+          setAclRecursive(fs, tmpNsDir, defaultAndAccessAclEntries);
+        } else {
+          TableName tableName = TableName.valueOf(permissionEntry);
+          Path tmpTableDir = pathHelper.getTmpTableDir(tableName);
+          setAclRecursive(fs, tmpTableDir, defaultAndAccessAclEntries);
+          List<AclEntry> accessAclEntries = getAccessAclEntries(users);
+          fs.modifyAclEntries(tmpTableDir.getParent(), accessAclEntries);
+        }
+      }
+      LOG.info("Finish fix tmp directories acls used for scanning snapshot.");
+    }
+  }
+
+  private void setAclRecursive(FileSystem fs, Path path, List<AclEntry> aclEntries)
+      throws IOException {
+    if (!fs.exists(path)) {
+      fs.mkdirs(path);
+    }
+    fs.modifyAclEntries(path, aclEntries);
+    FileStatus[] fileStatuses = fs.listStatus(path);
+    for (FileStatus fileStatus : fileStatuses) {
+      setAclRecursive(fs, fileStatus.getPath(), aclEntries);
+    }
+  }
+
+  private Set<String>
+      getUsersWithReadPermission(ListMultimap<String, TablePermission> permissions) {
+    Set<String> users = new HashSet<>();
+    for (Map.Entry<String, TablePermission> entry : permissions.entries()) {
+      TablePermission tablePermission = entry.getValue();
+      if (!tablePermission.hasFamily() && !tablePermission.hasQualifier()
+          && tablePermission.implies(Permission.Action.READ)) {
+        users.add(entry.getKey());
+      }
+    }
+    return users;
+  }
+
+  private List<AclEntry> getDefaultAndAccessAclEntries(Set<String> users) {
+    List<AclEntry> aclEntries = new ArrayList<>();
+    for (String user : users) {
+      aclEntries.add(aclEntry(ACCESS, user));
+      aclEntries.add(aclEntry(DEFAULT, user));
+    }
+    return aclEntries;
+  }
+
+  private List<AclEntry> getAccessAclEntries(Set<String> users) {
+    List<AclEntry> aclEntries = new ArrayList<>();
+    for (String user : users) {
+      aclEntries.add(aclEntry(ACCESS, user));
+    }
+    return aclEntries;
+  }
+
+  private AclEntry aclEntry(AclEntryScope scope, String name) {
+    return new AclEntry.Builder().setScope(scope).setType(USER).setName(name)
+        .setPermission(READ_EXECUTE).build();
+  }
+
   private static String formatMsg(String key, String val) {
     return String.format("  %-38s: %s\n", key, val);
   }
@@ -385,6 +481,7 @@ public class PresetHdfsAclTool {
             "preset hdfs acl for all granted hbase acls(global namespace and table)"))
           .append(formatMsg("presetHDFSAcl include [tableName ...]",
             "preset hdfs acl just for the specified tables"))
+          .append(formatMsg("fixTmpDirACL", "fix tmp directory acls"))
           .toString();
 
   public static void main(String[] args) {
@@ -396,6 +493,8 @@ public class PresetHdfsAclTool {
       tool.presetHdfsAcl(args);
     } else if (args.length == 1 && args[0].equals("checkHDFSAclExceeded")) {
       tool.checkHdfsAclEntryExceeded();
+    } else if (args.length == 1 && args[0].equals("fixTmpDirACL")) {
+      tool.fixTmpDirectoryAcls();
     } else {
       System.err.println(USAGE_MESSAGE);
       System.exit(1);

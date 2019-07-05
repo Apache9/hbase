@@ -679,6 +679,10 @@ public class AccessControlLists {
     return entryName[0] == NAMESPACE_PREFIX;
   }
 
+  public static boolean isGlobalEntry(byte[] entryName) {
+    return Bytes.equals(entryName, ACL_GLOBAL_NAME);
+  }
+
   public static String toNamespaceEntry(String namespace) {
      return NAMESPACE_PREFIX + namespace;
    }

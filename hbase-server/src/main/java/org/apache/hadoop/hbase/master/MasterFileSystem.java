@@ -526,14 +526,18 @@ public class MasterFileSystem {
           HFileArchiver.archiveRegion(fs, this.rootdir, tabledir, regiondir);
         }
       }
-      if (!fs.delete(tmpdir, true)) {
-        throw new IOException("Unable to clean the temp directory: " + tmpdir);
+      if (!conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+        if (!fs.delete(tmpdir, true)) {
+          throw new IOException("Unable to clean the temp directory: " + tmpdir);
+        }
       }
     }
 
-    // Create the temp directory
-    if (!fs.mkdirs(tmpdir)) {
-      throw new IOException("HBase temp directory '" + tmpdir + "' creation failure.");
+    if (!fs.exists(tmpdir)) {
+      // Create the temp directory
+      if (!fs.mkdirs(tmpdir)) {
+        throw new IOException("HBase temp directory '" + tmpdir + "' creation failure.");
+      }
     }
   }
 
