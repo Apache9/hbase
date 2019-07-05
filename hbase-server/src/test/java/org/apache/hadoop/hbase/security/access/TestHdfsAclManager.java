@@ -31,6 +31,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.AclEntry;
+import org.apache.hadoop.fs.permission.AclEntryScope;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
@@ -53,12 +55,16 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 
 @Category({ MediumTests.class })
 public class TestHdfsAclManager {
   private static Log LOG = LogFactory.getLog(TestHdfsAclManager.class);
+  @Rule
+  public TestName name = new TestName();
 
   private static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   private static Configuration conf = TEST_UTIL.getConfiguration();
@@ -105,6 +111,7 @@ public class TestHdfsAclManager {
       fs.setPermission(path, publicFilePermission);
       path = path.getParent();
     }
+    TEST_UTIL.waitTableAvailable(AccessControlLists.ACL_GLOBAL_NAME);
   }
 
   @AfterClass
@@ -526,6 +533,90 @@ public class TestHdfsAclManager {
     grantOnTable(GRANT_USER, table, READ);
     admin.snapshot(snapshot, table);
     Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
+  }
+
+  @Test
+  public void testDeleteTmpDir() throws Exception {
+    String namespace = name.getMethodName();
+    String globalUserName = name.getMethodName();
+    String nsUserName = "ns-" + name.getMethodName();
+    String tableUserName = "t-" + name.getMethodName();
+    String tableUserName2 = "t2-" + name.getMethodName();
+    TableName table = TableName.valueOf(namespace, namespace);
+    String snapshot = namespace + SNAPSHOT_POSTFIX;
+    User globalUser = User.createUserForTesting(conf, globalUserName, new String[] {});
+    User nsUser = User.createUserForTesting(conf, nsUserName, new String[] {});
+    User tableUser = User.createUserForTesting(conf, tableUserName, new String[] {});
+    // create namespace
+    createNamespace(namespace);
+    // grant global, namespace, table
+    SecureTestUtil.grantOnNamespace(TEST_UTIL, nsUserName, namespace, READ);
+    SecureTestUtil.grantGlobal(TEST_UTIL, globalUserName, READ);
+    SecureTestUtil.grantOnTable(TEST_UTIL, tableUserName, table, null, null, READ);
+    SecureTestUtil.grantOnTable(TEST_UTIL, tableUserName2, table, Bytes.toBytes("A"), null, READ);
+    // force delete tmp directory
+    Path tmpDir = new Path(rootDir, HConstants.HBASE_TEMP_DIRECTORY);
+    fs.delete(tmpDir, true);
+    // use tool to fix tmp dir acl
+    PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
+    tool.fixTmpDirectoryAcls(conf, fs);
+    // check acl exist
+    Path tmpDataDir = new Path(tmpDir, HConstants.BASE_NAMESPACE_DIR);
+    Path tmpNsDir = new Path(tmpDataDir, namespace);
+    Path tmpTableDir = new Path(tmpNsDir, table.getQualifierAsString());
+    checkAclEntryExists(tmpDataDir, globalUserName, true, true);
+    checkAclEntryExists(tmpNsDir, globalUserName, true, true);
+    checkAclEntryExists(tmpNsDir, nsUserName, true, true);
+    checkAclEntryExists(tmpNsDir, tableUserName, true, false);
+    checkAclEntryExists(tmpNsDir, tableUserName2, false, false);
+    checkAclEntryExists(tmpTableDir, tableUserName, true, true);
+    checkAclEntryExists(tmpTableDir, tableUserName2, false, false);
+    // create table and global, namespace, table acl can be inherited
+    HTable hTable = createTable(table.getNameAsString());
+    put(hTable);
+    admin.snapshot(snapshot, table);
+    Assert.assertTrue(canUserScanSnapshot(globalUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(nsUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(tableUser, snapshot));
+  }
+
+  @Test
+  public void testRestartMaster() throws Exception {
+    // create
+    String namespace = name.getMethodName();
+    createNamespace(namespace);
+    // grant user with namespace read permission
+    String nsUserName = "ns-"+name.getMethodName();
+    SecureTestUtil.grantOnNamespace(TEST_UTIL, nsUserName, namespace, READ);
+    // restart master
+    TEST_UTIL.shutdownMiniHBaseCluster();
+    TEST_UTIL.startMiniHBaseCluster(1, 1);
+    TEST_UTIL.waitTableAvailable(AccessControlLists.ACL_GLOBAL_NAME);
+    // check tmp dir exists
+    Path tmpDir = new Path(rootDir, HConstants.HBASE_TEMP_DIRECTORY);
+    Path tmpDataDir = new Path(tmpDir, HConstants.BASE_NAMESPACE_DIR);
+    Path tmpNsDir = new Path(tmpDataDir, namespace);
+    Assert.assertTrue(fs.exists(tmpNsDir));
+    // check tmp ns dir acl exists
+    checkAclEntryExists(tmpNsDir, nsUserName, true, true);
+  }
+
+  private void checkAclEntryExists(Path path, String userName, boolean requireAccessAcl,
+      boolean requireDefaultAcl) throws IOException {
+    boolean accessAclEntry = !requireAccessAcl;
+    boolean defaultAclEntry = !requireDefaultAcl;
+    for (AclEntry aclEntry : fs.getAclStatus(path).getEntries()) {
+      String user = aclEntry.getName();
+      if (user != null && user.equals(userName)) {
+        if (aclEntry.getScope() == AclEntryScope.DEFAULT) {
+          defaultAclEntry = true;
+        } else if (aclEntry.getScope() == AclEntryScope.ACCESS) {
+          accessAclEntry = true;
+        }
+      }
+    }
+    Assert.assertTrue(accessAclEntry);
+    Assert.assertTrue(defaultAclEntry);
   }
 
   private static final int WAIT_TIME = 10000;

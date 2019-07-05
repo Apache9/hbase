@@ -90,6 +90,9 @@ public class TestPresetHdfsAclTool {
       fs.setPermission(path, publicFilePermission);
       path = path.getParent();
     }
+    TEST_UTIL.waitTableAvailable(AccessControlLists.ACL_GLOBAL_NAME);
+    Path tmpDir = new Path(rootDir, HConstants.HBASE_TEMP_DIRECTORY);
+    Assert.assertTrue(fs.exists(tmpDir));
   }
 
   @AfterClass
@@ -207,8 +210,6 @@ public class TestPresetHdfsAclTool {
       SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, tbName, Bytes.toBytes("A"),
         Bytes.toBytes("Q"), WRITE);
       Assert.assertEquals(6, tool.checkDuplicateGrantInHBaseACL());
-
-      table.close();
     }
   }
 
