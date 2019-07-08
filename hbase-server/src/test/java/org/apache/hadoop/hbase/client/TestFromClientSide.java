@@ -140,6 +140,7 @@ public class TestFromClientSide {
         MultiRowMutationEndpoint.class.getName());
     conf.setBoolean("hbase.table.sanity.checks", true); // enable for below tests
     conf.setLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY, 10 * 1024 * 1024);
+    conf.setBoolean(HConstants.HBASE_CLIENT_PREFETCH, true);
     // We need more than one region server in this test
     TEST_UTIL.startMiniCluster(SLAVES);
   }
