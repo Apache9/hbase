@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.client;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
@@ -37,6 +38,7 @@ public class TestFromClientSideWithCoprocessor extends TestFromClientSide {
     conf.setStrings(CoprocessorHost.REGION_COPROCESSOR_CONF_KEY,
         MultiRowMutationEndpoint.class.getName(), NoOpScanPolicyObserver.class.getName());
     conf.setBoolean("hbase.table.sanity.checks", true); // enable for below tests
+    conf.setBoolean(HConstants.HBASE_CLIENT_PREFETCH, true);
     // We need more than one region server in this test
     TEST_UTIL.startMiniCluster(SLAVES);
   }
