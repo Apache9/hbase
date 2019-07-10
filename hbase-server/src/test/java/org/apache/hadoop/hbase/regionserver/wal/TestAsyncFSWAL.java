@@ -19,18 +19,27 @@ package org.apache.hadoop.hbase.regionserver.wal;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
+import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.hbase.wal.WALProvider.AsyncWriter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 
+import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.hbase.thirdparty.io.netty.channel.Channel;
 import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
 import org.apache.hbase.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
@@ -89,5 +98,96 @@ public class TestAsyncFSWAL extends AbstractTestFSWAL {
     };
     wal.init();
     return wal;
+  }
+
+  private static volatile CountDownLatch ARRIVE_EXECUTE = null;
+
+  private static volatile CountDownLatch ARRIVE_SYNC = null;
+
+  private static volatile CountDownLatch RESUME_SYNC = null;
+
+  /**
+   * Testcase for HBASE-22665
+   */
+  public void testRollWriterHang() throws IOException {
+    Configuration conf = new Configuration(CONF);
+    conf.setBoolean(AsyncFSWAL.ASYNC_WAL_USE_SHARED_EVENT_LOOP, false);
+    String testName = currentTest.getMethodName();
+    try (AsyncFSWAL wal = new AsyncFSWAL(FS, CommonFSUtils.getWALRootDir(CONF), DIR.toString(),
+        testName, conf, null, true, null, null, GROUP, CHANNEL_CLASS) {
+
+      @Override
+      protected ThreadPoolExecutor createConsumeExecutor() {
+        return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new ThreadFactoryBuilder().setNameFormat("AsyncFSWAL-%d").setDaemon(true).build()) {
+
+          private Runnable delayed;
+
+          @Override
+          public void execute(Runnable command) {
+            if (ARRIVE_EXECUTE != null) {
+              delayed = command;
+              ARRIVE_EXECUTE.countDown();
+              ARRIVE_EXECUTE = null;
+              return;
+            }
+            super.execute(command);
+            if (delayed != null) {
+              super.execute(delayed);
+              delayed = null;
+            }
+          }
+        };
+      }
+
+      @Override
+      protected AsyncWriter createWriterInstance(Path path) throws IOException {
+        AsyncWriter writer = super.createWriterInstance(path);
+        return new AsyncWriter() {
+
+          @Override
+          public void close() throws IOException {
+            writer.close();
+          }
+
+          @Override
+          public long getLength() {
+            return writer.getLength();
+          }
+
+          @Override
+          public CompletableFuture<Long> sync() {
+            if (ARRIVE_SYNC != null) {
+              CompletableFuture<Long> future = new CompletableFuture<>();
+              new Thread() {
+
+                @Override
+                public void run() {
+                  ARRIVE_SYNC.countDown();
+                  ARRIVE_SYNC = null;
+                  try {
+                    RESUME_SYNC.await();
+                  } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+                
+              }.start();
+              return future;
+            } else {
+              return writer.sync();
+            }
+          }
+
+          @Override
+          public void append(Entry entry) {
+            writer.append(entry);
+          }
+        };
+      }
+    }) {
+      wal.init();
+    }
   }
 }

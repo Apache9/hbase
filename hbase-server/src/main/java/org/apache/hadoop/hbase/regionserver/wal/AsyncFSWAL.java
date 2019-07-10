@@ -61,6 +61,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.hbase.thirdparty.io.netty.channel.Channel;
@@ -162,7 +163,7 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
   private static final int MAX_EPOCH = 0x3FFFFFFF;
   // the lowest bit is waitingRoll, which means new writer is created and we are waiting for old
   // writer to be closed.
-  // the second lowest bit is writerBorken which means the current writer is broken and rollWriter
+  // the second lowest bit is writerBroken which means the current writer is broken and rollWriter
   // is needed.
   // all other bits are the epoch number of the current writer, this is used to detect whether the
   // writer is still the one when you issue the sync.
@@ -227,9 +228,7 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
         hasConsumerTask = () -> false;
       }
     } else {
-      ThreadPoolExecutor threadPool =
-        new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(),
-            new ThreadFactoryBuilder().setNameFormat("AsyncFSWAL-%d").setDaemon(true).build());
+      ThreadPoolExecutor threadPool = createConsumeExecutor();
       hasConsumerTask = () -> threadPool.getQueue().peek() == consumer;
       this.consumeExecutor = threadPool;
     }
@@ -249,6 +248,14 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
     batchSize = conf.getLong(WAL_BATCH_SIZE, DEFAULT_WAL_BATCH_SIZE);
     waitOnShutdownInSeconds = conf.getInt(ASYNC_WAL_WAIT_ON_SHUTDOWN_IN_SECONDS,
       DEFAULT_ASYNC_WAL_WAIT_ON_SHUTDOWN_IN_SECONDS);
+  }
+
+  // will be override in UTs
+  @VisibleForTesting
+  protected ThreadPoolExecutor createConsumeExecutor() {
+    return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<Runnable>(),
+        new ThreadFactoryBuilder().setNameFormat("AsyncFSWAL-%d").setDaemon(true).build());
   }
 
   private static boolean waitingRoll(int epochAndState) {
