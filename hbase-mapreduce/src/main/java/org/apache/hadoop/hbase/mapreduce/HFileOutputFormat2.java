@@ -875,11 +875,6 @@ public class HFileOutputFormat2
   /**
    * Serialize column family to compression algorithm map to configuration.
    * Invoked while configuring the MR job for incremental load.
-   *
-   * @param tableDescriptor to read the properties from
-   * @param conf to persist serialized values into
-   * @throws IOException
-   *           on failure to read column family descriptors
    */
   @VisibleForTesting
   static Function<ColumnFamilyDescriptor, String> compressionDetails = familyDescriptor ->
@@ -888,14 +883,6 @@ public class HFileOutputFormat2
   /**
    * Serialize column family to block size map to configuration. Invoked while
    * configuring the MR job for incremental load.
-   *
-   * @param tableDescriptor
-   *          to read the properties from
-   * @param conf
-   *          to persist serialized values into
-   *
-   * @throws IOException
-   *           on failure to read column family descriptors
    */
   @VisibleForTesting
   static Function<ColumnFamilyDescriptor, String> blockSizeDetails = familyDescriptor -> String
@@ -904,14 +891,6 @@ public class HFileOutputFormat2
   /**
    * Serialize column family to bloom type map to configuration. Invoked while
    * configuring the MR job for incremental load.
-   *
-   * @param tableDescriptor
-   *          to read the properties from
-   * @param conf
-   *          to persist serialized values into
-   *
-   * @throws IOException
-   *           on failure to read column family descriptors
    */
   @VisibleForTesting
   static Function<ColumnFamilyDescriptor, String> bloomTypeDetails = familyDescriptor -> {
@@ -925,14 +904,6 @@ public class HFileOutputFormat2
   /**
    * Serialize column family to bloom param map to configuration. Invoked while
    * configuring the MR job for incremental load.
-   *
-   * @param tableDescriptor
-   *          to read the properties from
-   * @param conf
-   *          to persist serialized values into
-   *
-   * @throws IOException
-   *           on failure to read column family descriptors
    */
   @VisibleForTesting
   static Function<ColumnFamilyDescriptor, String> bloomParamDetails = familyDescriptor -> {
@@ -947,13 +918,6 @@ public class HFileOutputFormat2
   /**
    * Serialize column family to data block encoding map to configuration.
    * Invoked while configuring the MR job for incremental load.
-   *
-   * @param tableDescriptor
-   *          to read the properties from
-   * @param conf
-   *          to persist serialized values into
-   * @throws IOException
-   *           on failure to read column family descriptors
    */
   @VisibleForTesting
   static Function<ColumnFamilyDescriptor, String> dataBlockEncodingDetails = familyDescriptor -> {
