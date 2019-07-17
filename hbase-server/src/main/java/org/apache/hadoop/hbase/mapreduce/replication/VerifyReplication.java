@@ -485,8 +485,7 @@ public class VerifyReplication extends Configured implements Tool {
       if (pair == null) {
         throw new IOException("Couldn't get peer conf!");
       }
-      Configuration peerConf = rp.getPeerConf(peerId).getSecond();
-      return ZKUtil.getZooKeeperClusterKey(peerConf);
+      return pair.getFirst().getClusterKey();
     } catch (ReplicationException e) {
       throw new IOException(
           "An error occured while trying to connect to the remove peer cluster", e);
