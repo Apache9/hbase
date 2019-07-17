@@ -56,6 +56,7 @@ import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
+import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -68,6 +69,7 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
+import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -621,6 +623,13 @@ public class VerifyReplication extends Configured implements Tool {
           return false;
         }
 
+        final String loginKey = "--login";
+        if (cmd.startsWith(loginKey)) {
+          UserProvider.instantiate(getConf()).login("hadoop.client.keytab.file",
+            "hadoop.client.kerberos.principal", DNS.getDefaultHost("default"));
+          continue;
+        }
+
         final String startTimeArgKey = "--starttime=";
         if (cmd.startsWith(startTimeArgKey)) {
           startTime = Long.parseLong(cmd.substring(startTimeArgKey.length()));
@@ -782,12 +791,14 @@ public class VerifyReplication extends Configured implements Tool {
     if (errorMsg != null && errorMsg.length() > 0) {
       System.err.println("ERROR: " + errorMsg);
     }
-    System.err.println("Usage: verifyrep [--starttime=X] \n"
+    System.err.println("Usage: verifyrep [--login] [--starttime=X] \n"
         + " [--endtime=Y] [--families=A] [--logtable=TB] [--repairPeer] \n"
         + " [--sourceSnapshotName=P] [--sourceSnapshotTmpDir=Q] [--peerSnapshotName=R] \n"
         + " [--peerSnapshotTmpDir=S] [--peerFSAddress=T] [--peerHBaseRootAddress=U] <peerid> <tablename>");
     System.err.println();
     System.err.println("Options:");
+    System.err.println(" login                  login the kerberos by using config keys: hadoop"
+        + ".client.kerberos.principal and hadoop.client.keytab.file");
     System.err.println(" starttime              beginning of the time range");
     System.err.println("                        without endtime means from starttime to forever");
     System.err.println(" endtime                end of the time range");
