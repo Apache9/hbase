@@ -17,11 +17,16 @@
  */
 package org.apache.hadoop.hbase.regionserver.snapshot;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.errorhandling.ForeignException;
@@ -32,6 +37,8 @@ import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescrip
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.snapshot.RegionServerSnapshotManager.SnapshotSubprocedurePool;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
+import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
+import org.apache.hadoop.hbase.util.FSUtils;
 
 /**
  * This online snapshot implementation uses the distributed procedure framework to force a
@@ -49,11 +56,12 @@ public class FlushSnapshotSubprocedure extends Subprocedure {
   private final SnapshotDescription snapshot;
   private final SnapshotSubprocedurePool taskManager;
   private boolean snapshotSkipFlush = false;
+  private final FileSystem fs;
+  private final Configuration conf;
 
-  public FlushSnapshotSubprocedure(ProcedureMember member,
-      ForeignExceptionDispatcher errorListener, long wakeFrequency, long timeout,
-      List<HRegion> regions, SnapshotDescription snapshot,
-      SnapshotSubprocedurePool taskManager) {
+  public FlushSnapshotSubprocedure(ProcedureMember member, ForeignExceptionDispatcher errorListener,
+      long wakeFrequency, long timeout, List<HRegion> regions, SnapshotDescription snapshot,
+      SnapshotSubprocedurePool taskManager, FileSystem fs, Configuration conf) {
     super(member, snapshot.getName(), errorListener, wakeFrequency, timeout);
     this.snapshot = snapshot;
 
@@ -62,6 +70,8 @@ public class FlushSnapshotSubprocedure extends Subprocedure {
     }
     this.regions = regions;
     this.taskManager = taskManager;
+    this.fs = fs;
+    this.conf = conf;
   }
 
   /**
@@ -168,6 +178,18 @@ public class FlushSnapshotSubprocedure extends Subprocedure {
       taskManager.cancelTasks();
     } catch (InterruptedException e1) {
       Thread.currentThread().interrupt();
+    } finally {
+      LOG.info("Delete tmp snapshot " + snapshot.getName() + " dir");
+      try {
+        // delete snapshot working dir
+        Path rootDir = FSUtils.getRootDir(conf);
+        Path snapshotWorkingDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(snapshot, rootDir);
+        fs.delete(snapshotWorkingDir, true);
+      } catch (FileNotFoundException e2) {
+        // ignore
+      } catch (IOException e2) {
+        LOG.warn("Failed to delete tmp snapshot " + snapshot.getName() + " dir", e2);
+      }
     }
   }
 

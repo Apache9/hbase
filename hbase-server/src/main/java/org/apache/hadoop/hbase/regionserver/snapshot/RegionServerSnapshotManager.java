@@ -186,7 +186,7 @@ public class RegionServerSnapshotManager extends RegionServerProcedureManager {
       SnapshotSubprocedurePool taskManager =
         new SnapshotSubprocedurePool(rss.getServerName().toString(), conf);
       return new FlushSnapshotSubprocedure(member, exnDispatcher, wakeMillis,
-          timeoutMillis, involvedRegions, snapshot, taskManager);
+          timeoutMillis, involvedRegions, snapshot, taskManager, rss.getFileSystem(), conf);
     case SKIPFLUSH:
         /*
          * This is to take an online-snapshot without force a coordinated flush to prevent pause
@@ -198,7 +198,7 @@ public class RegionServerSnapshotManager extends RegionServerProcedureManager {
         SnapshotSubprocedurePool taskManager2 =
             new SnapshotSubprocedurePool(rss.getServerName().toString(), conf);
         return new FlushSnapshotSubprocedure(member, exnDispatcher, wakeMillis,
-            timeoutMillis, involvedRegions, snapshot, taskManager2);
+            timeoutMillis, involvedRegions, snapshot, taskManager2, rss.getFileSystem(), conf);
 
     default:
       throw new UnsupportedOperationException("Unrecognized snapshot type:" + snapshot.getType());
