@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotFileInfo;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest;
+import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -77,6 +78,7 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.mapreduce.security.TokenCache;
+import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -850,6 +852,7 @@ public class ExportSnapshot extends Configured implements Tool {
    */
   @Override
   public int run(String[] args) throws IOException {
+    boolean login = false;
     boolean verifyTarget = true;
     boolean verifyChecksum = true;
     String snapshotName = null;
@@ -868,7 +871,9 @@ public class ExportSnapshot extends Configured implements Tool {
     // Process command line args
     for (int i = 0; i < args.length; i++) {
       String cmd = args[i];
-      if (cmd.equals("-snapshot")) {
+      if (cmd.equals("-login")) {
+        login = true;
+      } else if (cmd.equals("-snapshot")) {
         snapshotName = args[++i];
       } else if (cmd.equals("-target")) {
         targetName = args[++i];
@@ -1006,6 +1011,11 @@ public class ExportSnapshot extends Configured implements Tool {
       SnapshotDescriptionUtils.writeSnapshotInfo(snapshotDesc, snapshotTmpDir, outputFs);
     }
 
+    if (login) {
+      UserProvider.instantiate(getConf()).login("hadoop.client.keytab.file",
+        "hadoop.client.kerberos.principal", DNS.getDefaultHost("default"));
+    }
+
     // Step 2 - Start MR Job to copy files
     // The snapshot references must be copied before the files otherwise the files gets removed
     // by the HFileArchiver, since they have no references.
@@ -1071,6 +1081,7 @@ public class ExportSnapshot extends Configured implements Tool {
     System.err.printf("Usage: bin/hbase %s [options]%n", getClass().getName());
     System.err.println(" where [options] are:");
     System.err.println("  -h|-help                Show this help and exit.");
+    System.err.println("  -login                  login the kerberos by using config keys: hadoop.client.kerberos.principal and hadoop.client.keytab.file");
     System.err.println("  -snapshot NAME          Snapshot to restore.");
     System.err.println("  -copy-to NAME           Remote destination hdfs://");
     System.err.println("  -copy-from NAME         Input folder hdfs:// (default hbase.rootdir)");
