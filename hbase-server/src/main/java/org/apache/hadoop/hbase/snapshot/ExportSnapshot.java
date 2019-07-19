@@ -921,6 +921,11 @@ public class ExportSnapshot extends Configured implements Tool {
       targetName = snapshotName;
     }
 
+    if (login) {
+      UserProvider.instantiate(getConf()).login("hadoop.client.keytab.file",
+        "hadoop.client.kerberos.principal", DNS.getDefaultHost("default"));
+    }
+
     conf.setBoolean("fs." + inputRoot.toUri().getScheme() + ".impl.disable.cache", true);
     FileSystem inputFs = FileSystem.get(inputRoot.toUri(), conf);
     LOG.debug("inputFs=" + inputFs.getUri().toString() + " inputRoot=" + inputRoot);
@@ -1009,11 +1014,6 @@ public class ExportSnapshot extends Configured implements Tool {
           .setName(targetName)
           .build();
       SnapshotDescriptionUtils.writeSnapshotInfo(snapshotDesc, snapshotTmpDir, outputFs);
-    }
-
-    if (login) {
-      UserProvider.instantiate(getConf()).login("hadoop.client.keytab.file",
-        "hadoop.client.kerberos.principal", DNS.getDefaultHost("default"));
     }
 
     // Step 2 - Start MR Job to copy files
