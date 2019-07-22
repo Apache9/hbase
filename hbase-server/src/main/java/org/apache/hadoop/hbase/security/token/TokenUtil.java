@@ -25,6 +25,7 @@ import java.security.PrivilegedExceptionAction;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ServiceException;
 
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
@@ -59,6 +60,26 @@ public class TokenUtil {
   private static void injectFault() throws ServiceException {
     if (injectedException != null) {
       throw injectedException;
+    }
+  }
+
+  /**
+   * Obtain and return an authentication token for the current user.
+   * @param conf the configuration for connecting to the cluster
+   * @return the authentication token instance
+   * @deprecated Replaced by {@link #obtainToken(Connection)}
+   */
+  @Deprecated
+  public static Token<AuthenticationTokenIdentifier> obtainToken(
+      Configuration conf) throws IOException {
+    Connection connection = null;
+    try {
+      connection = ConnectionFactory.createConnection(conf);
+      return obtainToken(connection);
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
     }
   }
 
