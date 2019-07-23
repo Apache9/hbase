@@ -3077,7 +3077,9 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       if (closedScanners.getIfPresent(scannerName) != null) {
         throw SCANNER_ALREADY_CLOSED;
       } else {
-        LOG.warn("Client tried to access missing scanner " + scannerName);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Client tried to access missing scanner " + scannerName);
+        }
         throw new UnknownScannerException(
             "Unknown scanner '" + scannerName + "'. This can happen due to any of the following " +
                 "reasons: a) Scanner id given is wrong, b) Scanner lease expired because of " +
