@@ -1162,21 +1162,25 @@ public class TestFromClientSide {
 
   }
 
-  @Test
-  public void testNull() throws Exception {
+  @Test(expected = IOException.class)
+  public void testNullTableName() throws IOException {
+    // Null table name (should NOT work)
+    TEST_UTIL.createTable((TableName)null, FAMILY);
+    fail("Creating a table with null name passed, should have failed");
+  }
+
+  @Test(expected = IOException.class)
+  public void testNullFamilyName() throws IOException {
     final TableName tableName = TableName.valueOf(name.getMethodName());
 
-    // Null table name (should NOT work)
-    try {
-      TEST_UTIL.createTable((TableName)null, FAMILY);
-      fail("Creating a table with null name passed, should have failed");
-    } catch(Exception e) {}
-
     // Null family (should NOT work)
-    try {
-      TEST_UTIL.createTable(tableName, new byte[][]{null});
-      fail("Creating a table with a null family passed, should fail");
-    } catch(Exception e) {}
+    TEST_UTIL.createTable(tableName, new byte[][]{null});
+    fail("Creating a table with a null family passed, should fail");
+  }
+
+  @Test
+  public void testNullRowAndQualifier() throws Exception {
+    final TableName tableName = TableName.valueOf(name.getMethodName());
 
     Table ht = TEST_UTIL.createTable(tableName, FAMILY);
 
@@ -1206,66 +1210,78 @@ public class TestFromClientSide {
       Result result = ht.get(get);
       assertEmptyResult(result);
     }
+  }
 
-    // Use a new table
-    ht = TEST_UTIL.createTable(TableName.valueOf(name.getMethodName() + "2"), FAMILY);
+  @Test
+  public void testNullEmptyQualifier() throws Exception {
+    final TableName tableName = TableName.valueOf(name.getMethodName());
 
-    // Empty qualifier, byte[0] instead of null (should work)
-    try {
-      Put put = new Put(ROW);
-      put.addColumn(FAMILY, HConstants.EMPTY_BYTE_ARRAY, VALUE);
-      ht.put(put);
+    try (Table ht = TEST_UTIL.createTable(tableName, FAMILY)) {
 
-      getTestNull(ht, ROW, FAMILY, VALUE);
+      // Empty qualifier, byte[0] instead of null (should work)
+      try {
+        Put put = new Put(ROW);
+        put.addColumn(FAMILY, HConstants.EMPTY_BYTE_ARRAY, VALUE);
+        ht.put(put);
 
-      scanTestNull(ht, ROW, FAMILY, VALUE);
+        getTestNull(ht, ROW, FAMILY, VALUE);
 
-      // Flush and try again
+        scanTestNull(ht, ROW, FAMILY, VALUE);
 
-      TEST_UTIL.flush();
+        // Flush and try again
 
-      getTestNull(ht, ROW, FAMILY, VALUE);
+        TEST_UTIL.flush();
 
-      scanTestNull(ht, ROW, FAMILY, VALUE);
+        getTestNull(ht, ROW, FAMILY, VALUE);
 
-      Delete delete = new Delete(ROW);
-      delete.addColumns(FAMILY, HConstants.EMPTY_BYTE_ARRAY);
-      ht.delete(delete);
+        scanTestNull(ht, ROW, FAMILY, VALUE);
+    	
+        Delete delete = new Delete(ROW);
+        delete.addColumns(FAMILY, HConstants.EMPTY_BYTE_ARRAY);
+        ht.delete(delete);
 
-      Get get = new Get(ROW);
-      Result result = ht.get(get);
-      assertEmptyResult(result);
+        Get get = new Get(ROW);
+        Result result = ht.get(get);
+        assertEmptyResult(result);
 
-    } catch(Exception e) {
-      throw new IOException("Using a row with null qualifier threw exception, should ");
+      } catch (Exception e) {
+        throw new IOException("Using a row with null qualifier should not throw exception");
+      }
     }
+  }
 
-    // Null value
-    try {
-      Put put = new Put(ROW);
-      put.addColumn(FAMILY, QUALIFIER, null);
-      ht.put(put);
+  @Test
+  public void testNullValue() throws IOException {
+    final TableName tableName = TableName.valueOf(name.getMethodName());
 
-      Get get = new Get(ROW);
-      get.addColumn(FAMILY, QUALIFIER);
-      Result result = ht.get(get);
-      assertSingleResult(result, ROW, FAMILY, QUALIFIER, null);
+    try (Table ht = TEST_UTIL.createTable(tableName, FAMILY)) {
+      // Null value
+      try {
+        Put put = new Put(ROW);
+        put.addColumn(FAMILY, QUALIFIER, null);
+        ht.put(put);
 
-      Scan scan = new Scan();
-      scan.addColumn(FAMILY, QUALIFIER);
-      result = getSingleScanResult(ht, scan);
-      assertSingleResult(result, ROW, FAMILY, QUALIFIER, null);
+        Get get = new Get(ROW);
+        get.addColumn(FAMILY, QUALIFIER);
+        Result result = ht.get(get);
+        assertSingleResult(result, ROW, FAMILY, QUALIFIER, null);
 
-      Delete delete = new Delete(ROW);
-      delete.addColumns(FAMILY, QUALIFIER);
-      ht.delete(delete);
+        Scan scan = new Scan();
+        scan.addColumn(FAMILY, QUALIFIER);
+        result = getSingleScanResult(ht, scan);
+        assertSingleResult(result, ROW, FAMILY, QUALIFIER, null);
 
-      get = new Get(ROW);
-      result = ht.get(get);
-      assertEmptyResult(result);
+        Delete delete = new Delete(ROW);
+        delete.addColumns(FAMILY, QUALIFIER);
+        ht.delete(delete);
 
-    } catch(Exception e) {
-      throw new IOException("Null values should be allowed, but threw exception");
+        get = new Get(ROW);
+        result = ht.get(get);
+        assertEmptyResult(result);
+
+      } catch (Exception e) {
+        throw new IOException("Null values should be allowed, but threw exception");
+      }
     }
   }
 
@@ -1540,6 +1556,7 @@ public class TestFromClientSide {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void testVersionLimits() throws Exception {
     final TableName tableName = TableName.valueOf(name.getMethodName());
     byte [][] FAMILIES = makeNAscii(FAMILY, 3);
@@ -5975,6 +5992,7 @@ public class TestFromClientSide {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void testDeletesWithReverseScan() throws Exception {
     final TableName tableName = TableName.valueOf(name.getMethodName());
     byte[][] ROWS = makeNAscii(ROW, 6);
