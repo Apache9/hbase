@@ -39,13 +39,14 @@ import org.junit.experimental.categories.Category;
 public class TestSnapshotRestoreFileCleaner {
 
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
-  private Configuration conf = TEST_UTIL.getConfiguration();
+  private static Configuration conf = TEST_UTIL.getConfiguration();
   private Path restoreDir =
       new Path(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT);
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.startMiniDFSCluster(1);
+    CleanerChore.initChorePool(conf);
   }
 
   @AfterClass

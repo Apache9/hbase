@@ -106,6 +106,7 @@ import org.apache.hadoop.hbase.master.RegionState.State;
 import org.apache.hadoop.hbase.master.balancer.BalancerChore;
 import org.apache.hadoop.hbase.master.balancer.ClusterStatusChore;
 import org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory;
+import org.apache.hadoop.hbase.master.cleaner.CleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationMetaCleaner;
@@ -1475,6 +1476,8 @@ MasterServices, Server {
    // AccessController#postCreateTableHandler
    this.executorService.startExecutorService(ExecutorType.MASTER_TABLE_OPERATIONS, 1);
 
+   // Initial cleaner chore
+   CleanerChore.initChorePool(conf);
    // Start log cleaner thread
    String n = Thread.currentThread().getName();
    int cleanerInterval = conf.getInt("hbase.master.cleaner.interval", 60 * 1000);
@@ -1558,6 +1561,7 @@ MasterServices, Server {
     if (this.snapshotForDeletedTableCleaner != null) {
       this.snapshotForDeletedTableCleaner.interrupt();
     }
+    CleanerChore.shutDownChorePool();
     if (this.quotaManager != null) this.quotaManager.stop();
 
     if (this.infoServer != null) {
