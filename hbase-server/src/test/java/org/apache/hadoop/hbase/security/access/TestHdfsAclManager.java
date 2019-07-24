@@ -49,9 +49,12 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.TableSnapshotScanner;
+import org.apache.hadoop.hbase.master.cleaner.CleanerChore;
+import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.HFileArchiveUtil;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -117,6 +120,34 @@ public class TestHdfsAclManager {
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
     TEST_UTIL.shutdownMiniCluster();
+  }
+
+  @Test
+  public void testCleanArchiveTableDir() throws Exception {
+    final String grantUserName = name.getMethodName();
+    User grantUser = User.createUserForTesting(conf, grantUserName, new String[] {});
+    String namespace = name.getMethodName();
+    TableName table = TableName.valueOf(namespace, "t1");
+    String snapshot = namespace + "t1";
+
+    createNamespace(namespace);
+    HTable hTable = createTable(table.getNameAsString());
+    put(hTable);
+    admin.snapshot(snapshot, table);
+    grantOnTable(grantUserName, table.getNameAsString(), READ);
+    canUserScanSnapshot(grantUser, snapshot);
+
+    // HFileCleaner will not delete archive table directory even if it's a empty directory
+    CleanerChore.initChorePool(conf);
+    HFileCleaner cleaner = TEST_UTIL.getHBaseCluster().getMaster().getHFileCleaner();
+    cleaner.choreForTesting();
+    Path archiveTableDir = HFileArchiveUtil.getTableArchivePath(rootDir, table);
+    Assert.assertTrue(fs.exists(archiveTableDir));
+
+    // delete table and grant user can scan snapshot
+    admin.disableTable(table);
+    admin.deleteTable(table);
+    canUserScanSnapshot(grantUser, snapshot);
   }
 
   @Test

@@ -19,27 +19,36 @@ package org.apache.hadoop.hbase.master.cleaner;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
-import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -50,15 +59,115 @@ import com.google.common.collect.Lists;
  */
 public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore {
 
-  private static final Log LOG = LogFactory.getLog(CleanerChore.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(CleanerChore.class);
+  private static final int AVAIL_PROCESSORS = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * If it is an integer and >= 1, it would be the size;
+   * if 0.0 < size <= 1.0, size would be available processors * size.
+   * Pay attention that 1.0 is different from 1, former indicates it will use 100% of cores,
+   * while latter will use only 1 thread for chore to scan dir.
+   */
+  public static final String CHORE_POOL_SIZE = "hbase.cleaner.scan.dir.concurrent.size";
+  private static final String DEFAULT_CHORE_POOL_SIZE = "0.25";
+
+  private static class DirScanPool {
+    int size;
+    ForkJoinPool pool;
+    int cleanerLatch;
+    AtomicBoolean reconfigNotification;
+
+    DirScanPool(Configuration conf) {
+      String poolSize = conf.get(CHORE_POOL_SIZE, DEFAULT_CHORE_POOL_SIZE);
+      size = calculatePoolSize(poolSize);
+      // poolSize may be 0 or 0.0 from a careless configuration,
+      // double check to make sure.
+      size = size == 0 ? calculatePoolSize(DEFAULT_CHORE_POOL_SIZE) : size;
+      pool = new ForkJoinPool(size);
+      LOG.info("Cleaner pool size is {}", size);
+      reconfigNotification = new AtomicBoolean(false);
+      cleanerLatch = 0;
+    }
+
+    /**
+     * Checks if pool can be updated. If so, mark for update later.
+     * @param conf configuration
+     */
+    synchronized void markUpdate(Configuration conf) {
+      int newSize = calculatePoolSize(conf.get(CHORE_POOL_SIZE, DEFAULT_CHORE_POOL_SIZE));
+      if (newSize == size) {
+        LOG.trace(
+          "Size from configuration is same as previous=" + newSize + ", no need to update.");
+        return;
+      }
+      size = newSize;
+      // Chore is working, update it later.
+      reconfigNotification.set(true);
+    }
+
+    /**
+     * Update pool with new size.
+     */
+    synchronized void updatePool(long timeout) {
+      long stopTime = System.currentTimeMillis() + timeout;
+      while (cleanerLatch != 0 && timeout > 0) {
+        try {
+          wait(timeout);
+          timeout = stopTime - System.currentTimeMillis();
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+      shutDownNow();
+      LOG.info("Update chore's pool size from " + pool.getParallelism() + " to " + size);
+      pool = new ForkJoinPool(size);
+    }
+
+    synchronized void latchCountUp() {
+      cleanerLatch++;
+    }
+
+    synchronized void latchCountDown() {
+      cleanerLatch--;
+      notifyAll();
+    }
+
+    @SuppressWarnings("FutureReturnValueIgnored")
+    synchronized void submit(ForkJoinTask task) {
+      pool.submit(task);
+    }
+
+    synchronized void shutDownNow() {
+      if (pool == null || pool.isShutdown()) {
+        return;
+      }
+      pool.shutdownNow();
+    }
+  }
+  // It may be waste resources for each cleaner chore own its pool,
+  // so let's make pool for all cleaner chores.
+  private static volatile DirScanPool POOL;
 
   private final FileSystem fs;
   private final Path oldFileDir;
   private final Configuration conf;
   protected List<T> cleanersChain;
-  private long totalSize = 0L;
   private final long ttlDir;
   private HBaseAdmin admin;
+
+  public static void initChorePool(Configuration conf) {
+    if (POOL == null) {
+      POOL = new DirScanPool(conf);
+    }
+  }
+
+  public static void shutDownChorePool() {
+    if (POOL != null) {
+      POOL.shutDownNow();
+      POOL = null;
+    }
+  }
 
   /**
    * @param name name of the chore being run
@@ -73,6 +182,9 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   public CleanerChore(String name, final int sleepPeriod, final Stoppable s, Configuration conf,
       FileSystem fs, Path oldFileDir, String confKey, long ttlDir) {
     super(name, sleepPeriod, s);
+
+    Preconditions.checkNotNull(POOL, "Chore's pool isn't initialized, please call"
+        + "CleanerChore.initChorePool(Configuration) before new a cleaner chore.");
     this.fs = fs;
     this.oldFileDir = oldFileDir;
     this.conf = conf;
@@ -81,6 +193,36 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     initCleanerChain(confKey);
   }
 
+  /**
+   * Calculate size for cleaner pool.
+   * @param poolSize size from configuration
+   * @return size of pool after calculation
+   */
+  static int calculatePoolSize(String poolSize) {
+    if (poolSize.matches("[1-9][0-9]*")) {
+      // If poolSize is an integer, return it directly,
+      // but upmost to the number of available processors.
+      int size = Math.min(Integer.parseInt(poolSize), AVAIL_PROCESSORS);
+      if (size == AVAIL_PROCESSORS) {
+        LOG.warn("Use full core processors to scan dir, size={}", size);
+      }
+      return size;
+    } else if (poolSize.matches("0.[0-9]+|1.0")) {
+      // if poolSize is a double, return poolSize * availableProcessors;
+      // Ensure that we always return at least one.
+      int computedThreads = (int) (AVAIL_PROCESSORS * Double.valueOf(poolSize));
+      if (computedThreads < 1) {
+        LOG.warn("Computed {} threads for CleanerChore, using 1 instead", computedThreads);
+        return 1;
+      }
+      return computedThreads;
+    } else {
+      LOG.error("Unrecognized value: " + poolSize + " for " + CHORE_POOL_SIZE
+          + ", use default config: " + DEFAULT_CHORE_POOL_SIZE + " instead.");
+      return calculatePoolSize(DEFAULT_CHORE_POOL_SIZE);
+    }
+  }
+  
   /**
    * Validate the file to see if it even belongs in the directory. If it is valid, then the file
    * will go through the cleaner delegates, but otherwise the file is just deleted.
@@ -129,21 +271,6 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     }
   }
 
-  private void tryUpdateTTLByDirSize() {
-    LOG.info("Directory " + this.oldFileDir + " size is " + StringUtils.humanReadableInt(totalSize)
-        + " (" + totalSize + " bytes), try update TimeToLiveCleaner's ttl for next round clean");
-    for (T cleaner : this.cleanersChain) {
-      if (cleaner instanceof TimeToLiveCleanable) {
-        TimeToLiveCleanable ttlCleaner = (TimeToLiveCleanable) cleaner;
-        if (ttlCleaner.isExceedSizeLimit(totalSize)) {
-          ttlCleaner.decreaseTTL();
-        } else {
-          ttlCleaner.increaseTTL();
-        }
-      }
-    }
-  }
-
   private void preRunCleaner() {
     cleanersChain.forEach(FileCleanerDelegate::preClean);
   }
@@ -151,116 +278,65 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   @Override
   protected void chore() {
     try {
-      preRunCleaner();
-      totalSize = 0L;
-      FileStatus[] files = FSUtils.listStatus(this.fs, this.oldFileDir);
-      checkAndDeleteEntries(files);
-      tryUpdateTTLByDirSize();
-    } catch (IOException e) {
-      e = RemoteExceptionHandler.checkIOException(e);
-      LOG.warn("Error while cleaning the logs", e);
-    }
-  }
-
-  /**
-   * Loop over the given directory entries, and check whether they can be deleted.
-   * If an entry is itself a directory it will be recursively checked and deleted itself iff
-   * all subentries are deleted (and no new subentries are added in the mean time)
-   *
-   * @param entries directory entries to check
-   * @return true if all entries were successfully deleted
-   */
-  private boolean checkAndDeleteEntries(FileStatus[] entries) {
-    if (entries == null) {
-      return true;
-    }
-    boolean allEntriesDeleted = true;
-    List<FileStatus> files = Lists.newArrayListWithCapacity(entries.length);
-    for (FileStatus child : entries) {
-      Path path = child.getPath();
-      if (child.isDir()) {
-        // for each subdirectory delete it and all entries if possible
-        if (!checkAndDeleteDirectory(path, child)) {
-          allEntriesDeleted = false;
-        }
-      } else {
-        // collect all files to attempt to delete in one batch
-        files.add(child);
-        totalSize += child.getLen();
+      POOL.latchCountUp();
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Start to clean dir: {}", oldFileDir);
       }
-    }
-    if (!checkAndDeleteFiles(files)) {
-      allEntriesDeleted = false;
-    }
-    return allEntriesDeleted;
-  }
-
-  /**
-   * Attempt to delete a directory and all files under that directory. Each child file is passed
-   * through the delegates to see if it can be deleted. If the directory has no children when the
-   * cleaners have finished it is deleted.
-   * <p>
-   * If new children files are added between checks of the directory, the directory will <b>not</b>
-   * be deleted.
-   * @param dir directory to check
-   * @param dirStatus file status for this directory
-   * @return <tt>true</tt> if the directory was deleted, <tt>false</tt> otherwise.
-   */
-  @VisibleForTesting boolean checkAndDeleteDirectory(Path dir, FileStatus dirStatus) {
-    if (LOG.isTraceEnabled()) {
-      LOG.trace("Checking directory: " + dir);
-    }
-
-    try {
-      FileStatus[] children = FSUtils.listStatus(fs, dir);
-      boolean allChildrenDeleted = checkAndDeleteEntries(children);
-  
-      // if the directory still has children, we can't delete it, so we are done
-      if (!allChildrenDeleted) return false;
-    } catch (IOException e) {
-      e = RemoteExceptionHandler.checkIOException(e);
-      LOG.warn("Error while listing directory: " + dir, e);
-      // couldn't list directory, so don't try to delete, and don't return success
-      return false;
-    }
-
-    // when hbase.hdfs.acl.enable is true, archive/data/ns/table dir should not be deleted
-    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
-      if (isArchiveDataDir(dir)) {
-        return false;
-      } else if (isArchiveNamespaceDir(dir) && namespaceExist(dir.getName())) {
-        return false;
-      } else if (isArchiveTableDir(dir)
-        && tableExist(TableName.valueOf(dir.getParent().getName(), dir.getName()))) {
-        return false;
-      }
-    }
-
-    boolean deleteDir = true;
-    if (ttlDir >= 0) {
-      long currentTime = EnvironmentEdgeManager.currentTimeMillis();
-      long lastModificationTime = dirStatus != null ? dirStatus.getModificationTime() : -1;
-      if (lastModificationTime > 0) {
-        deleteDir = (currentTime - lastModificationTime) > ttlDir;
-      }
-    }
-
-    if (deleteDir) {
-      // otherwise, all the children (that we know about) have been deleted, so we should try to
-      // delete this directory. However, don't do so recursively so we don't delete files that have
-      // been added since we last checked.
-      try {
+      if (runCleaner()) {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Removing directory: " + dir + " from archive");
-        }
-        return fs.delete(dir, false);
-      } catch (IOException e) {
-        if (LOG.isTraceEnabled()) {
-          LOG.trace("Couldn't delete directory: " + dir, e);
+          LOG.debug("Cleaned all files of dir: {}", oldFileDir);
         }
       }
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Finished clean dir: {}", oldFileDir);
+      }
+    } finally {
+      POOL.latchCountDown();
     }
-    return false;
+  }
+
+  public Boolean runCleaner() {
+    preRunCleaner();
+    CleanerTask task = new CleanerTask(this.oldFileDir, true);
+    POOL.submit(task);
+    return task.join();
+  }
+
+  /**
+   * Sort the given list in (descending) order of the space each element takes
+   * @param dirs the list to sort, element in it should be directory (not file)
+   */
+  private void sortByConsumedSpace(List<FileStatus> dirs) {
+    if (dirs == null || dirs.size() < 2) {
+      // no need to sort for empty or single directory
+      return;
+    }
+    dirs.sort(new Comparator<FileStatus>() {
+      HashMap<FileStatus, Long> directorySpaces = new HashMap<>();
+
+      @Override
+      public int compare(FileStatus f1, FileStatus f2) {
+        long f1ConsumedSpace = getSpace(f1);
+        long f2ConsumedSpace = getSpace(f2);
+        return Long.compare(f2ConsumedSpace, f1ConsumedSpace);
+      }
+
+      private long getSpace(FileStatus f) {
+        Long cached = directorySpaces.get(f);
+        if (cached != null) {
+          return cached;
+        }
+        try {
+          long space =
+              f.isDirectory() ? fs.getContentSummary(f.getPath()).getSpaceConsumed() : f.getLen();
+          directorySpaces.put(f, space);
+          return space;
+        } catch (IOException e) {
+          LOG.trace("Failed to get space consumed by path={}", f, e);
+          return -1;
+        }
+      }
+    });
   }
 
   /**
@@ -270,6 +346,9 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
    * @return true iff successfully deleted all files
    */
   private boolean checkAndDeleteFiles(List<FileStatus> files) {
+    if (files == null) {
+      return true;
+    }
     // first check to see if the path is valid
     List<FileStatus> validFiles = Lists.newArrayListWithCapacity(files.size());
     List<FileStatus> invalidFiles = Lists.newArrayList();
@@ -307,6 +386,15 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     }
     
     Iterable<FileStatus> filesToDelete = Iterables.concat(invalidFiles, deletableValidFiles);
+    return deleteFiles(filesToDelete) == files.size();
+  }
+
+  /**
+   * Delete the given files
+   * @param filesToDelete files to delete
+   * @return number of deleted files
+   */
+  protected int deleteFiles(Iterable<FileStatus> filesToDelete) {
     int deletedFileCount = 0;
     for (FileStatus file : filesToDelete) {
       Path filePath = file.getPath();
@@ -317,7 +405,6 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
         boolean success = this.fs.delete(filePath, false);
         if (success) {
           deletedFileCount++;
-          totalSize -= file.getLen();
         } else {
           LOG.warn("Attempted to delete:" + filePath
               + ", but couldn't. Run cleaner chain and attempt to delete on next pass.");
@@ -327,8 +414,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
         LOG.warn("Error while deleting: " + filePath, e);
       }
     }
-
-    return deletedFileCount == files.size();
+    return deletedFileCount;
   }
 
   @Override
@@ -355,7 +441,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
         admin.close();
       }
     } catch (IOException e) {
-      LOG.error(e);
+      LOG.warn("Failed to close admin", e);
     }
   }
 
@@ -363,8 +449,8 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     try {
       checkAdmin();
       return admin.tableExists(tableName);
-    } catch (Exception e){
-      LOG.error(e);
+    } catch (Exception e) {
+      LOG.warn("Failed to check if table {} exists", tableName, e);
       return true;
     }
   }
@@ -372,9 +458,10 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   private boolean namespaceExist(String namespace) {
     try {
       checkAdmin();
-      return Arrays.stream(admin.listNamespaceDescriptors()).anyMatch(ns -> ns.getName().equals(namespace));
-    } catch (IOException e){
-      LOG.error(e);
+      return Arrays.stream(admin.listNamespaceDescriptors())
+          .anyMatch(ns -> ns.getName().equals(namespace));
+    } catch (IOException e) {
+      LOG.warn("Failed to check if namespace {} exists", namespace, e);
       return true;
     }
   }
@@ -401,5 +488,164 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
       return isArchiveNamespaceDir(path.getParent());
     }
     return false;
+  }
+
+  private interface Action<T> {
+    T act() throws IOException;
+  }
+
+  /**
+   * Attemps to clean up a directory, its subdirectories, and files.
+   * Return value is true if everything was deleted. false on partial / total failures.
+   */
+  private class CleanerTask extends RecursiveTask<Boolean> {
+    private final Path dir;
+    private final boolean root;
+    private FileStatus dirStatus = null;
+
+    CleanerTask(final FileStatus dir, final boolean root) {
+      this(dir.getPath(), root);
+      this.dirStatus = dir;
+    }
+
+    CleanerTask(final Path dir, final boolean root) {
+      this.dir = dir;
+      this.root = root;
+    }
+
+    @Override
+    protected Boolean compute() {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Cleaning under {}", dir);
+      }
+      List<FileStatus> subDirs;
+      List<FileStatus> files;
+      try {
+        // if dir doesn't exist, we'll get null back for both of these
+        // which will fall through to succeeding.
+        subDirs = getFilteredStatus(FileStatus::isDirectory);
+        files = getFilteredStatus(FileStatus::isFile);
+      } catch (IOException ioe) {
+        LOG.warn("failed to get FileStatus for contents of '{}'", dir, ioe);
+        return false;
+      }
+
+      boolean allFilesDeleted = true;
+      if (!files.isEmpty()) {
+        allFilesDeleted = deleteAction(() -> checkAndDeleteFiles(files), "files");
+      }
+
+      boolean allSubdirsDeleted = true;
+      if (!subDirs.isEmpty()) {
+        List<CleanerTask> tasks = Lists.newArrayListWithCapacity(subDirs.size());
+        long start = System.currentTimeMillis();
+        sortByConsumedSpace(subDirs);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Sort consumed space of dir {}, cost {}ms", dir,
+            System.currentTimeMillis() - start);
+        }
+        for (FileStatus subdir : subDirs) {
+          CleanerTask task = new CleanerTask(subdir, false);
+          tasks.add(task);
+          task.fork();
+        }
+        allSubdirsDeleted = deleteAction(() -> getCleanResult(tasks), "subdirs");
+      }
+
+      boolean result = allFilesDeleted && allSubdirsDeleted && isDirDeletable();
+      // if and only if files and subdirs under current dir are deleted successfully, and
+      // it is not the root dir, then task will try to delete it.
+      if (result && !root) {
+        result &= deleteAction(() -> fs.delete(dir, false), "dir");
+      }
+      return result;
+    }
+
+    private boolean isDirDeletable() {
+      // check if dir used for snapshot scanner
+      if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+        if (isArchiveDataDir(dir)) {
+          return false;
+        } else if (isArchiveNamespaceDir(dir) && namespaceExist(dir.getName())) {
+          return false;
+        } else if (isArchiveTableDir(dir) &&
+            tableExist(TableName.valueOf(dir.getParent().getName(), dir.getName()))) {
+          return false;
+        }
+      }
+      // check dir TTL
+      boolean deleteDir = true;
+      if (ttlDir >= 0) {
+        long currentTime = EnvironmentEdgeManager.currentTimeMillis();
+        long lastModificationTime = dirStatus != null ? dirStatus.getModificationTime() : -1;
+        if (lastModificationTime > 0) {
+          deleteDir = (currentTime - lastModificationTime) > ttlDir;
+        }
+      }
+      return deleteDir;
+    }
+
+    /**
+     * Get FileStatus with filter.
+     * @param function a filter function
+     * @return filtered FileStatus or empty list if dir doesn't exist
+     * @throws IOException if there's an error other than dir not existing
+     */
+    private List<FileStatus> getFilteredStatus(Predicate<FileStatus> function) throws IOException {
+      return Optional
+          .ofNullable(FSUtils.listStatusWithStatusFilter(fs, dir, status -> function.test(status)))
+          .orElseGet(Collections::emptyList);
+    }
+
+    /**
+     * Perform a delete on a specified type.
+     * @param deletion a delete
+     * @param type possible values are 'files', 'subdirs', 'dirs'
+     * @return true if it deleted successfully, false otherwise
+     */
+    private boolean deleteAction(Action<Boolean> deletion, String type) {
+      boolean deleted;
+      try {
+        LOG.trace("Start deleting {} under {}", type, dir);
+        deleted = deletion.act();
+      } catch (PathIsNotEmptyDirectoryException exception) {
+        // N.B. HDFS throws this exception when we try to delete a non-empty directory, but
+        // LocalFileSystem throws a bare IOException. So some test code will get the verbose
+        // message below.
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Couldn't delete '{}' yet because it isn't empty. Probably transient. "
+              + "exception details at TRACE.", dir);
+        }
+        LOG.trace("Couldn't delete '{}' yet because it isn't empty w/exception.", dir, exception);
+        deleted = false;
+      } catch (IOException ioe) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Could not delete " + type + " under " + dir
+              + ". might be transient; we'll retry. if it keeps "
+              + "happening, use following exception when asking on mailing list.", ioe);
+        }
+        deleted = false;
+      }
+      LOG.trace("Finish deleting " + type + " under " + dir + ", deleted=" + deleted);
+      return deleted;
+    }
+
+    /**
+     * Get cleaner results of subdirs.
+     * @param tasks subdirs cleaner tasks
+     * @return true if all subdirs deleted successfully, false for patial/all failures
+     * @throws IOException something happen during computation
+     */
+    private boolean getCleanResult(List<CleanerTask> tasks) throws IOException {
+      boolean cleaned = true;
+      try {
+        for (CleanerTask task : tasks) {
+          cleaned &= task.get();
+        }
+      } catch (InterruptedException | ExecutionException e) {
+        throw new IOException(e);
+      }
+      return cleaned;
+    }
   }
 }
