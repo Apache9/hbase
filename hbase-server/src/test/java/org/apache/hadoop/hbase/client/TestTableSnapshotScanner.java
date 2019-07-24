@@ -114,6 +114,34 @@ public class TestTableSnapshotScanner {
   }
 
   @Test
+  public void testSnapshotWithReference() throws Exception {
+    setupCluster();
+    try {
+      String snapshotName = "testSnapshotWithReference";
+      TableName tableName = TableName.valueOf(snapshotName);
+      String snapshotName2 = "testSnapshotWithReference2";
+      TableName tableName2 = TableName.valueOf(snapshotName2);
+      createTableAndSnapshot(UTIL, tableName, snapshotName, 1);
+      HBaseAdmin hBaseAdmin = UTIL.getHBaseAdmin();
+      // clone snapshot to table2
+      hBaseAdmin.cloneSnapshot(snapshotName, tableName2);
+      // snapshot for table2
+      hBaseAdmin.snapshot(snapshotName2, tableName2);
+      // scan snapshot of table2
+      Path restoreDir = UTIL.getDataTestDirOnTestFS(snapshotName);
+      Scan scan = new Scan(bbb, yyy);
+      TableSnapshotScanner scanner =
+          new TableSnapshotScanner(UTIL.getConfiguration(), restoreDir, snapshotName2, scan);
+      verifyScanner(scanner, bbb, yyy);
+      scanner.close();
+      hBaseAdmin.deleteSnapshot(snapshotName);
+      hBaseAdmin.deleteSnapshot(snapshotName2);
+    } finally {
+      tearDownCluster();
+    }
+  }
+
+  @Test
   public void testWithSingleRegion() throws Exception {
     testScanner(UTIL, "testWithSingleRegion", 1, false);
   }

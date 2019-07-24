@@ -36,12 +36,12 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
-import org.apache.hadoop.hbase.io.HFileLink;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest.FamilyFiles;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.Store;
+import org.apache.hadoop.hbase.snapshot.SnapshotReferenceUtil;
 import com.google.protobuf.ByteString;
 
 /**
@@ -94,7 +94,8 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
         ByteString snapshotFamily = snapshotFamilyFiles.getFamilyName();
         // reference files read from snapshot manifest
         Set<String> snapshotStoreFiles = snapshotFamilyFiles.getStoreFilesList().stream()
-            .map(storeFile -> storeFile.getName()).collect(Collectors.toSet());
+            .map(storeFile -> SnapshotReferenceUtil.getHFileName(storeFile.getName()))
+            .collect(Collectors.toSet());
         // reference files read from restore directory
         if (regionStores.get(snapshotFamily.toByteArray()) == null) {
           throw new IOException("Family {" + snapshotFamily.toStringUtf8()
@@ -102,12 +103,10 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
               + region.getRegionInfo().getRegionNameAsString() + "}, restoreDir {"
               + rootDir.toString() + "}");
         }
-        Set<String> restoredStoreFiles = regionStores.get(snapshotFamily.toByteArray())
-            .getStorefiles().stream().map(storeFile -> storeFile.getPath().getName())
-            .map(storeFileName -> HFileLink.isHFileLink(storeFileName)
-                ? HFileLink.getReferencedHFileName(storeFileName)
-                : storeFileName)
-            .collect(Collectors.toSet());
+        Set<String> restoredStoreFiles =
+            regionStores.get(snapshotFamily.toByteArray()).getStorefiles().stream()
+                .map(sf -> SnapshotReferenceUtil.getHFileName(sf.getPath().getName()))
+                .collect(Collectors.toSet());
         for (String snapshotStoreFile : snapshotStoreFiles) {
           if (!restoredStoreFiles.contains(snapshotStoreFile)) {
             throw new IOException("Storefile {" + snapshotStoreFile

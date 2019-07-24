@@ -377,4 +377,8 @@ public final class SnapshotReferenceUtil {
     });
     return names;
   }
+
+  public static String getHFileName(String path) {
+    return HFileLink.isHFileLink(path) ? HFileLink.getReferencedHFileName(path) : path;
+  }
 }
