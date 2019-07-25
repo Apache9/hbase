@@ -560,6 +560,7 @@ public class TestPerTableCFReplication {
     putAndWaitWithFamily(row1, f3Name, htab1B);
     ensureRowNotReplicated(row1, f3Name, htab2B);
     deleteAndWaitWithFamily(row1, f3Name, htab1B);
+    admin.removeReplicationPeer("2");
   }
 
   @Test(timeout = 300000)
