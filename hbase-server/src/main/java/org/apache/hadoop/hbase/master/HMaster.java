@@ -1046,6 +1046,8 @@ MasterServices, Server {
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
 
+    // Initial cleaner chore
+    CleanerChore.initChorePool(conf);
     status.setStatus("Starting hdfs acl manager");
     initHdfsAclManager();
 
@@ -1476,8 +1478,6 @@ MasterServices, Server {
    // AccessController#postCreateTableHandler
    this.executorService.startExecutorService(ExecutorType.MASTER_TABLE_OPERATIONS, 1);
 
-   // Initial cleaner chore
-   CleanerChore.initChorePool(conf);
    // Start log cleaner thread
    String n = Thread.currentThread().getName();
    int cleanerInterval = conf.getInt("hbase.master.cleaner.interval", 60 * 1000);
