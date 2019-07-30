@@ -30,7 +30,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.util.ReflectionUtils;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
@@ -57,24 +56,34 @@ public class JvmThreadMonitor {
   /** dump thread info if we detect current threadBlocked value more than this threshold */
   private final int threadBlockedThresholdMax;
   private static final String THREAD_BLOCKED_THRESHOLD_KEY = "jvm.threadmonitor.blocked-threshold-max";
-  private static final int THREAD_BLOCKED_THRESHOLD_DEFAULT = 1000;
+  private static final int THREAD_BLOCKED_THRESHOLD_DEFAULT = 2000;
+  public static final String MASTER_THREAD_BLOCKED_THRESHOLD_KEY =
+      "jvm.threadmonitor.master.blocked-threshold-max";
+  public static final int MASTER_THREAD_BLOCKED_THRESHOLD_DEFAULT = 10000;
 
   /** dump thread info if we detect current threadRunnable value more than this threshold */
   private final int threadRunnableThresholdMax;
   private static final String THREAD_RUNNABLE_THRESHOLD_KEY = "jvm.threadmonitor.runnable-threshold-max";
   private static final int THREAD_RUNNABLE_THRESHOLD_DEFAULT = 10000;
+  public static final String MASTER_THREAD_RUNNABLE_THRESHOLD_KEY =
+      "jvm.threadmonitor.master.runnable-threshold-max";
+  public static final int MASTER_THREAD_RUNNABLE_THRESHOLD_DEFAULT = 20000;
 
   private Thread monitorThread;
   private volatile boolean shouldRun = true;
 
   public JvmThreadMonitor(Configuration conf) {
+    this(conf, conf.getInt(THREAD_BLOCKED_THRESHOLD_KEY, THREAD_BLOCKED_THRESHOLD_DEFAULT),
+        conf.getInt(THREAD_RUNNABLE_THRESHOLD_KEY, THREAD_RUNNABLE_THRESHOLD_DEFAULT));
+  }
+
+  public JvmThreadMonitor(Configuration conf, int threadBlockedThresholdMax,
+      int threadRunnableThresholdMax) {
     this.SLEEP_INTERVAL_MS = conf.getLong(THREAD_SLEEP_KEY, THREAD_SLEEP_DEFAULT);
-    this.threadWaitingThresholdMin = conf.getInt(THREAD_WAITING_THRESHOLD_KEY,
-      THREAD_WAITING_THRESHOLD_DEFAULT);
-    this.threadBlockedThresholdMax = conf.getInt(THREAD_BLOCKED_THRESHOLD_KEY,
-      THREAD_BLOCKED_THRESHOLD_DEFAULT);
-    this.threadRunnableThresholdMax = conf.getInt(THREAD_RUNNABLE_THRESHOLD_KEY,
-      THREAD_RUNNABLE_THRESHOLD_DEFAULT);
+    this.threadWaitingThresholdMin =
+        conf.getInt(THREAD_WAITING_THRESHOLD_KEY, THREAD_WAITING_THRESHOLD_DEFAULT);
+    this.threadBlockedThresholdMax = threadBlockedThresholdMax;
+    this.threadRunnableThresholdMax = threadRunnableThresholdMax;
   }
 
   public void start() {

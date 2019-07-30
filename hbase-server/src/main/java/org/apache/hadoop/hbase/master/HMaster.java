@@ -644,7 +644,15 @@ MasterServices, Server {
 
     this.zooKeeper = new ZooKeeperWatcher(conf, MASTER + ":" + isa.getPort(), this, true);
     this.rpcServer.startThreads();
-    this.jvmThreadMonitor = new JvmThreadMonitor(conf);
+
+    int threadBlockedThresholdMax =
+        conf.getInt(JvmThreadMonitor.MASTER_THREAD_BLOCKED_THRESHOLD_KEY,
+          JvmThreadMonitor.MASTER_THREAD_BLOCKED_THRESHOLD_DEFAULT);
+    int threadRunnableThresholdMax =
+        conf.getInt(JvmThreadMonitor.MASTER_THREAD_RUNNABLE_THRESHOLD_KEY,
+          JvmThreadMonitor.MASTER_THREAD_RUNNABLE_THRESHOLD_DEFAULT);
+    this.jvmThreadMonitor =
+        new JvmThreadMonitor(conf, threadBlockedThresholdMax, threadRunnableThresholdMax);
     this.jvmThreadMonitor.start();
 
     // metrics interval: using the same property as region server.
