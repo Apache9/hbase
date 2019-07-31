@@ -22,23 +22,31 @@ import com.google.common.base.Preconditions;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.generated.FilterProtos;
 
 import java.util.ArrayList;
+
 /**
- * Implementation of Filter interface that limits results to a specific page
- * size. It terminates scanning once the number of filter-passed rows is >
- * the given page size.
+ * Implementation of Filter interface that limits results to a specific page size. It terminates
+ * scanning once the number of filter-passed rows is > the given page size.
  * <p>
- * Note that this filter cannot guarantee that the number of results returned
- * to a client are <= page size. This is because the filter is applied
- * separately on different region servers. It does however optimize the scan of
- * individual HRegions by making sure that the page size is never exceeded
- * locally.
+ * Note that this filter cannot guarantee that the number of results returned to a client are <=
+ * page size. This is because the filter is applied separately on different region servers. It does
+ * however optimize the scan of individual HRegions by making sure that the page size is never
+ * exceeded locally.
+ * <p>
+ * Deprecated this pageFilter now, because the internal state of PageFilter only works in region
+ * level, it cannot guarantee the global page limit. that's to say if your scan cross multiple
+ * regions, then the returned number of rows may exceed your page size, that's quite confusing. For
+ * more details please see: https://issues.apache.org/jira/browse/HBASE-21332
+ * <p>
+ * Please use {@link Scan#setLimit} to replace the {@link PageFilter}.
  */
 @InterfaceAudience.Public
 @InterfaceStability.Stable
+@Deprecated
 public class PageFilter extends FilterBase {
   private long pageSize = Long.MAX_VALUE;
   private int rowsAccepted = 0;
