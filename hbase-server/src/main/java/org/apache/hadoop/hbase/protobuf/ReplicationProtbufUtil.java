@@ -47,23 +47,31 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 public class ReplicationProtbufUtil {
+  private static final Logger LOG = LoggerFactory.getLogger(ReplicationProtbufUtil.class);
+
   /**
    * A helper to replicate a list of HLog entries using admin protocol.
-   *
    * @param admin
    * @param entries
    * @throws java.io.IOException
    */
-  public static void replicateWALEntry(final AdminService.BlockingInterface admin,
+  public static int replicateWALEntry(final AdminService.BlockingInterface admin,
       final HLog.Entry[] entries) throws IOException {
     Pair<AdminProtos.ReplicateWALEntryRequest, CellScanner> p =
-      buildReplicateWALEntryRequest(entries);
+        buildReplicateWALEntryRequest(entries);
+    if (p.getFirst().getEntryCount() == 0) {
+      LOG.warn("No cell in the WAL entries, skip to send the replicateWALEntry request.");
+      return 0;
+    }
     try {
       HBaseRpcController controller = new HBaseRpcControllerImpl(p.getSecond());
       admin.replicateWALEntry(controller, p.getFirst());
+      return p.getFirst().getEntryCount();
     } catch (ServiceException se) {
       throw ProtobufUtil.getRemoteException(se);
     }
@@ -71,28 +79,25 @@ public class ReplicationProtbufUtil {
 
   /**
    * Create a new ReplicateWALEntryRequest from a list of HLog entries
-   *
    * @param entries the HLog entries to be replicated
-   * @return a pair of ReplicateWALEntryRequest and a CellScanner over all the WALEdit values
-   * found.
+   * @return a pair of ReplicateWALEntryRequest and a CellScanner over all the WALEdit values found.
    */
   public static Pair<AdminProtos.ReplicateWALEntryRequest, CellScanner>
       buildReplicateWALEntryRequest(final HLog.Entry[] entries) {
     // Accumulate all the KVs seen in here.
-    List<List<? extends Cell>> allkvs = new ArrayList<List<? extends Cell>>(entries.length);
+    List<List<? extends Cell>> allkvs = new ArrayList<>(entries.length);
     int size = 0;
     WALProtos.FamilyScope.Builder scopeBuilder = WALProtos.FamilyScope.newBuilder();
     AdminProtos.WALEntry.Builder entryBuilder = AdminProtos.WALEntry.newBuilder();
     AdminProtos.ReplicateWALEntryRequest.Builder builder =
-      AdminProtos.ReplicateWALEntryRequest.newBuilder();
+        AdminProtos.ReplicateWALEntryRequest.newBuilder();
     HBaseProtos.UUID.Builder uuidBuilder = HBaseProtos.UUID.newBuilder();
-    for (HLog.Entry entry: entries) {
+    for (HLog.Entry entry : entries) {
       entryBuilder.clear();
       // TODO: this duplicates a lot in HLogKey#getBuilder
       WALProtos.WALKey.Builder keyBuilder = entryBuilder.getKeyBuilder();
       HLogKey key = entry.getKey();
-      keyBuilder.setEncodedRegionName(
-        ByteStringer.wrap(key.getEncodedRegionName()));
+      keyBuilder.setEncodedRegionName(ByteStringer.wrap(key.getEncodedRegionName()));
       keyBuilder.setTableName(ByteStringer.wrap(key.getTablename().getName()));
       keyBuilder.setLogSequenceNumber(key.getLogSeqNum());
       keyBuilder.setWriteTime(key.getWriteTime());
@@ -102,7 +107,7 @@ public class ReplicationProtbufUtil {
       if (key.getNonceGroup() != HConstants.NO_NONCE) {
         keyBuilder.setNonceGroup(key.getNonceGroup());
       }
-      for(UUID clusterId : key.getClusterIds()) {
+      for (UUID clusterId : key.getClusterIds()) {
         uuidBuilder.setLeastSigBits(clusterId.getLeastSignificantBits());
         uuidBuilder.setMostSigBits(clusterId.getMostSignificantBits());
         keyBuilder.addClusterIds(uuidBuilder.build());
@@ -110,17 +115,19 @@ public class ReplicationProtbufUtil {
       WALEdit edit = entry.getEdit();
       NavigableMap<byte[], Integer> scopes = key.getScopes();
       if (scopes != null && !scopes.isEmpty()) {
-        for (Map.Entry<byte[], Integer> scope: scopes.entrySet()) {
+        for (Map.Entry<byte[], Integer> scope : scopes.entrySet()) {
           scopeBuilder.setFamily(ByteStringer.wrap(scope.getKey()));
-          WALProtos.ScopeType scopeType =
-              WALProtos.ScopeType.valueOf(scope.getValue().intValue());
+          WALProtos.ScopeType scopeType = WALProtos.ScopeType.valueOf(scope.getValue());
           scopeBuilder.setScopeType(scopeType);
           keyBuilder.addScopes(scopeBuilder.build());
         }
       }
       List<KeyValue> kvs = edit.getKeyValues();
-      // Add up the size.  It is used later serializing out the kvs.
-      for (KeyValue kv: kvs) {
+      if (kvs.isEmpty()) {
+        continue;
+      }
+      // Add up the size. It is used later serializing out the kvs.
+      for (KeyValue kv : kvs) {
         size += kv.getLength();
       }
       // Collect up the kvs
@@ -129,8 +136,7 @@ public class ReplicationProtbufUtil {
       entryBuilder.setAssociatedCellCount(kvs.size());
       builder.addEntry(entryBuilder.build());
     }
-    return new Pair<AdminProtos.ReplicateWALEntryRequest, CellScanner>(builder.build(),
-      getCellScanner(allkvs, size));
+    return new Pair<>(builder.build(), getCellScanner(allkvs, size));
   }
 
   /**
