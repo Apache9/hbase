@@ -388,7 +388,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   private ClusterStatusChore clusterStatusChore;
   private ClusterStatusPublisher clusterStatusPublisherChore = null;
 
-  private HbckChecker hbckChecker;
+  private HbckChore hbckChore;
   CatalogJanitor catalogJanitorChore;
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
@@ -1100,8 +1100,8 @@ public class HMaster extends HRegionServer implements MasterServices {
     getChoreService().scheduleChore(normalizerChore);
     this.catalogJanitorChore = new CatalogJanitor(this);
     getChoreService().scheduleChore(catalogJanitorChore);
-    this.hbckChecker = new HbckChecker(this);
-    getChoreService().scheduleChore(hbckChecker);
+    this.hbckChore = new HbckChore(this);
+    getChoreService().scheduleChore(hbckChore);
 
     // Only for rolling upgrade, where we need to migrate the data in namespace table to meta table.
     if (!waitForNamespaceOnline()) {
@@ -1570,7 +1570,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       choreService.cancelChore(this.hfileCleaner);
       choreService.cancelChore(this.replicationBarrierCleaner);
       choreService.cancelChore(this.snapshotForDeletedTableCleaner);
-      choreService.cancelChore(this.hbckChecker);
+      choreService.cancelChore(this.hbckChore);
     }
   }
 
@@ -3770,7 +3770,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     return this.syncReplicationReplayWALManager;
   }
 
-  public HbckChecker getHbckChecker() {
-    return this.hbckChecker;
+  public HbckChore getHbckChore() {
+    return this.hbckChore;
   }
 }
