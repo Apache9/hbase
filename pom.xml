@@ -1013,7 +1013,7 @@
     <thrift.version>0.12.0</thrift.version>
     <shaded-thrift.version>2.0.2</shaded-thrift.version>
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
-    <hadoop-mdh.version>2.6.0-mdh3.12.19-jre8</hadoop-mdh.version>
+    <hadoop-mdh.version>2.6.0-mdh3.12.20-jre8</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
     <minikdc.version>${hadoop-mdh.version}</minikdc.version>
     <keycenter.version>2.1.10</keycenter.version>
