@@ -37,10 +37,13 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.exceptions.ClientExceptionsUtil;
 import org.apache.hadoop.hbase.exceptions.RegionOpeningException;
+import org.apache.hadoop.hbase.ipc.FailedServerException;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.GetResponse;
+import org.apache.hadoop.hbase.quotas.RpcThrottlingException;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
@@ -52,10 +55,14 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -70,6 +77,26 @@ public class TestMetaCache {
   private HConnectionImplementation conn;
   private HRegionServer badRS;
   private static final int TIMEOUT = 30;
+
+  private static final List<Throwable> metaCacheClearingExceptions = new ArrayList<Throwable>() {{
+    add(new RegionServerStoppedException(" "));
+    add(new IOException().initCause(new NoRouteToHostException()));
+    add(new NoRouteToHostException());
+    add(new FailedServerException(""));
+    add(new SocketTimeoutException());
+    add(new ConnectException());
+  }};
+
+  private static final List<Throwable> metaCachePreservingExceptions = new ArrayList<Throwable>() {{
+    add(new RegionOpeningException(" "));
+    add(new RegionTooBusyException());
+    add(new ThrottlingException(" "));
+    add(new MultiActionResultTooLarge(" "));
+    add(new RetryImmediatelyException(" "));
+    add(new CallDroppedException(" "));
+    add(new TooManyRegionScannersException(" "));
+    add(new RpcThrottlingException(" "));
+  }};
 
   /**
    * @throws java.lang.Exception
@@ -130,7 +157,14 @@ public class TestMetaCache {
   }
 
   @Test
-  public void testPreserveMetaCacheOnException() throws Exception {
+  public void testMetaCacheOnException() throws Exception {
+    for (Throwable t : metaCacheClearingExceptions) {
+      assertTrue(ClientExceptionsUtil.isMetaClearingException(t));
+    }
+    for (Throwable t : metaCachePreservingExceptions) {
+      assertFalse(ClientExceptionsUtil.isMetaClearingException(t));
+    }
+
     HTableInterface table = conn.getTable(TABLE_NAME);
     byte[] row = badRS.getOnlineRegions(TABLE_NAME).get(0).getRegionInfo().getStartKey();
 
@@ -139,7 +173,7 @@ public class TestMetaCache {
     Get get = new Get(row);
 
     Exception exp;
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 500; i++) {
       exp = null;
       try {
         // put will success and cache the region location
@@ -152,26 +186,19 @@ public class TestMetaCache {
 
       if (exp != null) {
         if (ClientExceptionsUtil.isMetaClearingException(exp)) {
+          LOG.debug("Call failed as a meta clearing exception " +
+              ClientExceptionsUtil.findException(exp));
           assertNull(conn.getCachedLocation(TABLE_NAME, row));
         } else {
+          LOG.debug("Call failed as a meta preserving exception " +
+              ClientExceptionsUtil.findException(exp));
           assertNotNull(conn.getCachedLocation(TABLE_NAME, row));
         }
       } else {
+        LOG.debug("Call succeed!");
         assertNotNull(conn.getCachedLocation(TABLE_NAME, row));
       }
     }
-  }
-
-  public static List<Throwable> metaCachePreservingExceptions() {
-    return new ArrayList<Throwable>() {{
-      add(new RegionOpeningException(" "));
-      add(new RegionTooBusyException());
-      add(new ThrottlingException(" "));
-      add(new MultiActionResultTooLarge(" "));
-      add(new RetryImmediatelyException(" "));
-      add(new CallDroppedException(" "));
-      add(new TooManyRegionScannersException(" "));
-    }};
   }
 
   protected static class RegionServerWithFakeRpcServices extends HRegionServer {
@@ -183,7 +210,6 @@ public class TestMetaCache {
 
     private int numReqs = -1;
     private int expCount = -1;
-    private List<Throwable> metaCachePreservingExceptions = metaCachePreservingExceptions();
 
     @Override
     public GetResponse get(final RpcController controller, final ClientProtos.GetRequest request)
@@ -212,15 +238,21 @@ public class TestMetaCache {
           Thread.sleep(2 * TIMEOUT);
         } catch (InterruptedException e) {
         }
+      } else if (numReqs % 5 == 3) {
+        expCount++;
+        Throwable t =
+            metaCacheClearingExceptions.get(expCount % metaCacheClearingExceptions.size());
+        throw new ServiceException(t);
+      } else {
+        // Round robin between different special exceptions.
+        // This is not ideal since exception types are not tied to the operation performed here,
+        // But, we don't really care here if we throw MultiActionTooLargeException while doing
+        // single Gets.
+        expCount++;
+        Throwable t =
+            metaCachePreservingExceptions.get(expCount % metaCachePreservingExceptions.size());
+        throw new ServiceException(t);
       }
-      // Round robin between different special exceptions.
-      // This is not ideal since exception types are not tied to the operation performed here,
-      // But, we don't really care here if we throw MultiActionTooLargeException while doing
-      // single Gets.
-      expCount++;
-      Throwable t =
-          metaCachePreservingExceptions.get(expCount % metaCachePreservingExceptions.size());
-      throw new ServiceException(t);
     }
   }
 }
