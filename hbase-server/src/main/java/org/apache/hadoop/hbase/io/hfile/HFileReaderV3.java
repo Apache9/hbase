@@ -22,8 +22,6 @@ import java.security.Key;
 import java.security.KeyException;
 
 import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -38,6 +36,8 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.WritableUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link HFile} reader for version 3.
@@ -45,7 +45,7 @@ import org.apache.hadoop.io.WritableUtils;
 @InterfaceAudience.Private
 public class HFileReaderV3 extends HFileReaderV2 {
 
-  private static final Log LOG = LogFactory.getLog(HFileReaderV3.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HFileReaderV3.class);
 
   public static final int MAX_MINOR_VERSION = 0;
 
@@ -212,9 +212,9 @@ public class HFileReaderV3 extends HFileReaderV2 {
       if (currKeyLen < 0 || currValueLen < 0 || currKeyLen > blockBuffer.limit()
           || currValueLen > blockBuffer.limit()) {
         throw new IllegalStateException("Invalid currKeyLen " + currKeyLen + " or currValueLen "
-            + currValueLen + ". Block offset: "
-            + block.getOffset() + ", block length: " + blockBuffer.limit() + ", position: "
-            + blockBuffer.position() + " (without header).");
+            + currValueLen + ". Block offset: " + block.getOffset() + ", block length: "
+            + blockBuffer.limit() + ", position: " + blockBuffer.position() + ", path: "
+            + reader.getPath() + ", (without header).");
       }
       ByteBufferUtils.skip(blockBuffer, currKeyLen + currValueLen);
       if (reader.hfileContext.isIncludesTags()) {
@@ -223,7 +223,7 @@ public class HFileReaderV3 extends HFileReaderV2 {
         if (currTagsLen < 0 || currTagsLen > blockBuffer.limit()) {
           throw new IllegalStateException("Invalid currTagsLen " + currTagsLen + ". Block offset: "
               + block.getOffset() + ", block length: " + blockBuffer.limit() + ", position: "
-              + blockBuffer.position() + " (without header).");
+              + blockBuffer.position() + ", path: " + reader.getPath() + ",(without header).");
         }
         ByteBufferUtils.skip(blockBuffer, currTagsLen);
       }
@@ -259,12 +259,11 @@ public class HFileReaderV3 extends HFileReaderV2 {
         blockBuffer.mark();
         klen = blockBuffer.getInt();
         vlen = blockBuffer.getInt();
-        if (klen < 0 || vlen < 0 || klen > blockBuffer.limit()
-            || vlen > blockBuffer.limit()) {
-          throw new IllegalStateException("Invalid klen " + klen + " or vlen "
-              + vlen + ". Block offset: "
-              + block.getOffset() + ", block length: " + blockBuffer.limit() + ", position: "
-              + blockBuffer.position() + " (without header).");
+        if (klen < 0 || vlen < 0 || klen > blockBuffer.limit() || vlen > blockBuffer.limit()) {
+          throw new IllegalStateException(
+              "Invalid klen " + klen + " or vlen " + vlen + ". Block offset: " + block.getOffset()
+                  + ", block length: " + blockBuffer.limit() + ", position: "
+                  + blockBuffer.position() + ", path:" + reader.getPath() + ",(without header).");
         }
         ByteBufferUtils.skip(blockBuffer, klen + vlen);
         if (reader.hfileContext.isIncludesTags()) {
@@ -273,15 +272,15 @@ public class HFileReaderV3 extends HFileReaderV2 {
           if (tlen < 0 || tlen > blockBuffer.limit()) {
             throw new IllegalStateException("Invalid tlen " + tlen + ". Block offset: "
                 + block.getOffset() + ", block length: " + blockBuffer.limit() + ", position: "
-                + blockBuffer.position() + " (without header).");
+                + blockBuffer.position() + ", path: " + reader.getPath() + ",(without header).");
           }
           ByteBufferUtils.skip(blockBuffer, tlen);
         }
         if (this.reader.shouldIncludeMemstoreTS()) {
           if (this.reader.decodeMemstoreTS) {
             try {
-              memstoreTS = Bytes.readVLong(blockBuffer.array(), blockBuffer.arrayOffset()
-                  + blockBuffer.position());
+              memstoreTS = Bytes.readVLong(blockBuffer.array(),
+                blockBuffer.arrayOffset() + blockBuffer.position());
               memstoreTSLen = WritableUtils.getVIntSize(memstoreTS);
             } catch (Exception e) {
               throw new RuntimeException("Error reading memstore timestamp", e);
@@ -302,7 +301,7 @@ public class HFileReaderV3 extends HFileReaderV2 {
               throw new IllegalStateException("blockSeek with seekBefore "
                   + "at the first key of the block: key=" + Bytes.toStringBinary(key)
                   + ", blockOffset=" + block.getOffset() + ", onDiskSize="
-                  + block.getOnDiskSizeWithHeader());
+                  + block.getOnDiskSizeWithHeader() + ", path=" + reader.getPath());
             }
             blockBuffer.position(blockBuffer.position() - lastKeyValueSize);
             readKeyValueLen();
