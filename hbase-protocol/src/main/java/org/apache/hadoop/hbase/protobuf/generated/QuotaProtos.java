@@ -119,6 +119,18 @@ public final class QuotaProtos {
      * <code>READ_SIZE = 6;</code>
      */
     READ_SIZE(5, 6),
+    /**
+     * <code>REQUEST_CAPACITY_UNIT = 7;</code>
+     */
+    REQUEST_CAPACITY_UNIT(6, 7),
+    /**
+     * <code>WRITE_CAPACITY_UNIT = 8;</code>
+     */
+    WRITE_CAPACITY_UNIT(7, 8),
+    /**
+     * <code>READ_CAPACITY_UNIT = 9;</code>
+     */
+    READ_CAPACITY_UNIT(8, 9),
     ;
 
     /**
@@ -145,6 +157,18 @@ public final class QuotaProtos {
      * <code>READ_SIZE = 6;</code>
      */
     public static final int READ_SIZE_VALUE = 6;
+    /**
+     * <code>REQUEST_CAPACITY_UNIT = 7;</code>
+     */
+    public static final int REQUEST_CAPACITY_UNIT_VALUE = 7;
+    /**
+     * <code>WRITE_CAPACITY_UNIT = 8;</code>
+     */
+    public static final int WRITE_CAPACITY_UNIT_VALUE = 8;
+    /**
+     * <code>READ_CAPACITY_UNIT = 9;</code>
+     */
+    public static final int READ_CAPACITY_UNIT_VALUE = 9;
 
 
     public final int getNumber() { return value; }
@@ -157,6 +181,9 @@ public final class QuotaProtos {
         case 4: return WRITE_SIZE;
         case 5: return READ_NUMBER;
         case 6: return READ_SIZE;
+        case 7: return REQUEST_CAPACITY_UNIT;
+        case 8: return WRITE_CAPACITY_UNIT;
+        case 9: return READ_CAPACITY_UNIT;
         default: return null;
       }
     }
@@ -1188,6 +1215,48 @@ public final class QuotaProtos {
      * <code>optional .TimedQuota read_size = 6;</code>
      */
     org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getReadSizeOrBuilder();
+
+    // optional .TimedQuota req_capacity_unit = 7;
+    /**
+     * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+     */
+    boolean hasReqCapacityUnit();
+    /**
+     * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getReqCapacityUnit();
+    /**
+     * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getReqCapacityUnitOrBuilder();
+
+    // optional .TimedQuota write_capacity_unit = 8;
+    /**
+     * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+     */
+    boolean hasWriteCapacityUnit();
+    /**
+     * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getWriteCapacityUnit();
+    /**
+     * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getWriteCapacityUnitOrBuilder();
+
+    // optional .TimedQuota read_capacity_unit = 9;
+    /**
+     * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+     */
+    boolean hasReadCapacityUnit();
+    /**
+     * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getReadCapacityUnit();
+    /**
+     * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getReadCapacityUnitOrBuilder();
   }
   /**
    * Protobuf type {@code Throttle}
@@ -1316,6 +1385,45 @@ public final class QuotaProtos {
                 readSize_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000020;
+              break;
+            }
+            case 58: {
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000040) == 0x00000040)) {
+                subBuilder = reqCapacityUnit_.toBuilder();
+              }
+              reqCapacityUnit_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(reqCapacityUnit_);
+                reqCapacityUnit_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000040;
+              break;
+            }
+            case 66: {
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000080) == 0x00000080)) {
+                subBuilder = writeCapacityUnit_.toBuilder();
+              }
+              writeCapacityUnit_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(writeCapacityUnit_);
+                writeCapacityUnit_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000080;
+              break;
+            }
+            case 74: {
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000100) == 0x00000100)) {
+                subBuilder = readCapacityUnit_.toBuilder();
+              }
+              readCapacityUnit_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(readCapacityUnit_);
+                readCapacityUnit_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000100;
               break;
             }
           }
@@ -1490,6 +1598,72 @@ public final class QuotaProtos {
       return readSize_;
     }
 
+    // optional .TimedQuota req_capacity_unit = 7;
+    public static final int REQ_CAPACITY_UNIT_FIELD_NUMBER = 7;
+    private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota reqCapacityUnit_;
+    /**
+     * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+     */
+    public boolean hasReqCapacityUnit() {
+      return ((bitField0_ & 0x00000040) == 0x00000040);
+    }
+    /**
+     * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getReqCapacityUnit() {
+      return reqCapacityUnit_;
+    }
+    /**
+     * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getReqCapacityUnitOrBuilder() {
+      return reqCapacityUnit_;
+    }
+
+    // optional .TimedQuota write_capacity_unit = 8;
+    public static final int WRITE_CAPACITY_UNIT_FIELD_NUMBER = 8;
+    private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota writeCapacityUnit_;
+    /**
+     * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+     */
+    public boolean hasWriteCapacityUnit() {
+      return ((bitField0_ & 0x00000080) == 0x00000080);
+    }
+    /**
+     * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getWriteCapacityUnit() {
+      return writeCapacityUnit_;
+    }
+    /**
+     * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getWriteCapacityUnitOrBuilder() {
+      return writeCapacityUnit_;
+    }
+
+    // optional .TimedQuota read_capacity_unit = 9;
+    public static final int READ_CAPACITY_UNIT_FIELD_NUMBER = 9;
+    private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota readCapacityUnit_;
+    /**
+     * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+     */
+    public boolean hasReadCapacityUnit() {
+      return ((bitField0_ & 0x00000100) == 0x00000100);
+    }
+    /**
+     * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getReadCapacityUnit() {
+      return readCapacityUnit_;
+    }
+    /**
+     * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getReadCapacityUnitOrBuilder() {
+      return readCapacityUnit_;
+    }
+
     private void initFields() {
       reqNum_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
       reqSize_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
@@ -1497,6 +1671,9 @@ public final class QuotaProtos {
       writeSize_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
       readNum_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
       readSize_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+      reqCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+      writeCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+      readCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1539,6 +1716,24 @@ public final class QuotaProtos {
           return false;
         }
       }
+      if (hasReqCapacityUnit()) {
+        if (!getReqCapacityUnit().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasWriteCapacityUnit()) {
+        if (!getWriteCapacityUnit().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasReadCapacityUnit()) {
+        if (!getReadCapacityUnit().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
       memoizedIsInitialized = 1;
       return true;
     }
@@ -1563,6 +1758,15 @@ public final class QuotaProtos {
       }
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         output.writeMessage(6, readSize_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        output.writeMessage(7, reqCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        output.writeMessage(8, writeCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00000100) == 0x00000100)) {
+        output.writeMessage(9, readCapacityUnit_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -1596,6 +1800,18 @@ public final class QuotaProtos {
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(6, readSize_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(7, reqCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(8, writeCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00000100) == 0x00000100)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(9, readCapacityUnit_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1650,6 +1866,21 @@ public final class QuotaProtos {
         result = result && getReadSize()
             .equals(other.getReadSize());
       }
+      result = result && (hasReqCapacityUnit() == other.hasReqCapacityUnit());
+      if (hasReqCapacityUnit()) {
+        result = result && getReqCapacityUnit()
+            .equals(other.getReqCapacityUnit());
+      }
+      result = result && (hasWriteCapacityUnit() == other.hasWriteCapacityUnit());
+      if (hasWriteCapacityUnit()) {
+        result = result && getWriteCapacityUnit()
+            .equals(other.getWriteCapacityUnit());
+      }
+      result = result && (hasReadCapacityUnit() == other.hasReadCapacityUnit());
+      if (hasReadCapacityUnit()) {
+        result = result && getReadCapacityUnit()
+            .equals(other.getReadCapacityUnit());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -1686,6 +1917,18 @@ public final class QuotaProtos {
       if (hasReadSize()) {
         hash = (37 * hash) + READ_SIZE_FIELD_NUMBER;
         hash = (53 * hash) + getReadSize().hashCode();
+      }
+      if (hasReqCapacityUnit()) {
+        hash = (37 * hash) + REQ_CAPACITY_UNIT_FIELD_NUMBER;
+        hash = (53 * hash) + getReqCapacityUnit().hashCode();
+      }
+      if (hasWriteCapacityUnit()) {
+        hash = (37 * hash) + WRITE_CAPACITY_UNIT_FIELD_NUMBER;
+        hash = (53 * hash) + getWriteCapacityUnit().hashCode();
+      }
+      if (hasReadCapacityUnit()) {
+        hash = (37 * hash) + READ_CAPACITY_UNIT_FIELD_NUMBER;
+        hash = (53 * hash) + getReadCapacityUnit().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -1794,6 +2037,9 @@ public final class QuotaProtos {
           getWriteSizeFieldBuilder();
           getReadNumFieldBuilder();
           getReadSizeFieldBuilder();
+          getReqCapacityUnitFieldBuilder();
+          getWriteCapacityUnitFieldBuilder();
+          getReadCapacityUnitFieldBuilder();
         }
       }
       private static Builder create() {
@@ -1838,6 +2084,24 @@ public final class QuotaProtos {
           readSizeBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000020);
+        if (reqCapacityUnitBuilder_ == null) {
+          reqCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+        } else {
+          reqCapacityUnitBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000040);
+        if (writeCapacityUnitBuilder_ == null) {
+          writeCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+        } else {
+          writeCapacityUnitBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000080);
+        if (readCapacityUnitBuilder_ == null) {
+          readCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+        } else {
+          readCapacityUnitBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000100);
         return this;
       }
 
@@ -1914,6 +2178,30 @@ public final class QuotaProtos {
         } else {
           result.readSize_ = readSizeBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000040) == 0x00000040)) {
+          to_bitField0_ |= 0x00000040;
+        }
+        if (reqCapacityUnitBuilder_ == null) {
+          result.reqCapacityUnit_ = reqCapacityUnit_;
+        } else {
+          result.reqCapacityUnit_ = reqCapacityUnitBuilder_.build();
+        }
+        if (((from_bitField0_ & 0x00000080) == 0x00000080)) {
+          to_bitField0_ |= 0x00000080;
+        }
+        if (writeCapacityUnitBuilder_ == null) {
+          result.writeCapacityUnit_ = writeCapacityUnit_;
+        } else {
+          result.writeCapacityUnit_ = writeCapacityUnitBuilder_.build();
+        }
+        if (((from_bitField0_ & 0x00000100) == 0x00000100)) {
+          to_bitField0_ |= 0x00000100;
+        }
+        if (readCapacityUnitBuilder_ == null) {
+          result.readCapacityUnit_ = readCapacityUnit_;
+        } else {
+          result.readCapacityUnit_ = readCapacityUnitBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1947,6 +2235,15 @@ public final class QuotaProtos {
         }
         if (other.hasReadSize()) {
           mergeReadSize(other.getReadSize());
+        }
+        if (other.hasReqCapacityUnit()) {
+          mergeReqCapacityUnit(other.getReqCapacityUnit());
+        }
+        if (other.hasWriteCapacityUnit()) {
+          mergeWriteCapacityUnit(other.getWriteCapacityUnit());
+        }
+        if (other.hasReadCapacityUnit()) {
+          mergeReadCapacityUnit(other.getReadCapacityUnit());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -1985,6 +2282,24 @@ public final class QuotaProtos {
         }
         if (hasReadSize()) {
           if (!getReadSize().isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasReqCapacityUnit()) {
+          if (!getReqCapacityUnit().isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasWriteCapacityUnit()) {
+          if (!getWriteCapacityUnit().isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasReadCapacityUnit()) {
+          if (!getReadCapacityUnit().isInitialized()) {
             
             return false;
           }
@@ -2711,6 +3026,357 @@ public final class QuotaProtos {
           readSize_ = null;
         }
         return readSizeBuilder_;
+      }
+
+      // optional .TimedQuota req_capacity_unit = 7;
+      private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota reqCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder> reqCapacityUnitBuilder_;
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public boolean hasReqCapacityUnit() {
+        return ((bitField0_ & 0x00000040) == 0x00000040);
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getReqCapacityUnit() {
+        if (reqCapacityUnitBuilder_ == null) {
+          return reqCapacityUnit_;
+        } else {
+          return reqCapacityUnitBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public Builder setReqCapacityUnit(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota value) {
+        if (reqCapacityUnitBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          reqCapacityUnit_ = value;
+          onChanged();
+        } else {
+          reqCapacityUnitBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000040;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public Builder setReqCapacityUnit(
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder builderForValue) {
+        if (reqCapacityUnitBuilder_ == null) {
+          reqCapacityUnit_ = builderForValue.build();
+          onChanged();
+        } else {
+          reqCapacityUnitBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000040;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public Builder mergeReqCapacityUnit(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota value) {
+        if (reqCapacityUnitBuilder_ == null) {
+          if (((bitField0_ & 0x00000040) == 0x00000040) &&
+              reqCapacityUnit_ != org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance()) {
+            reqCapacityUnit_ =
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.newBuilder(reqCapacityUnit_).mergeFrom(value).buildPartial();
+          } else {
+            reqCapacityUnit_ = value;
+          }
+          onChanged();
+        } else {
+          reqCapacityUnitBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000040;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public Builder clearReqCapacityUnit() {
+        if (reqCapacityUnitBuilder_ == null) {
+          reqCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+          onChanged();
+        } else {
+          reqCapacityUnitBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000040);
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder getReqCapacityUnitBuilder() {
+        bitField0_ |= 0x00000040;
+        onChanged();
+        return getReqCapacityUnitFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getReqCapacityUnitOrBuilder() {
+        if (reqCapacityUnitBuilder_ != null) {
+          return reqCapacityUnitBuilder_.getMessageOrBuilder();
+        } else {
+          return reqCapacityUnit_;
+        }
+      }
+      /**
+       * <code>optional .TimedQuota req_capacity_unit = 7;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder> 
+          getReqCapacityUnitFieldBuilder() {
+        if (reqCapacityUnitBuilder_ == null) {
+          reqCapacityUnitBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder>(
+                  reqCapacityUnit_,
+                  getParentForChildren(),
+                  isClean());
+          reqCapacityUnit_ = null;
+        }
+        return reqCapacityUnitBuilder_;
+      }
+
+      // optional .TimedQuota write_capacity_unit = 8;
+      private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota writeCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder> writeCapacityUnitBuilder_;
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public boolean hasWriteCapacityUnit() {
+        return ((bitField0_ & 0x00000080) == 0x00000080);
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getWriteCapacityUnit() {
+        if (writeCapacityUnitBuilder_ == null) {
+          return writeCapacityUnit_;
+        } else {
+          return writeCapacityUnitBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public Builder setWriteCapacityUnit(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota value) {
+        if (writeCapacityUnitBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          writeCapacityUnit_ = value;
+          onChanged();
+        } else {
+          writeCapacityUnitBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000080;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public Builder setWriteCapacityUnit(
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder builderForValue) {
+        if (writeCapacityUnitBuilder_ == null) {
+          writeCapacityUnit_ = builderForValue.build();
+          onChanged();
+        } else {
+          writeCapacityUnitBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000080;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public Builder mergeWriteCapacityUnit(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota value) {
+        if (writeCapacityUnitBuilder_ == null) {
+          if (((bitField0_ & 0x00000080) == 0x00000080) &&
+              writeCapacityUnit_ != org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance()) {
+            writeCapacityUnit_ =
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.newBuilder(writeCapacityUnit_).mergeFrom(value).buildPartial();
+          } else {
+            writeCapacityUnit_ = value;
+          }
+          onChanged();
+        } else {
+          writeCapacityUnitBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000080;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public Builder clearWriteCapacityUnit() {
+        if (writeCapacityUnitBuilder_ == null) {
+          writeCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+          onChanged();
+        } else {
+          writeCapacityUnitBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000080);
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder getWriteCapacityUnitBuilder() {
+        bitField0_ |= 0x00000080;
+        onChanged();
+        return getWriteCapacityUnitFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getWriteCapacityUnitOrBuilder() {
+        if (writeCapacityUnitBuilder_ != null) {
+          return writeCapacityUnitBuilder_.getMessageOrBuilder();
+        } else {
+          return writeCapacityUnit_;
+        }
+      }
+      /**
+       * <code>optional .TimedQuota write_capacity_unit = 8;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder> 
+          getWriteCapacityUnitFieldBuilder() {
+        if (writeCapacityUnitBuilder_ == null) {
+          writeCapacityUnitBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder>(
+                  writeCapacityUnit_,
+                  getParentForChildren(),
+                  isClean());
+          writeCapacityUnit_ = null;
+        }
+        return writeCapacityUnitBuilder_;
+      }
+
+      // optional .TimedQuota read_capacity_unit = 9;
+      private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota readCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder> readCapacityUnitBuilder_;
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public boolean hasReadCapacityUnit() {
+        return ((bitField0_ & 0x00000100) == 0x00000100);
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota getReadCapacityUnit() {
+        if (readCapacityUnitBuilder_ == null) {
+          return readCapacityUnit_;
+        } else {
+          return readCapacityUnitBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public Builder setReadCapacityUnit(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota value) {
+        if (readCapacityUnitBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          readCapacityUnit_ = value;
+          onChanged();
+        } else {
+          readCapacityUnitBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000100;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public Builder setReadCapacityUnit(
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder builderForValue) {
+        if (readCapacityUnitBuilder_ == null) {
+          readCapacityUnit_ = builderForValue.build();
+          onChanged();
+        } else {
+          readCapacityUnitBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000100;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public Builder mergeReadCapacityUnit(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota value) {
+        if (readCapacityUnitBuilder_ == null) {
+          if (((bitField0_ & 0x00000100) == 0x00000100) &&
+              readCapacityUnit_ != org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance()) {
+            readCapacityUnit_ =
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.newBuilder(readCapacityUnit_).mergeFrom(value).buildPartial();
+          } else {
+            readCapacityUnit_ = value;
+          }
+          onChanged();
+        } else {
+          readCapacityUnitBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000100;
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public Builder clearReadCapacityUnit() {
+        if (readCapacityUnitBuilder_ == null) {
+          readCapacityUnit_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.getDefaultInstance();
+          onChanged();
+        } else {
+          readCapacityUnitBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000100);
+        return this;
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder getReadCapacityUnitBuilder() {
+        bitField0_ |= 0x00000100;
+        onChanged();
+        return getReadCapacityUnitFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder getReadCapacityUnitOrBuilder() {
+        if (readCapacityUnitBuilder_ != null) {
+          return readCapacityUnitBuilder_.getMessageOrBuilder();
+        } else {
+          return readCapacityUnit_;
+        }
+      }
+      /**
+       * <code>optional .TimedQuota read_capacity_unit = 9;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder> 
+          getReadCapacityUnitFieldBuilder() {
+        if (readCapacityUnitBuilder_ == null) {
+          readCapacityUnitBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuotaOrBuilder>(
+                  readCapacityUnit_,
+                  getParentForChildren(),
+                  isClean());
+          readCapacityUnit_ = null;
+        }
+        return readCapacityUnitBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:Throttle)
@@ -4402,23 +5068,28 @@ public final class QuotaProtos {
       "\n\013Quota.proto\032\013HBase.proto\"r\n\nTimedQuota" +
       "\022\034\n\ttime_unit\030\001 \002(\0162\t.TimeUnit\022\022\n\nsoft_l" +
       "imit\030\002 \001(\004\022\r\n\005share\030\003 \001(\002\022#\n\005scope\030\004 \001(\016" +
-      "2\013.QuotaScope:\007MACHINE\"\307\001\n\010Throttle\022\034\n\007r" +
+      "2\013.QuotaScope:\007MACHINE\"\302\002\n\010Throttle\022\034\n\007r" +
       "eq_num\030\001 \001(\0132\013.TimedQuota\022\035\n\010req_size\030\002 " +
       "\001(\0132\013.TimedQuota\022\036\n\twrite_num\030\003 \001(\0132\013.Ti" +
       "medQuota\022\037\n\nwrite_size\030\004 \001(\0132\013.TimedQuot" +
       "a\022\035\n\010read_num\030\005 \001(\0132\013.TimedQuota\022\036\n\tread" +
-      "_size\030\006 \001(\0132\013.TimedQuota\"P\n\017ThrottleRequ" +
-      "est\022\033\n\004type\030\001 \001(\0162\r.ThrottleType\022 \n\013time",
-      "d_quota\030\002 \001(\0132\013.TimedQuota\"D\n\006Quotas\022\035\n\016" +
-      "bypass_globals\030\001 \001(\010:\005false\022\033\n\010throttle\030" +
-      "\002 \001(\0132\t.Throttle\"\014\n\nQuotaUsage*&\n\nQuotaS" +
-      "cope\022\013\n\007CLUSTER\020\001\022\013\n\007MACHINE\020\002*v\n\014Thrott" +
-      "leType\022\022\n\016REQUEST_NUMBER\020\001\022\020\n\014REQUEST_SI" +
-      "ZE\020\002\022\020\n\014WRITE_NUMBER\020\003\022\016\n\nWRITE_SIZE\020\004\022\017" +
-      "\n\013READ_NUMBER\020\005\022\r\n\tREAD_SIZE\020\006*\031\n\tQuotaT" +
+      "_size\030\006 \001(\0132\013.TimedQuota\022&\n\021req_capacity" +
+      "_unit\030\007 \001(\0132\013.TimedQuota\022(\n\023write_capaci",
+      "ty_unit\030\010 \001(\0132\013.TimedQuota\022\'\n\022read_capac" +
+      "ity_unit\030\t \001(\0132\013.TimedQuota\"P\n\017ThrottleR" +
+      "equest\022\033\n\004type\030\001 \001(\0162\r.ThrottleType\022 \n\013t" +
+      "imed_quota\030\002 \001(\0132\013.TimedQuota\"D\n\006Quotas\022" +
+      "\035\n\016bypass_globals\030\001 \001(\010:\005false\022\033\n\010thrott" +
+      "le\030\002 \001(\0132\t.Throttle\"\014\n\nQuotaUsage*&\n\nQuo" +
+      "taScope\022\013\n\007CLUSTER\020\001\022\013\n\007MACHINE\020\002*\302\001\n\014Th" +
+      "rottleType\022\022\n\016REQUEST_NUMBER\020\001\022\020\n\014REQUES" +
+      "T_SIZE\020\002\022\020\n\014WRITE_NUMBER\020\003\022\016\n\nWRITE_SIZE" +
+      "\020\004\022\017\n\013READ_NUMBER\020\005\022\r\n\tREAD_SIZE\020\006\022\031\n\025RE",
+      "QUEST_CAPACITY_UNIT\020\007\022\027\n\023WRITE_CAPACITY_" +
+      "UNIT\020\010\022\026\n\022READ_CAPACITY_UNIT\020\t*\031\n\tQuotaT" +
       "ype\022\014\n\010THROTTLE\020\001*0\n\rThrottleState\022\006\n\002ON" +
       "\020\001\022\016\n\nSIMULATION\020\002\022\007\n\003OFF\020\003BA\n*org.apach" +
-      "e.hadoop.hbase.protobuf.generatedB\013Quota",
+      "e.hadoop.hbase.protobuf.generatedB\013Quota" +
       "ProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
@@ -4437,7 +5108,7 @@ public final class QuotaProtos {
           internal_static_Throttle_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Throttle_descriptor,
-              new java.lang.String[] { "ReqNum", "ReqSize", "WriteNum", "WriteSize", "ReadNum", "ReadSize", });
+              new java.lang.String[] { "ReqNum", "ReqSize", "WriteNum", "WriteSize", "ReadNum", "ReadSize", "ReqCapacityUnit", "WriteCapacityUnit", "ReadCapacityUnit", });
           internal_static_ThrottleRequest_descriptor =
             getDescriptor().getMessageTypes().get(2);
           internal_static_ThrottleRequest_fieldAccessorTable = new
