@@ -160,6 +160,21 @@ public class QuotaSettingsFactory {
   }
 
   /**
+   * Throttle the specified user on the specified table.
+   * @param userName the user to throttle
+   * @param tableName the table to throttle
+   * @param type the type of throttling
+   * @param limit the allowed number of request/data per timeUnit
+   * @param timeUnit the limit time unit
+   * @param scope the scope of throttling
+   * @return the quota settings
+   */
+  public static QuotaSettings throttleUser(final String userName, final TableName tableName,
+      final ThrottleType type, final long limit, final TimeUnit timeUnit, QuotaScope scope) {
+    return throttle(userName, tableName, null, type, limit, timeUnit, scope);
+  }
+
+  /**
    * Throttle the specified user on the specified namespace.
    *
    * @param userName the user to throttle
@@ -206,6 +221,11 @@ public class QuotaSettingsFactory {
   public static QuotaSettings unthrottleUser(final String userName, final TableName tableName,
       final ThrottleType type) {
     return throttle(userName, tableName, null, type, 0, null);
+  }
+
+  public static QuotaSettings unthrottleUser(final String userName, final TableName tableName,
+      ThrottleType type, QuotaScope scope) {
+    return throttle(userName, tableName, null, type, 0, null, scope);
   }
 
   /**
@@ -258,6 +278,20 @@ public class QuotaSettingsFactory {
   }
 
   /**
+   * Throttle the specified namespace.
+   * @param namespace the namespace to throttle
+   * @param type the type of throttling
+   * @param limit the allowed number of request/data per timeUnit
+   * @param timeUnit the limit time unit
+   * @param scope the scope of throttling
+   * @return the quota settings
+   */
+  public static QuotaSettings throttleNamespace(final String namespace, final ThrottleType type,
+      final long limit, final TimeUnit timeUnit, QuotaScope scope) {
+    return throttle(null, null, namespace, type, limit, timeUnit, scope);
+  }
+
+  /**
    * Remove the throttling for the specified namespace.
    *
    * @param namespace the namespace
@@ -278,6 +312,11 @@ public class QuotaSettingsFactory {
     return throttle(null, null, namespace, type, 0, null);
   }
 
+  public static QuotaSettings unthrottleNamespace(final String namespace, final ThrottleType type,
+      final QuotaScope scope) {
+    return throttle(null, null, namespace, type, 0, null, scope);
+  }
+
   /* Throttle helper */
   private static QuotaSettings throttle(final String userName, final TableName tableName,
       final String namespace, final ThrottleType type, final long limit,
@@ -288,6 +327,20 @@ public class QuotaSettingsFactory {
     }
     if (timeUnit != null) {
       builder.setTimedQuota(ProtobufUtil.toTimedQuota(limit, timeUnit, QuotaScope.MACHINE));
+    }
+    return new ThrottleSettings(userName, tableName, namespace, builder.build());
+  }
+
+  /* Throttle helper */
+  private static QuotaSettings throttle(final String userName, final TableName tableName,
+      final String namespace, final ThrottleType type, final long limit, final TimeUnit timeUnit,
+      QuotaScope scope) {
+    QuotaProtos.ThrottleRequest.Builder builder = QuotaProtos.ThrottleRequest.newBuilder();
+    if (type != null) {
+      builder.setType(ProtobufUtil.toProtoThrottleType(type));
+    }
+    if (timeUnit != null) {
+      builder.setTimedQuota(ProtobufUtil.toTimedQuota(limit, timeUnit, scope));
     }
     return new ThrottleSettings(userName, tableName, namespace, builder.build());
   }
