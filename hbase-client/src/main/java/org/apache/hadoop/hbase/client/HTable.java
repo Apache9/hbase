@@ -138,6 +138,9 @@ public class HTable implements HTableInterface {
   /** The Async process for puts with autoflush set to false or multiputs */
   protected AsyncProcess<Object> ap;
 
+  // asyncConnection is only used for BufferedMutator, initialized when mutator initialized,
+  // and close it when mutator close.
+  private volatile AsyncConnection asyncConnection;
   private volatile BufferedMutator mutator;
   private Object mutatorLock = new Object();
 
@@ -1323,6 +1326,9 @@ public class HTable implements HTableInterface {
     if (mutator != null) {
       mutator.close();
     }
+    if (asyncConnection != null) {
+      asyncConnection.close();
+    }
     if (cleanupPoolOnClose) {
       this.pool.shutdown();
     }
@@ -1743,10 +1749,11 @@ public class HTable implements HTableInterface {
     if (mutator == null) {
       synchronized (mutatorLock) {
         if (mutator == null) {
-          AsyncConnection conn = get(HConnectionManager.createAsyncConnection(
+          asyncConnection = get(HConnectionManager.createAsyncConnection(
               configuration == null ? HBaseConfiguration.create() : configuration));
           mutator =
-              new BufferedMutatorBuilderImpl(conn.getBufferedMutatorBuilder(tableName)).build();
+              new BufferedMutatorBuilderImpl(asyncConnection.getBufferedMutatorBuilder(tableName))
+                  .build();
         }
       }
     }
