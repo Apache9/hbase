@@ -249,6 +249,10 @@ public class ExecutorService {
       
       return new ExecutorStatus(this, queuedEvents, running);
     }
+
+    public ThreadPoolExecutor getThreadPoolExecutor() {
+      return this.threadPoolExecutor;
+    }
   }
  
   /**
