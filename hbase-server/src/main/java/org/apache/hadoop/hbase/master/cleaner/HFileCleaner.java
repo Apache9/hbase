@@ -25,12 +25,12 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Stoppable;
+import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.io.HFileLink;
 import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
 import org.apache.hadoop.hbase.util.StealJobQueue;
@@ -43,13 +43,14 @@ import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesti
  * folder that are deletable for each HFile cleaner in the chain.
  */
 @InterfaceAudience.Private
-public class HFileCleaner extends CleanerChore<BaseHFileCleanerDelegate> {
+public class HFileCleaner extends CleanerChore<BaseHFileCleanerDelegate>
+  implements ConfigurationObserver {
 
   public static final String MASTER_HFILE_CLEANER_PLUGINS = "hbase.master.hfilecleaner.plugins";
 
   public HFileCleaner(final int period, final Stoppable stopper, Configuration conf, FileSystem fs,
-      Path directory) {
-    this(period, stopper, conf, fs, directory, null);
+    Path directory, DirScanPool pool) {
+    this(period, stopper, conf, fs, directory, pool, null);
   }
 
   // Configuration key for large/small throttle point
@@ -110,12 +111,13 @@ public class HFileCleaner extends CleanerChore<BaseHFileCleanerDelegate> {
    * @param conf configuration to use
    * @param fs handle to the FS
    * @param directory directory to be cleaned
+   * @param pool the thread pool used to scan directories
    * @param params params could be used in subclass of BaseHFileCleanerDelegate
    */
   public HFileCleaner(final int period, final Stoppable stopper, Configuration conf, FileSystem fs,
-                      Path directory, Map<String, Object> params) {
-    super("HFileCleaner", period, stopper, conf, fs,
-      directory, MASTER_HFILE_CLEANER_PLUGINS, params);
+    Path directory, DirScanPool pool, Map<String, Object> params) {
+    super("HFileCleaner", period, stopper, conf, fs, directory, MASTER_HFILE_CLEANER_PLUGINS, pool,
+      params);
     throttlePoint =
         conf.getInt(HFILE_DELETE_THROTTLE_THRESHOLD, DEFAULT_HFILE_DELETE_THROTTLE_THRESHOLD);
     largeQueueInitSize =
@@ -405,8 +407,6 @@ public class HFileCleaner extends CleanerChore<BaseHFileCleanerDelegate> {
 
   @Override
   public void onConfigurationChange(Configuration conf) {
-    super.onConfigurationChange(conf);
-
     if (!checkAndUpdateConfigurations(conf)) {
       LOG.debug("Update configuration triggered but nothing changed for this cleaner");
       return;
