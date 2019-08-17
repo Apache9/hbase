@@ -17,9 +17,13 @@
  */
 package org.apache.hadoop.hbase.master.cleaner;
 
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.DaemonThreadFactory;
 import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -32,7 +36,7 @@ import org.slf4j.LoggerFactory;
 public class DirScanPool implements ConfigurationObserver {
   private static final Logger LOG = LoggerFactory.getLogger(DirScanPool.class);
   private volatile int size;
-  private ForkJoinPool pool;
+  private ThreadPoolExecutor pool;
   private int cleanerLatch;
   private boolean reconfigNotification;
 
@@ -42,9 +46,14 @@ public class DirScanPool implements ConfigurationObserver {
     // poolSize may be 0 or 0.0 from a careless configuration,
     // double check to make sure.
     size = size == 0 ? CleanerChore.calculatePoolSize(CleanerChore.DEFAULT_CHORE_POOL_SIZE) : size;
-    pool = new ForkJoinPool(size);
+    pool = initializePool(size);
     LOG.info("Cleaner pool size is {}", size);
     cleanerLatch = 0;
+  }
+
+  private static ThreadPoolExecutor initializePool(int size) {
+    return new ThreadPoolExecutor(size, size, 500, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
+        new DaemonThreadFactory("dir-scan-pool"));
   }
 
   /**
@@ -73,8 +82,8 @@ public class DirScanPool implements ConfigurationObserver {
     notifyAll();
   }
 
-  synchronized void execute(ForkJoinTask<?> task) {
-    pool.execute(task);
+  synchronized void runAsync(Runnable runnable) {
+    CompletableFuture.runAsync(runnable, pool);
   }
 
   public synchronized void shutdownNow() {
@@ -100,8 +109,8 @@ public class DirScanPool implements ConfigurationObserver {
       }
     }
     shutdownNow();
-    LOG.info("Update chore's pool size from {} to {}", pool.getParallelism(), size);
-    pool = new ForkJoinPool(size);
+    LOG.info("Update chore's pool size from {} to {}", pool.getPoolSize(), size);
+    pool = initializePool(size);
   }
 
   public int getSize() {
