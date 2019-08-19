@@ -1065,7 +1065,7 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
       throws IOException {
     // Move this ACL check to SnapshotManager#checkPermissions as part of AC deprecation.
     requirePermission(ctx, "snapshot " + snapshot.getName(),
-        hTableDescriptor.getTableName(), null, null, Permission.Action.ADMIN);
+        hTableDescriptor.getTableName(), null, null, Action.CREATE, Action.ADMIN);
   }
 
   @Override

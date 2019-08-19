@@ -2036,9 +2036,9 @@ public class TestAccessController extends SecureTestUtil {
       }
     };
 
-    verifyAllowed(snapshotAction, SUPERUSER, USER_ADMIN, USER_OWNER, USER_GROUP_ADMIN);
-    verifyDenied(snapshotAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_GROUP_READ,
-      USER_GROUP_WRITE, USER_GROUP_CREATE);
+    verifyAllowed(snapshotAction, SUPERUSER, USER_ADMIN, USER_OWNER, USER_GROUP_ADMIN,
+      USER_GROUP_CREATE, USER_CREATE);
+    verifyDenied(snapshotAction, USER_RW, USER_RO, USER_NONE, USER_GROUP_READ, USER_GROUP_WRITE);
 
     verifyAllowed(cloneAction, SUPERUSER, USER_ADMIN, USER_GROUP_ADMIN);
     verifyDenied(deleteAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER,
@@ -2068,9 +2068,9 @@ public class TestAccessController extends SecureTestUtil {
         return null;
       }
     };
-    verifyAllowed(snapshotAction, SUPERUSER, USER_ADMIN, USER_OWNER, USER_GROUP_ADMIN);
-    verifyDenied(snapshotAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_GROUP_READ,
-      USER_GROUP_WRITE, USER_GROUP_CREATE);
+    verifyAllowed(snapshotAction, SUPERUSER, USER_ADMIN, USER_OWNER, USER_GROUP_ADMIN, USER_GROUP_CREATE, USER_CREATE);
+    verifyDenied(snapshotAction, USER_RW, USER_RO, USER_NONE, USER_GROUP_READ,
+      USER_GROUP_WRITE);
 
     AccessTestAction deleteAction = new AccessTestAction() {
       @Override
