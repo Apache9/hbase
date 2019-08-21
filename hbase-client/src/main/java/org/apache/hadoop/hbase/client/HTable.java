@@ -1736,9 +1736,9 @@ public class HTable implements HTableInterface {
       synchronized (mutatorLock) {
         if (mutator == null) {
           AsyncConnection conn = get(HConnectionManager.createAsyncConnection(
-              configuration == null ? HBaseConfiguration.create() : configuration));
-          mutator =
-              new BufferedMutatorBuilderImpl(conn.getBufferedMutatorBuilder(tableName)).build();
+            configuration == null ? HBaseConfiguration.create() : configuration));
+          mutator = new BufferedMutatorBuilderImpl(conn.getBufferedMutatorBuilder(tableName))
+              .build();
         }
       }
     }
