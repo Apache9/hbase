@@ -18,7 +18,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.common.base.Throwables;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
@@ -38,7 +37,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -127,7 +125,11 @@ public class HTable implements HTableInterface {
   private final byte[] fullTableName;
   private volatile Configuration configuration;
   private TableConfiguration tableConfiguration;
+  protected List<Row> writeAsyncBuffer = new LinkedList<Row>();
+  private long writeBufferSize;
+  private boolean clearBufferOnFail;
   private boolean autoFlush;
+  protected long currentWriteBufferSize;
   protected int scannerCaching;
   private ExecutorService pool; // For Multi
   private boolean closed = true;
@@ -137,9 +139,6 @@ public class HTable implements HTableInterface {
 
   /** The Async process for puts with autoflush set to false or multiputs */
   protected AsyncProcess<Object> ap;
-
-  private volatile BufferedMutator mutator;
-  private Object mutatorLock = new Object();
 
   /**
    * Creates an object to access a HBase table. Shares zookeeper connection and other resources with
@@ -385,7 +384,10 @@ public class HTable implements HTableInterface {
     }
     this.operationTimeout = tableName.isSystemTable() ? tableConfiguration.getMetaOperationTimeout()
         : tableConfiguration.getOperationTimeout();
+    this.writeBufferSize = tableConfiguration.getWriteBufferSize();
+    this.clearBufferOnFail = true;
     this.autoFlush = true;
+    this.currentWriteBufferSize = 0;
     this.scannerCaching = tableConfiguration.getScannerCaching();
 
     ap = new AsyncProcess<Object>(connection, tableName, pool, null, configuration);
@@ -557,6 +559,15 @@ public class HTable implements HTableInterface {
   @Deprecated
   public int getScannerCaching() {
     return scannerCaching;
+  }
+
+  /**
+   * Kept in 0.96 for backward compatibility
+   * @deprecated since 0.96. This is an internal buffer that should not be read nor write.
+   */
+  @Deprecated
+  public List<Row> getWriteBuffer() {
+    return writeAsyncBuffer;
   }
 
   /**
@@ -946,6 +957,9 @@ public class HTable implements HTableInterface {
   @Override
   public void put(final Put put) throws IOException {
     if (autoFlush) {
+      if (!writeAsyncBuffer.isEmpty()) {
+        flushCommits();
+      }
       validatePut(put);
       connection.getRpcRetryingCallerFactory().<Boolean> newCaller()
           .callWithRetries(new RegionServerCallable<Boolean>(connection, tableName, put.getRow()) {
@@ -962,9 +976,7 @@ public class HTable implements HTableInterface {
             }
           }, this.operationTimeout);
     } else {
-      validatePut(put);
-      // Use BufferedMutator when autoFlush is false
-      getBufferedMutator().mutate(put);
+      doPut(put);
     }
   }
 
@@ -972,34 +984,80 @@ public class HTable implements HTableInterface {
    * {@inheritDoc}
    */
   @Override
-  public void put(final List<Put> puts) throws IOException {
+  public void put(final List<Put> puts)
+      throws InterruptedIOException, RetriesExhaustedWithDetailsException {
+    for (Put put : puts) {
+      doPut(put);
+    }
     if (autoFlush) {
-      List<Row> writeBuffer = new LinkedList<Row>();
-      for (Put put : puts) {
-        validatePut(put);
-        writeBuffer.add(put);
-      }
+      flushCommits();
+    }
+  }
+
+  /**
+   * Add the put to the buffer. If the buffer is already too large, sends the buffer to the cluster.
+   * @throws RetriesExhaustedWithDetailsException if there is an error on the cluster.
+   * @throws InterruptedIOException if we were interrupted.
+   */
+  private void doPut(Put put) throws InterruptedIOException, RetriesExhaustedWithDetailsException {
+    if (ap.hasError()) {
+      writeAsyncBuffer.add(put);
+      backgroundFlushCommits(true);
+    }
+
+    validatePut(put);
+
+    currentWriteBufferSize += put.heapSize();
+    writeAsyncBuffer.add(put);
+
+    while (currentWriteBufferSize > writeBufferSize) {
+      backgroundFlushCommits(false);
+    }
+  }
+
+  /**
+   * Send the operations in the buffer to the servers. Does not wait for the server's answer. If the
+   * is an error (max retried reach from a previous flush or bad operation), it tries to send all
+   * operations in the buffer and sends an exception.
+   * @param synchronous - if true, sends all the writes and wait for all of them to finish before
+   *          returning.
+   */
+  private void backgroundFlushCommits(boolean synchronous)
+      throws InterruptedIOException, RetriesExhaustedWithDetailsException {
+
+    try {
       do {
-        ap.submit(writeBuffer, true);
-      } while (!writeBuffer.isEmpty());
-      ap.waitUntilDone();
+        ap.submit(writeAsyncBuffer, true);
+      } while (synchronous && !writeAsyncBuffer.isEmpty());
+
+      if (synchronous) {
+        ap.waitUntilDone();
+      }
+
       if (ap.hasError()) {
         LOG.debug(tableName + ": One or more of the operations have failed -"
             + " waiting for all operation in progress to finish (successfully or not)");
-        while (!writeBuffer.isEmpty()) {
-          ap.submit(writeBuffer, true);
+        while (!writeAsyncBuffer.isEmpty()) {
+          ap.submit(writeAsyncBuffer, true);
         }
         ap.waitUntilDone();
+
+        if (!clearBufferOnFail) {
+          // if clearBufferOnFailed is not set, we're supposed to keep the failed operation in the
+          // write buffer. This is a questionable feature kept here for backward compatibility
+          writeAsyncBuffer.addAll(ap.getFailedOperations());
+        }
         RetriesExhaustedWithDetailsException e = ap.getErrors();
         ap.clearErrors();
         throw e;
       }
-    } else {
-      for (Put put : puts) {
-        validatePut(put);
+    } finally {
+      currentWriteBufferSize = 0;
+      for (Row mut : writeAsyncBuffer) {
+        if (mut instanceof Mutation) {
+          currentWriteBufferSize += ((Mutation) mut).heapSize();
+        }
       }
-      // Use BufferedMutator when autoFlush is false
-      getBufferedMutator().mutate(puts);
     }
   }
 
@@ -1276,10 +1334,10 @@ public class HTable implements HTableInterface {
    * {@inheritDoc}
    */
   @Override
-  public void flushCommits() throws IOException {
-    if (mutator != null) {
-      mutator.flush();
-    }
+  public void flushCommits() throws InterruptedIOException, RetriesExhaustedWithDetailsException {
+    // As we can have an operation in progress even if the buffer is empty, we call
+    // backgroundFlushCommits at least one time.
+    backgroundFlushCommits(true);
   }
 
   /**
@@ -1312,9 +1370,6 @@ public class HTable implements HTableInterface {
       return;
     }
     flushCommits();
-    if (mutator != null) {
-      mutator.close();
-    }
     if (cleanupPoolOnClose) {
       this.pool.shutdown();
     }
@@ -1363,7 +1418,7 @@ public class HTable implements HTableInterface {
   @Deprecated
   @Override
   public void setAutoFlush(boolean autoFlush) {
-    this.autoFlush = autoFlush;
+    setAutoFlush(autoFlush, autoFlush);
   }
 
   /**
@@ -1371,7 +1426,7 @@ public class HTable implements HTableInterface {
    */
   @Override
   public void setAutoFlushTo(boolean autoFlush) {
-    this.autoFlush = autoFlush;
+    setAutoFlush(autoFlush, clearBufferOnFail);
   }
 
   /**
@@ -1380,6 +1435,7 @@ public class HTable implements HTableInterface {
   @Override
   public void setAutoFlush(boolean autoFlush, boolean clearBufferOnFail) {
     this.autoFlush = autoFlush;
+    this.clearBufferOnFail = autoFlush || clearBufferOnFail;
   }
 
   /**
@@ -1390,10 +1446,21 @@ public class HTable implements HTableInterface {
    */
   @Override
   public long getWriteBufferSize() {
-    if (mutator == null) {
-      return tableConfiguration.getWriteBufferSize();
-    } else {
-      return mutator.getWriteBufferSize();
+    return writeBufferSize;
+  }
+
+  /**
+   * Sets the size of the buffer in bytes.
+   * <p>
+   * If the new size is less than the current amount of data in the write buffer, the buffer gets
+   * flushed.
+   * @param writeBufferSize The new write buffer size, in bytes.
+   * @throws IOException if a remote or network exception occurs.
+   */
+  public void setWriteBufferSize(long writeBufferSize) throws IOException {
+    this.writeBufferSize = writeBufferSize;
+    if (currentWriteBufferSize > writeBufferSize) {
+      flushCommits();
     }
   }
 
@@ -1728,32 +1795,5 @@ public class HTable implements HTableInterface {
   @Override
   public boolean isSharedConnection() {
     return !cleanupConnectionOnClose;
-  }
-
-  private BufferedMutator getBufferedMutator() throws IOException {
-    // lazy initialize mutator
-    if (mutator == null) {
-      synchronized (mutatorLock) {
-        if (mutator == null) {
-          AsyncConnection conn = get(HConnectionManager.createAsyncConnection(
-            configuration == null ? HBaseConfiguration.create() : configuration));
-          mutator = new BufferedMutatorBuilderImpl(conn.getBufferedMutatorBuilder(tableName))
-              .build();
-        }
-      }
-    }
-    return mutator;
-  }
-
-  private static <T> T get(CompletableFuture<T> future) throws IOException {
-    try {
-      return future.get();
-    } catch (InterruptedException e) {
-      throw (IOException) new InterruptedIOException().initCause(e);
-    } catch (ExecutionException e) {
-      Throwable cause = e.getCause();
-      Throwables.propagateIfPossible(cause, IOException.class);
-      throw new IOException(cause);
-    }
   }
 }

@@ -144,6 +144,7 @@ public class TestHTableWrapper {
     checkConf();
     checkNameAndDescriptor();
     checkAutoFlush();
+    checkBufferSize();
     checkExists();
     checkGetRowOrBefore();
     checkAppend();
@@ -179,6 +180,13 @@ public class TestHTableWrapper {
     hTableInterface.setAutoFlush(true, true);
     assertTrue(hTableInterface.isAutoFlush());
     hTableInterface.setAutoFlushTo(initialAutoFlush);
+  }
+
+  private void checkBufferSize() throws IOException {
+    long initialWriteBufferSize = hTableInterface.getWriteBufferSize();
+    hTableInterface.setWriteBufferSize(12345L);
+    assertEquals(12345L, hTableInterface.getWriteBufferSize());
+    hTableInterface.setWriteBufferSize(initialWriteBufferSize);
   }
 
   private void checkExists() throws IOException {

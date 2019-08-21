@@ -38,7 +38,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
@@ -133,12 +132,11 @@ public class TestMultiSlaveReplication {
     new HBaseAdmin(conf2).createTable(table);
     new HBaseAdmin(conf3).createTable(table);
     HTable htable1 = new HTable(conf1, tableName);
-
-    htable1.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    htable1.setWriteBufferSize(1024);
     HTable htable2 = new HTable(conf2, tableName);
-    htable2.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    htable2.setWriteBufferSize(1024);
     HTable htable3 = new HTable(conf3, tableName);
-    htable3.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    htable3.setWriteBufferSize(1024);
 
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(utility2.getClusterKey());

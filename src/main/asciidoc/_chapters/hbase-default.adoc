@@ -719,7 +719,7 @@ Maximum retries.  Used as maximum for all retryable
     ramps up.  Change this setting and hbase.client.pause to suit your workload.
 +
 .Default
-`10`
+`35`
 
   
 [[hbase.client.max.total.tasks]]

@@ -48,7 +48,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.ScannerCallable;
-import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.NMapInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
@@ -179,7 +178,7 @@ public void cleanUpCluster() throws Exception {
       String tableName = conf.get(TABLE_NAME_KEY, TABLE_NAME_DEFAULT);
       numBackReferencesPerRow = conf.getInt(NUM_BACKREFS_KEY, NUM_BACKREFS_DEFAULT);
       table = new HTable(conf, tableName);
-      table.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 4 * 1024 * 1024);
+      table.setWriteBufferSize(4*1024*1024);
       table.setAutoFlush(false, true);
 
       String taskId = conf.get("mapred.task.id");
