@@ -660,10 +660,5 @@ public class HTablePool implements Closeable {
     public boolean isSharedConnection() {
       return table.isSharedConnection();
     }
-
-    @Override
-    public void setBufferedMutator(AsyncBufferedMutator bufferedMutator) {
-      table.setBufferedMutator(bufferedMutator);
-    }
   }
 }

@@ -377,14 +377,6 @@ public class HTable implements HTableInterface {
   }
 
   /**
-   * set the mutator
-   */
-   @Override
-   public void setBufferedMutator(AsyncBufferedMutator bufferedMutator){
-     this.mutator = new BufferedMutatorImpl(bufferedMutator);
-   }
-
-  /**
    * setup this HTable's parameter based on the passed configuration
    */
   private void finishSetup() throws IOException {
