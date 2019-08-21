@@ -36,10 +36,6 @@ import com.google.common.annotations.VisibleForTesting;
 @InterfaceAudience.Private
 public class TableConfiguration {
 
-  public static final String WRITE_BUFFER_SIZE_KEY = "hbase.client.write.buffer";
-
-  public static final long WRITE_BUFFER_SIZE_DEFAULT = 2097152;
-
   private final long writeBufferSize;
 
   private final int metaOperationTimeout;
@@ -57,7 +53,7 @@ public class TableConfiguration {
    * @param conf Configuration object
    */
   TableConfiguration(Configuration conf) {
-    this.writeBufferSize = conf.getLong(WRITE_BUFFER_SIZE_KEY, WRITE_BUFFER_SIZE_DEFAULT);
+    this.writeBufferSize = conf.getLong("hbase.client.write.buffer", 2097152);
 
     this.metaOperationTimeout = conf.getInt(
       HConstants.HBASE_CLIENT_META_OPERATION_TIMEOUT,
