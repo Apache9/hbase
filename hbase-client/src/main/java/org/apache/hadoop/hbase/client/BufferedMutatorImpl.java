@@ -59,10 +59,8 @@ class BufferedMutatorImpl implements BufferedMutator {
     return asyncImpl.getConfiguration();
   }
 
-  private void onError(Throwable error) {
-    synchronized (this.errors) {
-      this.errors.add(error);
-    }
+  private synchronized void onError(Throwable error) {
+    this.errors.add(error);
   }
 
   @Override
