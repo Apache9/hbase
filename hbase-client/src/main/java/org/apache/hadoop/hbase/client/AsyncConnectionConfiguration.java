@@ -39,8 +39,6 @@ import static org.apache.hadoop.hbase.HConstants.HBASE_REGIONSERVER_LEASE_PERIOD
 import static org.apache.hadoop.hbase.HConstants.HBASE_RPC_TIMEOUT_KEY;
 import static org.apache.hadoop.hbase.client.AsyncProcess.DEFAULT_START_LOG_ERRORS_AFTER_COUNT;
 import static org.apache.hadoop.hbase.client.AsyncProcess.START_LOG_ERRORS_AFTER_COUNT_KEY;
-import static org.apache.hadoop.hbase.client.TableConfiguration.WRITE_BUFFER_SIZE_KEY;
-import static org.apache.hadoop.hbase.client.TableConfiguration.WRITE_BUFFER_SIZE_DEFAULT;
 
 import java.util.concurrent.TimeUnit;
 
@@ -82,8 +80,6 @@ public class AsyncConnectionConfiguration {
 
   private final long scannerMaxResultSize;
 
-  private final long writeBufferSize;
-
   private final boolean ignoreThrottlingException;
 
   @SuppressWarnings("deprecation")
@@ -108,7 +104,6 @@ public class AsyncConnectionConfiguration {
         conf.getInt(HBASE_META_SCANNER_CACHING, DEFAULT_HBASE_META_SCANNER_CACHING);
     this.scannerMaxResultSize = conf.getLong(HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
         DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
-    this.writeBufferSize = conf.getLong(WRITE_BUFFER_SIZE_KEY, WRITE_BUFFER_SIZE_DEFAULT);
     this.ignoreThrottlingException = conf.getBoolean(HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION,
         DEFAULT_HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION);
   }
@@ -151,10 +146,6 @@ public class AsyncConnectionConfiguration {
 
   long getScannerMaxResultSize() {
     return scannerMaxResultSize;
-  }
-
-  long getWriteBufferSize() {
-    return writeBufferSize;
   }
 
   boolean isIgnoreThrottlingException() {

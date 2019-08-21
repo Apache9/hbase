@@ -296,15 +296,4 @@ class AsyncConnectionImpl implements AsyncConnection {
       }
     };
   }
-
-  @Override
-  public AsyncBufferedMutatorBuilder getBufferedMutatorBuilder(TableName tableName) {
-    return new AsyncBufferedMutatorBuilderImpl(connConf, getTableBuilder(tableName));
-  }
-
-  @Override
-  public AsyncBufferedMutatorBuilder getBufferedMutatorBuilder(TableName tableName,
-      ExecutorService pool) {
-    return new AsyncBufferedMutatorBuilderImpl(connConf, getTableBuilder(tableName, pool));
-  }
 }
