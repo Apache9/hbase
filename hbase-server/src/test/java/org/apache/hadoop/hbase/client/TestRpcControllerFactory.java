@@ -133,10 +133,12 @@ public class TestRpcControllerFactory {
     int counter = 0;
 
     HTable table = new HTable(conf, name);
+    table.setAutoFlushTo(false);
     byte[] row = Bytes.toBytes("row");
     Put p = new Put(row);
     p.add(fam1, fam1, Bytes.toBytes("val0"));
     table.put(p);
+    table.flushCommits();
     counter = verifyCount(counter, 1);
 
     Delete d = new Delete(row);

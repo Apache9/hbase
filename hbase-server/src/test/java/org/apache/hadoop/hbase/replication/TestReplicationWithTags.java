@@ -45,7 +45,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.codec.KeyValueCodecWithTags;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
@@ -142,7 +141,7 @@ public class TestReplicationWithTags {
       // Table will be created on peer cluster, too
     }
     htable1 = new HTable(conf1, TABLE_NAME);
-    htable1.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    htable1.setWriteBufferSize(1024);
     htable2 = new HTable(conf2, TABLE_NAME);
   }
 

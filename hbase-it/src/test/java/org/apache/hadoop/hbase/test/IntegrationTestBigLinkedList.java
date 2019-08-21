@@ -62,7 +62,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.ScannerCallable;
-import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
@@ -363,7 +362,7 @@ public class IntegrationTestBigLinkedList extends IntegrationTestBase {
       protected void instantiateHTable(Configuration conf) throws IOException {
         table = new HTable(conf, getTableName(conf));
         table.setAutoFlush(false, true);
-        table.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 4 * 1024 * 1024);
+        table.setWriteBufferSize(4 * 1024 * 1024);
       }
 
       @Override

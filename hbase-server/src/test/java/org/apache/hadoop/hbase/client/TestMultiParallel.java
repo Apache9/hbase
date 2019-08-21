@@ -266,7 +266,7 @@ public class TestMultiParallel {
     LOG.info("get new table");
     HTable table = new HTable(UTIL.getConfiguration(), TEST_TABLE);
     table.setAutoFlush(false, true);
-    table.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 10 * 1024 * 1024);
+    table.setWriteBufferSize(10 * 1024 * 1024);
 
     LOG.info("constructPutRequests");
     List<Row> puts = constructPutRequests();

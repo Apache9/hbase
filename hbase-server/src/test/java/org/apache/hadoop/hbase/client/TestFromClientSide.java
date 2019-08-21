@@ -4081,7 +4081,7 @@ public class TestFromClientSide {
     HTable table = TEST_UTIL.createTable(Bytes.toBytes("testRowsPutBufferedManyManyFlushes"),
       new byte[][] {CONTENTS_FAMILY, SMALL_FAMILY });
     table.setAutoFlush(false, true);
-    table.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 10);
+    table.setWriteBufferSize(10);
     ArrayList<Put> rowsUpdate = new ArrayList<Put>();
     for (int i = 0; i < NB_BATCH_ROWS * 10; i++) {
       byte[] row = Bytes.toBytes("row" + i);

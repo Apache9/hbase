@@ -602,6 +602,16 @@ public interface HTableInterface extends Closeable {
   long getWriteBufferSize();
 
   /**
+   * Sets the size of the buffer in bytes.
+   * <p>
+   * If the new size is less than the current amount of data in the
+   * write buffer, the buffer gets flushed.
+   * @param writeBufferSize The new write buffer size, in bytes.
+   * @throws IOException if a remote or network exception occurs.
+   */
+  void setWriteBufferSize(long writeBufferSize) throws IOException;
+
+  /**
    * Creates an instance of the given {@link com.google.protobuf.Service} subclass for each table
    * region spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), all
    * the invocations to the same region server will be batched into one call. The coprocessor

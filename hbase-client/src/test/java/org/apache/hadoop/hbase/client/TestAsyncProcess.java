@@ -592,6 +592,86 @@ public class TestAsyncProcess {
   }
 
   @Test
+  public void testHTableFailedPutWithBuffer() throws Exception {
+    HTable ht = new HTable();
+    HConnection hc = createHConnection();
+    MyCB mcb = new MyCB(); // This allows to have some hints on what's going on.
+    ht.ap = new MyAsyncProcess<Object>(hc, mcb, conf);
+    ht.setAutoFlush(false, true);
+    ht.setWriteBufferSize(1024L * 1024L);
+
+    Put put = createPut(1, false);
+
+    Assert.assertEquals(0L, ht.currentWriteBufferSize);
+    try {
+      ht.put(put);
+      ht.flushCommits();
+      Assert.fail();
+    } catch (RetriesExhaustedException expected) {
+    }
+    Assert.assertEquals(0L, ht.currentWriteBufferSize);
+    Assert.assertEquals(0, mcb.successCalled.get());
+    Assert.assertEquals(2, mcb.retriableFailure.get());
+    Assert.assertEquals(1, mcb.failureCalled.get());
+
+    // This should not raise any exception, puts have been 'received' before by the catch.
+    ht.close();
+  }
+
+  @Test
+  public void testHTableFailedPutAndNewPut() throws Exception {
+    HTable ht = new HTable();
+    HConnection hc = createHConnection();
+    MyCB mcb = new MyCB(); // This allows to have some hints on what's going on.
+    ht.ap = new MyAsyncProcess<Object>(hc, mcb, conf);
+    ht.setAutoFlush(false, true);
+    ht.setWriteBufferSize(0);
+
+    Put p = createPut(1, false);
+    ht.put(p);
+
+    ht.ap.waitUntilDone(); // Let's do all the retries.
+
+    // We're testing that we're behaving as we were behaving in 0.94: sending exceptions in the
+    // doPut if it fails.
+    // This said, it's not a very easy going behavior. For example, when we insert a list of
+    // puts, we may raise an exception in the middle of the list. It's then up to the caller to
+    // manage what was inserted, what was tried but failed, and what was not even tried.
+    p = createPut(1, true);
+    Assert.assertEquals(0, ht.writeAsyncBuffer.size());
+    try {
+      ht.put(p);
+      Assert.fail();
+    } catch (RetriesExhaustedException expected) {
+    }
+    Assert.assertEquals("the put should not been inserted.", 0, ht.writeAsyncBuffer.size());
+  }
+
+  @Test
+  public void testWithNoClearOnFail() throws IOException {
+    HTable ht = new HTable();
+    HConnection hc = createHConnection();
+    MyCB mcb = new MyCB();
+    ht.ap = new MyAsyncProcess<Object>(hc, mcb, conf);
+    ht.setAutoFlush(false, false);
+
+    Put p = createPut(1, false);
+    ht.put(p);
+    Assert.assertEquals(0, ht.writeAsyncBuffer.size());
+    try {
+      ht.flushCommits();
+    } catch (RetriesExhaustedWithDetailsException expected) {
+    }
+    Assert.assertEquals(1, ht.writeAsyncBuffer.size());
+
+    try {
+      ht.close();
+    } catch (RetriesExhaustedWithDetailsException expected) {
+    }
+    Assert.assertEquals(1, ht.writeAsyncBuffer.size());
+  }
+
+  @Test
   public void testBatch() throws IOException, InterruptedException {
     HTable ht = new HTable();
     ht.connection = new MyConnectionImpl();
@@ -619,6 +699,62 @@ public class TestAsyncProcess {
     Assert.assertEquals(res[4], failure);
     Assert.assertEquals(res[5], success);
     Assert.assertEquals(res[6], failure);
+  }
+
+  @Test
+  public void testErrorsServers() throws IOException {
+    HTable ht = new HTable();
+    Configuration configuration = new Configuration(conf);
+    configuration.setBoolean(HConnectionManager.RETRIES_BY_SERVER_KEY, true);
+    configuration.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
+    // set default writeBufferSize
+    ht.setWriteBufferSize(configuration.getLong("hbase.client.write.buffer", 2097152));
+
+    MyConnectionImpl mci = new MyConnectionImpl(configuration);
+    ht.connection = mci;
+    ht.ap = new MyAsyncProcess<Object>(mci, null, configuration);
+
+    Assert.assertNotNull(ht.ap.createServerErrorTracker());
+    Assert.assertTrue(ht.ap.serverTrackerTimeout > 200);
+    ht.ap.serverTrackerTimeout = 1;
+
+    Put p = createPut(1, false);
+    ht.setAutoFlush(false, false);
+    ht.put(p);
+
+    try {
+      ht.flushCommits();
+      Assert.fail();
+    } catch (RetriesExhaustedWithDetailsException expected) {
+    }
+    // Checking that the ErrorsServers came into play and didn't make us stop immediately
+    Assert.assertEquals(ht.ap.tasksSent.get(), 3);
+  }
+
+  @Test
+  public void testGlobalErrors() throws IOException {
+    HTable ht = new HTable();
+    Configuration configuration = new Configuration(conf);
+    configuration.setBoolean(HConnectionManager.RETRIES_BY_SERVER_KEY, true);
+    configuration.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
+    ht.connection = new MyConnectionImpl(configuration);
+    AsyncProcessWithFailure<Object> ap =
+        new AsyncProcessWithFailure<Object>(ht.connection, configuration);
+    ht.ap = ap;
+
+    Assert.assertNotNull(ht.ap.createServerErrorTracker());
+
+    Put p = createPut(1, true);
+    ht.setAutoFlush(false, false);
+    ht.put(p);
+
+    try {
+      ht.flushCommits();
+      Assert.fail();
+    } catch (RetriesExhaustedWithDetailsException expected) {
+    }
+    // Checking that the ErrorsServers came into play and didn't make us stop immediately
+    Assert.assertEquals(3, ht.ap.tasksSent.get());
   }
 
   /**

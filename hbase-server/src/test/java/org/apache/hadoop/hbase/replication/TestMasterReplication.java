@@ -44,7 +44,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
@@ -350,7 +349,7 @@ public class TestMasterReplication {
     HTable[] htables = new HTable[numClusters];
     for (int i = 0; i < numClusters; i++) {
       HTable htable = new HTable(configurations[i], tableName);
-      htable.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+      htable.setWriteBufferSize(1024);
       htables[i] = htable;
     }
     return htables;

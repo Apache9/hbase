@@ -189,9 +189,8 @@ public class TestRegionServerMetrics {
     table.flushCommits();
 
     metricsRegionServer.getRegionServerWrapper().forceRecompute();
-    // HTable lazy initial BufferedMutator, so need one more read request for region location
-    metricsHelper.assertCounter("totalRequestCount", requests + 80 + 2, serverSource);
-    metricsHelper.assertCounter("readRequestCount", readRequests + 20 + 2, serverSource);
+    metricsHelper.assertCounter("totalRequestCount", requests + 80 + 1, serverSource);
+    metricsHelper.assertCounter("readRequestCount", readRequests + 20 + 1, serverSource);
     metricsHelper.assertCounter("writeRequestCount", writeRequests + 60, serverSource);
 
     table.close();

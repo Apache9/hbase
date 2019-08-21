@@ -29,7 +29,6 @@ import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -185,15 +184,15 @@ public class TestReplicationSyncUpTool extends TestReplicationBase {
 
     // Get HTable from Master
     ht1Source = new HTable(conf1, t1_su);
-    ht1Source.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    ht1Source.setWriteBufferSize(1024);
     ht2Source = new HTable(conf1, t2_su);
-    ht2Source.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    ht1Source.setWriteBufferSize(1024);
 
     // Get HTable from Peer1
     ht1TargetAtPeer1 = new HTable(conf2, t1_su);
-    ht1TargetAtPeer1.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    ht1TargetAtPeer1.setWriteBufferSize(1024);
     ht2TargetAtPeer1 = new HTable(conf2, t2_su);
-    ht2TargetAtPeer1.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
+    ht2TargetAtPeer1.setWriteBufferSize(1024);
 
     /**
      * set M-S : Master: utility1 Slave1: utility2

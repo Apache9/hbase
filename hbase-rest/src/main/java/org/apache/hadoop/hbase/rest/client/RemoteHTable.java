@@ -810,6 +810,11 @@ public class RemoteHTable implements HTableInterface {
   }
 
   @Override
+  public void setWriteBufferSize(long writeBufferSize) throws IOException {
+    throw new IOException("setWriteBufferSize not supported");
+  }
+
+  @Override
   public long incrementColumnValue(byte[] row, byte[] family, byte[] qualifier,
       long amount, boolean writeToWAL) throws IOException {
     throw new IOException("incrementColumnValue not supported");
