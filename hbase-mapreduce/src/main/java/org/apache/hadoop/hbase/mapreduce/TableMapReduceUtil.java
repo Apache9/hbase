@@ -44,10 +44,13 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.mapreduce.salted.SaltedMultiTableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.salted.SaltedTableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.salted.SaltedTableMapReduceUtil;
+import org.apache.hadoop.hbase.security.access.SnapshotScannerHDFSAclHelper;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
@@ -68,6 +71,7 @@ import org.apache.hadoop.util.StringUtils;
 
 import com.codahale.metrics.MetricRegistry;
 import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Utility for {@link TableMapper} and {@link TableReducer}
@@ -299,6 +303,53 @@ public class TableMapReduceUtil {
   throws IOException {
     initTableMapperJob(table, scan, mapper, outputKeyClass, outputValueClass, job,
         addDependencyJars, getTableInputFormatCls(job.getConfiguration(), Bytes.toBytes(table)));
+  }
+
+  @VisibleForTesting
+  static Path getAndCheckTmpRestoreDir(Configuration conf) throws IOException {
+    Path rootDir = FSUtils.getRootDir(conf);
+    FileSystem fs = rootDir.getFileSystem(conf);
+    Path tmpRestoreDir = new Path(rootDir.toUri().getScheme(), rootDir.toUri().getAuthority(),
+        conf.get(SnapshotScannerHDFSAclHelper.SNAPSHOT_RESTORE_TMP_DIR,
+          SnapshotScannerHDFSAclHelper.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
+    if (!fs.exists(tmpRestoreDir)) {
+      throw new IOException("tmp directory to restore snapshot does not exist. " + tmpRestoreDir);
+    }
+    return tmpRestoreDir;
+  }
+
+  public static String initTableSnapshotMapperJob(TableName table, Scan scan,
+      Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
+      Job job, boolean addDependencyJars) throws IOException {
+    Configuration conf = job.getConfiguration();
+    Path tmpRestoreDir = getAndCheckTmpRestoreDir(conf);
+    return initTableSnapshotMapperJob(table, scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, tmpRestoreDir);
+  }
+
+  public static String initTableSnapshotMapperJob(TableName table, Scan scan,
+      Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
+      Job job, boolean addDependencyJars, Path tmpRestoreDir) throws IOException {
+    // Generate a snapshot name, based on namespace, table name, local timestamp.
+    String snapshotName = String.format("SnapshotInputFormat-%s-%s-%d",
+      table.getNamespaceAsString(), table.getQualifierAsString(), System.currentTimeMillis());
+
+    // Create a snapshot.
+    try (Admin admin = ConnectionFactory.createConnection(job.getConfiguration()).getAdmin()) {
+      admin.snapshot(snapshotName, table);
+    }
+
+    // Initialize the snapshot mapper job.
+    initTableSnapshotMapperJob(snapshotName, scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, tmpRestoreDir);
+    return snapshotName;
+  }
+
+  public static void cleanupTableSnapshotMapperJob(Job job, String snapshotName)
+      throws IOException {
+    try (Admin admin = ConnectionFactory.createConnection(job.getConfiguration()).getAdmin()) {
+      admin.deleteSnapshot(snapshotName);
+    }
   }
 
   protected static Class<? extends MultiTableInputFormat> getMultiTableInputFormatCls(
