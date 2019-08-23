@@ -17,9 +17,12 @@
  */
 package org.apache.hadoop.hbase.master.cleaner;
 
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.DaemonThreadFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class DirScanPool {
   private static final Logger LOG = LoggerFactory.getLogger(DirScanPool.class);
   private volatile int size;
-  private ForkJoinPool pool;
+  private final ThreadPoolExecutor pool;
 
   public DirScanPool(Configuration conf) {
     String poolSize = conf.get(CleanerChore.CHORE_POOL_SIZE, CleanerChore.DEFAULT_CHORE_POOL_SIZE);
@@ -39,12 +42,19 @@ public class DirScanPool {
     // poolSize may be 0 or 0.0 from a careless configuration,
     // double check to make sure.
     size = size == 0 ? CleanerChore.calculatePoolSize(CleanerChore.DEFAULT_CHORE_POOL_SIZE) : size;
-    pool = new ForkJoinPool(size);
+    pool = initializePool(size);
     LOG.info("Cleaner pool size is {}", size);
   }
 
-  synchronized void execute(ForkJoinTask<?> task) {
-    pool.execute(task);
+  private static ThreadPoolExecutor initializePool(int size) {
+    ThreadPoolExecutor executor = new ThreadPoolExecutor(size, size, 1, TimeUnit.MINUTES,
+        new LinkedBlockingQueue<>(), new DaemonThreadFactory("dir-scan-pool"));
+    executor.allowCoreThreadTimeOut(true);
+    return executor;
+  }
+
+  synchronized void execute(Runnable runnable) {
+    pool.execute(runnable);
   }
 
   public synchronized void shutdownNow() {
