@@ -26,10 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveTask;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.apache.hadoop.conf.Configuration;
@@ -63,91 +60,16 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   private static final int AVAIL_PROCESSORS = Runtime.getRuntime().availableProcessors();
 
   /**
-   * If it is an integer and >= 1, it would be the size;
-   * if 0.0 < size <= 1.0, size would be available processors * size.
-   * Pay attention that 1.0 is different from 1, former indicates it will use 100% of cores,
-   * while latter will use only 1 thread for chore to scan dir.
+   * If it is an integer and >= 1, it would be the size; if 0.0 < size <= 1.0, size would be
+   * available processors * size. Pay attention that 1.0 is different from 1, former indicates it
+   * will use 100% of cores, while latter will use only 1 thread for chore to scan dir.
    */
   public static final String CHORE_POOL_SIZE = "hbase.cleaner.scan.dir.concurrent.size";
-  private static final String DEFAULT_CHORE_POOL_SIZE = "0.25";
+  static final String DEFAULT_CHORE_POOL_SIZE = "0.25";
 
-  private static class DirScanPool {
-    int size;
-    ForkJoinPool pool;
-    int cleanerLatch;
-    AtomicBoolean reconfigNotification;
-
-    DirScanPool(Configuration conf) {
-      String poolSize = conf.get(CHORE_POOL_SIZE, DEFAULT_CHORE_POOL_SIZE);
-      size = calculatePoolSize(poolSize);
-      // poolSize may be 0 or 0.0 from a careless configuration,
-      // double check to make sure.
-      size = size == 0 ? calculatePoolSize(DEFAULT_CHORE_POOL_SIZE) : size;
-      pool = new ForkJoinPool(size);
-      LOG.info("Cleaner pool size is {}", size);
-      reconfigNotification = new AtomicBoolean(false);
-      cleanerLatch = 0;
-    }
-
-    /**
-     * Checks if pool can be updated. If so, mark for update later.
-     * @param conf configuration
-     */
-    synchronized void markUpdate(Configuration conf) {
-      int newSize = calculatePoolSize(conf.get(CHORE_POOL_SIZE, DEFAULT_CHORE_POOL_SIZE));
-      if (newSize == size) {
-        LOG.trace(
-          "Size from configuration is same as previous=" + newSize + ", no need to update.");
-        return;
-      }
-      size = newSize;
-      // Chore is working, update it later.
-      reconfigNotification.set(true);
-    }
-
-    /**
-     * Update pool with new size.
-     */
-    synchronized void updatePool(long timeout) {
-      long stopTime = System.currentTimeMillis() + timeout;
-      while (cleanerLatch != 0 && timeout > 0) {
-        try {
-          wait(timeout);
-          timeout = stopTime - System.currentTimeMillis();
-        } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-      shutDownNow();
-      LOG.info("Update chore's pool size from " + pool.getParallelism() + " to " + size);
-      pool = new ForkJoinPool(size);
-    }
-
-    synchronized void latchCountUp() {
-      cleanerLatch++;
-    }
-
-    synchronized void latchCountDown() {
-      cleanerLatch--;
-      notifyAll();
-    }
-
-    @SuppressWarnings("FutureReturnValueIgnored")
-    synchronized void submit(ForkJoinTask task) {
-      pool.submit(task);
-    }
-
-    synchronized void shutDownNow() {
-      if (pool == null || pool.isShutdown()) {
-        return;
-      }
-      pool.shutdownNow();
-    }
-  }
   // It may be waste resources for each cleaner chore own its pool,
   // so let's make pool for all cleaner chores.
-  private static volatile DirScanPool POOL;
+  private final DirScanPool pool;
 
   private final FileSystem fs;
   private final Path oldFileDir;
@@ -155,19 +77,6 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   protected List<T> cleanersChain;
   private final long ttlDir;
   private HBaseAdmin admin;
-
-  public static void initChorePool(Configuration conf) {
-    if (POOL == null) {
-      POOL = new DirScanPool(conf);
-    }
-  }
-
-  public static void shutDownChorePool() {
-    if (POOL != null) {
-      POOL.shutDownNow();
-      POOL = null;
-    }
-  }
 
   /**
    * @param name name of the chore being run
@@ -180,11 +89,11 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
    * @param ttlDir TTL for directory. -1 means we don't use ttl to decide whether delete a dirctory
    */
   public CleanerChore(String name, final int sleepPeriod, final Stoppable s, Configuration conf,
-      FileSystem fs, Path oldFileDir, String confKey, long ttlDir) {
+      FileSystem fs, Path oldFileDir, String confKey, long ttlDir, DirScanPool pool) {
     super(name, sleepPeriod, s);
 
-    Preconditions.checkNotNull(POOL, "Chore's pool isn't initialized, please call"
-        + "CleanerChore.initChorePool(Configuration) before new a cleaner chore.");
+    Preconditions.checkNotNull(pool, "Chore's pool can not be null");
+    this.pool = pool;
     this.fs = fs;
     this.oldFileDir = oldFileDir;
     this.conf = conf;
@@ -277,28 +186,17 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
 
   @Override
   protected void chore() {
-    try {
-      POOL.latchCountUp();
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Start to clean dir: {}", oldFileDir);
-      }
-      if (runCleaner()) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Cleaned all files of dir: {}", oldFileDir);
-        }
-      }
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Finished clean dir: {}", oldFileDir);
-      }
-    } finally {
-      POOL.latchCountDown();
+    LOG.debug("Start to clean dir: {}", oldFileDir);
+    if (runCleaner()) {
+      LOG.debug("Cleaned all files of dir: {}", oldFileDir);
     }
+    LOG.debug("Finished clean dir: {}", oldFileDir);
   }
 
   public Boolean runCleaner() {
     preRunCleaner();
     CleanerTask task = new CleanerTask(this.oldFileDir, true);
-    POOL.submit(task);
+    pool.execute(task);
     return task.join();
   }
 

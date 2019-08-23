@@ -48,17 +48,19 @@ public class TestHFileCleaner {
   private static final Log LOG = LogFactory.getLog(TestHFileCleaner.class);
 
   private final static HBaseTestingUtility UTIL = new HBaseTestingUtility();
+  private static DirScanPool POOL;
 
   @BeforeClass
   public static void setupCluster() throws Exception {
     // have to use a minidfs cluster because the localfs doesn't modify file times correctly
     UTIL.startMiniDFSCluster(1);
-    CleanerChore.initChorePool(UTIL.getConfiguration());
+    POOL = new DirScanPool(UTIL.getConfiguration());
   }
 
   @AfterClass
   public static void shutdownCluster() throws IOException {
     UTIL.shutdownMiniDFSCluster();
+    POOL.shutdownNow();
   }
 
   @Test
@@ -102,7 +104,7 @@ public class TestHFileCleaner {
     Server server = new DummyServer();
     Path archivedHfileDir = new Path(UTIL.getDataTestDirOnTestFS(), HConstants.HFILE_ARCHIVE_DIRECTORY);
     FileSystem fs = FileSystem.get(conf);
-    HFileCleaner cleaner = new HFileCleaner(1000, server, conf, fs, archivedHfileDir);
+    HFileCleaner cleaner = new HFileCleaner(1000, server, conf, fs, archivedHfileDir, POOL);
 
     // Create 2 invalid files, 1 "recent" file, 1 very new file and 30 old files
     final long createTime = System.currentTimeMillis();
@@ -170,7 +172,7 @@ public class TestHFileCleaner {
 
     // setup the cleaner
     FileSystem fs = UTIL.getDFSCluster().getFileSystem();
-    HFileCleaner cleaner = new HFileCleaner(1000, server, conf, fs, archivedHfileDir);
+    HFileCleaner cleaner = new HFileCleaner(1000, server, conf, fs, archivedHfileDir, POOL);
 
     // make all the directories for archiving files
     Path table = new Path(archivedHfileDir, "table");

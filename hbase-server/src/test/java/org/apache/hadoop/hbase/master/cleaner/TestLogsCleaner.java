@@ -49,6 +49,7 @@ import org.mockito.Mockito;
 public class TestLogsCleaner {
 
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  private static DirScanPool POOL;
 
   /**
    * @throws java.lang.Exception
@@ -56,7 +57,7 @@ public class TestLogsCleaner {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.startMiniZKCluster();
-    CleanerChore.initChorePool(TEST_UTIL.getConfiguration());
+    POOL = new DirScanPool(TEST_UTIL.getConfiguration());
   }
 
   /**
@@ -65,6 +66,7 @@ public class TestLogsCleaner {
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
     TEST_UTIL.shutdownMiniZKCluster();
+    POOL.shutdownNow();
   }
 
   @Test
@@ -123,7 +125,7 @@ public class TestLogsCleaner {
 
     assertEquals(34, fs.listStatus(oldLogDir).length);
 
-    LogCleaner cleaner  = new LogCleaner(1000, server, conf, fs, oldLogDir);
+    LogCleaner cleaner  = new LogCleaner(1000, server, conf, fs, oldLogDir, POOL);
     cleaner.chore();
 
     // We end up with the current log file, a newer one and the 3 old log
@@ -196,7 +198,7 @@ public class TestLogsCleaner {
 
     assertEquals(34, fs.listStatus(serverOldLogDir).length);
 
-    LogCleaner cleaner  = new LogCleaner(1000, server, conf, fs, oldLogDir);
+    LogCleaner cleaner  = new LogCleaner(1000, server, conf, fs, oldLogDir, POOL);
     cleaner.chore();
 
     // We end up with the current log file, 2 newer one and the 3 old log
@@ -239,7 +241,7 @@ public class TestLogsCleaner {
     Thread.sleep(ttl);
     assertEquals(10, fs.listStatus(serverOldLogDir).length);
 
-    LogCleaner cleaner  = new LogCleaner(1000, server, conf, fs, oldLogDir);
+    LogCleaner cleaner = new LogCleaner(1000, server, conf, fs, oldLogDir, POOL);
     cleaner.chore();
 
     TEST_UTIL.waitFor(5000, new Waiter.Predicate<Exception>() {

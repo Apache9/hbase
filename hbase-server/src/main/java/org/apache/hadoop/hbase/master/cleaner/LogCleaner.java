@@ -48,9 +48,9 @@ public class LogCleaner extends CleanerChore<BaseLogCleanerDelegate> {
    * @param oldLogDir the path to the archived logs
    */
   public LogCleaner(final int p, final Stoppable s, Configuration conf, FileSystem fs,
-      Path oldLogDir) {
-    super("LogsCleaner", p, s, conf, fs, oldLogDir, HBASE_MASTER_LOGCLEANER_PLUGINS, conf.getLong(
-      LOG_DIRECTORY_TTL_CONFIG_KEY, DEFAULT_LOG_DIRECTORY_TTL));
+      Path oldLogDir, DirScanPool pool) {
+    super("LogsCleaner", p, s, conf, fs, oldLogDir, HBASE_MASTER_LOGCLEANER_PLUGINS,
+        conf.getLong(LOG_DIRECTORY_TTL_CONFIG_KEY, DEFAULT_LOG_DIRECTORY_TTL), pool);
   }
 
   @Override

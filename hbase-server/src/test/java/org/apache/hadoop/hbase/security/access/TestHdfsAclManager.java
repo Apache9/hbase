@@ -49,7 +49,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.TableSnapshotScanner;
-import org.apache.hadoop.hbase.master.cleaner.CleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -138,7 +137,6 @@ public class TestHdfsAclManager {
     canUserScanSnapshot(grantUser, snapshot);
 
     // HFileCleaner will not delete archive table directory even if it's a empty directory
-    CleanerChore.initChorePool(conf);
     HFileCleaner cleaner = TEST_UTIL.getHBaseCluster().getMaster().getHFileCleaner();
     cleaner.choreForTesting();
     Path archiveTableDir = HFileArchiveUtil.getTableArchivePath(rootDir, table);

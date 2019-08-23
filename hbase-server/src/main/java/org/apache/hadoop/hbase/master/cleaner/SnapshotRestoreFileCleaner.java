@@ -44,11 +44,12 @@ public class SnapshotRestoreFileCleaner extends CleanerChore<BaseFileCleanerDele
    * @param directory directory to be cleaned
    */
   public SnapshotRestoreFileCleaner(final int period, final Stoppable stopper, Configuration conf,
-      FileSystem fs, Path directory) {
+      FileSystem fs, Path directory, DirScanPool pool) {
     super("SnapshotRestoreFileCleaner", period, stopper, conf, fs, directory,
         MASTER_SNAPSHOT_RESTORE_FILE_CLEANER_PLUGINS,
         conf.getLong(TimeToLiveSnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_TTL,
-          TimeToLiveSnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_TTL_DEFAULT));
+          TimeToLiveSnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_TTL_DEFAULT),
+        pool);
   }
 
   @Override

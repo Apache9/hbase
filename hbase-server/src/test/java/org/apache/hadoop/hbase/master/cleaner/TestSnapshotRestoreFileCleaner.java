@@ -42,11 +42,12 @@ public class TestSnapshotRestoreFileCleaner {
   private static Configuration conf = TEST_UTIL.getConfiguration();
   private Path restoreDir =
       new Path(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT);
+  private static DirScanPool POOL;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.startMiniDFSCluster(1);
-    CleanerChore.initChorePool(conf);
+    POOL = new DirScanPool(TEST_UTIL.getConfiguration());
   }
 
   @AfterClass
@@ -83,7 +84,7 @@ public class TestSnapshotRestoreFileCleaner {
 
     Server server = new DummyServer();
     SnapshotRestoreFileCleaner cleaner =
-        new SnapshotRestoreFileCleaner(1000, server, conf, fs, restoreDir);
+        new SnapshotRestoreFileCleaner(1000, server, conf, fs, restoreDir, POOL);
     cleaner.chore();
 
     Assert.assertTrue(fs.exists(dirExist));
@@ -121,7 +122,7 @@ public class TestSnapshotRestoreFileCleaner {
 
     Server server = new DummyServer();
     SnapshotRestoreFileCleaner cleaner =
-        new SnapshotRestoreFileCleaner(1000, server, conf, fs, restoreDir);
+        new SnapshotRestoreFileCleaner(1000, server, conf, fs, restoreDir, POOL);
     Threads.setDaemonThreadRunning(cleaner.getThread(),
       Thread.currentThread().getName() + ".restoredHFileCleaner");
 
