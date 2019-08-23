@@ -18,16 +18,14 @@
 package org.apache.hadoop.hbase.master.cleaner;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.RecursiveTask;
-import java.util.function.Predicate;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -41,7 +39,6 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -193,11 +190,76 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     LOG.debug("Finished clean dir: {}", oldFileDir);
   }
 
-  public Boolean runCleaner() {
+  public boolean runCleaner() {
     preRunCleaner();
-    CleanerTask task = new CleanerTask(this.oldFileDir, true);
-    pool.execute(task);
-    return task.join();
+    try {
+      CompletableFuture<Boolean> future = new CompletableFuture<>();
+      pool.execute(() -> traverseAndDelete(oldFileDir, true, future));
+      return future.get();
+    } catch (Exception e) {
+      LOG.info("Failed to traverse and delete the dir: {}", oldFileDir, e);
+      return false;
+    }
+  }
+
+  /**
+   * Attempts to clean up a directory(its subdirectories, and files) in a
+   * {@link java.util.concurrent.ThreadPoolExecutor} concurrently. We can get the final result by
+   * calling result.get().
+   */
+  private void traverseAndDelete(Path dir, boolean root, CompletableFuture<Boolean> result) {
+    try {
+      // Step.1: List all files under the given directory.
+      List<FileStatus> allPaths = Arrays.asList(fs.listStatus(dir));
+      List<FileStatus> subDirs =
+          allPaths.stream().filter(FileStatus::isDirectory).collect(Collectors.toList());
+      List<FileStatus> files =
+          allPaths.stream().filter(FileStatus::isFile).collect(Collectors.toList());
+
+      // Step.2: Try to delete all the deletable files.
+      boolean allFilesDeleted =
+          files.isEmpty() || deleteAction(() -> checkAndDeleteFiles(files), "files", dir);
+
+      // Step.3: Start to traverse and delete the sub-directories.
+      List<CompletableFuture<Boolean>> futures = new ArrayList<>();
+      if (!subDirs.isEmpty()) {
+        sortByConsumedSpace(subDirs);
+        // Submit the request of sub-directory deletion.
+        subDirs.forEach(subDir -> {
+          CompletableFuture<Boolean> subFuture = new CompletableFuture<>();
+          pool.execute(() -> traverseAndDelete(subDir.getPath(), false, subFuture));
+          futures.add(subFuture);
+        });
+      }
+
+      // Step.4: Once all sub-files & sub-directories are deleted, then can try to delete the
+      // current directory asynchronously.
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
+          .whenComplete((voidObj, e) -> {
+            if (e != null) {
+              result.completeExceptionally(e);
+              return;
+            }
+            try {
+              boolean allSubDirsDeleted = futures.stream().allMatch(CompletableFuture::join);
+              boolean deleted = allFilesDeleted && allSubDirsDeleted && isEmptyDirDeletable(dir);
+              if (deleted && !root) {
+                // If and only if files and sub-dirs under current dir are deleted successfully, and
+                // the empty directory can be deleted, and it is not the root dir then task will
+                // try to delete it.
+                deleted = deleteAction(() -> fs.delete(dir, false), "dir", dir);
+              }
+              result.complete(deleted);
+            } catch (Exception ie) {
+              // Must handle the inner exception here, otherwise the result may get stuck if one
+              // sub-directory get some failure.
+              result.completeExceptionally(ie);
+            }
+          });
+    } catch (Exception e) {
+      LOG.debug("Failed to traverse and delete the path: {}", dir, e);
+      result.completeExceptionally(e);
+    }
   }
 
   /**
@@ -393,157 +455,58 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   }
 
   /**
-   * Attemps to clean up a directory, its subdirectories, and files.
-   * Return value is true if everything was deleted. false on partial / total failures.
+   * Perform a delete on a specified type.
+   * @param deletion a delete
+   * @param type possible values are 'files', 'subdirs', 'dirs'
+   * @return true if it deleted successfully, false otherwise
    */
-  private class CleanerTask extends RecursiveTask<Boolean> {
-    private final Path dir;
-    private final boolean root;
-    private FileStatus dirStatus = null;
-
-    CleanerTask(final FileStatus dir, final boolean root) {
-      this(dir.getPath(), root);
-      this.dirStatus = dir;
+  private boolean deleteAction(Action<Boolean> deletion, String type, Path dir) {
+    boolean deleted;
+    try {
+      LOG.trace("Start deleting {} under {}", type, dir);
+      deleted = deletion.act();
+    } catch (PathIsNotEmptyDirectoryException exception) {
+      // N.B. HDFS throws this exception when we try to delete a non-empty directory, but
+      // LocalFileSystem throws a bare IOException. So some test code will get the verbose
+      // message below.
+      LOG.debug("Couldn't delete '{}' yet because it isn't empty w/exception.", dir, exception);
+      deleted = false;
+    } catch (IOException ioe) {
+      LOG.info(
+        "Could not delete " + type + " under " + dir + ". might be transient; we'll retry. if it "
+            + "keeps " + "happening, use following exception when asking on mailing list.",
+        ioe);
+      deleted = false;
+    } catch (Exception e) {
+      LOG.info("unexpected exception: ", e);
+      deleted = false;
     }
+    LOG.trace("Finish deleting {} under {}, deleted=" + deleted, type, dir);
+    return deleted;
+  }
 
-    CleanerTask(final Path dir, final boolean root) {
-      this.dir = dir;
-      this.root = root;
-    }
-
-    @Override
-    protected Boolean compute() {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Cleaning under {}", dir);
-      }
-      List<FileStatus> subDirs;
-      List<FileStatus> files;
-      try {
-        // if dir doesn't exist, we'll get null back for both of these
-        // which will fall through to succeeding.
-        subDirs = getFilteredStatus(FileStatus::isDirectory);
-        files = getFilteredStatus(FileStatus::isFile);
-      } catch (IOException ioe) {
-        LOG.warn("failed to get FileStatus for contents of '{}'", dir, ioe);
+  private boolean isEmptyDirDeletable(Path dir) throws IOException {
+    // check if dir used for snapshot scanner
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      if (isArchiveDataDir(dir)) {
+        return false;
+      } else if (isArchiveNamespaceDir(dir) && namespaceExist(dir.getName())) {
+        return false;
+      } else if (isArchiveTableDir(dir)
+          && tableExist(TableName.valueOf(dir.getParent().getName(), dir.getName()))) {
         return false;
       }
-
-      boolean allFilesDeleted = true;
-      if (!files.isEmpty()) {
-        allFilesDeleted = deleteAction(() -> checkAndDeleteFiles(files), "files");
-      }
-
-      boolean allSubdirsDeleted = true;
-      if (!subDirs.isEmpty()) {
-        List<CleanerTask> tasks = Lists.newArrayListWithCapacity(subDirs.size());
-        long start = System.currentTimeMillis();
-        sortByConsumedSpace(subDirs);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Sort consumed space of dir {}, cost {}ms", dir,
-            System.currentTimeMillis() - start);
-        }
-        for (FileStatus subdir : subDirs) {
-          CleanerTask task = new CleanerTask(subdir, false);
-          tasks.add(task);
-          task.fork();
-        }
-        allSubdirsDeleted = deleteAction(() -> getCleanResult(tasks), "subdirs");
-      }
-
-      boolean result = allFilesDeleted && allSubdirsDeleted && isDirDeletable();
-      // if and only if files and subdirs under current dir are deleted successfully, and
-      // it is not the root dir, then task will try to delete it.
-      if (result && !root) {
-        result &= deleteAction(() -> fs.delete(dir, false), "dir");
-      }
-      return result;
     }
-
-    private boolean isDirDeletable() {
-      // check if dir used for snapshot scanner
-      if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
-        if (isArchiveDataDir(dir)) {
-          return false;
-        } else if (isArchiveNamespaceDir(dir) && namespaceExist(dir.getName())) {
-          return false;
-        } else if (isArchiveTableDir(dir) &&
-            tableExist(TableName.valueOf(dir.getParent().getName(), dir.getName()))) {
-          return false;
-        }
+    // check dir TTL
+    boolean deleteDir = true;
+    if (ttlDir >= 0) {
+      long currentTime = EnvironmentEdgeManager.currentTimeMillis();
+      FileStatus dirStatus = fs.getFileStatus(dir);
+      long lastModificationTime = dirStatus != null ? dirStatus.getModificationTime() : -1;
+      if (lastModificationTime > 0) {
+        deleteDir = (currentTime - lastModificationTime) > ttlDir;
       }
-      // check dir TTL
-      boolean deleteDir = true;
-      if (ttlDir >= 0) {
-        long currentTime = EnvironmentEdgeManager.currentTimeMillis();
-        long lastModificationTime = dirStatus != null ? dirStatus.getModificationTime() : -1;
-        if (lastModificationTime > 0) {
-          deleteDir = (currentTime - lastModificationTime) > ttlDir;
-        }
-      }
-      return deleteDir;
     }
-
-    /**
-     * Get FileStatus with filter.
-     * @param function a filter function
-     * @return filtered FileStatus or empty list if dir doesn't exist
-     * @throws IOException if there's an error other than dir not existing
-     */
-    private List<FileStatus> getFilteredStatus(Predicate<FileStatus> function) throws IOException {
-      return Optional
-          .ofNullable(FSUtils.listStatusWithStatusFilter(fs, dir, status -> function.test(status)))
-          .orElseGet(Collections::emptyList);
-    }
-
-    /**
-     * Perform a delete on a specified type.
-     * @param deletion a delete
-     * @param type possible values are 'files', 'subdirs', 'dirs'
-     * @return true if it deleted successfully, false otherwise
-     */
-    private boolean deleteAction(Action<Boolean> deletion, String type) {
-      boolean deleted;
-      try {
-        LOG.trace("Start deleting {} under {}", type, dir);
-        deleted = deletion.act();
-      } catch (PathIsNotEmptyDirectoryException exception) {
-        // N.B. HDFS throws this exception when we try to delete a non-empty directory, but
-        // LocalFileSystem throws a bare IOException. So some test code will get the verbose
-        // message below.
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Couldn't delete '{}' yet because it isn't empty. Probably transient. "
-              + "exception details at TRACE.", dir);
-        }
-        LOG.trace("Couldn't delete '{}' yet because it isn't empty w/exception.", dir, exception);
-        deleted = false;
-      } catch (IOException ioe) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Could not delete " + type + " under " + dir
-              + ". might be transient; we'll retry. if it keeps "
-              + "happening, use following exception when asking on mailing list.", ioe);
-        }
-        deleted = false;
-      }
-      LOG.trace("Finish deleting " + type + " under " + dir + ", deleted=" + deleted);
-      return deleted;
-    }
-
-    /**
-     * Get cleaner results of subdirs.
-     * @param tasks subdirs cleaner tasks
-     * @return true if all subdirs deleted successfully, false for patial/all failures
-     * @throws IOException something happen during computation
-     */
-    private boolean getCleanResult(List<CleanerTask> tasks) throws IOException {
-      boolean cleaned = true;
-      try {
-        for (CleanerTask task : tasks) {
-          cleaned &= task.get();
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        throw new IOException(e);
-      }
-      return cleaned;
-    }
+    return deleteDir;
   }
 }
