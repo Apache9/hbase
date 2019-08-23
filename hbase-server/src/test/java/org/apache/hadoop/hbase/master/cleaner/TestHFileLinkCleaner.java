@@ -38,6 +38,8 @@ import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HFileArchiveUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -49,6 +51,17 @@ import org.junit.experimental.categories.Category;
 public class TestHFileLinkCleaner {
 
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  private static DirScanPool POOL;
+
+  @BeforeClass
+  public static void setUp() {
+    POOL = new DirScanPool(TEST_UTIL.getConfiguration());
+  }
+
+  @AfterClass
+  public static void tearDown() {
+    POOL.shutdownNow();
+  }
 
   @Test
   public void testHFileLinkCleaning() throws Exception {
@@ -69,8 +82,6 @@ public class TestHFileLinkCleaner {
     Path archiveDir = HFileArchiveUtil.getArchivePath(conf);
     Path archiveStoreDir = HFileArchiveUtil.getStoreArchivePath(conf,
           tableName, hri.getEncodedName(), familyName);
-    Path archiveLinkStoreDir = HFileArchiveUtil.getStoreArchivePath(conf,
-          tableLinkName, hriLink.getEncodedName(), familyName);
 
     // Create hfile /hbase/table-link/region/cf/getEncodedName.HFILE(conf);
     Path familyPath = getFamilyDirPath(archiveDir, tableName, hri.getEncodedName(), familyName);
@@ -93,8 +104,7 @@ public class TestHFileLinkCleaner {
     final long ttl = 1000;
     conf.setLong(TimeToLiveHFileCleaner.TTL_CONF_KEY, ttl);
     Server server = new DummyServer();
-    CleanerChore.initChorePool(conf);
-    HFileCleaner cleaner = new HFileCleaner(1000, server, conf, fs, archiveDir);
+    HFileCleaner cleaner = new HFileCleaner(1000, server, conf, fs, archiveDir, POOL);
 
     // Link backref cannot be removed
     cleaner.chore();

@@ -43,8 +43,9 @@ public class HFileCleaner extends CleanerChore<BaseHFileCleanerDelegate> {
    * @param directory directory to be cleaned
    */
   public HFileCleaner(final int period, final Stoppable stopper, Configuration conf, FileSystem fs,
-      Path directory) {
-    super("HFileCleaner", period, stopper, conf, fs, directory, MASTER_HFILE_CLEANER_PLUGINS, -1);
+      Path directory, DirScanPool pool) {
+    super("HFileCleaner", period, stopper, conf, fs, directory, MASTER_HFILE_CLEANER_PLUGINS, -1,
+        pool);
   }
 
   @Override

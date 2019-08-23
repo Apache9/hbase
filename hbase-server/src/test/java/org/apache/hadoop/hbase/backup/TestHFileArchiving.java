@@ -35,6 +35,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.master.cleaner.DirScanPool;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
@@ -66,6 +67,7 @@ public class TestHFileArchiving {
   private static final Log LOG = LogFactory.getLog(TestHFileArchiving.class);
   private static final HBaseTestingUtility UTIL = new HBaseTestingUtility();
   private static final byte[] TEST_FAM = Bytes.toBytes("fam");
+  private static DirScanPool POOL;
 
   /**
    * Setup the config for the cluster
@@ -77,6 +79,8 @@ public class TestHFileArchiving {
 
     // We don't want the cleaner to remove files. The tests do that.
     UTIL.getMiniHBaseCluster().getMaster().getHFileCleaner().interrupt();
+
+    POOL = new DirScanPool(UTIL.getConfiguration());
   }
 
   private static void setupConf(Configuration conf) {
@@ -95,20 +99,13 @@ public class TestHFileArchiving {
   @After
   public void tearDown() throws Exception {
     // cleanup the archive directory
-    try {
-      clearArchiveDirectory();
-    } catch (IOException e) {
-      Assert.fail("Failure to delete archive directory:" + e.getMessage());
-    }
+    clearArchiveDirectory();
   }
 
   @AfterClass
   public static void cleanupTest() throws Exception {
-    try {
-      UTIL.shutdownMiniCluster();
-    } catch (Exception e) {
-      // NOOP;
-    }
+    UTIL.shutdownMiniCluster();
+    POOL.shutdownNow();
   }
 
   @Test
@@ -357,7 +354,7 @@ public class TestHFileArchiving {
     Stoppable stoppable = new StoppableImplementation();
 
     // The cleaner should be looping without long pauses to reproduce the race condition.
-    HFileCleaner cleaner = new HFileCleaner(1, stoppable, conf, fs, archiveDir);
+    HFileCleaner cleaner = new HFileCleaner(1, stoppable, conf, fs, archiveDir, POOL);
     try {
       cleaner.start();
 

@@ -107,6 +107,7 @@ import org.apache.hadoop.hbase.master.balancer.BalancerChore;
 import org.apache.hadoop.hbase.master.balancer.ClusterStatusChore;
 import org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory;
 import org.apache.hadoop.hbase.master.cleaner.CleanerChore;
+import org.apache.hadoop.hbase.master.cleaner.DirScanPool;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationMetaCleaner;
@@ -500,6 +501,7 @@ MasterServices, Server {
   private ClusterStatusPublisher clusterStatusPublisherChore = null;
 
   private CatalogJanitor catalogJanitorChore;
+  private DirScanPool cleanerPool;
   private ReplicationZKLockCleanerChore replicationZKLockCleanerChore;
   private ReplicationZKNodeCleanerChore replicationZKNodeCleanerChore;
   private ReplicationMetaCleaner replicationMetaCleaner;
@@ -1054,11 +1056,6 @@ MasterServices, Server {
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
 
-    // Initial cleaner chore
-    CleanerChore.initChorePool(conf);
-    status.setStatus("Starting hdfs acl manager");
-    initHdfsAclManager();
-
     // initialize master side coprocessors before we start handling requests
     status.setStatus("Initializing master coprocessors");
     this.cpHost = new MasterCoprocessorHost(this, this.conf);
@@ -1068,6 +1065,10 @@ MasterServices, Server {
     // start up all service threads.
     status.setStatus("Initializing master service threads");
     startServiceThreads();
+
+    // Initial the HDFS ACL Manager
+    status.setStatus("Starting hdfs acl manager");
+    initHdfsAclManager();
 
     // Wait for region servers to report in.
     this.serverManager.waitForRegionServers(status);
@@ -1338,7 +1339,7 @@ MasterServices, Server {
       Path restoreDir = new Path(conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR,
         HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
       this.snapshotRestoreFileCleaner = new SnapshotRestoreFileCleaner(cleanerInterval, this, conf,
-          getMasterFileSystem().getFileSystem(), restoreDir);
+          getMasterFileSystem().getFileSystem(), restoreDir, cleanerPool);
       Threads.setDaemonThreadRunning(snapshotRestoreFileCleaner.getThread(),
         Thread.currentThread().getName() + ".restoredHFileCleaner");
     }
@@ -1491,19 +1492,19 @@ MasterServices, Server {
    // AccessController#postCreateTableHandler
    this.executorService.startExecutorService(ExecutorType.MASTER_TABLE_OPERATIONS, 1);
 
-   // Start log cleaner thread
-   String n = Thread.currentThread().getName();
-   int cleanerInterval = conf.getInt("hbase.master.cleaner.interval", 60 * 1000);
-   this.logCleaner =
-      new LogCleaner(cleanerInterval,
-         this, conf, getMasterFileSystem().getFileSystem(),
-         getMasterFileSystem().getOldLogDir());
-         Threads.setDaemonThreadRunning(logCleaner.getThread(), n + ".oldLogCleaner");
+    // Create cleaner thread pool
+    cleanerPool = new DirScanPool(conf);
+    // Start log cleaner thread
+    String n = Thread.currentThread().getName();
+    int cleanerInterval = conf.getInt("hbase.master.cleaner.interval", 60 * 1000);
+    this.logCleaner = new LogCleaner(cleanerInterval, this, conf,
+        getMasterFileSystem().getFileSystem(), getMasterFileSystem().getOldLogDir(), cleanerPool);
+    Threads.setDaemonThreadRunning(logCleaner.getThread(), n + ".oldLogCleaner");
 
-   //start the hfile archive cleaner thread
+    // start the hfile archive cleaner thread
     Path archiveDir = HFileArchiveUtil.getArchivePath(conf);
-    this.hfileCleaner = new HFileCleaner(cleanerInterval, this, conf, getMasterFileSystem()
-        .getFileSystem(), archiveDir);
+    this.hfileCleaner = new HFileCleaner(cleanerInterval, this, conf,
+        getMasterFileSystem().getFileSystem(), archiveDir, cleanerPool);
     Threads.setDaemonThreadRunning(hfileCleaner.getThread(), n + ".archivedHFileCleaner");
 
     if (snapshotBeforeDelete) {
@@ -1574,7 +1575,10 @@ MasterServices, Server {
     if (this.snapshotForDeletedTableCleaner != null) {
       this.snapshotForDeletedTableCleaner.interrupt();
     }
-    CleanerChore.shutDownChorePool();
+    if (cleanerPool != null) {
+      cleanerPool.shutdownNow();
+      cleanerPool = null;
+    }
     if (this.quotaManager != null) this.quotaManager.stop();
 
     if (this.infoServer != null) {
