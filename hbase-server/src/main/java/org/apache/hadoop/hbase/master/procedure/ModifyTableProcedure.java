@@ -120,14 +120,6 @@ public class ModifyTableProcedure
           break;
         case MODIFY_TABLE_REMOVE_REPLICA_COLUMN:
           updateReplicaColumnsIfNeeded(env, unmodifiedTableDescriptor, modifiedTableDescriptor);
-          if (deleteColumnFamilyInModify) {
-            setNextState(ModifyTableState.MODIFY_TABLE_DELETE_FS_LAYOUT);
-          } else {
-            setNextState(ModifyTableState.MODIFY_TABLE_POST_OPERATION);
-          }
-          break;
-        case MODIFY_TABLE_DELETE_FS_LAYOUT:
-          deleteFromFs(env, unmodifiedTableDescriptor, modifiedTableDescriptor);
           setNextState(ModifyTableState.MODIFY_TABLE_POST_OPERATION);
           break;
         case MODIFY_TABLE_POST_OPERATION:
@@ -138,6 +130,14 @@ public class ModifyTableProcedure
           if (env.getAssignmentManager().isTableEnabled(getTableName())) {
             addChildProcedure(new ReopenTableRegionsProcedure(getTableName()));
           }
+          if (deleteColumnFamilyInModify) {
+            setNextState(ModifyTableState.MODIFY_TABLE_DELETE_FS_LAYOUT);
+          } else {
+            setNextState(ModifyTableState.MODIFY_TABLE_SYNC_SCHEMA_TO_PEER);
+          }
+          break;
+        case MODIFY_TABLE_DELETE_FS_LAYOUT:
+          deleteFromFs(env, unmodifiedTableDescriptor, modifiedTableDescriptor);
           setNextState(ModifyTableState.MODIFY_TABLE_SYNC_SCHEMA_TO_PEER);
           break;
         case MODIFY_TABLE_SYNC_SCHEMA_TO_PEER:
