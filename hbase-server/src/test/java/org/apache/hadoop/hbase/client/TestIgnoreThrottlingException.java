@@ -44,7 +44,6 @@ import org.junit.rules.TestName;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Category({ MediumTests.class })
@@ -71,7 +70,7 @@ public class TestIgnoreThrottlingException {
   public static void setUpBeforeClass() throws Exception {
     Configuration conf = TEST_UTIL.getConfiguration();
     conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, RETRY_NUM);
-    //conf.setBoolean();
+    conf.setInt(AsyncProcess.START_LOG_ERRORS_AFTER_COUNT_KEY, 0);
     TEST_UTIL.startMiniCluster(1);
   }
 
@@ -161,22 +160,6 @@ public class TestIgnoreThrottlingException {
     Configuration conf = new Configuration(TEST_UTIL.getConfiguration());
     conf.setBoolean(HConstants.HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION, true);
     try (HConnection connection = HConnectionManager.createConnection(conf);
-        HTableInterface table = connection.getTable(tableName)) {
-      table.setAutoFlush(false);
-      Put put = new Put(ROW).add(FAMILY, QUALIFIER, VALUE);
-      table.put(put);
-      table.flushCommits();
-    }
-
-    deleteTable(tableName);
-  }
-
-  @Test(expected = CompletionException.class)
-  public void testBufferedPutWithoutIgnoreThrottlingException() throws Exception {
-    TableName tableName = TableName.valueOf(testName.getMethodName());
-    createTable(tableName);
-
-    try (HConnection connection = HConnectionManager.createConnection(TEST_UTIL.getConfiguration());
         HTableInterface table = connection.getTable(tableName)) {
       table.setAutoFlush(false);
       Put put = new Put(ROW).add(FAMILY, QUALIFIER, VALUE);
