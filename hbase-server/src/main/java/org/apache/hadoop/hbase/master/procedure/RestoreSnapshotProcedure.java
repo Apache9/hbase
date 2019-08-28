@@ -77,8 +77,6 @@ public class RestoreSnapshotProcedure
   // Monitor
   private MonitoredTask monitorStatus = null;
 
-  private Boolean traceEnabled = null;
-
   /**
    * Constructor (for failover)
    */
@@ -129,9 +127,7 @@ public class RestoreSnapshotProcedure
   @Override
   protected Flow executeFromState(final MasterProcedureEnv env, final RestoreSnapshotState state)
       throws InterruptedException {
-    if (isTraceEnabled()) {
-      LOG.trace(this + " execute state=" + state);
-    }
+    LOG.trace("{} execute state={}", this, state);
 
     // Make sure that the monitor status is set up
     getMonitorStatus();

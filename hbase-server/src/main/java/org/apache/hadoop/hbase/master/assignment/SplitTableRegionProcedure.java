@@ -341,9 +341,7 @@ public class SplitTableRegionProcedure
   @Override
   protected void rollbackState(final MasterProcedureEnv env, final SplitTableRegionState state)
       throws IOException, InterruptedException {
-    if (isTraceEnabled()) {
-      LOG.trace(this + " rollback state=" + state);
-    }
+    LOG.trace("{} rollback state={}", this, state);
 
     try {
       switch (state) {
@@ -890,18 +888,6 @@ public class SplitTableRegionProcedure
       WALSplitUtil.writeRegionSequenceIdFile(fs.getWALFileSystem(),
         getWALRegionDir(env, daughterTwoRI), maxSequenceId);
     }
-  }
-
-  /**
-   * The procedure could be restarted from a different machine. If the variable is null, we need to
-   * retrieve it.
-   * @return traceEnabled
-   */
-  private boolean isTraceEnabled() {
-    if (traceEnabled == null) {
-      traceEnabled = LOG.isTraceEnabled();
-    }
-    return traceEnabled;
   }
 
   @Override
