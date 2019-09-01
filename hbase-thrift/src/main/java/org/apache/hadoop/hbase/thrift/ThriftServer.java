@@ -323,7 +323,7 @@ public class ThriftServer  extends Configured implements Tool {
   }
 
   /**
-   * Setup a HTTP Server using Jetty to serve calls from THttpClient
+   * Setup an HTTP Server using Jetty to serve calls from THttpClient
    *
    * @throws IOException IOException
    */
