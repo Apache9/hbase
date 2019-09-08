@@ -485,6 +485,7 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
               + connection.remoteId);
           connections.removeValue(remoteId, connection);
           connection.shutdown();
+          connection.cleanupConnection();
         }
       }
     }
