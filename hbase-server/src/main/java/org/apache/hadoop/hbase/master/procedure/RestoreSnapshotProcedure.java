@@ -546,18 +546,6 @@ public class RestoreSnapshotProcedure
     }
   }
 
-  /**
-   * The procedure could be restarted from a different machine. If the variable is null, we need to
-   * retrieve it.
-   * @return traceEnabled
-   */
-  private Boolean isTraceEnabled() {
-    if (traceEnabled == null) {
-      traceEnabled = LOG.isTraceEnabled();
-    }
-    return traceEnabled;
-  }
-
   public SnapshotDescription getSnapshot() {
     return this.snapshot;
   }
