@@ -47,6 +47,7 @@ import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.keycenter.common.iface.DataProtectionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.SplitOrMergeTracker;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Abortable;
@@ -83,6 +84,7 @@ import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
@@ -198,6 +200,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshot
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
@@ -222,6 +226,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunnin
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
@@ -425,6 +431,8 @@ MasterServices, Server {
   private MasterAddressTracker masterAddressTracker;
   // Tracker for throttle state
   private ThrottleStateTracker throttleStateTracker;
+  // Tracker for split and merge state
+  private SplitOrMergeTracker splitOrMergeTracker;
 
   // RPC server for the HMaster
   private final RpcServerInterface rpcServer;
@@ -925,6 +933,9 @@ MasterServices, Server {
 
     this.throttleStateTracker = new ThrottleStateTracker(zooKeeper, this);
     this.throttleStateTracker.start();
+
+    this.splitOrMergeTracker = new SplitOrMergeTracker(zooKeeper, conf, this);
+    this.splitOrMergeTracker.start();
 
     // Set the cluster as up.  If new RSs, they'll be waiting on this before
     // going ahead with their startup.
@@ -4320,5 +4331,58 @@ MasterServices, Server {
   @VisibleForTesting
   public ReplicationZKNodeCleanerChore getReplicationZKNodeCleanerChore() {
     return this.replicationZKNodeCleanerChore;
+  }
+
+  @Override
+  public SetSplitOrMergeEnabledResponse setSplitOrMergeEnabled(RpcController controller,
+      SetSplitOrMergeEnabledRequest request) throws ServiceException {
+    SetSplitOrMergeEnabledResponse.Builder response = SetSplitOrMergeEnabledResponse.newBuilder();
+    try {
+      checkInitialized();
+      boolean newValue = request.getEnabled();
+      for (MasterProtos.MasterSwitchType masterSwitchType : request.getSwitchTypesList()) {
+        MasterSwitchType switchType = convert(masterSwitchType);
+        boolean oldValue = isSplitOrMergeEnabled(switchType);
+        response.addPrevValue(oldValue);
+        if (cpHost != null) {
+          cpHost.preSetSplitOrMergeEnabled(newValue, switchType);
+        }
+        splitOrMergeTracker.setSplitOrMergeEnabled(newValue, switchType);
+        if (cpHost != null) {
+          cpHost.postSetSplitOrMergeEnabled(newValue, switchType);
+        }
+      }
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    } catch (KeeperException e) {
+      throw new ServiceException(e);
+    }
+    return response.build();
+  }
+
+  @Override
+  public IsSplitOrMergeEnabledResponse isSplitOrMergeEnabled(RpcController controller,
+      IsSplitOrMergeEnabledRequest request) throws ServiceException {
+    IsSplitOrMergeEnabledResponse.Builder response = IsSplitOrMergeEnabledResponse.newBuilder();
+    response.setEnabled(isSplitOrMergeEnabled(convert(request.getSwitchType())));
+    return response.build();
+  }
+
+  @Override
+  public boolean isSplitOrMergeEnabled(MasterSwitchType switchType) {
+    return splitOrMergeTracker != null ? splitOrMergeTracker.isSplitOrMergeEnabled(switchType)
+        : true;
+  }
+
+  private MasterSwitchType convert(MasterProtos.MasterSwitchType switchType) {
+    switch (switchType) {
+      case SPLIT:
+        return MasterSwitchType.SPLIT;
+      case MERGE:
+        return MasterSwitchType.MERGE;
+      default:
+        break;
+    }
+    return null;
   }
 }

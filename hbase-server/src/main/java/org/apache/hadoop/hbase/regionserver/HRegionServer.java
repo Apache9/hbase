@@ -73,6 +73,7 @@ import javax.management.ObjectName;
 import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.SplitOrMergeTracker;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -113,6 +114,7 @@ import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.Increment;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -505,6 +507,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   // Throttle state tracker
   private ThrottleStateTracker throttleStateTracker;
+
+  // Tracker for split and merge state
+  private SplitOrMergeTracker splitOrMergeTracker;
 
   // Log Splitting Worker
   private SplitLogWorker splitLogWorker;
@@ -960,6 +965,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // register throttle state tracker
     this.throttleStateTracker = new ThrottleStateTracker(this.zooKeeper, this, this);
     this.throttleStateTracker.start();
+
+    this.splitOrMergeTracker = new SplitOrMergeTracker(zooKeeper, conf, this);
+    this.splitOrMergeTracker.start();
   }
 
   /**
@@ -5083,6 +5091,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public MergeRegionsResponse mergeRegions(final RpcController controller,
       final MergeRegionsRequest request) throws ServiceException {
     try {
+      if (splitOrMergeTracker != null
+          && !splitOrMergeTracker.isSplitOrMergeEnabled(MasterSwitchType.MERGE)) {
+        LOG.info("Skipping merge because merge switch is off");
+        return MergeRegionsResponse.newBuilder().build();
+      }
       checkOpen();
       requestCount.increment();
       HRegion regionA = getRegion(request.getRegionA());
@@ -6081,5 +6094,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   ServerLoad getServerLoad() {
     return this.serverLoad;
+  }
+
+  public SplitOrMergeTracker getSplitOrMergeTracker() {
+    return splitOrMergeTracker;
   }
 }

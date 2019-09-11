@@ -8,6 +8,88 @@ public final class MasterProtos {
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistry registry) {
   }
+  /**
+   * Protobuf enum {@code MasterSwitchType}
+   */
+  public enum MasterSwitchType
+      implements com.google.protobuf.ProtocolMessageEnum {
+    /**
+     * <code>SPLIT = 0;</code>
+     */
+    SPLIT(0, 0),
+    /**
+     * <code>MERGE = 1;</code>
+     */
+    MERGE(1, 1),
+    ;
+
+    /**
+     * <code>SPLIT = 0;</code>
+     */
+    public static final int SPLIT_VALUE = 0;
+    /**
+     * <code>MERGE = 1;</code>
+     */
+    public static final int MERGE_VALUE = 1;
+
+
+    public final int getNumber() { return value; }
+
+    public static MasterSwitchType valueOf(int value) {
+      switch (value) {
+        case 0: return SPLIT;
+        case 1: return MERGE;
+        default: return null;
+      }
+    }
+
+    public static com.google.protobuf.Internal.EnumLiteMap<MasterSwitchType>
+        internalGetValueMap() {
+      return internalValueMap;
+    }
+    private static com.google.protobuf.Internal.EnumLiteMap<MasterSwitchType>
+        internalValueMap =
+          new com.google.protobuf.Internal.EnumLiteMap<MasterSwitchType>() {
+            public MasterSwitchType findValueByNumber(int number) {
+              return MasterSwitchType.valueOf(number);
+            }
+          };
+
+    public final com.google.protobuf.Descriptors.EnumValueDescriptor
+        getValueDescriptor() {
+      return getDescriptor().getValues().get(index);
+    }
+    public final com.google.protobuf.Descriptors.EnumDescriptor
+        getDescriptorForType() {
+      return getDescriptor();
+    }
+    public static final com.google.protobuf.Descriptors.EnumDescriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.getDescriptor().getEnumTypes().get(0);
+    }
+
+    private static final MasterSwitchType[] VALUES = values();
+
+    public static MasterSwitchType valueOf(
+        com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+      if (desc.getType() != getDescriptor()) {
+        throw new java.lang.IllegalArgumentException(
+          "EnumValueDescriptor is not for this type.");
+      }
+      return VALUES[desc.getIndex()];
+    }
+
+    private final int index;
+    private final int value;
+
+    private MasterSwitchType(int index, int value) {
+      this.index = index;
+      this.value = value;
+    }
+
+    // @@protoc_insertion_point(enum_scope:MasterSwitchType)
+  }
+
   public interface AddColumnRequestOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
@@ -43659,6 +43741,2112 @@ public final class MasterProtos {
     // @@protoc_insertion_point(class_scope:SwitchThrottleResponse)
   }
 
+  public interface SetSplitOrMergeEnabledRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // required bool enabled = 1;
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    boolean hasEnabled();
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    boolean getEnabled();
+
+    // optional bool synchronous = 2;
+    /**
+     * <code>optional bool synchronous = 2;</code>
+     */
+    boolean hasSynchronous();
+    /**
+     * <code>optional bool synchronous = 2;</code>
+     */
+    boolean getSynchronous();
+
+    // repeated .MasterSwitchType switch_types = 3;
+    /**
+     * <code>repeated .MasterSwitchType switch_types = 3;</code>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType> getSwitchTypesList();
+    /**
+     * <code>repeated .MasterSwitchType switch_types = 3;</code>
+     */
+    int getSwitchTypesCount();
+    /**
+     * <code>repeated .MasterSwitchType switch_types = 3;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType getSwitchTypes(int index);
+  }
+  /**
+   * Protobuf type {@code SetSplitOrMergeEnabledRequest}
+   */
+  public static final class SetSplitOrMergeEnabledRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements SetSplitOrMergeEnabledRequestOrBuilder {
+    // Use SetSplitOrMergeEnabledRequest.newBuilder() to construct.
+    private SetSplitOrMergeEnabledRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private SetSplitOrMergeEnabledRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final SetSplitOrMergeEnabledRequest defaultInstance;
+    public static SetSplitOrMergeEnabledRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public SetSplitOrMergeEnabledRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private SetSplitOrMergeEnabledRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              enabled_ = input.readBool();
+              break;
+            }
+            case 16: {
+              bitField0_ |= 0x00000002;
+              synchronous_ = input.readBool();
+              break;
+            }
+            case 24: {
+              int rawValue = input.readEnum();
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType value = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(3, rawValue);
+              } else {
+                if (!((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
+                  switchTypes_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType>();
+                  mutable_bitField0_ |= 0x00000004;
+                }
+                switchTypes_.add(value);
+              }
+              break;
+            }
+            case 26: {
+              int length = input.readRawVarint32();
+              int oldLimit = input.pushLimit(length);
+              while(input.getBytesUntilLimit() > 0) {
+                int rawValue = input.readEnum();
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType value = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType.valueOf(rawValue);
+                if (value == null) {
+                  unknownFields.mergeVarintField(3, rawValue);
+                } else {
+                  if (!((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
+                    switchTypes_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType>();
+                    mutable_bitField0_ |= 0x00000004;
+                  }
+                  switchTypes_.add(value);
+                }
+              }
+              input.popLimit(oldLimit);
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        if (((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
+          switchTypes_ = java.util.Collections.unmodifiableList(switchTypes_);
+        }
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<SetSplitOrMergeEnabledRequest> PARSER =
+        new com.google.protobuf.AbstractParser<SetSplitOrMergeEnabledRequest>() {
+      public SetSplitOrMergeEnabledRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new SetSplitOrMergeEnabledRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<SetSplitOrMergeEnabledRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // required bool enabled = 1;
+    public static final int ENABLED_FIELD_NUMBER = 1;
+    private boolean enabled_;
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    public boolean hasEnabled() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    public boolean getEnabled() {
+      return enabled_;
+    }
+
+    // optional bool synchronous = 2;
+    public static final int SYNCHRONOUS_FIELD_NUMBER = 2;
+    private boolean synchronous_;
+    /**
+     * <code>optional bool synchronous = 2;</code>
+     */
+    public boolean hasSynchronous() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>optional bool synchronous = 2;</code>
+     */
+    public boolean getSynchronous() {
+      return synchronous_;
+    }
+
+    // repeated .MasterSwitchType switch_types = 3;
+    public static final int SWITCH_TYPES_FIELD_NUMBER = 3;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType> switchTypes_;
+    /**
+     * <code>repeated .MasterSwitchType switch_types = 3;</code>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType> getSwitchTypesList() {
+      return switchTypes_;
+    }
+    /**
+     * <code>repeated .MasterSwitchType switch_types = 3;</code>
+     */
+    public int getSwitchTypesCount() {
+      return switchTypes_.size();
+    }
+    /**
+     * <code>repeated .MasterSwitchType switch_types = 3;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType getSwitchTypes(int index) {
+      return switchTypes_.get(index);
+    }
+
+    private void initFields() {
+      enabled_ = false;
+      synchronous_ = false;
+      switchTypes_ = java.util.Collections.emptyList();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (!hasEnabled()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, enabled_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeBool(2, synchronous_);
+      }
+      for (int i = 0; i < switchTypes_.size(); i++) {
+        output.writeEnum(3, switchTypes_.get(i).getNumber());
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, enabled_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, synchronous_);
+      }
+      {
+        int dataSize = 0;
+        for (int i = 0; i < switchTypes_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeEnumSizeNoTag(switchTypes_.get(i).getNumber());
+        }
+        size += dataSize;
+        size += 1 * switchTypes_.size();
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest) obj;
+
+      boolean result = true;
+      result = result && (hasEnabled() == other.hasEnabled());
+      if (hasEnabled()) {
+        result = result && (getEnabled()
+            == other.getEnabled());
+      }
+      result = result && (hasSynchronous() == other.hasSynchronous());
+      if (hasSynchronous()) {
+        result = result && (getSynchronous()
+            == other.getSynchronous());
+      }
+      result = result && getSwitchTypesList()
+          .equals(other.getSwitchTypesList());
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasEnabled()) {
+        hash = (37 * hash) + ENABLED_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getEnabled());
+      }
+      if (hasSynchronous()) {
+        hash = (37 * hash) + SYNCHRONOUS_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getSynchronous());
+      }
+      if (getSwitchTypesCount() > 0) {
+        hash = (37 * hash) + SWITCH_TYPES_FIELD_NUMBER;
+        hash = (53 * hash) + hashEnumList(getSwitchTypesList());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code SetSplitOrMergeEnabledRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        enabled_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        synchronous_ = false;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        switchTypes_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.enabled_ = enabled_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.synchronous_ = synchronous_;
+        if (((bitField0_ & 0x00000004) == 0x00000004)) {
+          switchTypes_ = java.util.Collections.unmodifiableList(switchTypes_);
+          bitField0_ = (bitField0_ & ~0x00000004);
+        }
+        result.switchTypes_ = switchTypes_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.getDefaultInstance()) return this;
+        if (other.hasEnabled()) {
+          setEnabled(other.getEnabled());
+        }
+        if (other.hasSynchronous()) {
+          setSynchronous(other.getSynchronous());
+        }
+        if (!other.switchTypes_.isEmpty()) {
+          if (switchTypes_.isEmpty()) {
+            switchTypes_ = other.switchTypes_;
+            bitField0_ = (bitField0_ & ~0x00000004);
+          } else {
+            ensureSwitchTypesIsMutable();
+            switchTypes_.addAll(other.switchTypes_);
+          }
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasEnabled()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // required bool enabled = 1;
+      private boolean enabled_ ;
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public boolean hasEnabled() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public boolean getEnabled() {
+        return enabled_;
+      }
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public Builder setEnabled(boolean value) {
+        bitField0_ |= 0x00000001;
+        enabled_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public Builder clearEnabled() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        enabled_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional bool synchronous = 2;
+      private boolean synchronous_ ;
+      /**
+       * <code>optional bool synchronous = 2;</code>
+       */
+      public boolean hasSynchronous() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>optional bool synchronous = 2;</code>
+       */
+      public boolean getSynchronous() {
+        return synchronous_;
+      }
+      /**
+       * <code>optional bool synchronous = 2;</code>
+       */
+      public Builder setSynchronous(boolean value) {
+        bitField0_ |= 0x00000002;
+        synchronous_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool synchronous = 2;</code>
+       */
+      public Builder clearSynchronous() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        synchronous_ = false;
+        onChanged();
+        return this;
+      }
+
+      // repeated .MasterSwitchType switch_types = 3;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType> switchTypes_ =
+        java.util.Collections.emptyList();
+      private void ensureSwitchTypesIsMutable() {
+        if (!((bitField0_ & 0x00000004) == 0x00000004)) {
+          switchTypes_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType>(switchTypes_);
+          bitField0_ |= 0x00000004;
+        }
+      }
+      /**
+       * <code>repeated .MasterSwitchType switch_types = 3;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType> getSwitchTypesList() {
+        return java.util.Collections.unmodifiableList(switchTypes_);
+      }
+      /**
+       * <code>repeated .MasterSwitchType switch_types = 3;</code>
+       */
+      public int getSwitchTypesCount() {
+        return switchTypes_.size();
+      }
+      /**
+       * <code>repeated .MasterSwitchType switch_types = 3;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType getSwitchTypes(int index) {
+        return switchTypes_.get(index);
+      }
+      /**
+       * <code>repeated .MasterSwitchType switch_types = 3;</code>
+       */
+      public Builder setSwitchTypes(
+          int index, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSwitchTypesIsMutable();
+        switchTypes_.set(index, value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated .MasterSwitchType switch_types = 3;</code>
+       */
+      public Builder addSwitchTypes(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureSwitchTypesIsMutable();
+        switchTypes_.add(value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated .MasterSwitchType switch_types = 3;</code>
+       */
+      public Builder addAllSwitchTypes(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType> values) {
+        ensureSwitchTypesIsMutable();
+        super.addAll(values, switchTypes_);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated .MasterSwitchType switch_types = 3;</code>
+       */
+      public Builder clearSwitchTypes() {
+        switchTypes_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000004);
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:SetSplitOrMergeEnabledRequest)
+    }
+
+    static {
+      defaultInstance = new SetSplitOrMergeEnabledRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:SetSplitOrMergeEnabledRequest)
+  }
+
+  public interface SetSplitOrMergeEnabledResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // repeated bool prev_value = 1;
+    /**
+     * <code>repeated bool prev_value = 1;</code>
+     */
+    java.util.List<java.lang.Boolean> getPrevValueList();
+    /**
+     * <code>repeated bool prev_value = 1;</code>
+     */
+    int getPrevValueCount();
+    /**
+     * <code>repeated bool prev_value = 1;</code>
+     */
+    boolean getPrevValue(int index);
+  }
+  /**
+   * Protobuf type {@code SetSplitOrMergeEnabledResponse}
+   */
+  public static final class SetSplitOrMergeEnabledResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements SetSplitOrMergeEnabledResponseOrBuilder {
+    // Use SetSplitOrMergeEnabledResponse.newBuilder() to construct.
+    private SetSplitOrMergeEnabledResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private SetSplitOrMergeEnabledResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final SetSplitOrMergeEnabledResponse defaultInstance;
+    public static SetSplitOrMergeEnabledResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public SetSplitOrMergeEnabledResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private SetSplitOrMergeEnabledResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+                prevValue_ = new java.util.ArrayList<java.lang.Boolean>();
+                mutable_bitField0_ |= 0x00000001;
+              }
+              prevValue_.add(input.readBool());
+              break;
+            }
+            case 10: {
+              int length = input.readRawVarint32();
+              int limit = input.pushLimit(length);
+              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001) && input.getBytesUntilLimit() > 0) {
+                prevValue_ = new java.util.ArrayList<java.lang.Boolean>();
+                mutable_bitField0_ |= 0x00000001;
+              }
+              while (input.getBytesUntilLimit() > 0) {
+                prevValue_.add(input.readBool());
+              }
+              input.popLimit(limit);
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+          prevValue_ = java.util.Collections.unmodifiableList(prevValue_);
+        }
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<SetSplitOrMergeEnabledResponse> PARSER =
+        new com.google.protobuf.AbstractParser<SetSplitOrMergeEnabledResponse>() {
+      public SetSplitOrMergeEnabledResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new SetSplitOrMergeEnabledResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<SetSplitOrMergeEnabledResponse> getParserForType() {
+      return PARSER;
+    }
+
+    // repeated bool prev_value = 1;
+    public static final int PREV_VALUE_FIELD_NUMBER = 1;
+    private java.util.List<java.lang.Boolean> prevValue_;
+    /**
+     * <code>repeated bool prev_value = 1;</code>
+     */
+    public java.util.List<java.lang.Boolean>
+        getPrevValueList() {
+      return prevValue_;
+    }
+    /**
+     * <code>repeated bool prev_value = 1;</code>
+     */
+    public int getPrevValueCount() {
+      return prevValue_.size();
+    }
+    /**
+     * <code>repeated bool prev_value = 1;</code>
+     */
+    public boolean getPrevValue(int index) {
+      return prevValue_.get(index);
+    }
+
+    private void initFields() {
+      prevValue_ = java.util.Collections.emptyList();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      for (int i = 0; i < prevValue_.size(); i++) {
+        output.writeBool(1, prevValue_.get(i));
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      {
+        int dataSize = 0;
+        dataSize = 1 * getPrevValueList().size();
+        size += dataSize;
+        size += 1 * getPrevValueList().size();
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse) obj;
+
+      boolean result = true;
+      result = result && getPrevValueList()
+          .equals(other.getPrevValueList());
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (getPrevValueCount() > 0) {
+        hash = (37 * hash) + PREV_VALUE_FIELD_NUMBER;
+        hash = (53 * hash) + getPrevValueList().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code SetSplitOrMergeEnabledResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        prevValue_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetSplitOrMergeEnabledResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse(this);
+        int from_bitField0_ = bitField0_;
+        if (((bitField0_ & 0x00000001) == 0x00000001)) {
+          prevValue_ = java.util.Collections.unmodifiableList(prevValue_);
+          bitField0_ = (bitField0_ & ~0x00000001);
+        }
+        result.prevValue_ = prevValue_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance()) return this;
+        if (!other.prevValue_.isEmpty()) {
+          if (prevValue_.isEmpty()) {
+            prevValue_ = other.prevValue_;
+            bitField0_ = (bitField0_ & ~0x00000001);
+          } else {
+            ensurePrevValueIsMutable();
+            prevValue_.addAll(other.prevValue_);
+          }
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // repeated bool prev_value = 1;
+      private java.util.List<java.lang.Boolean> prevValue_ = java.util.Collections.emptyList();
+      private void ensurePrevValueIsMutable() {
+        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+          prevValue_ = new java.util.ArrayList<java.lang.Boolean>(prevValue_);
+          bitField0_ |= 0x00000001;
+         }
+      }
+      /**
+       * <code>repeated bool prev_value = 1;</code>
+       */
+      public java.util.List<java.lang.Boolean>
+          getPrevValueList() {
+        return java.util.Collections.unmodifiableList(prevValue_);
+      }
+      /**
+       * <code>repeated bool prev_value = 1;</code>
+       */
+      public int getPrevValueCount() {
+        return prevValue_.size();
+      }
+      /**
+       * <code>repeated bool prev_value = 1;</code>
+       */
+      public boolean getPrevValue(int index) {
+        return prevValue_.get(index);
+      }
+      /**
+       * <code>repeated bool prev_value = 1;</code>
+       */
+      public Builder setPrevValue(
+          int index, boolean value) {
+        ensurePrevValueIsMutable();
+        prevValue_.set(index, value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bool prev_value = 1;</code>
+       */
+      public Builder addPrevValue(boolean value) {
+        ensurePrevValueIsMutable();
+        prevValue_.add(value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bool prev_value = 1;</code>
+       */
+      public Builder addAllPrevValue(
+          java.lang.Iterable<? extends java.lang.Boolean> values) {
+        ensurePrevValueIsMutable();
+        super.addAll(values, prevValue_);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bool prev_value = 1;</code>
+       */
+      public Builder clearPrevValue() {
+        prevValue_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:SetSplitOrMergeEnabledResponse)
+    }
+
+    static {
+      defaultInstance = new SetSplitOrMergeEnabledResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:SetSplitOrMergeEnabledResponse)
+  }
+
+  public interface IsSplitOrMergeEnabledRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // required .MasterSwitchType switch_type = 1;
+    /**
+     * <code>required .MasterSwitchType switch_type = 1;</code>
+     */
+    boolean hasSwitchType();
+    /**
+     * <code>required .MasterSwitchType switch_type = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType getSwitchType();
+  }
+  /**
+   * Protobuf type {@code IsSplitOrMergeEnabledRequest}
+   */
+  public static final class IsSplitOrMergeEnabledRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements IsSplitOrMergeEnabledRequestOrBuilder {
+    // Use IsSplitOrMergeEnabledRequest.newBuilder() to construct.
+    private IsSplitOrMergeEnabledRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private IsSplitOrMergeEnabledRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final IsSplitOrMergeEnabledRequest defaultInstance;
+    public static IsSplitOrMergeEnabledRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public IsSplitOrMergeEnabledRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private IsSplitOrMergeEnabledRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              int rawValue = input.readEnum();
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType value = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(1, rawValue);
+              } else {
+                bitField0_ |= 0x00000001;
+                switchType_ = value;
+              }
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<IsSplitOrMergeEnabledRequest> PARSER =
+        new com.google.protobuf.AbstractParser<IsSplitOrMergeEnabledRequest>() {
+      public IsSplitOrMergeEnabledRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new IsSplitOrMergeEnabledRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<IsSplitOrMergeEnabledRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // required .MasterSwitchType switch_type = 1;
+    public static final int SWITCH_TYPE_FIELD_NUMBER = 1;
+    private org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType switchType_;
+    /**
+     * <code>required .MasterSwitchType switch_type = 1;</code>
+     */
+    public boolean hasSwitchType() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required .MasterSwitchType switch_type = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType getSwitchType() {
+      return switchType_;
+    }
+
+    private void initFields() {
+      switchType_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType.SPLIT;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (!hasSwitchType()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeEnum(1, switchType_.getNumber());
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(1, switchType_.getNumber());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest) obj;
+
+      boolean result = true;
+      result = result && (hasSwitchType() == other.hasSwitchType());
+      if (hasSwitchType()) {
+        result = result &&
+            (getSwitchType() == other.getSwitchType());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasSwitchType()) {
+        hash = (37 * hash) + SWITCH_TYPE_FIELD_NUMBER;
+        hash = (53 * hash) + hashEnum(getSwitchType());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code IsSplitOrMergeEnabledRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        switchType_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType.SPLIT;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.switchType_ = switchType_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.getDefaultInstance()) return this;
+        if (other.hasSwitchType()) {
+          setSwitchType(other.getSwitchType());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasSwitchType()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // required .MasterSwitchType switch_type = 1;
+      private org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType switchType_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType.SPLIT;
+      /**
+       * <code>required .MasterSwitchType switch_type = 1;</code>
+       */
+      public boolean hasSwitchType() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required .MasterSwitchType switch_type = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType getSwitchType() {
+        return switchType_;
+      }
+      /**
+       * <code>required .MasterSwitchType switch_type = 1;</code>
+       */
+      public Builder setSwitchType(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        switchType_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required .MasterSwitchType switch_type = 1;</code>
+       */
+      public Builder clearSwitchType() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        switchType_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType.SPLIT;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:IsSplitOrMergeEnabledRequest)
+    }
+
+    static {
+      defaultInstance = new IsSplitOrMergeEnabledRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:IsSplitOrMergeEnabledRequest)
+  }
+
+  public interface IsSplitOrMergeEnabledResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // required bool enabled = 1;
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    boolean hasEnabled();
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    boolean getEnabled();
+  }
+  /**
+   * Protobuf type {@code IsSplitOrMergeEnabledResponse}
+   */
+  public static final class IsSplitOrMergeEnabledResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements IsSplitOrMergeEnabledResponseOrBuilder {
+    // Use IsSplitOrMergeEnabledResponse.newBuilder() to construct.
+    private IsSplitOrMergeEnabledResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private IsSplitOrMergeEnabledResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final IsSplitOrMergeEnabledResponse defaultInstance;
+    public static IsSplitOrMergeEnabledResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public IsSplitOrMergeEnabledResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private IsSplitOrMergeEnabledResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              enabled_ = input.readBool();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<IsSplitOrMergeEnabledResponse> PARSER =
+        new com.google.protobuf.AbstractParser<IsSplitOrMergeEnabledResponse>() {
+      public IsSplitOrMergeEnabledResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new IsSplitOrMergeEnabledResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<IsSplitOrMergeEnabledResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // required bool enabled = 1;
+    public static final int ENABLED_FIELD_NUMBER = 1;
+    private boolean enabled_;
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    public boolean hasEnabled() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required bool enabled = 1;</code>
+     */
+    public boolean getEnabled() {
+      return enabled_;
+    }
+
+    private void initFields() {
+      enabled_ = false;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (!hasEnabled()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, enabled_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, enabled_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse) obj;
+
+      boolean result = true;
+      result = result && (hasEnabled() == other.hasEnabled());
+      if (hasEnabled()) {
+        result = result && (getEnabled()
+            == other.getEnabled());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasEnabled()) {
+        hash = (37 * hash) + ENABLED_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getEnabled());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code IsSplitOrMergeEnabledResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        enabled_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_IsSplitOrMergeEnabledResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.enabled_ = enabled_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance()) return this;
+        if (other.hasEnabled()) {
+          setEnabled(other.getEnabled());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasEnabled()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // required bool enabled = 1;
+      private boolean enabled_ ;
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public boolean hasEnabled() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public boolean getEnabled() {
+        return enabled_;
+      }
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public Builder setEnabled(boolean value) {
+        bitField0_ |= 0x00000001;
+        enabled_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bool enabled = 1;</code>
+       */
+      public Builder clearEnabled() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        enabled_ = false;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:IsSplitOrMergeEnabledResponse)
+    }
+
+    static {
+      defaultInstance = new IsSplitOrMergeEnabledResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:IsSplitOrMergeEnabledResponse)
+  }
+
   /**
    * Protobuf service {@code MasterService}
    */
@@ -44336,6 +46524,32 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewUpdateReplicationPeerConfigRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse> done);
 
+      /**
+       * <code>rpc SetSplitOrMergeEnabled(.SetSplitOrMergeEnabledRequest) returns (.SetSplitOrMergeEnabledResponse);</code>
+       *
+       * <pre>
+       **
+       * Turn the split or merge switch on or off.
+       * If synchronous is true, it waits until current operation call, if outstanding, to return.
+       * </pre>
+       */
+      public abstract void setSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse> done);
+
+      /**
+       * <code>rpc IsSplitOrMergeEnabled(.IsSplitOrMergeEnabledRequest) returns (.IsSplitOrMergeEnabledResponse);</code>
+       *
+       * <pre>
+       ** Query whether the split or merge switch is on/off. 
+       * </pre>
+       */
+      public abstract void isSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -44781,6 +46995,22 @@ public final class MasterProtos {
           impl.updateReplicationPeerConfigForBranch2(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void setSplitOrMergeEnabled(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse> done) {
+          impl.setSplitOrMergeEnabled(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void isSplitOrMergeEnabled(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse> done) {
+          impl.isSplitOrMergeEnabled(controller, request, done);
+        }
+
       };
     }
 
@@ -44913,6 +47143,10 @@ public final class MasterProtos {
               return impl.addReplicationPeerForBranch2(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewAddReplicationPeerRequest)request);
             case 54:
               return impl.updateReplicationPeerConfigForBranch2(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewUpdateReplicationPeerConfigRequest)request);
+            case 55:
+              return impl.setSplitOrMergeEnabled(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest)request);
+            case 56:
+              return impl.isSplitOrMergeEnabled(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -45037,6 +47271,10 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewAddReplicationPeerRequest.getDefaultInstance();
             case 54:
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewUpdateReplicationPeerConfigRequest.getDefaultInstance();
+            case 55:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.getDefaultInstance();
+            case 56:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -45161,6 +47399,10 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.getDefaultInstance();
             case 54:
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance();
+            case 55:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance();
+            case 56:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -45838,6 +48080,32 @@ public final class MasterProtos {
         org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewUpdateReplicationPeerConfigRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse> done);
 
+    /**
+     * <code>rpc SetSplitOrMergeEnabled(.SetSplitOrMergeEnabledRequest) returns (.SetSplitOrMergeEnabledResponse);</code>
+     *
+     * <pre>
+     **
+     * Turn the split or merge switch on or off.
+     * If synchronous is true, it waits until current operation call, if outstanding, to return.
+     * </pre>
+     */
+    public abstract void setSplitOrMergeEnabled(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse> done);
+
+    /**
+     * <code>rpc IsSplitOrMergeEnabled(.IsSplitOrMergeEnabledRequest) returns (.IsSplitOrMergeEnabledResponse);</code>
+     *
+     * <pre>
+     ** Query whether the split or merge switch is on/off. 
+     * </pre>
+     */
+    public abstract void isSplitOrMergeEnabled(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -46135,6 +48403,16 @@ public final class MasterProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse>specializeCallback(
               done));
           return;
+        case 55:
+          this.setSplitOrMergeEnabled(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse>specializeCallback(
+              done));
+          return;
+        case 56:
+          this.isSplitOrMergeEnabled(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -46259,6 +48537,10 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewAddReplicationPeerRequest.getDefaultInstance();
         case 54:
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewUpdateReplicationPeerConfigRequest.getDefaultInstance();
+        case 55:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.getDefaultInstance();
+        case 56:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -46383,6 +48665,10 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.getDefaultInstance();
         case 54:
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance();
+        case 55:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance();
+        case 56:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -47228,6 +49514,36 @@ public final class MasterProtos {
             org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance()));
       }
+
+      public  void setSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(55),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance()));
+      }
+
+      public  void isSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(56),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -47509,6 +49825,16 @@ public final class MasterProtos {
       public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse updateReplicationPeerConfigForBranch2(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.NewUpdateReplicationPeerConfigRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse setSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse isSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -48178,6 +50504,30 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse setSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(55),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse isSplitOrMergeEnabled(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(56),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:MasterService)
@@ -48613,6 +50963,26 @@ public final class MasterProtos {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_SwitchThrottleResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_SetSplitOrMergeEnabledRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_SetSplitOrMergeEnabledRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_SetSplitOrMergeEnabledResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_SetSplitOrMergeEnabledResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_IsSplitOrMergeEnabledRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_IsSplitOrMergeEnabledRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_IsSplitOrMergeEnabledResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_IsSplitOrMergeEnabledResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -48741,113 +51111,126 @@ public final class MasterProtos {
       "\n\020SetQuotaResponse\"?\n\025SwitchThrottleRequ" +
       "est\022&\n\016throttle_state\030\001 \002(\0162\016.ThrottleSt" +
       "ate\"E\n\026SwitchThrottleResponse\022+\n\023prev_th" +
-      "rottle_state\030\001 \001(\0162\016.ThrottleState2\265 \n\rM",
-      "asterService\022S\n\024GetSchemaAlterStatus\022\034.G" +
-      "etSchemaAlterStatusRequest\032\035.GetSchemaAl" +
-      "terStatusResponse\022P\n\023GetTableDescriptors" +
-      "\022\033.GetTableDescriptorsRequest\032\034.GetTable" +
-      "DescriptorsResponse\022>\n\rGetTableNames\022\025.G" +
-      "etTableNamesRequest\032\026.GetTableNamesRespo" +
-      "nse\022G\n\020GetClusterStatus\022\030.GetClusterStat" +
-      "usRequest\032\031.GetClusterStatusResponse\022D\n\017" +
-      "IsMasterRunning\022\027.IsMasterRunningRequest" +
-      "\032\030.IsMasterRunningResponse\0222\n\tAddColumn\022",
-      "\021.AddColumnRequest\032\022.AddColumnResponse\022;" +
-      "\n\014DeleteColumn\022\024.DeleteColumnRequest\032\025.D" +
-      "eleteColumnResponse\022;\n\014ModifyColumn\022\024.Mo" +
-      "difyColumnRequest\032\025.ModifyColumnResponse" +
-      "\0225\n\nMoveRegion\022\022.MoveRegionRequest\032\023.Mov" +
-      "eRegionResponse\022Y\n\026DispatchMergingRegion" +
-      "s\022\036.DispatchMergingRegionsRequest\032\037.Disp" +
-      "atchMergingRegionsResponse\022;\n\014AssignRegi" +
-      "on\022\024.AssignRegionRequest\032\025.AssignRegionR" +
-      "esponse\022A\n\016UnassignRegion\022\026.UnassignRegi",
-      "onRequest\032\027.UnassignRegionResponse\022>\n\rOf" +
-      "flineRegion\022\025.OfflineRegionRequest\032\026.Off" +
-      "lineRegionResponse\0228\n\013DeleteTable\022\023.Dele" +
-      "teTableRequest\032\024.DeleteTableResponse\0228\n\013" +
-      "EnableTable\022\023.EnableTableRequest\032\024.Enabl" +
-      "eTableResponse\022;\n\014DisableTable\022\024.Disable" +
-      "TableRequest\032\025.DisableTableResponse\0228\n\013M" +
-      "odifyTable\022\023.ModifyTableRequest\032\024.Modify" +
-      "TableResponse\0228\n\013CreateTable\022\023.CreateTab" +
-      "leRequest\032\024.CreateTableResponse\022/\n\010Shutd",
-      "own\022\020.ShutdownRequest\032\021.ShutdownResponse" +
-      "\0225\n\nStopMaster\022\022.StopMasterRequest\032\023.Sto" +
-      "pMasterResponse\022,\n\007Balance\022\017.BalanceRequ" +
-      "est\032\020.BalanceResponse\022M\n\022SetBalancerRunn" +
-      "ing\022\032.SetBalancerRunningRequest\032\033.SetBal" +
-      "ancerRunningResponse\022A\n\016RunCatalogScan\022\026" +
-      ".RunCatalogScanRequest\032\027.RunCatalogScanR" +
-      "esponse\022S\n\024EnableCatalogJanitor\022\034.Enable" +
-      "CatalogJanitorRequest\032\035.EnableCatalogJan" +
-      "itorResponse\022\\\n\027IsCatalogJanitorEnabled\022",
-      "\037.IsCatalogJanitorEnabledRequest\032 .IsCat" +
-      "alogJanitorEnabledResponse\022L\n\021ExecMaster" +
-      "Service\022\032.CoprocessorServiceRequest\032\033.Co" +
-      "processorServiceResponse\022/\n\010Snapshot\022\020.S" +
-      "napshotRequest\032\021.SnapshotResponse\022V\n\025Get" +
-      "CompletedSnapshots\022\035.GetCompletedSnapsho" +
-      "tsRequest\032\036.GetCompletedSnapshotsRespons" +
-      "e\022A\n\016DeleteSnapshot\022\026.DeleteSnapshotRequ" +
-      "est\032\027.DeleteSnapshotResponse\022A\n\016IsSnapsh" +
-      "otDone\022\026.IsSnapshotDoneRequest\032\027.IsSnaps",
-      "hotDoneResponse\022D\n\017RestoreSnapshot\022\027.Res" +
-      "toreSnapshotRequest\032\030.RestoreSnapshotRes" +
-      "ponse\022V\n\025IsRestoreSnapshotDone\022\035.IsResto" +
-      "reSnapshotDoneRequest\032\036.IsRestoreSnapsho" +
-      "tDoneResponse\022>\n\rExecProcedure\022\025.ExecPro" +
-      "cedureRequest\032\026.ExecProcedureResponse\022D\n" +
-      "\017IsProcedureDone\022\027.IsProcedureDoneReques" +
-      "t\032\030.IsProcedureDoneResponse\022D\n\017ModifyNam" +
-      "espace\022\027.ModifyNamespaceRequest\032\030.Modify" +
-      "NamespaceResponse\022D\n\017CreateNamespace\022\027.C",
-      "reateNamespaceRequest\032\030.CreateNamespaceR" +
-      "esponse\022D\n\017DeleteNamespace\022\027.DeleteNames" +
-      "paceRequest\032\030.DeleteNamespaceResponse\022Y\n" +
-      "\026GetNamespaceDescriptor\022\036.GetNamespaceDe" +
-      "scriptorRequest\032\037.GetNamespaceDescriptor" +
-      "Response\022_\n\030ListNamespaceDescriptors\022 .L" +
-      "istNamespaceDescriptorsRequest\032!.ListNam" +
-      "espaceDescriptorsResponse\022t\n\037ListTableDe" +
-      "scriptorsByNamespace\022\'.ListTableDescript" +
-      "orsByNamespaceRequest\032(.ListTableDescrip",
-      "torsByNamespaceResponse\022b\n\031ListTableName" +
-      "sByNamespace\022!.ListTableNamesByNamespace" +
-      "Request\032\".ListTableNamesByNamespaceRespo" +
-      "nse\022>\n\rtruncateTable\022\025.TruncateTableRequ" +
-      "est\032\026.TruncateTableResponse\022/\n\010SetQuota\022" +
-      "\020.SetQuotaRequest\032\021.SetQuotaResponse\022A\n\016" +
-      "SwitchThrottle\022\026.SwitchThrottleRequest\032\027" +
-      ".SwitchThrottleResponse\022M\n\022AddReplicatio" +
-      "nPeer\022\032.AddReplicationPeerRequest\032\033.AddR" +
-      "eplicationPeerResponse\022V\n\025RemoveReplicat",
-      "ionPeer\022\035.RemoveReplicationPeerRequest\032\036" +
-      ".RemoveReplicationPeerResponse\022V\n\025Enable" +
-      "ReplicationPeer\022\035.EnableReplicationPeerR" +
-      "equest\032\036.EnableReplicationPeerResponse\022Y" +
-      "\n\026DisableReplicationPeer\022\036.DisableReplic" +
-      "ationPeerRequest\032\037.DisableReplicationPee" +
-      "rResponse\022_\n\030GetReplicationPeerConfig\022 ." +
-      "GetReplicationPeerConfigRequest\032!.GetRep" +
-      "licationPeerConfigResponse\022h\n\033UpdateRepl" +
-      "icationPeerConfig\022#.UpdateReplicationPee",
-      "rConfigRequest\032$.UpdateReplicationPeerCo" +
-      "nfigResponse\022S\n\024ListReplicationPeers\022\034.L" +
-      "istReplicationPeersRequest\032\035.ListReplica" +
-      "tionPeersResponse\022b\n\031GetPeerMaxReplicati" +
-      "onLoad\022!.GetPeerMaxReplicationLoadReques" +
-      "t\032\".GetPeerMaxReplicationLoadResponse\022`\n" +
-      "\036ListReplicationPeersForBranch2\022\034.ListRe" +
-      "plicationPeersRequest\032 .NewListReplicati" +
-      "onPeersResponse\022Z\n\034AddReplicationPeerFor" +
-      "Branch2\022\035.NewAddReplicationPeerRequest\032\033",
-      ".AddReplicationPeerResponse\022u\n%UpdateRep" +
-      "licationPeerConfigForBranch2\022&.NewUpdate" +
-      "ReplicationPeerConfigRequest\032$.UpdateRep" +
-      "licationPeerConfigResponseBB\n*org.apache" +
-      ".hadoop.hbase.protobuf.generatedB\014Master" +
-      "ProtosH\001\210\001\001\240\001\001"
+      "rottle_state\030\001 \001(\0162\016.ThrottleState\"n\n\035Se",
+      "tSplitOrMergeEnabledRequest\022\017\n\007enabled\030\001" +
+      " \002(\010\022\023\n\013synchronous\030\002 \001(\010\022\'\n\014switch_type" +
+      "s\030\003 \003(\0162\021.MasterSwitchType\"4\n\036SetSplitOr" +
+      "MergeEnabledResponse\022\022\n\nprev_value\030\001 \003(\010" +
+      "\"F\n\034IsSplitOrMergeEnabledRequest\022&\n\013swit" +
+      "ch_type\030\001 \002(\0162\021.MasterSwitchType\"0\n\035IsSp" +
+      "litOrMergeEnabledResponse\022\017\n\007enabled\030\001 \002" +
+      "(\010*(\n\020MasterSwitchType\022\t\n\005SPLIT\020\000\022\t\n\005MER" +
+      "GE\020\0012\350!\n\rMasterService\022S\n\024GetSchemaAlter" +
+      "Status\022\034.GetSchemaAlterStatusRequest\032\035.G",
+      "etSchemaAlterStatusResponse\022P\n\023GetTableD" +
+      "escriptors\022\033.GetTableDescriptorsRequest\032" +
+      "\034.GetTableDescriptorsResponse\022>\n\rGetTabl" +
+      "eNames\022\025.GetTableNamesRequest\032\026.GetTable" +
+      "NamesResponse\022G\n\020GetClusterStatus\022\030.GetC" +
+      "lusterStatusRequest\032\031.GetClusterStatusRe" +
+      "sponse\022D\n\017IsMasterRunning\022\027.IsMasterRunn" +
+      "ingRequest\032\030.IsMasterRunningResponse\0222\n\t" +
+      "AddColumn\022\021.AddColumnRequest\032\022.AddColumn" +
+      "Response\022;\n\014DeleteColumn\022\024.DeleteColumnR",
+      "equest\032\025.DeleteColumnResponse\022;\n\014ModifyC" +
+      "olumn\022\024.ModifyColumnRequest\032\025.ModifyColu" +
+      "mnResponse\0225\n\nMoveRegion\022\022.MoveRegionReq" +
+      "uest\032\023.MoveRegionResponse\022Y\n\026DispatchMer" +
+      "gingRegions\022\036.DispatchMergingRegionsRequ" +
+      "est\032\037.DispatchMergingRegionsResponse\022;\n\014" +
+      "AssignRegion\022\024.AssignRegionRequest\032\025.Ass" +
+      "ignRegionResponse\022A\n\016UnassignRegion\022\026.Un" +
+      "assignRegionRequest\032\027.UnassignRegionResp" +
+      "onse\022>\n\rOfflineRegion\022\025.OfflineRegionReq",
+      "uest\032\026.OfflineRegionResponse\0228\n\013DeleteTa" +
+      "ble\022\023.DeleteTableRequest\032\024.DeleteTableRe" +
+      "sponse\0228\n\013EnableTable\022\023.EnableTableReque" +
+      "st\032\024.EnableTableResponse\022;\n\014DisableTable" +
+      "\022\024.DisableTableRequest\032\025.DisableTableRes" +
+      "ponse\0228\n\013ModifyTable\022\023.ModifyTableReques" +
+      "t\032\024.ModifyTableResponse\0228\n\013CreateTable\022\023" +
+      ".CreateTableRequest\032\024.CreateTableRespons" +
+      "e\022/\n\010Shutdown\022\020.ShutdownRequest\032\021.Shutdo" +
+      "wnResponse\0225\n\nStopMaster\022\022.StopMasterReq",
+      "uest\032\023.StopMasterResponse\022,\n\007Balance\022\017.B" +
+      "alanceRequest\032\020.BalanceResponse\022M\n\022SetBa" +
+      "lancerRunning\022\032.SetBalancerRunningReques" +
+      "t\032\033.SetBalancerRunningResponse\022A\n\016RunCat" +
+      "alogScan\022\026.RunCatalogScanRequest\032\027.RunCa" +
+      "talogScanResponse\022S\n\024EnableCatalogJanito" +
+      "r\022\034.EnableCatalogJanitorRequest\032\035.Enable" +
+      "CatalogJanitorResponse\022\\\n\027IsCatalogJanit" +
+      "orEnabled\022\037.IsCatalogJanitorEnabledReque" +
+      "st\032 .IsCatalogJanitorEnabledResponse\022L\n\021",
+      "ExecMasterService\022\032.CoprocessorServiceRe" +
+      "quest\032\033.CoprocessorServiceResponse\022/\n\010Sn" +
+      "apshot\022\020.SnapshotRequest\032\021.SnapshotRespo" +
+      "nse\022V\n\025GetCompletedSnapshots\022\035.GetComple" +
+      "tedSnapshotsRequest\032\036.GetCompletedSnapsh" +
+      "otsResponse\022A\n\016DeleteSnapshot\022\026.DeleteSn" +
+      "apshotRequest\032\027.DeleteSnapshotResponse\022A" +
+      "\n\016IsSnapshotDone\022\026.IsSnapshotDoneRequest" +
+      "\032\027.IsSnapshotDoneResponse\022D\n\017RestoreSnap" +
+      "shot\022\027.RestoreSnapshotRequest\032\030.RestoreS",
+      "napshotResponse\022V\n\025IsRestoreSnapshotDone" +
+      "\022\035.IsRestoreSnapshotDoneRequest\032\036.IsRest" +
+      "oreSnapshotDoneResponse\022>\n\rExecProcedure" +
+      "\022\025.ExecProcedureRequest\032\026.ExecProcedureR" +
+      "esponse\022D\n\017IsProcedureDone\022\027.IsProcedure" +
+      "DoneRequest\032\030.IsProcedureDoneResponse\022D\n" +
+      "\017ModifyNamespace\022\027.ModifyNamespaceReques" +
+      "t\032\030.ModifyNamespaceResponse\022D\n\017CreateNam" +
+      "espace\022\027.CreateNamespaceRequest\032\030.Create" +
+      "NamespaceResponse\022D\n\017DeleteNamespace\022\027.D",
+      "eleteNamespaceRequest\032\030.DeleteNamespaceR" +
+      "esponse\022Y\n\026GetNamespaceDescriptor\022\036.GetN" +
+      "amespaceDescriptorRequest\032\037.GetNamespace" +
+      "DescriptorResponse\022_\n\030ListNamespaceDescr" +
+      "iptors\022 .ListNamespaceDescriptorsRequest" +
+      "\032!.ListNamespaceDescriptorsResponse\022t\n\037L" +
+      "istTableDescriptorsByNamespace\022\'.ListTab" +
+      "leDescriptorsByNamespaceRequest\032(.ListTa" +
+      "bleDescriptorsByNamespaceResponse\022b\n\031Lis" +
+      "tTableNamesByNamespace\022!.ListTableNamesB",
+      "yNamespaceRequest\032\".ListTableNamesByName" +
+      "spaceResponse\022>\n\rtruncateTable\022\025.Truncat" +
+      "eTableRequest\032\026.TruncateTableResponse\022/\n" +
+      "\010SetQuota\022\020.SetQuotaRequest\032\021.SetQuotaRe" +
+      "sponse\022A\n\016SwitchThrottle\022\026.SwitchThrottl" +
+      "eRequest\032\027.SwitchThrottleResponse\022M\n\022Add" +
+      "ReplicationPeer\022\032.AddReplicationPeerRequ" +
+      "est\032\033.AddReplicationPeerResponse\022V\n\025Remo" +
+      "veReplicationPeer\022\035.RemoveReplicationPee" +
+      "rRequest\032\036.RemoveReplicationPeerResponse",
+      "\022V\n\025EnableReplicationPeer\022\035.EnableReplic" +
+      "ationPeerRequest\032\036.EnableReplicationPeer" +
+      "Response\022Y\n\026DisableReplicationPeer\022\036.Dis" +
+      "ableReplicationPeerRequest\032\037.DisableRepl" +
+      "icationPeerResponse\022_\n\030GetReplicationPee" +
+      "rConfig\022 .GetReplicationPeerConfigReques" +
+      "t\032!.GetReplicationPeerConfigResponse\022h\n\033" +
+      "UpdateReplicationPeerConfig\022#.UpdateRepl" +
+      "icationPeerConfigRequest\032$.UpdateReplica" +
+      "tionPeerConfigResponse\022S\n\024ListReplicatio",
+      "nPeers\022\034.ListReplicationPeersRequest\032\035.L" +
+      "istReplicationPeersResponse\022b\n\031GetPeerMa" +
+      "xReplicationLoad\022!.GetPeerMaxReplication" +
+      "LoadRequest\032\".GetPeerMaxReplicationLoadR" +
+      "esponse\022`\n\036ListReplicationPeersForBranch" +
+      "2\022\034.ListReplicationPeersRequest\032 .NewLis" +
+      "tReplicationPeersResponse\022Z\n\034AddReplicat" +
+      "ionPeerForBranch2\022\035.NewAddReplicationPee" +
+      "rRequest\032\033.AddReplicationPeerResponse\022u\n" +
+      "%UpdateReplicationPeerConfigForBranch2\022&",
+      ".NewUpdateReplicationPeerConfigRequest\032$" +
+      ".UpdateReplicationPeerConfigResponse\022Y\n\026" +
+      "SetSplitOrMergeEnabled\022\036.SetSplitOrMerge" +
+      "EnabledRequest\032\037.SetSplitOrMergeEnabledR" +
+      "esponse\022V\n\025IsSplitOrMergeEnabled\022\035.IsSpl" +
+      "itOrMergeEnabledRequest\032\036.IsSplitOrMerge" +
+      "EnabledResponseBB\n*org.apache.hadoop.hba" +
+      "se.protobuf.generatedB\014MasterProtosH\001\210\001\001" +
+      "\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -49370,6 +51753,30 @@ public final class MasterProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_SwitchThrottleResponse_descriptor,
               new java.lang.String[] { "PrevThrottleState", });
+          internal_static_SetSplitOrMergeEnabledRequest_descriptor =
+            getDescriptor().getMessageTypes().get(86);
+          internal_static_SetSplitOrMergeEnabledRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_SetSplitOrMergeEnabledRequest_descriptor,
+              new java.lang.String[] { "Enabled", "Synchronous", "SwitchTypes", });
+          internal_static_SetSplitOrMergeEnabledResponse_descriptor =
+            getDescriptor().getMessageTypes().get(87);
+          internal_static_SetSplitOrMergeEnabledResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_SetSplitOrMergeEnabledResponse_descriptor,
+              new java.lang.String[] { "PrevValue", });
+          internal_static_IsSplitOrMergeEnabledRequest_descriptor =
+            getDescriptor().getMessageTypes().get(88);
+          internal_static_IsSplitOrMergeEnabledRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_IsSplitOrMergeEnabledRequest_descriptor,
+              new java.lang.String[] { "SwitchType", });
+          internal_static_IsSplitOrMergeEnabledResponse_descriptor =
+            getDescriptor().getMessageTypes().get(89);
+          internal_static_IsSplitOrMergeEnabledResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_IsSplitOrMergeEnabledResponse_descriptor,
+              new java.lang.String[] { "Enabled", });
           return null;
         }
       };

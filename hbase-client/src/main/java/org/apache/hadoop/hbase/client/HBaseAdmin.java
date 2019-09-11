@@ -127,11 +127,13 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescripto
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableNamesByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService.BlockingInterface;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyTableRequest;
@@ -141,6 +143,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotRe
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
@@ -3756,5 +3759,76 @@ public class HBaseAdmin implements Abortable, Closeable {
     } catch (ServiceException se) {
       throw ProtobufUtil.getRemoteException(se);
     }
+  }
+
+  /**
+   * Turn the split switch on or off.
+   * @param enabled enabled or not
+   * @param synchronous If <code>true</code>, it waits until current split() call, if outstanding,
+   *          to return.
+   * @return Previous switch value
+   * @throws IOException if a remote or network exception occurs
+   */
+  public boolean splitSwitch(boolean enabled, boolean synchronous) throws IOException {
+    return setSplitOrMergeOn(enabled, synchronous, MasterSwitchType.SPLIT);
+  }
+
+  /**
+   * Turn the merge switch on or off.
+   * @param enabled enabled or not
+   * @param synchronous If <code>true</code>, it waits until current merge() call, if outstanding,
+   *          to return.
+   * @return Previous switch value
+   * @throws IOException if a remote or network exception occurs
+   */
+  public boolean mergeSwitch(boolean enabled, boolean synchronous) throws IOException {
+    return setSplitOrMergeOn(enabled, synchronous, MasterSwitchType.MERGE);
+  }
+
+  private boolean setSplitOrMergeOn(boolean enabled, boolean synchronous,
+      MasterSwitchType switchType) throws IOException {
+    SetSplitOrMergeEnabledRequest request =
+        RequestConverter.buildSetSplitOrMergeEnabledRequest(enabled, synchronous, switchType);
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          HBaseRpcController controller) throws ServiceException {
+        return master.setSplitOrMergeEnabled(controller, request).getPrevValueList().get(0);
+      }
+    });
+  }
+
+  /**
+   * Query the current state of the split switch.
+   * @return <code>true</code> if the switch is enabled, <code>false</code> otherwise.
+   * @throws IOException if a remote or network exception occurs
+   */
+  public boolean isSplitEnabled() throws IOException {
+    IsSplitOrMergeEnabledRequest request = RequestConverter
+        .buildIsSplitOrMergeEnabledRequest(org.apache.hadoop.hbase.client.MasterSwitchType.SPLIT);
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          HBaseRpcController controller) throws ServiceException {
+        return master.isSplitOrMergeEnabled(controller, request).getEnabled();
+      }
+    });
+  }
+
+  /**
+   * Query the current state of the merge switch.
+   * @return <code>true</code> if the switch is enabled, <code>false</code> otherwise.
+   * @throws IOException if a remote or network exception occurs
+   */
+  public boolean isMergeEnabled() throws IOException {
+    IsSplitOrMergeEnabledRequest request = RequestConverter
+        .buildIsSplitOrMergeEnabledRequest(org.apache.hadoop.hbase.client.MasterSwitchType.MERGE);
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          HBaseRpcController controller) throws ServiceException {
+        return master.isSplitOrMergeEnabled(controller, request).getEnabled();
+      }
+    });
   }
 }

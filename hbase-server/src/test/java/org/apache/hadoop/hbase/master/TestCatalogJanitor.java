@@ -54,6 +54,7 @@ import org.apache.hadoop.hbase.catalog.MetaMockingUtil;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HConnectionTestingUtility;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.io.Reference;
@@ -358,6 +359,11 @@ public class TestCatalogJanitor {
     @Override
     public String getRegionServerVersion(ServerName sn) {
       return null;
+    }
+
+    @Override
+    public boolean isSplitOrMergeEnabled(MasterSwitchType switchType) {
+      return false;
     }
 
     @Override

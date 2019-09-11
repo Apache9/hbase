@@ -333,6 +333,8 @@ Shell.load_command_group(
     compact_rs
     trace
     compact_switch
+    splitormerge_enabled
+    splitormerge_switch
   ]
 )
 

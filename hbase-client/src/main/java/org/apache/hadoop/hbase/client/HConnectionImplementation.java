@@ -127,6 +127,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshot
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
@@ -152,6 +154,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunnin
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
@@ -1800,6 +1804,18 @@ public class HConnectionImplementation implements HConnection, Closeable {
           RpcController controller, ReplicationProtos.NewUpdateReplicationPeerConfigRequest request)
           throws ServiceException {
         return stub.updateReplicationPeerConfigForBranch2(controller, request);
+      }
+
+      @Override
+      public SetSplitOrMergeEnabledResponse setSplitOrMergeEnabled(RpcController controller,
+          SetSplitOrMergeEnabledRequest request) throws ServiceException {
+        return stub.setSplitOrMergeEnabled(controller, request);
+      }
+
+      @Override
+      public IsSplitOrMergeEnabledResponse isSplitOrMergeEnabled(RpcController controller,
+          IsSplitOrMergeEnabledRequest request) throws ServiceException {
+        return stub.isSplitOrMergeEnabled(controller, request);
       }
     };
   }
