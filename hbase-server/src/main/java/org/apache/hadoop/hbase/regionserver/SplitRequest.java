@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.master.TableLockManager.TableLock;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -60,6 +61,11 @@ class SplitRequest implements Runnable {
     if (this.server.isStopping() || this.server.isStopped()) {
       LOG.debug("Skipping split because server is stopping=" +
         this.server.isStopping() + " or stopped=" + this.server.isStopped());
+      return;
+    }
+    if (this.server.getSplitOrMergeTracker() != null
+        && !this.server.getSplitOrMergeTracker().isSplitOrMergeEnabled(MasterSwitchType.SPLIT)) {
+      LOG.info("Skipping split because split switch is off");
       return;
     }
     boolean success = false;

@@ -143,3 +143,10 @@ message RegionStoreSequenceIds {
   required uint64 last_flushed_sequence_id = 1;
   repeated StoreSequenceId store_sequence_id = 2;
 }
+
+/**
+ * State of the switch.
+ */
+message SwitchState {
+  optional bool enabled = 1;
+}

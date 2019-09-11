@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.master.RegionPlan;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
@@ -975,4 +976,24 @@ public interface MasterObserver extends Coprocessor {
    */
   default void postListReplicationPeers(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       String regex) throws IOException {}
+
+  /**
+   * Called prior to setting split / merge switch Supports Coprocessor 'bypass'.
+   * @param ctx the coprocessor instance's environment
+   * @param newValue the new value submitted in the call
+   * @param switchType type of switch
+   */
+  default void preSetSplitOrMergeEnabled(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final boolean newValue, final MasterSwitchType switchType) throws IOException {
+  }
+
+  /**
+   * Called after setting split / merge switch
+   * @param ctx the coprocessor instance's environment
+   * @param newValue the new value submitted in the call
+   * @param switchType type of switch
+   */
+  default void postSetSplitOrMergeEnabled(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final boolean newValue, final MasterSwitchType switchType) throws IOException {
+  }
 }

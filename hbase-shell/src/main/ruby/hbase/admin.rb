@@ -1141,5 +1141,31 @@ module Hbase
       end
     end
 
+    #----------------------------------------------------------------------------------------------
+    # Enable/disable one split or merge switch
+    # Returns previous switch setting.
+    def splitormerge_switch(type, enabled)
+      if type == 'SPLIT'
+        @admin.splitSwitch(java.lang.Boolean.valueOf(enabled), java.lang.Boolean.valueOf(false))
+      elsif type == 'MERGE'
+        @admin.mergeSwitch(java.lang.Boolean.valueOf(enabled), java.lang.Boolean.valueOf(false))
+      else
+        raise ArgumentError, 'only SPLIT or MERGE accepted for type!'
+      end
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Query the current state of the split or merge switch.
+    # Returns the switch's state (true is enabled).
+    def splitormerge_enabled(type)
+      if type == 'SPLIT'
+        @admin.isSplitEnabled
+      elsif type == 'MERGE'
+        @admin.isMergeEnabled
+      else
+        raise ArgumentError, 'only SPLIT or MERGE accepted for type!'
+      end
+    end
+
   end
 end

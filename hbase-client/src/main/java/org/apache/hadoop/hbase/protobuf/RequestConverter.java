@@ -87,6 +87,7 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BalanceRequest;
@@ -110,8 +111,10 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsMasterRunningRe
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableNamesByNamespaceRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterSwitchType;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyTableRequest;
@@ -120,6 +123,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.OfflineRegionRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
@@ -1768,5 +1772,60 @@ public final class RequestConverter {
       EnumSet<ClusterStatus.Option> options) {
     return GetClusterStatusRequest.newBuilder().addAllOptions(ClusterStatus.toOptions(options))
         .build();
+  }
+
+  /**
+   * Creates a protocol buffer SetSplitOrMergeEnabledRequest
+   * @param enabled switch is enabled or not
+   * @param synchronous set switch sync?
+   * @param switchTypes see {@link org.apache.hadoop.hbase.client.MasterSwitchType}, it is a list.
+   * @return a SetSplitOrMergeEnabledRequest
+   */
+  public static SetSplitOrMergeEnabledRequest buildSetSplitOrMergeEnabledRequest(boolean enabled,
+      boolean synchronous, MasterSwitchType... switchTypes) {
+    SetSplitOrMergeEnabledRequest.Builder builder = SetSplitOrMergeEnabledRequest.newBuilder();
+    builder.setEnabled(enabled);
+    builder.setSynchronous(synchronous);
+    for (MasterSwitchType switchType : switchTypes) {
+      builder.addSwitchTypes(convert(switchType));
+    }
+    return builder.build();
+  }
+
+  private static MasterSwitchType convert(MasterSwitchType switchType) {
+    switch (switchType) {
+      case SPLIT:
+        return MasterProtos.MasterSwitchType.SPLIT;
+      case MERGE:
+        return MasterProtos.MasterSwitchType.MERGE;
+      default:
+        break;
+    }
+    throw new UnsupportedOperationException("Unsupported switch type:" + switchType);
+  }
+
+  /**
+   * Creates a protocol buffer IsSplitOrMergeEnabledRequest
+   * @param switchType see {@link org.apache.hadoop.hbase.client.MasterSwitchType}
+   * @return a IsSplitOrMergeEnabledRequest
+   */
+  public static IsSplitOrMergeEnabledRequest buildIsSplitOrMergeEnabledRequest(
+      org.apache.hadoop.hbase.client.MasterSwitchType switchType) {
+    IsSplitOrMergeEnabledRequest.Builder builder = IsSplitOrMergeEnabledRequest.newBuilder();
+    builder.setSwitchType(convert(switchType));
+    return builder.build();
+  }
+
+  private static MasterProtos.MasterSwitchType
+      convert(org.apache.hadoop.hbase.client.MasterSwitchType switchType) {
+    switch (switchType) {
+      case SPLIT:
+        return MasterProtos.MasterSwitchType.SPLIT;
+      case MERGE:
+        return MasterProtos.MasterSwitchType.MERGE;
+      default:
+        break;
+    }
+    throw new UnsupportedOperationException("Unsupport switch type:" + switchType);
   }
 }

@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.coprocessor.*;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
@@ -1159,5 +1160,27 @@ public class MasterCoprocessorHost
       ctx.postEnvCall(env);
     }
     return bypass;
+  }
+
+  public void preSetSplitOrMergeEnabled(final boolean newValue, final MasterSwitchType switchType)
+      throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.preSetSplitOrMergeEnabled(this, newValue, switchType);
+      }
+    });
+  }
+
+  public void postSetSplitOrMergeEnabled(final boolean newValue, final MasterSwitchType switchType)
+      throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.postSetSplitOrMergeEnabled(this, newValue, switchType);
+      }
+    });
   }
 }

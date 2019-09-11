@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.exceptions.RegionOpeningException;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.executor.EventType;
@@ -71,6 +72,12 @@ public class DispatchMergingRegionHandler extends EventHandler {
 
   @Override
   public void process() throws IOException {
+    if (!masterServices.isSplitOrMergeEnabled(MasterSwitchType.MERGE)) {
+      LOG.info("Skip merging regions " + region_a.getRegionNameAsString() + ", "
+          + region_b.getRegionNameAsString() + ", because merge switch is off");
+      return;
+    }
+
     boolean regionAHasMergeQualifier = !catalogJanitor.cleanMergeQualifier(region_a);
     if (regionAHasMergeQualifier
         || !catalogJanitor.cleanMergeQualifier(region_b)) {
