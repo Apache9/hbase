@@ -22,9 +22,6 @@ import com.google.protobuf.Message;
 import com.google.protobuf.RpcController;
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
-import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
-import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
-import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -116,6 +113,10 @@ import org.apache.yetus.audience.InterfaceStability;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
+
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos;
@@ -188,6 +189,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsInMainte
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsProcedureDoneResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsRpcThrottleEnabledRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos
+  .IsSnapshotCleanupEnabledRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.ListDecommissionedRegionServersRequest;
@@ -211,6 +214,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.RestoreSna
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.SecurityCapabilitiesRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.SetNormalizerRunningRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.SetSnapshotCleanupRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.SnapshotResponse;
@@ -4391,5 +4395,35 @@ public class HBaseAdmin implements Admin {
   @Override
   public Future<Void> createTableAsync(TableDescriptor desc) throws IOException {
     return createTableAsync(desc, null);
+  }
+
+  @Override
+  public boolean snapshotCleanupSwitch(boolean on, boolean synchronous) throws IOException {
+    return executeCallable(new MasterCallable<Boolean>(getConnection(),
+        getRpcControllerFactory()) {
+
+      @Override
+      protected Boolean rpcCall() throws Exception {
+        SetSnapshotCleanupRequest req =
+          RequestConverter.buildSetSnapshotCleanupRequest(on, synchronous);
+        return master.switchSnapshotCleanup(getRpcController(), req).getPrevSnapshotCleanup();
+      }
+    });
+
+  }
+
+  @Override
+  public boolean isSnapshotCleanupEnabled() throws IOException {
+    return executeCallable(new MasterCallable<Boolean>(getConnection(),
+        getRpcControllerFactory()) {
+
+      @Override
+      protected Boolean rpcCall() throws Exception {
+        IsSnapshotCleanupEnabledRequest req =
+          RequestConverter.buildIsSnapshotCleanupEnabledRequest();
+        return master.isSnapshotCleanupEnabled(getRpcController(), req).getEnabled();
+      }
+    });
+
   }
 }
