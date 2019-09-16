@@ -99,6 +99,7 @@ public class SpanReceiverHost {
     for (SpanReceiver rcvr : receivers) {
       TraceUtil.addReceiver(rcvr);
     }
+    TraceUtil.addSampler(new TraceSampler());
   }
 
   /**
