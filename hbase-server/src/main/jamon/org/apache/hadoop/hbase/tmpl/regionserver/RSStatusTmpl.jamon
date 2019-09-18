@@ -132,6 +132,10 @@ org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
     <div class="row">
 
     <section>
+      <& ../common/TaskMonitorTmpl; filter = filter &>
+    </section>
+
+    <section>
     <h2>Server Metrics</h2>
     <& ServerMetricsTmpl; mWrap = regionServer.getRegionServerMetrics().getRegionServerWrapper();
       mServerWrap = regionServer.getRpcServer().getMetrics().getHBaseServerWrapper();
@@ -141,10 +145,6 @@ org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
     <section>
     <h2>Block Cache</h2>
     <& BlockCacheTmpl; cacheConfig = new CacheConfig(regionServer.getConfiguration()); config = regionServer.getConfiguration(); bc = regionServer.getBlockCache().orElse(null) &>
-    </section>
-
-    <section>
-    <& ../common/TaskMonitorTmpl; filter = filter &>
     </section>
 
     <section>

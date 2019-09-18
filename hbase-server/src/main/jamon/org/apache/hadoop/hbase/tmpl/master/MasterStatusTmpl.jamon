@@ -220,6 +220,9 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
             or re-run HBCK in repair mode.
           </div>
         </%if>
+        <section>
+          <& ../common/TaskMonitorTmpl; filter = filter &>
+        </section>
         <%if master.getAssignmentManager() != null %>
           <& AssignmentManagerStatusTmpl; assignmentManager=master.getAssignmentManager()&>
         </%if>
@@ -282,11 +285,6 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
             <& BackupMasterStatusTmpl; master = master &>
         </section>
 	</%if>
-
-
-        <section>
-            <& ../common/TaskMonitorTmpl; filter = filter &>
-        </section>
 
         <section>
             <h2><a name="attributes">Software Attributes</a></h2>

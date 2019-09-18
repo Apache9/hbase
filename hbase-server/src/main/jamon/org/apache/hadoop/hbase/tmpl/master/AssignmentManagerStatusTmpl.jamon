@@ -50,7 +50,7 @@ long currentTime = System.currentTimeMillis();
 RegionInTransitionStat ritStat = assignmentManager.computeRegionInTransitionStat();
 
 int numOfRITs = rit.size();
-int ritsPerPage = Math.min(5, numOfRITs);
+int ritsPerPage = Math.min(10, numOfRITs);
 int numOfPages = (int) Math.ceil(numOfRITs * 1.0 / ritsPerPage);
 </%java>
     <section>
