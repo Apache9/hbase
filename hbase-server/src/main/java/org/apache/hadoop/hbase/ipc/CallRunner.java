@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.CallDroppedException;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.trace.TraceUtil;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.hadoop.hbase.exceptions.TimeoutIOException;
@@ -128,6 +129,10 @@ public class CallRunner {
         String methodName = (call.getMethod() != null) ? call.getMethod().getName() : "";
         String traceString = serviceName + "." + methodName;
         traceScope = TraceUtil.createTrace(traceString);
+        TraceUtil.addKVAnnotation("queueTime",
+          String.valueOf(call.getStartTime() - call.getReceiveTime()));
+        TraceUtil.addKVAnnotation("user", call.getRequestUserName().get());
+        TraceUtil.addKVAnnotation("remoteAddress", RpcServer.getRemoteIp().getHostAddress());
         // make the call
         resultPair = this.rpcServer.call(call, this.status);
       } catch (TimeoutIOException e){

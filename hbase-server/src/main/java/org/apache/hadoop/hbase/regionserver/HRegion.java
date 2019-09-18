@@ -4203,6 +4203,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     try {
       // STEP 1. Try to acquire as many locks as we can and build mini-batch of operations with
       // locked rows
+      TraceUtil.addTimelineAnnotation("start acquiring row locks");
       miniBatchOp = batchOp.lockRowsAndBuildMiniBatch(acquiredRowLocks);
 
       // We've now grabbed as many mutations off the list as we can
@@ -4224,6 +4225,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         return; // some conditions unmet
       }
       // STEP 3. Build WAL edit
+      TraceUtil.addTimelineAnnotation("start writing WAL");
       List<Pair<NonceKey, WALEdit>> walEdits = batchOp.buildWALEdits(miniBatchOp);
 
       // STEP 4. Append the WALEdits to WAL and sync.
@@ -4246,10 +4248,12 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
       // STEP 5. Write back to memStore
       // NOTE: writeEntry can be null here
+      TraceUtil.addTimelineAnnotation("start writing back to memStore");
       writeEntry = batchOp.writeMiniBatchOperationsToMemStore(miniBatchOp, writeEntry);
 
       // STEP 6. Complete MiniBatchOperations: If required calls postBatchMutate() CP hook and
       // complete mvcc for last writeEntry
+      TraceUtil.addTimelineAnnotation("start dealing with other issues");
       batchOp.completeMiniBatchOperations(miniBatchOp, writeEntry);
       writeEntry = null;
       success = true;
@@ -8005,6 +8009,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     RowLock rowLock = null;
     MemStoreSizing memstoreAccounting = new NonThreadSafeMemStoreSizing();
     try {
+      TraceUtil.addTimelineAnnotation("start acquiring row lock");
       rowLock = getRowLockInternal(mutation.getRow(), false, null);
       lock(this.updatesLock.readLock());
       try {
@@ -8013,12 +8018,14 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           // Metrics updated below in the finally block.
           return returnResults? cpResult: null;
         }
+        TraceUtil.addTimelineAnnotation("start constructing new kv");
         Durability effectiveDurability = getEffectiveDurability(mutation.getDurability());
         Map<HStore, List<Cell>> forMemStore = new HashMap<>(mutation.getFamilyCellMap().size());
         // Reckon Cells to apply to WAL --  in returned walEdit -- and what to add to memstore and
         // what to return back to the client (in 'forMemStore' and 'results' respectively).
         WALEdit walEdit = reckonDeltas(op, mutation, effectiveDurability, forMemStore, results);
         // Actually write to WAL now if a walEdit to apply.
+        TraceUtil.addTimelineAnnotation("start writing to WAL");
         if (walEdit != null && !walEdit.isEmpty()) {
           writeEntry = doWALAppend(walEdit, effectiveDurability, nonceGroup, nonce);
         } else {
@@ -8029,6 +8036,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           updateSequenceId(forMemStore.values(), writeEntry.getWriteNumber());
         }
         // Now write to MemStore. Do it a column family at a time.
+        TraceUtil.addTimelineAnnotation("start writing to Memstore");
         for (Map.Entry<HStore, List<Cell>> e : forMemStore.entrySet()) {
           applyToMemStore(e.getKey(), e.getValue(), true, memstoreAccounting);
         }

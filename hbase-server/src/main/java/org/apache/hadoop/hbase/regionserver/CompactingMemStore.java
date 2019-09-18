@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import org.apache.hadoop.hbase.exceptions.IllegalArgumentIOException;
+import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.util.StringUtils;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
@@ -400,6 +401,7 @@ public class CompactingMemStore extends AbstractMemStore {
 
   @Override
   public List<KeyValueScanner> getScanners(long readPt) throws IOException {
+    TraceUtil.addTimelineAnnotation("Creating MemStoreScanner");
     MutableSegment activeTmp = getActive();
     List<? extends Segment> pipelineList = pipeline.getSegments();
     List<? extends Segment> snapshotList = snapshot.getAllSegments();

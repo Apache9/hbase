@@ -83,7 +83,7 @@ public class LogSpanReceiver extends SpanReceiver {
       long last = span.getStartTimeMillis();
       for (TimelineAnnotation annotation : span.getTimelineAnnotations()) {
         buf.append("---> ").append(formatTime(annotation.getTime())).append(" ")
-            .append(annotation.getMessage()).append(" , time from last annotation: ")
+            .append(annotation.getMessage()).append(", time from last annotation: ")
             .append(annotation.getTime() - last).append(" ms\n");
         last = annotation.getTime();
       }

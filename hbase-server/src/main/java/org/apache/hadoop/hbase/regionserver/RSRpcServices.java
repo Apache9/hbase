@@ -136,6 +136,7 @@ import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.NoopAccessChecker;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.ZKPermissionWatcher;
+import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.DNS;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -694,6 +695,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     checkCellSizeLimit(region, append);
     spaceQuota.getPolicyEnforcement(region).check(append);
     quota.addMutation(append);
+
+    TraceUtil.addTimelineAnnotation("start processing an append request");
+    TraceUtil.addKVAnnotation("region", region.toString());
+    TraceUtil.addKVAnnotation("key", Bytes.toStringBinary(mutation.getRow().toByteArray()));
+
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preAppend(append);
@@ -743,6 +749,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       throws IOException {
     long before = EnvironmentEdgeManager.currentTime();
     Increment increment = ProtobufUtil.toIncrement(mutation, cells);
+
+    TraceUtil.addTimelineAnnotation("start processing an increment request");
+    TraceUtil.addKVAnnotation("region", region.toString());
+    TraceUtil.addKVAnnotation("key", Bytes.toStringBinary(mutation.getRow().toByteArray()));
+
     checkCellSizeLimit(region, increment);
     spaceQuota.getPolicyEnforcement(region).check(increment);
     quota.addMutation(increment);
@@ -2570,6 +2581,10 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       RpcCallContext context = RpcServer.getCurrentCall().orElse(null);
       quota = getRpcQuotaManager().checkQuota(region, OperationQuota.OperationType.GET);
 
+      TraceUtil.addTimelineAnnotation("start processing a get request");
+      TraceUtil.addKVAnnotation("region", region.toString());
+      TraceUtil.addKVAnnotation("key", Bytes.toStringBinary(get.getRow().toByteArray()));
+
       Get clientGet = ProtobufUtil.toGet(get);
       if (get.getExistenceOnly() && region.getCoprocessorHost() != null) {
         existence = region.getCoprocessorHost().preExists(clientGet);
@@ -2773,6 +2788,8 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
         failRegionAction(responseBuilder, regionActionResultBuilder, regionAction, cellScanner, e);
         continue;  // For this region it's a failure.
       }
+      TraceUtil.addTimelineAnnotation(
+        "do multi to a specific region " + region.getRegionInfo().getEncodedName());
       boolean rejectIfFromClient = shouldRejectRequestsFromClient(region);
       if (regionAction.hasAtomic() && regionAction.getAtomic()) {
         // We only allow replication in standby state and it will not set the atomic flag.
@@ -3425,6 +3442,10 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       throw new ServiceException(
           new DoNotRetryIOException("Missing required input: scannerId or scan"));
     }
+    TraceUtil.addKVAnnotation("start_row",
+      Bytes.toStringBinary(request.getScan().getStartRow().toByteArray()));
+    TraceUtil.addKVAnnotation("stop_row",
+      Bytes.toStringBinary(request.getScan().getStopRow().toByteArray()));
     try {
       checkOpen();
     } catch (IOException e) {
@@ -3517,6 +3538,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     RegionScanner scanner = rsh.s;
     // this is the limit of rows for this scan, if we the number of rows reach this value, we will
     // close the scanner.
+    TraceUtil.addKVAnnotation("region", region.toString());
     int limitOfRows;
     if (request.hasLimitOfRows()) {
       limitOfRows = request.getLimitOfRows();

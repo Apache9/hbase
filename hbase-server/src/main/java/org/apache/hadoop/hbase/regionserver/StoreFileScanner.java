@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.PrivateCellUtil;
+import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.hadoop.hbase.client.Scan;
@@ -117,6 +118,7 @@ public class StoreFileScanner implements KeyValueScanner {
     if (files.isEmpty()) {
       return Collections.emptyList();
     }
+    TraceUtil.addTimelineAnnotation("Creating StoreFile scanners");
     List<StoreFileScanner> scanners = new ArrayList<>(files.size());
     boolean canOptimizeForNonNullColumn = matcher != null ? !matcher.hasNullColumnInQuery() : false;
     PriorityQueue<HStoreFile> sortedFiles =
