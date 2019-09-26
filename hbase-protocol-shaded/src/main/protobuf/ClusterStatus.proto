@@ -164,6 +164,7 @@ message RegionLoad {
   /** read cells & read raw cells per second **/
   optional uint64 read_cell_count_per_second = 87;
   optional uint64 read_raw_cell_count_perSecond = 88;
+  optional uint64 approximate_row_count = 89;
 }
 
 /* Server-level protobufs */

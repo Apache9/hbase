@@ -77,4 +77,6 @@ public interface MetricsClusterSource extends BaseSource {
   String SIZE_OF_LOG_QUEUE_DESC = "Number of replication source queue logs";
   String REPLICATION_LAG = "replicationLag";
   String REPLICATION_LAG_DESC = "Replication lag";
+  String APPROXIMATE_ROW_COUNT = "approximateRowCount";
+  String APPROXIMATE_ROW_COUNT_DESC = "Number of approximate row count";
 }

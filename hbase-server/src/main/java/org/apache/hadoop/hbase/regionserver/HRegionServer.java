@@ -1664,6 +1664,7 @@ public class HRegionServer extends HasThread implements
     int totalStaticBloomSizeKB = 0;
     long totalCompactingKVs = 0;
     long currentCompactedKVs = 0;
+    long approximateRowCount = 0;
     List<HStore> storeList = r.getStores();
     stores += storeList.size();
     for (HStore store : storeList) {
@@ -1680,6 +1681,14 @@ public class HRegionServer extends HasThread implements
       rootLevelIndexSizeKB += (int) (store.getStorefilesRootLevelIndexSize() / 1024);
       totalStaticIndexSizeKB += (int) (store.getTotalStaticIndexSize() / 1024);
       totalStaticBloomSizeKB += (int) (store.getTotalStaticBloomSize() / 1024);
+
+      long rowCount = 0;
+      for (HStoreFile storeFile : store.getStorefiles()) {
+        rowCount += storeFile.getReader().getRowCnt() - storeFile.getReader().getDeleteFamilyCnt();
+      }
+      if (rowCount > approximateRowCount) {
+        approximateRowCount = rowCount;
+      }
     }
 
     float dataLocality =
@@ -1717,7 +1726,8 @@ public class HRegionServer extends HasThread implements
       .setTotalCompactingKVs(totalCompactingKVs)
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setDataLocality(dataLocality)
-      .setLastMajorCompactionTs(r.getOldestHfileTs(true));
+      .setLastMajorCompactionTs(r.getOldestHfileTs(true))
+      .setApproximateRowCount(approximateRowCount);
     r.setCompleteSequenceId(regionLoadBldr);
 
     return regionLoadBldr.build();

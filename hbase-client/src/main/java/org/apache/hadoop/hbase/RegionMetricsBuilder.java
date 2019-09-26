@@ -81,6 +81,7 @@ public final class RegionMetricsBuilder {
               ClusterStatusProtos.StoreSequenceId::getSequenceId)))
         .setUncompressedStoreFileSize(
           new Size(regionLoadPB.getStoreUncompressedSizeMB(),Size.Unit.MEGABYTE))
+        .setApproximateRowCount(regionLoadPB.getApproximateRowCount())
         .build();
   }
 
@@ -124,6 +125,7 @@ public final class RegionMetricsBuilder {
         .addAllStoreCompleteSequenceId(toStoreSequenceId(regionMetrics.getStoreSequenceId()))
         .setStoreUncompressedSizeMB(
           (int) regionMetrics.getUncompressedStoreFileSize().get(Size.Unit.MEGABYTE))
+        .setApproximateRowCount(regionMetrics.getApproximateRowCount())
         .build();
   }
 
@@ -160,6 +162,7 @@ public final class RegionMetricsBuilder {
   private Map<byte[], Long> storeSequenceIds = Collections.emptyMap();
   private float dataLocality;
   private long lastMajorCompactionTimestamp;
+  private long approximateRowCount;
   private RegionMetricsBuilder(byte[] name) {
     this.name = name;
   }
@@ -287,6 +290,11 @@ public final class RegionMetricsBuilder {
     return this;
   }
 
+  public RegionMetricsBuilder setApproximateRowCount(long value) {
+    this.approximateRowCount = value;
+    return this;
+  }
+
   public RegionMetrics build() {
     return new RegionMetricsImpl(name,
         storeCount,
@@ -316,7 +324,8 @@ public final class RegionMetricsBuilder {
         completedSequenceId,
         storeSequenceIds,
         dataLocality,
-        lastMajorCompactionTimestamp);
+        lastMajorCompactionTimestamp,
+        approximateRowCount);
   }
 
   private static class RegionMetricsImpl implements RegionMetrics {
@@ -349,6 +358,7 @@ public final class RegionMetricsBuilder {
     private final Map<byte[], Long> storeSequenceIds;
     private final float dataLocality;
     private final long lastMajorCompactionTimestamp;
+    private final long approximateRowCount;
     RegionMetricsImpl(byte[] name,
         int storeCount,
         int storeFileCount,
@@ -377,7 +387,8 @@ public final class RegionMetricsBuilder {
         long completedSequenceId,
         Map<byte[], Long> storeSequenceIds,
         float dataLocality,
-        long lastMajorCompactionTimestamp) {
+        long lastMajorCompactionTimestamp,
+        long approximateRowCount) {
       this.name = Preconditions.checkNotNull(name);
       this.storeCount = storeCount;
       this.storeFileCount = storeFileCount;
@@ -407,6 +418,7 @@ public final class RegionMetricsBuilder {
       this.storeSequenceIds = Preconditions.checkNotNull(storeSequenceIds);
       this.dataLocality = dataLocality;
       this.lastMajorCompactionTimestamp = lastMajorCompactionTimestamp;
+      this.approximateRowCount = approximateRowCount;
     }
 
     @Override
@@ -555,6 +567,11 @@ public final class RegionMetricsBuilder {
     }
 
     @Override
+    public long getApproximateRowCount() {
+      return approximateRowCount;
+    }
+
+    @Override
     public String toString() {
       StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "storeCount",
           this.getStoreCount());
@@ -615,6 +632,7 @@ public final class RegionMetricsBuilder {
         this.getWriteRequestsByCapacityUnitPerSecond());
       Strings.appendKeyValue(sb, "readCellCountPerSecond", this.getReadCellCountPerSecond());
       Strings.appendKeyValue(sb, "readRawCellCountPerSecond", this.getReadRawCellCountPerSecond());
+      Strings.appendKeyValue(sb, "approximateRowCount", this.getApproximateRowCount());
       return sb.toString();
     }
   }

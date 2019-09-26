@@ -393,6 +393,11 @@ public class RegionLoad implements RegionMetrics {
     return metrics.getReadRawCellCountPerSecond();
   }
 
+  @Override
+  public long getApproximateRowCount() {
+    return metrics.getApproximateRowCount();
+  }
+
   /**
    * @return the timestamp of the oldest hfile for any store of this region.
    * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0

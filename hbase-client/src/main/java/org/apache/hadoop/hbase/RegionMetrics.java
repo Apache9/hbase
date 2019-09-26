@@ -166,4 +166,6 @@ public interface RegionMetrics {
   long getReadCellCountPerSecond();
 
   long getReadRawCellCountPerSecond();
+
+  long getApproximateRowCount();
 }

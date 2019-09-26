@@ -235,7 +235,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
       long readRequestPerSecond, long writeRequestPerSecond, long getRequestPerSecond,
       long scanRequestPerSecond, long scanRowsCountPerSecond, long readRequestByCapacityUnit,
       long writeRequestByCapacityUnit, long readCellCountPerSecond, long readRawCellCountPerSecond,
-      long memStoreSizeMB, long storeFileSizeMB, long regionCount) {
+      long memStoreSizeMB, long storeFileSizeMB, long regionCount, long approximateRowCount) {
     return builder
         .addCounter(Interns.info(prefix + MetricsClusterSource.READ_REQUEST_PER_SECOND,
           MetricsClusterSource.READ_REQUEST_PER_SECOND_DESC), readRequestPerSecond)
@@ -264,7 +264,9 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
         .addCounter(Interns.info(prefix + MetricsClusterSource.STOREFILE_SIZE_MB,
             MetricsClusterSource.STOREFILE_SIZE_MB_DESC), storeFileSizeMB)
         .addCounter(Interns.info(prefix + MetricsClusterSource.REGION_COUNT,
-            MetricsClusterSource.REGION_COUNT_DESC), regionCount);
+            MetricsClusterSource.REGION_COUNT_DESC), regionCount)
+        .addCounter(Interns.info(prefix + MetricsClusterSource.APPROXIMATE_ROW_COUNT,
+            MetricsClusterSource.APPROXIMATE_ROW_COUNT_DESC), approximateRowCount);
   }
 
   /**
@@ -288,6 +290,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     long globalStoreFileSizeMB = 0;
     long globalRegionCount = 0;
     long globalTableCount = 0;
+    long globalApproximateRowCount = 0;
 
     // Table metrics
     Map<TableName, Long> tableReadRequestPerSecond = new HashMap<>();
@@ -302,6 +305,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     Map<TableName, Long> tableMemStoreSizeMB = new HashMap<>();
     Map<TableName, Long> tableStoreFileSizeMB = new HashMap<>();
     Map<TableName, Long> tableRegionCount = new HashMap<>();
+    Map<TableName, Long> tableApproximateRowCount = new HashMap<>();
 
     // Namespace metrics
     Map<String, Long> nsReadRequestPerSecond = new HashMap<>();
@@ -317,6 +321,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     Map<String, Long> nsStoreFileSizeMB = new HashMap<>();
     Map<String, Long> nsTableCount = new HashMap<>();
     Map<String, Long> nsRegionCount = new HashMap<>();
+    Map<String, Long> nsApproximateRowCount = new HashMap<>();
 
     // Replication metrics
     Map<String, Long> peerSizeOfLogQueue = new HashMap<>();
@@ -351,6 +356,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
         accumulateMap(tableMemStoreSizeMB, table, regionMetrics.getMemStoreSize().getLongValue());
         accumulateMap(tableStoreFileSizeMB, table, regionMetrics.getStoreFileSize().getLongValue());
         accumulateMap(tableRegionCount, table, 1L);
+        accumulateMap(tableApproximateRowCount, table, regionMetrics.getApproximateRowCount());
       }
 
       // Append server replication metric
@@ -391,6 +397,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
       accumulateMap(nsStoreFileSizeMB, ns, tableStoreFileSizeMB.get(table));
       accumulateMap(nsRegionCount, ns, tableRegionCount.get(table));
       accumulateMap(nsTableCount, ns, 1L);
+      accumulateMap(nsApproximateRowCount, ns, tableApproximateRowCount.get(table));
     }
 
     globalReadRequestPerSecond += sumUpMap(nsReadRequestPerSecond);
@@ -406,6 +413,7 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     globalStoreFileSizeMB += sumUpMap(nsStoreFileSizeMB);
     globalRegionCount += sumUpMap(nsRegionCount);
     globalTableCount += sumUpMap(nsTableCount);
+    globalApproximateRowCount += sumUpMap(nsApproximateRowCount);
     long globalNamespaceCount = nsTableCount.size();
 
     // Append cluster metrics
@@ -423,7 +431,8 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
             globalReadRawCellCountPerSecond,
             globalMemStoreSizeMB,
             globalStoreFileSizeMB,
-            globalRegionCount);
+            globalRegionCount,
+            globalApproximateRowCount);
     builder.addCounter(Interns.info(clusterPrefix + MetricsClusterSource.TABLE_COUNT,
         MetricsClusterSource.TABLE_COUNT_DESC), globalTableCount);
     builder.addCounter(Interns.info(clusterPrefix + MetricsClusterSource.NAMESPACE_COUNT,
@@ -446,7 +455,8 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
               tableReadRawCellCountPerSecond.getOrDefault(table, 0L),
               tableMemStoreSizeMB.getOrDefault(table, 0L),
               tableStoreFileSizeMB.getOrDefault(table, 0L),
-              tableRegionCount.getOrDefault(table, 0L));
+              tableRegionCount.getOrDefault(table, 0L),
+              tableApproximateRowCount.getOrDefault(table, 0L));
     }
 
     // Append namespace metrics
@@ -465,7 +475,8 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
               nsReadRawCellCountPerSecond.getOrDefault(ns, 0L),
               nsMemStoreSizeMB.getOrDefault(ns, 0L),
               nsStoreFileSizeMB.getOrDefault(ns, 0L),
-              nsRegionCount.getOrDefault(ns, 0L));
+              nsRegionCount.getOrDefault(ns, 0L),
+              nsApproximateRowCount.getOrDefault(ns, 0L));
       builder.addCounter(Interns.info(namespacePrefix + MetricsClusterSource.TABLE_COUNT,
           MetricsClusterSource.TABLE_COUNT_DESC), nsTableCount.getOrDefault(ns, 0L));
     }
