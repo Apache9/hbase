@@ -78,4 +78,6 @@ public interface QuotaLimiter {
 
   /** @return the number of bytes available to write to avoid exceeding the quota */
   long getWriteAvailable();
+
+  String getOwner();
 }

@@ -51,6 +51,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesti
 public abstract class RateLimiter {
   public static final String QUOTA_RATE_LIMITER_CONF_KEY = "hbase.quota.rate.limiter";
   private long tunit = 1000;           // Timeunit factor for translating to ms.
+  private TimeUnit timeUnit = TimeUnit.SECONDS;
   private long limit = Long.MAX_VALUE; // The max value available resource units can be refilled to.
   private long avail = Long.MAX_VALUE; // Currently available resource units
 
@@ -80,18 +81,23 @@ public abstract class RateLimiter {
     switch (timeUnit) {
     case MILLISECONDS:
       tunit = 1;
+      this.timeUnit = TimeUnit.MILLISECONDS;
       break;
     case SECONDS:
       tunit = 1000;
+      this.timeUnit = TimeUnit.SECONDS;
       break;
     case MINUTES:
       tunit = 60 * 1000;
+      this.timeUnit = TimeUnit.MINUTES;
       break;
     case HOURS:
       tunit = 60 * 60 * 1000;
+      this.timeUnit = TimeUnit.HOURS;
       break;
     case DAYS:
       tunit = 24 * 60 * 60 * 1000;
+      this.timeUnit = TimeUnit.DAYS;
       break;
     default:
       throw new RuntimeException("Unsupported " + timeUnit.name() + " TimeUnit.");
@@ -106,8 +112,7 @@ public abstract class RateLimiter {
     if (getLimit() == Long.MAX_VALUE) {
       return rateLimiter + "(Bypass)";
     }
-    return rateLimiter + "(avail=" + getAvailable() + " limit=" + getLimit() +
-        " tunit=" + getTimeUnitInMillis() + ")";
+    return rateLimiter + "(avail=" + getAvailable() + " limit=" + getLimit() + "/" + timeUnit + ")";
   }
 
   /**

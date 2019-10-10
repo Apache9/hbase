@@ -292,7 +292,8 @@ public class QuotaUtil extends QuotaTableUtil {
           @Override
           public void visitUserQuotas(String userName, String namespace, Quotas quotas) {
             quotas = updateClusterQuotaToMachineQuota(quotas, factor);
-            quotaInfo.setQuotas(namespace, quotas);
+            quotaInfo.setQuotas(namespace, quotas,
+              "USER => " + userName + ", NAMESPACE => " + namespace);
           }
 
           @Override
@@ -300,13 +301,14 @@ public class QuotaUtil extends QuotaTableUtil {
             quotas = updateClusterQuotaToMachineQuota(quotas,
               tableMachineQuotaFactors.containsKey(table) ? tableMachineQuotaFactors.get(table)
                   : 1);
-            quotaInfo.setQuotas(table, quotas);
+            quotaInfo.setQuotas(table, quotas,
+              "USER => " + userName + ", TABLE => " + table.getNameAsString());
           }
 
           @Override
           public void visitUserQuotas(String userName, Quotas quotas) {
             quotas = updateClusterQuotaToMachineQuota(quotas, factor);
-            quotaInfo.setQuotas(quotas);
+            quotaInfo.setQuotas(quotas, "USER => " + userName);
           }
         });
       } catch (IOException e) {
@@ -330,6 +332,11 @@ public class QuotaUtil extends QuotaTableUtil {
       public double getFactor(TableName tableName) {
         return tableMachineFactors.containsKey(tableName) ? tableMachineFactors.get(tableName) : 1;
       }
+
+      @Override
+      public String getOwner(TableName tableName) {
+        return "TABLE => " + tableName.getNameAsString();
+      }
     });
   }
 
@@ -346,6 +353,11 @@ public class QuotaUtil extends QuotaTableUtil {
       public double getFactor(String s) {
         return factor;
       }
+
+      @Override
+      public String getOwner(String s) {
+        return "NAMESPACE => " + s;
+      }
     });
   }
 
@@ -361,6 +373,11 @@ public class QuotaUtil extends QuotaTableUtil {
       @Override
       public double getFactor(String s) {
         return 1;
+      }
+
+      @Override
+      public String getOwner(String s) {
+        return "REGIONSERVER => " + s;
       }
     });
   }
@@ -389,7 +406,7 @@ public class QuotaUtil extends QuotaTableUtil {
         Quotas quotas = quotasFromData(data);
         quotas = updateClusterQuotaToMachineQuota(quotas,
           kfr.getFactor(key));
-        quotaInfo.setQuotas(quotas);
+        quotaInfo.setQuotas(quotas, kfr.getOwner(key));
       } catch (IOException e) {
         LOG.error("Unable to parse " + type + " '" + key + "' quotas", e);
         globalQuotas.remove(key);
@@ -454,6 +471,7 @@ public class QuotaUtil extends QuotaTableUtil {
   private static interface KeyFromRow<T> {
     T getKeyFromRow(final byte[] row);
     double getFactor(T t);
+    String getOwner(T t);
   }
 
   /* =========================================================================

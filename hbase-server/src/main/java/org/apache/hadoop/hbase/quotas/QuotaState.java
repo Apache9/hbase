@@ -80,9 +80,9 @@ public class QuotaState {
    * Setup the global quota information.
    * (This operation is part of the QuotaState setup)
    */
-  public synchronized void setQuotas(final Quotas quotas) {
+  public synchronized void setQuotas(final Quotas quotas, String owner) {
     if (quotas.hasThrottle()) {
-      globalLimiter = QuotaLimiterFactory.fromThrottle(quotas.getThrottle());
+      globalLimiter = QuotaLimiterFactory.fromThrottle(quotas.getThrottle(), owner);
     } else {
       globalLimiter = NoopQuotaLimiter.get();
     }

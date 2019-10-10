@@ -99,8 +99,8 @@ public class UserQuotaState extends QuotaState {
   }
 
   @Override
-  public synchronized void setQuotas(final Quotas quotas) {
-    super.setQuotas(quotas);
+  public synchronized void setQuotas(final Quotas quotas, String owner) {
+    super.setQuotas(quotas, owner);
     bypassGlobals = quotas.getBypassGlobals();
   }
 
@@ -108,26 +108,26 @@ public class UserQuotaState extends QuotaState {
    * Add the quota information of the specified table.
    * (This operation is part of the QuotaState setup)
    */
-  public synchronized void setQuotas(final TableName table, Quotas quotas) {
-    tableLimiters = setLimiter(tableLimiters, table, quotas);
+  public synchronized void setQuotas(final TableName table, Quotas quotas, String owner) {
+    tableLimiters = setLimiter(tableLimiters, table, quotas, owner);
   }
 
   /**
    * Add the quota information of the specified namespace.
    * (This operation is part of the QuotaState setup)
    */
-  public void setQuotas(final String namespace, Quotas quotas) {
-    namespaceLimiters = setLimiter(namespaceLimiters, namespace, quotas);
+  public void setQuotas(final String namespace, Quotas quotas, String owner) {
+    namespaceLimiters = setLimiter(namespaceLimiters, namespace, quotas, owner);
   }
 
   private <K> Map<K, QuotaLimiter> setLimiter(Map<K, QuotaLimiter> limiters,
-      final K key, final Quotas quotas) {
+      final K key, final Quotas quotas, String owner) {
     if (limiters == null) {
       limiters = new HashMap<>();
     }
 
-    QuotaLimiter limiter = quotas.hasThrottle() ?
-      QuotaLimiterFactory.fromThrottle(quotas.getThrottle()) : null;
+    QuotaLimiter limiter =
+        quotas.hasThrottle() ? QuotaLimiterFactory.fromThrottle(quotas.getThrottle(), owner) : null;
     if (limiter != null && !limiter.isBypass()) {
       limiters.put(key, limiter);
     } else {

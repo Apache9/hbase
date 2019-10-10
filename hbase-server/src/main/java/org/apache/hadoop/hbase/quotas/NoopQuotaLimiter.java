@@ -79,4 +79,9 @@ class NoopQuotaLimiter implements QuotaLimiter {
   public static QuotaLimiter get() {
     return instance;
   }
+
+  @Override
+  public String getOwner() {
+    return "";
+  }
 }

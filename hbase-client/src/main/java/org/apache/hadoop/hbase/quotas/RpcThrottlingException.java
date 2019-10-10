@@ -74,52 +74,55 @@ public class RpcThrottlingException extends HBaseIOException {
     return this.waitInterval;
   }
 
-  public static void throwNumRequestsExceeded(final long waitInterval) throws
-      RpcThrottlingException {
-    throwThrottlingException(Type.NumRequestsExceeded, waitInterval);
-  }
-
-  public static void throwRequestSizeExceeded(final long waitInterval)
+  public static void throwNumRequestsExceeded(final long waitInterval, String quota)
       throws RpcThrottlingException {
-    throwThrottlingException(Type.RequestSizeExceeded, waitInterval);
+    throwThrottlingException(Type.NumRequestsExceeded, waitInterval, quota);
   }
 
-  public static void throwNumReadRequestsExceeded(final long waitInterval)
+  public static void throwRequestSizeExceeded(final long waitInterval, String quota)
       throws RpcThrottlingException {
-    throwThrottlingException(Type.NumReadRequestsExceeded, waitInterval);
+    throwThrottlingException(Type.RequestSizeExceeded, waitInterval, quota);
   }
 
-  public static void throwNumWriteRequestsExceeded(final long waitInterval)
+  public static void throwNumReadRequestsExceeded(final long waitInterval, String quota)
       throws RpcThrottlingException {
-    throwThrottlingException(Type.NumWriteRequestsExceeded, waitInterval);
+    throwThrottlingException(Type.NumReadRequestsExceeded, waitInterval, quota);
   }
 
-  public static void throwWriteSizeExceeded(final long waitInterval) throws RpcThrottlingException {
-    throwThrottlingException(Type.WriteSizeExceeded, waitInterval);
-  }
-
-  public static void throwReadSizeExceeded(final long waitInterval) throws RpcThrottlingException {
-    throwThrottlingException(Type.ReadSizeExceeded, waitInterval);
-  }
-
-  public static void throwRequestCapacityUnitExceeded(final long waitInterval)
+  public static void throwNumWriteRequestsExceeded(final long waitInterval, String quota)
       throws RpcThrottlingException {
-    throwThrottlingException(Type.RequestCapacityUnitExceeded, waitInterval);
+    throwThrottlingException(Type.NumWriteRequestsExceeded, waitInterval, quota);
   }
 
-  public static void throwReadCapacityUnitExceeded(final long waitInterval)
+  public static void throwWriteSizeExceeded(final long waitInterval, String quota)
       throws RpcThrottlingException {
-    throwThrottlingException(Type.ReadCapacityUnitExceeded, waitInterval);
+    throwThrottlingException(Type.WriteSizeExceeded, waitInterval, quota);
   }
 
-  public static void throwWriteCapacityUnitExceeded(final long waitInterval)
+  public static void throwReadSizeExceeded(final long waitInterval, String quota)
       throws RpcThrottlingException {
-    throwThrottlingException(Type.WriteCapacityUnitExceeded, waitInterval);
+    throwThrottlingException(Type.ReadSizeExceeded, waitInterval, quota);
   }
 
-  private static void throwThrottlingException(final Type type, final long waitInterval)
+  public static void throwRequestCapacityUnitExceeded(final long waitInterval, String quota)
       throws RpcThrottlingException {
-    String msg = MSG_TYPE[type.ordinal()] + MSG_WAIT + StringUtils.formatTime(waitInterval);
+    throwThrottlingException(Type.RequestCapacityUnitExceeded, waitInterval, quota);
+  }
+
+  public static void throwReadCapacityUnitExceeded(final long waitInterval, String quota)
+      throws RpcThrottlingException {
+    throwThrottlingException(Type.ReadCapacityUnitExceeded, waitInterval, quota);
+  }
+
+  public static void throwWriteCapacityUnitExceeded(final long waitInterval, String quota)
+      throws RpcThrottlingException {
+    throwThrottlingException(Type.WriteCapacityUnitExceeded, waitInterval, quota);
+  }
+
+  private static void throwThrottlingException(final Type type, final long waitInterval,
+      String quota) throws RpcThrottlingException {
+    String msg = MSG_TYPE[type.ordinal()] + " quota [" + quota + "]" + MSG_WAIT
+        + StringUtils.formatTime(waitInterval);
     throw new RpcThrottlingException(type, waitInterval, msg);
   }
 
