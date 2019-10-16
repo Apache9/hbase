@@ -142,6 +142,9 @@ import org.apache.hadoop.hbase.metrics.impl.MetricsRate;
 import org.apache.hadoop.hbase.mob.MobFileCache;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
+import org.apache.hadoop.hbase.quotas.OperationQuota;
+import org.apache.hadoop.hbase.quotas.OperationQuota.ReadOperationType;
+import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
@@ -1395,15 +1398,13 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   @Override
   public long getReadRequestsByCapacityUnitPerSecond() {
     readRequestsByCapacityUnitPerSecond.intervalHeartBeat();
-    long val = (long) readRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
-    return val >>> 10;
+    return (long) readRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
   }
 
   @Override
   public long getWriteRequestsByCapacityUnitPerSecond() {
     writeRequestsByCapacityUnitPerSecond.intervalHeartBeat();
-    long val = (long) writeRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
-    return val >>> 10;
+    return (long) writeRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
   }
 
   @Override
@@ -3314,7 +3315,6 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         applyFamilyMapToMemStore(familyCellMaps[index], memStoreAccounting);
         return true;
       });
-      region.writeRequestsByCapacityUnitPerSecond.inc(memStoreAccounting.getDataSize());
       // update memStore size
       region.incMemStoreSize(memStoreAccounting.getDataSize(), memStoreAccounting.getHeapSize(),
         memStoreAccounting.getOffHeapSize(), memStoreAccounting.getCellsCount());
@@ -4174,6 +4174,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         if (!initialized) {
           this.writeRequestsCount.add(batchOp.size());
           this.writeRequestsPerSecond.inc(batchOp.size());
+          for (int i = 0; i < batchOp.size(); i++) {
+            Mutation mutation = batchOp.getMutation(i);
+            updateWriteRequestsByCapacityUnitPerSecond(QuotaUtil.calculateMutationSize(mutation));
+          }
           // validate and prepare batch for write, for MutationBatchOperation it also calls CP
           // prePut()/ preDelete() hooks
           batchOp.checkAndPrepare();
@@ -4321,6 +4325,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     // TODO, add check for value length also move this check to the client
     checkResources();
     startRegionOperation();
+    OperationQuota quota =
+        this.rsServices.getRegionServerRpcQuotaManager().checkQuota(this, ReadOperationType.GET);
     try {
       Get get = new Get(row);
       checkFamily(family);
@@ -4357,6 +4363,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           throw new RuntimeException(
               "Result size of get in checkAndMutate must be 0 or 1, actual size:" + result.size());
         }
+        quota.addGetResult(result);
+        quota.close();
         boolean valueIsNull = comparator.getValue() == null || comparator.getValue().length == 0;
         boolean rowIsNull = result.size() == 0 || result.get(0).getValueLength() == 0;
         boolean matches = false;
@@ -4409,8 +4417,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           }
           // All edits for the given row (across all column families) must happen atomically.
           if (mutation != null) {
+            rsServices.getRegionServerRpcQuotaManager().checkQuota(this, mutation);
             doBatchMutate(mutation);
           } else {
+            rsServices.getRegionServerRpcQuotaManager().checkQuota(this,
+              rowMutations.getMutations());  
             mutateRow(rowMutations);
           }
           this.checkAndMutateChecksPassed.increment();
@@ -6721,7 +6732,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         readRequestsPerSecond.inc();
         readCellCountPerSecond.inc(outResults.size() - initialCells);
         readRawCellCountPerSecond.inc(scannerContext.getReadRawCells());
-        updateReadRequestsByCapacityUnitPerSecond(tmpList);
+        updateReadRequestsByCapacityUnitPerSecond(QuotaUtil.calculateCellSize(tmpList));
         if (!scan.isGetScan()) {
           scanRowsCountPerSecond.inc();
         }
@@ -7663,14 +7674,6 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     return results;
   }
 
-  void updateReadRequestsByCapacityUnitPerSecond(List<Cell> cells) {
-    long totalSize = 0;
-    for (int i = 0, n = cells.size(); i < n; i++) {
-      totalSize += PrivateCellUtil.estimatedSerializedSizeOf(cells.get(i));
-    }
-    readRequestsByCapacityUnitPerSecond.inc(totalSize);
-  }
-
   void metricsUpdateForGet(List<Cell> results, long before) {
     if (this.metricsRegion != null) {
       this.metricsRegion.updateGet(EnvironmentEdgeManager.currentTime() - before);
@@ -8064,6 +8067,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       }
       // Request a cache flush if over the limit.  Do it outside update lock.
       incMemStoreSize(memstoreAccounting.getMemStoreSize());
+      updateWriteRequestsByCapacityUnitPerSecond(
+        memstoreAccounting.getMemStoreSize().getDataSize());
+      this.writeRequestsPerSecond.inc();
       requestFlushIfNeeded();
       closeRegionOperation(op);
       if (this.metricsRegion != null) {
@@ -8234,7 +8240,12 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       default:
         break;
     }
+    OperationQuota operationQuota =
+        this.rsServices.getRegionServerRpcQuotaManager().checkQuota(this, ReadOperationType.GET);
     List<Cell> currentValues = get(mutation, store, deltas, null, tr);
+    operationQuota.addGetResult(currentValues);
+    operationQuota.close();
+
     // Iterate the input columns and update existing values if they were found, otherwise
     // add new column initialized to the delta amount
     int currentValuesIndex = 0;
@@ -9026,5 +9037,17 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
             (plugins.equals("") ? "" : (plugins + ",")) + replicationCoprocessorClass);
       }
     }
+  }
+
+  private void updateReadRequestsByCapacityUnitPerSecond(long readSize) {
+    long readCapacityUnit =
+        rsServices.getRegionServerRpcQuotaManager().calculateReadCapacityUnit(readSize);
+    readRequestsByCapacityUnitPerSecond.inc(readCapacityUnit);
+  }
+
+  private void updateWriteRequestsByCapacityUnitPerSecond(long writeSize) {
+    long writeCapacityUnit =
+        rsServices.getRegionServerRpcQuotaManager().calculateWriteCapacityUnit(writeSize);
+    writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnit);
   }
 }

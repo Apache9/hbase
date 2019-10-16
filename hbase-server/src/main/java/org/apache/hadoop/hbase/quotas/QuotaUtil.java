@@ -497,26 +497,33 @@ public class QuotaUtil extends QuotaTableUtil {
   public static long calculateMutationSize(final Mutation mutation) {
     long size = 0;
     for (Map.Entry<byte[], List<Cell>> entry : mutation.getFamilyCellMap().entrySet()) {
-      for (Cell cell : entry.getValue()) {
-        size += cell.getSerializedSize();
-      }
-    }
-    return size;
-  }
-
-  public static long calculateResultSize(final Result result) {
-    long size = 0;
-    for (Cell cell : result.rawCells()) {
-      size += cell.getSerializedSize();
+      size += calculateCellSize(entry.getValue());
     }
     return size;
   }
 
   public static long calculateResultSize(final List<Result> results) {
     long size = 0;
-    for (Result result: results) {
-      for (Cell cell : result.rawCells()) {
-        size += cell.getSerializedSize();
+    for (Result result : results) {
+      size += calculateResultSize(result);
+    }
+    return size;
+  }
+
+  public static long calculateResultSize(final Result result) {
+    if (result != null && !result.isEmpty()) {
+      return calculateCellSize(result.listCells());
+    }
+    return 0;
+  }
+
+  public static long calculateCellSize(final List<Cell> cells) {
+    long size = 0;
+    if (cells != null && !cells.isEmpty()) {
+      for (Cell cell : cells) {
+        if (cell != null) {
+          size += cell.getSerializedSize();
+        }
       }
     }
     return size;

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
@@ -203,5 +204,22 @@ public final class ThrottleQuotaTestUtil {
       quotaCache.getUserQuotaCache().clear();
       quotaCache.getRegionServerQuotaCache().clear();
     }
+  }
+
+  static long doAppends(int maxOps, int valueSize, byte[] family, byte[] qualifier,
+      final Table table) {
+    int count = 0;
+    try {
+      byte[] value = generateValue(valueSize);
+      for (int i = 0; i < maxOps; i++) {
+        Append append = new Append(Bytes.toBytes("row-" + count));
+        append.addColumn(family, qualifier, value);
+        table.append(append);
+        count++;
+      }
+    } catch (IOException e) {
+      LOG.error("get failed after nRetries=" + count, e);
+    }
+    return count;
   }
 }

@@ -111,6 +111,7 @@ import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.procedure2.RSProcedureCallable;
 import org.apache.hadoop.hbase.quotas.ActivePolicyEnforcement;
 import org.apache.hadoop.hbase.quotas.OperationQuota;
+import org.apache.hadoop.hbase.quotas.OperationQuota.ReadOperationType;
 import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.quotas.RegionServerRpcQuotaManager;
 import org.apache.hadoop.hbase.quotas.RegionServerSpaceQuotaManager;
@@ -686,15 +687,14 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
    * @return result to return to client if default operation should be
    * bypassed as indicated by RegionObserver, null otherwise
    */
-  private Result append(final HRegion region, final OperationQuota quota,
-      final MutationProto mutation, final CellScanner cellScanner, long nonceGroup,
-      ActivePolicyEnforcement spaceQuota)
+  private Result append(final HRegion region, final MutationProto mutation,
+      final CellScanner cellScanner, long nonceGroup, ActivePolicyEnforcement spaceQuota)
       throws IOException {
     long before = EnvironmentEdgeManager.currentTime();
     Append append = ProtobufUtil.toAppend(mutation, cellScanner);
     checkCellSizeLimit(region, append);
     spaceQuota.getPolicyEnforcement(region).check(append);
-    quota.addMutation(append);
+    getRpcQuotaManager().checkQuota(region, append);
 
     TraceUtil.addTimelineAnnotation("start processing an append request");
     TraceUtil.addKVAnnotation("region", region.toString());
@@ -743,9 +743,8 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
    * @return the Result
    * @throws IOException
    */
-  private Result increment(final HRegion region, final OperationQuota quota,
-      final MutationProto mutation, final CellScanner cells, long nonceGroup,
-      ActivePolicyEnforcement spaceQuota)
+  private Result increment(final HRegion region, final MutationProto mutation,
+      final CellScanner cells, long nonceGroup, ActivePolicyEnforcement spaceQuota)
       throws IOException {
     long before = EnvironmentEdgeManager.currentTime();
     Increment increment = ProtobufUtil.toIncrement(mutation, cells);
@@ -756,7 +755,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
 
     checkCellSizeLimit(region, increment);
     spaceQuota.getPolicyEnforcement(region).check(increment);
-    quota.addMutation(increment);
+    getRpcQuotaManager().checkQuota(region, increment);
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preIncrement(increment);
@@ -802,7 +801,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
    * @return Return the <code>cellScanner</code> passed
    */
   private List<CellScannable> doNonAtomicRegionMutation(final HRegion region,
-      final OperationQuota quota, final RegionAction actions, final CellScanner cellScanner,
+      final RegionAction actions, final CellScanner cellScanner,
       final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup,
       final RegionScannersCloseCallBack closeCallBack, RpcCallContext context,
       ActivePolicyEnforcement spaceQuotaEnforcement) {
@@ -812,7 +811,6 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     // doNonAtomicBatchOp call.  We should be staying aligned though the Put and Delete are
     // deferred/batched
     List<ClientProtos.Action> mutations = null;
-    long maxQuotaResultSize = Math.min(maxScannerResultSize, quota.getReadAvailable());
     IOException sizeIOE = null;
     Object lastBlock = null;
     ClientProtos.ResultOrException.Builder resultOrExceptionBuilder = ResultOrException.newBuilder();
@@ -825,9 +823,9 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
 
         if (context != null
             && context.isRetryImmediatelySupported()
-            && (context.getResponseCellSize() > maxQuotaResultSize
+            && (context.getResponseCellSize() > maxScannerResultSize
               || context.getResponseBlockSize() + context.getResponseExceptionSize()
-              > maxQuotaResultSize)) {
+              > maxScannerResultSize)) {
 
           // We're storing the exception since the exception and reason string won't
           // change after the response size limit is reached.
@@ -858,6 +856,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
           continue;
         }
         if (action.hasGet()) {
+          OperationQuota quota = getRpcQuotaManager().checkQuota(region, ReadOperationType.GET);
           long before = EnvironmentEdgeManager.currentTime();
           ClientProtos.Get pbGet = action.getGet();
           // An asynchbase client, https://github.com/OpenTSDB/asynchbase, starts by trying to do
@@ -876,7 +875,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
             } else {
               r = region.get(get);
             }
+            if (r != null) {
+              quota.addGetResult(r);
+            }
           } finally {
+            quota.close();
             if (regionServer.metricsRegionServer != null) {
               regionServer.metricsRegionServer.updateGet(
                   region.getTableDescriptor().getTableName(),
@@ -900,17 +903,17 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
           if (type != MutationType.PUT && type != MutationType.DELETE && mutations != null &&
               !mutations.isEmpty()) {
             // Flush out any Puts or Deletes already collected.
-            doNonAtomicBatchOp(builder, region, quota, mutations, cellScanner,
+            doNonAtomicBatchOp(builder, region, mutations, cellScanner,
               spaceQuotaEnforcement);
             mutations.clear();
           }
           switch (type) {
             case APPEND:
-              r = append(region, quota, action.getMutation(), cellScanner, nonceGroup,
+              r = append(region, action.getMutation(), cellScanner, nonceGroup,
                   spaceQuotaEnforcement);
               break;
             case INCREMENT:
-              r = increment(region, quota, action.getMutation(), cellScanner, nonceGroup,
+              r = increment(region, action.getMutation(), cellScanner, nonceGroup,
                   spaceQuotaEnforcement);
               break;
             case PUT:
@@ -962,7 +965,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     }
     // Finish up any outstanding mutations
     if (!CollectionUtils.isEmpty(mutations)) {
-      doNonAtomicBatchOp(builder, region, quota, mutations, cellScanner, spaceQuotaEnforcement);
+      doNonAtomicBatchOp(builder, region, mutations, cellScanner, spaceQuotaEnforcement);
     }
     return cellsToReturn;
   }
@@ -984,22 +987,22 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
   }
 
   private void doAtomicBatchOp(final RegionActionResult.Builder builder, final HRegion region,
-    final OperationQuota quota, final List<ClientProtos.Action> mutations,
-    final CellScanner cells, ActivePolicyEnforcement spaceQuotaEnforcement)
+      final List<ClientProtos.Action> mutations, final CellScanner cells,
+      ActivePolicyEnforcement spaceQuotaEnforcement)
     throws IOException {
     // Just throw the exception. The exception will be caught and then added to region-level
     // exception for RegionAction. Leaving the null to action result is ok since the null
     // result is viewed as failure by hbase client. And the region-lever exception will be used
     // to replaced the null result. see AsyncRequestFutureImpl#receiveMultiAction and
     // AsyncBatchRpcRetryingCaller#onComplete for more details.
-    doBatchOp(builder, region, quota, mutations, cells, spaceQuotaEnforcement, true);
+    doBatchOp(builder, region, mutations, cells, spaceQuotaEnforcement, true);
   }
 
   private void doNonAtomicBatchOp(final RegionActionResult.Builder builder, final HRegion region,
-    final OperationQuota quota, final List<ClientProtos.Action> mutations,
-    final CellScanner cells, ActivePolicyEnforcement spaceQuotaEnforcement) {
+      final List<ClientProtos.Action> mutations, final CellScanner cells,
+      ActivePolicyEnforcement spaceQuotaEnforcement) {
     try {
-      doBatchOp(builder, region, quota, mutations, cells, spaceQuotaEnforcement, false);
+      doBatchOp(builder, region, mutations, cells, spaceQuotaEnforcement, false);
     } catch (IOException e) {
       // Set the exception for each action. The mutations in same RegionAction are group to
       // different batch and then be processed individually. Hence, we don't set the region-level
@@ -1018,9 +1021,8 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
    * @param mutations
    */
   private void doBatchOp(final RegionActionResult.Builder builder, final HRegion region,
-      final OperationQuota quota, final List<ClientProtos.Action> mutations,
-      final CellScanner cells, ActivePolicyEnforcement spaceQuotaEnforcement, boolean atomic)
-      throws IOException {
+      final List<ClientProtos.Action> mutations, final CellScanner cells,
+      ActivePolicyEnforcement spaceQuotaEnforcement, boolean atomic) throws IOException {
     Mutation[] mArray = new Mutation[mutations.size()];
     long before = EnvironmentEdgeManager.currentTime();
     boolean batchContainsPuts = false, batchContainsDelete = false;
@@ -1053,8 +1055,8 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
         checkCellSizeLimit(region, mutation);
         // Check if a space quota disallows this mutation
         spaceQuotaEnforcement.getPolicyEnforcement(region).check(mutation);
-        quota.addMutation(mutation);
       }
+      getRpcQuotaManager().checkQuota(region, Arrays.asList(mArray));
 
       if (!region.getRegionInfo().isMetaRegion()) {
         regionServer.cacheFlusher.reclaimMemStoreMemory();
@@ -2585,7 +2587,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       Boolean existence = null;
       Result r = null;
       RpcCallContext context = RpcServer.getCurrentCall().orElse(null);
-      quota = getRpcQuotaManager().checkQuota(region, OperationQuota.OperationType.GET);
+      quota = getRpcQuotaManager().checkQuota(region, ReadOperationType.GET);
 
       TraceUtil.addTimelineAnnotation("start processing a get request");
       TraceUtil.addKVAnnotation("region", region.toString());
@@ -2783,13 +2785,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       .getRegionActionCount());
     ActivePolicyEnforcement spaceQuotaEnforcement = getSpaceQuotaManager().getActiveEnforcements();
     for (RegionAction regionAction : request.getRegionActionList()) {
-      OperationQuota quota;
       HRegion region;
       regionActionResultBuilder.clear();
       RegionSpecifier regionSpecifier = regionAction.getRegion();
       try {
         region = getRegion(regionSpecifier);
-        quota = getRpcQuotaManager().checkQuota(region, regionAction.getActionList());
       } catch (IOException e) {
         failRegionAction(responseBuilder, regionActionResultBuilder, regionAction, cellScanner, e);
         continue;  // For this region it's a failure.
@@ -2803,7 +2803,6 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
           failRegionAction(responseBuilder, regionActionResultBuilder, regionAction, cellScanner,
             new DoNotRetryIOException(
               region.getRegionInfo().getRegionNameAsString() + " is in STANDBY state"));
-          quota.close();
           continue;
         }
         // How does this call happen?  It may need some work to play well w/ the surroundings.
@@ -2826,7 +2825,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
                 qualifier, op, comparator, timeRange, regionActionResultBuilder,
                 spaceQuotaEnforcement);
           } else {
-            doAtomicBatchOp(regionActionResultBuilder, region, quota, regionAction.getActionList(),
+            doAtomicBatchOp(regionActionResultBuilder, region, regionAction.getActionList(),
               cellScanner, spaceQuotaEnforcement);
             processed = Boolean.TRUE;
           }
@@ -2842,7 +2841,6 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
           failRegionAction(responseBuilder, regionActionResultBuilder, regionAction, cellScanner,
             new DoNotRetryIOException(
               region.getRegionInfo().getRegionNameAsString() + " is in STANDBY state"));
-          quota.close();
           continue;
         }
         // doNonAtomicRegionMutation manages the exception internally
@@ -2853,12 +2851,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
           closeCallBack = new RegionScannersCloseCallBack();
           context.setCallBack(closeCallBack);
         }
-        cellsToReturn = doNonAtomicRegionMutation(region, quota, regionAction, cellScanner,
+        cellsToReturn = doNonAtomicRegionMutation(region, regionAction, cellScanner,
             regionActionResultBuilder, cellsToReturn, nonceGroup, closeCallBack, context,
             spaceQuotaEnforcement);
       }
       responseBuilder.addRegionActionResult(regionActionResultBuilder.build());
-      quota.close();
       ClientProtos.RegionLoadStats regionLoadStats = region.getLoadStatistics();
       if (regionLoadStats != null) {
         regionStats.put(regionSpecifier, regionLoadStats);
@@ -2925,7 +2922,6 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     // It is also the conduit via which we pass back data.
     HBaseRpcController controller = (HBaseRpcController)rpcc;
     CellScanner cellScanner = controller != null ? controller.cellScanner() : null;
-    OperationQuota quota = null;
     RpcCallContext context = RpcServer.getCurrentCall().orElse(null);
     ActivePolicyEnforcement spaceQuotaEnforcement = null;
     MutationType type = null;
@@ -2951,24 +2947,23 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       Boolean processed = null;
       type = mutation.getMutateType();
 
-      quota = getRpcQuotaManager().checkQuota(region, OperationQuota.OperationType.MUTATE);
       spaceQuotaEnforcement = getSpaceQuotaManager().getActiveEnforcements();
 
       switch (type) {
         case APPEND:
           // TODO: this doesn't actually check anything.
-          r = append(region, quota, mutation, cellScanner, nonceGroup, spaceQuotaEnforcement);
+          r = append(region, mutation, cellScanner, nonceGroup, spaceQuotaEnforcement);
           break;
         case INCREMENT:
           // TODO: this doesn't actually check anything.
-          r = increment(region, quota, mutation, cellScanner, nonceGroup, spaceQuotaEnforcement);
+          r = increment(region, mutation, cellScanner, nonceGroup, spaceQuotaEnforcement);
           break;
         case PUT:
           Put put = ProtobufUtil.toPut(mutation, cellScanner);
           checkCellSizeLimit(region, put);
+          getRpcQuotaManager().checkQuota(region, put);
           // Throws an exception when violated
           spaceQuotaEnforcement.getPolicyEnforcement(region).check(put);
-          quota.addMutation(put);
           if (request.hasCondition()) {
             Condition condition = request.getCondition();
             byte[] row = condition.getRow().toByteArray();
@@ -3001,8 +2996,8 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
         case DELETE:
           Delete delete = ProtobufUtil.toDelete(mutation, cellScanner);
           checkCellSizeLimit(region, delete);
+          getRpcQuotaManager().checkQuota(region, delete);
           spaceQuotaEnforcement.getPolicyEnforcement(region).check(delete);
-          quota.addMutation(delete);
           if (request.hasCondition()) {
             Condition condition = request.getCondition();
             byte[] row = condition.getRow().toByteArray();
@@ -3047,9 +3042,6 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       regionServer.checkFileSystem();
       throw new ServiceException(ie);
     } finally {
-      if (quota != null) {
-        quota.close();
-      }
       // Update metrics
       if (regionServer.metricsRegionServer != null && type != null) {
         long after = EnvironmentEdgeManager.currentTime();
@@ -3517,7 +3509,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     }
     OperationQuota quota;
     try {
-      quota = getRpcQuotaManager().checkQuota(region, OperationQuota.OperationType.SCAN);
+      quota = getRpcQuotaManager().checkQuota(region, ReadOperationType.SCAN);
     } catch (IOException e) {
       addScannerLeaseBack(lease);
       throw new ServiceException(e);
@@ -3581,6 +3573,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       }
 
       quota.addScanResult(results);
+      quota.close();
       addResults(builder, results, (HBaseRpcController) controller,
         RegionReplicaUtil.isDefaultReplica(region.getRegionInfo()),
         isClientCellBlockSupport(context));
@@ -3673,7 +3666,6 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
           addScannerLeaseBack(lease);
         }
       }
-      quota.close();
     }
   }
 

@@ -20,9 +20,9 @@ package org.apache.hadoop.hbase.quotas;
 
 import java.util.List;
 
+import org.apache.hadoop.hbase.Cell;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
-import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
 
 /**
@@ -42,8 +42,12 @@ class NoopOperationQuota implements OperationQuota {
   }
 
   @Override
-  public void checkQuota(int numWrites, int numReads, int numScans)
-      throws RpcThrottlingException {
+  public void checkReadQuota(int numReads, int numScans) throws RpcThrottlingException {
+    // no-op
+  }
+
+  @Override
+  public void checkWriteQuota(int numWrites, long writeSize) throws RpcThrottlingException {
     // no-op
   }
 
@@ -58,22 +62,17 @@ class NoopOperationQuota implements OperationQuota {
   }
 
   @Override
+  public void addGetResult(List<Cell> cells) {
+    // no-op
+  }
+
+  @Override
   public void addScanResult(final List<Result> results) {
     // no-op
   }
 
   @Override
-  public void addMutation(final Mutation mutation) {
-    // no-op
-  }
-
-  @Override
   public long getReadAvailable() {
-    return Long.MAX_VALUE;
-  }
-
-  @Override
-  public long getWriteAvailable() {
     return Long.MAX_VALUE;
   }
 }

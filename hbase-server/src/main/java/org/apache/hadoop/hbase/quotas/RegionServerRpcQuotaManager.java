@@ -23,8 +23,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.ipc.RpcScheduler;
 import org.apache.hadoop.hbase.ipc.RpcServer;
+import org.apache.hadoop.hbase.quotas.OperationQuota.ReadOperationType;
 import org.apache.hadoop.hbase.regionserver.Region;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.security.User;
@@ -34,7 +36,6 @@ import org.apache.yetus.audience.InterfaceStability;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
 
 /**
  * Region Server Quota Manager.
@@ -55,11 +56,17 @@ public class RegionServerRpcQuotaManager {
   private volatile boolean rpcThrottleEnabled;
   // Storage for quota rpc throttle
   private RpcThrottleStorage rpcThrottleStorage;
+  private final long writeCapacityUnit;
+  private final long readCapacityUnit;
 
   public RegionServerRpcQuotaManager(final RegionServerServices rsServices) {
     this.rsServices = rsServices;
     rpcThrottleStorage =
         new RpcThrottleStorage(rsServices.getZooKeeper(), rsServices.getConfiguration());
+    this.writeCapacityUnit = rsServices.getConfiguration()
+        .getLong(QuotaUtil.WRITE_CAPACITY_UNIT_CONF_KEY, QuotaUtil.DEFAULT_WRITE_CAPACITY_UNIT);
+    this.readCapacityUnit = rsServices.getConfiguration()
+        .getLong(QuotaUtil.READ_CAPACITY_UNIT_CONF_KEY, QuotaUtil.DEFAULT_READ_CAPACITY_UNIT);
   }
 
   public void start(final RpcScheduler rpcScheduler) throws IOException {
@@ -117,17 +124,18 @@ public class RegionServerRpcQuotaManager {
    * Returns the quota for an operation.
    *
    * @param ugi the user that is executing the operation
-   * @param table the table where the operation will be executed
+   * @param region the region where the operation will be executed
    * @return the OperationQuota
    */
-  public OperationQuota getQuota(final UserGroupInformation ugi, final TableName table) {
+  private OperationQuota getQuota(final UserGroupInformation ugi, final Region region) {
+    TableName table = region.getTableDescriptor().getTableName();
     if (isQuotaEnabled() && !table.isSystemTable() && isRpcThrottleEnabled()) {
       UserQuotaState userQuotaState = quotaCache.getUserQuotaState(ugi);
       QuotaLimiter userLimiter = userQuotaState.getTableLimiter(table);
       boolean useNoop = userLimiter.isBypass();
       if (userQuotaState.hasBypassGlobals()) {
         if (LOG.isTraceEnabled()) {
-          LOG.trace("get quota for ugi=" + ugi + " table=" + table + " userLimiter=" + userLimiter);
+          LOG.trace("get quota for ugi={} table={} userLimiter={}", ugi, table, userLimiter);
         }
         if (!useNoop) {
           return new DefaultOperationQuota(this.rsServices.getConfiguration(), userLimiter);
@@ -140,9 +148,11 @@ public class RegionServerRpcQuotaManager {
         useNoop &= tableLimiter.isBypass() && nsLimiter.isBypass() && rsLimiter.isBypass();
         boolean exceedThrottleQuotaEnabled = quotaCache.isExceedThrottleQuotaEnabled();
         if (LOG.isTraceEnabled()) {
-          LOG.trace("get quota for ugi=" + ugi + " table=" + table + " userLimiter=" + userLimiter
-              + " tableLimiter=" + tableLimiter + " nsLimiter=" + nsLimiter + " rsLimiter="
-              + rsLimiter + " exceedThrottleQuotaEnabled=" + exceedThrottleQuotaEnabled);
+          LOG.trace(
+            "get quota for ugi={} table={} userLimiter={} tableLimiter={} nsLimiter={} "
+                + "rsLimiter={} exceedThrottleQuotaEnabled={}",
+            ugi, table, userLimiter, tableLimiter, nsLimiter, rsLimiter,
+            exceedThrottleQuotaEnabled);
         }
         if (!useNoop) {
           if (exceedThrottleQuotaEnabled) {
@@ -159,61 +169,109 @@ public class RegionServerRpcQuotaManager {
   }
 
   /**
-   * Check the quota for the current (rpc-context) user.
+   * Check the read quota for the current (rpc-context) user.
    * Returns the OperationQuota used to get the available quota and
    * to report the data/usage of the operation.
-   * @param region the region where the operation will be performed
+   * @param region the region where the read operation will be performed
    * @param type the operation type
    * @return the OperationQuota
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
-  public OperationQuota checkQuota(final Region region,
-      final OperationQuota.OperationType type) throws IOException, RpcThrottlingException {
+  public OperationQuota checkQuota(final Region region, final ReadOperationType type)
+      throws IOException, RpcThrottlingException {
     switch (type) {
-      case SCAN:   return checkQuota(region, 0, 0, 1);
-      case GET:    return checkQuota(region, 0, 1, 0);
-      case MUTATE: return checkQuota(region, 1, 0, 0);
+      case SCAN:
+        return checkReadQuota(region, 0, 1);
+      case GET:
+        return checkReadQuota(region, 1, 0);
     }
     throw new RuntimeException("Invalid operation type: " + type);
   }
 
   /**
-   * Check the quota for the current (rpc-context) user.
-   * Returns the OperationQuota used to get the available quota and
-   * to report the data/usage of the operation.
-   * @param region the region where the operation will be performed
-   * @param actions the "multi" actions to perform
-   * @return the OperationQuota
+   * Check the write quota for the current (rpc-context) user.
+   * @param region the region where the write operation will be performed
+   * @param mutation the mutation
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
-  public OperationQuota checkQuota(final Region region,
-      final List<ClientProtos.Action> actions) throws IOException, RpcThrottlingException {
-    int numWrites = 0;
-    int numReads = 0;
-    for (final ClientProtos.Action action: actions) {
-      if (action.hasMutation()) {
-        numWrites++;
-      } else if (action.hasGet()) {
-        numReads++;
-      }
-    }
-    return checkQuota(region, numWrites, numReads, 0);
+  public void checkQuota(final Region region, final Mutation mutation)
+      throws IOException, RpcThrottlingException {
+    long size = QuotaUtil.calculateMutationSize(mutation);
+    checkWriteQuota(region, 1, size);
   }
 
   /**
-   * Check the quota for the current (rpc-context) user.
+   * Check the write quota for the current (rpc-context) user.
+   * @param region the region where the write operation will be performed
+   * @param mutations the mutation list
+   * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
+   */
+  public void checkQuota(final Region region, final List<Mutation> mutations)
+      throws IOException, RpcThrottlingException {
+    long writeSize =
+        mutations.stream().mapToLong(mutation -> QuotaUtil.calculateMutationSize(mutation)).sum();
+    checkWriteQuota(region, mutations.size(), writeSize);
+  }
+
+  /**
+   * Check the read quota for the current (rpc-context) user.
    * Returns the OperationQuota used to get the available quota and
    * to report the data/usage of the operation.
-   * @param region the region where the operation will be performed
-   * @param numWrites number of writes to perform
+   * @param region the region where the read operation will be performed
    * @param numReads number of short-reads to perform
    * @param numScans number of scan to perform
    * @return the OperationQuota
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
-  private OperationQuota checkQuota(final Region region,
-      final int numWrites, final int numReads, final int numScans)
+  private OperationQuota checkReadQuota(final Region region, final int numReads, final int numScans)
       throws IOException, RpcThrottlingException {
+    UserGroupInformation ugi = getRequestUser();
+    OperationQuota quota = getQuota(ugi, region);
+    try {
+      quota.checkReadQuota(numReads, numScans);
+    } catch (RpcThrottlingException e) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Throttling exception for user={} table={} numReads={} numScans={}: {}",
+          ugi.getUserName(), region.getTableDescriptor().getTableName(), numReads, numScans,
+          e.getMessage());
+      }
+      throw e;
+    }
+    return quota;
+  }
+
+  /**
+   * Check the write quota for the current (rpc-context) user.
+   * @param region the region where the write operation will be performed
+   * @param numWrites number of write to perform
+   * @param writeSize data size in bytes of write to perform
+   * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
+   */
+  private void checkWriteQuota(final Region region, final int numWrites,
+      final long writeSize) throws IOException, RpcThrottlingException {
+    UserGroupInformation ugi = getRequestUser();
+    OperationQuota quota = getQuota(ugi, region);
+    try {
+      quota.checkWriteQuota(numWrites, writeSize);
+    } catch (RpcThrottlingException e) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Throttling exception for user={} table={} numWrites={} writeSize={}: {}",
+          ugi.getUserName(), region.getTableDescriptor().getTableName(), numWrites, writeSize,
+          e.getMessage());
+      }
+      throw e;
+    }
+  }
+
+  public long calculateWriteCapacityUnit(final long size) {
+    return (long) Math.ceil(size * 1.0 / this.writeCapacityUnit);
+  }
+
+  public long calculateReadCapacityUnit(final long size) {
+    return (long) Math.ceil(size * 1.0 / this.readCapacityUnit);
+  }
+
+  private UserGroupInformation getRequestUser() throws IOException {
     Optional<User> user = RpcServer.getRequestUser();
     UserGroupInformation ugi;
     if (user.isPresent()) {
@@ -221,18 +279,6 @@ public class RegionServerRpcQuotaManager {
     } else {
       ugi = User.getCurrent().getUGI();
     }
-    TableName table = region.getTableDescriptor().getTableName();
-
-    OperationQuota quota = getQuota(ugi, table);
-    try {
-      quota.checkQuota(numWrites, numReads, numScans);
-    } catch (RpcThrottlingException e) {
-      LOG.debug("Throttling exception for user=" + ugi.getUserName() +
-                " table=" + table + " numWrites=" + numWrites +
-                " numReads=" + numReads + " numScans=" + numScans +
-                ": " + e.getMessage());
-      throw e;
-    }
-    return quota;
+    return ugi;
   }
 }

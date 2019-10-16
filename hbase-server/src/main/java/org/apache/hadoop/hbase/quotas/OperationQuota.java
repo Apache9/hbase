@@ -20,9 +20,9 @@ package org.apache.hadoop.hbase.quotas;
 
 import java.util.List;
 
+import org.apache.hadoop.hbase.Cell;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
-import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
 
 /**
@@ -31,21 +31,33 @@ import org.apache.hadoop.hbase.client.Result;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public interface OperationQuota {
-  public enum OperationType { MUTATE, GET, SCAN }
+  public enum ReadOperationType { GET, SCAN }
 
   /**
-   * Checks if it is possible to execute the specified operation.
-   * The quota will be estimated based on the number of operations to perform
-   * and the average size accumulated during time.
+   * Checks if it is possible to execute the specified read operation. The quota will be estimated
+   * based on the number of operations to perform and the average size accumulated during time. This
+   * method should be used along with {@link #addGetResult(Result)}, {@link #addGetResult(List)},
+   * {@link #addScanResult(List)} and {@link #close()} to adjust the estimated consumed quota to
+   * real consumed quota.
    *
-   * @param numWrites number of write operation that will be performed
    * @param numReads number of small-read operation that will be performed
    * @param numScans number of long-read operation that will be performed
-   * @throws RpcThrottlingException if the operation cannot be performed because
-   *   RPC quota is exceeded.
+   * @throws RpcThrottlingException if the operation cannot be performed because RPC quota is
+   *           exceeded.
    */
-  void checkQuota(int numWrites, int numReads, int numScans)
-    throws RpcThrottlingException;
+  void checkReadQuota(int numReads, int numScans) throws RpcThrottlingException;
+
+  /**
+   * Checks if it is possible to execute the specified write operation. The quotas are the real
+   * values which will be consumed because the data size of write operation is specific and does not
+   * need to be estimated.
+   *
+   * @param numWrites number of write operation that will be performed
+   * @param writeSize number of write size that will be consumed
+   * @throws RpcThrottlingException if the operation cannot be performed because RPC quota is
+   *           exceeded.
+   */
+  void checkWriteQuota(int numWrites, long writeSize) throws RpcThrottlingException;
 
   /** Cleanup method on operation completion */
   void close();
@@ -56,21 +68,14 @@ public interface OperationQuota {
    */
   void addGetResult(Result result);
 
+  void addGetResult(List<Cell> cells);
+
   /**
    * Add a scan result. This will be used to calculate the exact quota and
    * have a better long-read average size for the next time.
    */
   void addScanResult(List<Result> results);
 
-  /**
-   * Add a mutation result. This will be used to calculate the exact quota and
-   * have a better mutation average size for the next time.
-   */
-  void addMutation(Mutation mutation);
-
   /** @return the number of bytes available to read to avoid exceeding the quota */
   long getReadAvailable();
-
-  /** @return the number of bytes available to write to avoid exceeding the quota */
-  long getWriteAvailable();
 }
