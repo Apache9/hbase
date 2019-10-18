@@ -31,7 +31,38 @@ import org.apache.hadoop.hbase.client.Result;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public interface OperationQuota {
-  public enum ReadOperationType { GET, SCAN }
+  enum ReadOperationType { GET, SCAN }
+
+  /**
+   * Keeps track of the average data size of operations like get, scan
+   */
+  class AvgOperationSize {
+    private final long[] sizeSum;
+    private final long[] count;
+
+    public AvgOperationSize() {
+      int size = ReadOperationType.values().length;
+      sizeSum = new long[size];
+      count = new long[size];
+      for (int i = 0; i < size; ++i) {
+        sizeSum[i] = 0;
+        count[i] = 0;
+      }
+    }
+
+    public void addOperationSize(ReadOperationType type, long opCount, long opSize) {
+      if (opSize > 0) {
+        int index = type.ordinal();
+        sizeSum[index] += opSize;
+        count[index] += opCount;
+      }
+    }
+
+    public long getAvgOperationSize(ReadOperationType type) {
+      int index = type.ordinal();
+      return count[index] > 0 ? sizeSum[index] / count[index] : 0;
+    }
+  }
 
   /**
    * Checks if it is possible to execute the specified read operation. The quota will be estimated

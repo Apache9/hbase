@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hbase.quotas;
 
+import org.apache.hadoop.hbase.quotas.OperationQuota.ReadOperationType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 
@@ -27,6 +28,9 @@ import org.apache.yetus.audience.InterfaceStability;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public interface QuotaLimiter {
+  enum QuotaLimiterType {
+    USER, USER_NAMESPACE, USER_TABLE, NAMESPACE, TABLE, REGIONSERVER, NOOP
+  }
   /**
    * Checks if it is possible to execute the specified operation.
    *
@@ -80,4 +84,10 @@ public interface QuotaLimiter {
   long getWriteAvailable();
 
   String getOwner();
+
+  QuotaLimiterType getQuotaLimiterType();
+
+  void addOperationCountAndSize(ReadOperationType operationType, long count, long size);
+
+  long getAverageOperationSize(ReadOperationType operationType);
 }

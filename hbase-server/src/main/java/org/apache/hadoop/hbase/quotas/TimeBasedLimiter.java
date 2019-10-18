@@ -21,6 +21,8 @@ package org.apache.hadoop.hbase.quotas;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.quotas.OperationQuota.AvgOperationSize;
+import org.apache.hadoop.hbase.quotas.OperationQuota.ReadOperationType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
@@ -44,13 +46,17 @@ public class TimeBasedLimiter implements QuotaLimiter {
   private RateLimiter writeCapacityUnitLimiter = null;
   private RateLimiter readCapacityUnitLimiter = null;
   private String owner = null;
+  private QuotaLimiterType quotaLimiterType;
+  private AvgOperationSize avgOperationSize;
 
-  private TimeBasedLimiter(String owner) {
+  private TimeBasedLimiter(String owner, QuotaLimiterType quotaLimiterType) {
     this();
     this.owner = owner;
+    this.quotaLimiterType = quotaLimiterType;
   }
 
   private TimeBasedLimiter() {
+    avgOperationSize = new AvgOperationSize();
     if (FixedIntervalRateLimiter.class.getName().equals(
       conf.getClass(RateLimiter.QUOTA_RATE_LIMITER_CONF_KEY, AverageIntervalRateLimiter.class)
           .getName())) {
@@ -76,8 +82,9 @@ public class TimeBasedLimiter implements QuotaLimiter {
     }
   }
 
-  static QuotaLimiter fromThrottle(final Throttle throttle, String owner) {
-    TimeBasedLimiter limiter = new TimeBasedLimiter(owner);
+  static QuotaLimiter fromThrottle(final Throttle throttle, String owner,
+      QuotaLimiterType quotaLimiterType) {
+    TimeBasedLimiter limiter = new TimeBasedLimiter(owner, quotaLimiterType);
     boolean isBypass = true;
     if (throttle.hasReqNum()) {
       setFromTimedQuota(limiter.reqsLimiter, throttle.getReqNum());
@@ -289,5 +296,20 @@ public class TimeBasedLimiter implements QuotaLimiter {
     }
     builder.append(')');
     return builder.toString();
+  }
+
+  @Override
+  public QuotaLimiterType getQuotaLimiterType() {
+    return quotaLimiterType;
+  }
+
+  @Override
+  public void addOperationCountAndSize(ReadOperationType operationType, long count, long size) {
+    avgOperationSize.addOperationSize(operationType, count, size);
+  }
+
+  @Override
+  public long getAverageOperationSize(ReadOperationType operationType) {
+    return avgOperationSize.getAvgOperationSize(operationType);
   }
 }

@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.quotas.QuotaLimiter.QuotaLimiterType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.slf4j.Logger;
@@ -55,6 +56,10 @@ public class DefaultOperationQuota implements OperationQuota {
   protected long writeConsumed = 0;
   protected long writeCapacityUnitConsumed = 0;
 
+  // record the read/scan count and size to get average data size for per request
+  private QuotaLimiter userTableLimiter;
+  private QuotaLimiter tableLimiter;
+
   public DefaultOperationQuota(final Configuration conf, final QuotaLimiter... limiters) {
     this(conf, Arrays.asList(limiters));
   }
@@ -73,6 +78,13 @@ public class DefaultOperationQuota implements OperationQuota {
 
     for (int i = 0; i < size; ++i) {
       operationSize[i] = 0;
+    }
+    for (QuotaLimiter limiter : limiters) {
+      if (limiter.getQuotaLimiterType() == QuotaLimiterType.USER_TABLE) {
+        userTableLimiter = limiter;
+      } else if (limiter.getQuotaLimiterType() == QuotaLimiterType.TABLE) {
+        tableLimiter = limiter;
+      }
     }
   }
 
@@ -128,17 +140,27 @@ public class DefaultOperationQuota implements OperationQuota {
 
   @Override
   public void addGetResult(final Result result) {
-    operationSize[ReadOperationType.GET.ordinal()] += QuotaUtil.calculateResultSize(result);
+    addOperationSize(ReadOperationType.GET, QuotaUtil.calculateResultSize(result));
   }
 
   @Override
   public void addGetResult(List<Cell> cells) {
-    operationSize[ReadOperationType.GET.ordinal()] += QuotaUtil.calculateCellSize(cells);
+    addOperationSize(ReadOperationType.GET, QuotaUtil.calculateCellSize(cells));
   }
 
   @Override
   public void addScanResult(final List<Result> results) {
-    operationSize[ReadOperationType.SCAN.ordinal()] += QuotaUtil.calculateResultSize(results);
+    addOperationSize(ReadOperationType.SCAN, QuotaUtil.calculateResultSize(results));
+  }
+
+  private void addOperationSize(ReadOperationType type, long size) {
+    operationSize[type.ordinal()] += size;
+    if (userTableLimiter != null) {
+      userTableLimiter.addOperationCountAndSize(type, 1, size);
+    }
+    if (tableLimiter != null) {
+      tableLimiter.addOperationCountAndSize(type, 1, size);
+    }
   }
 
   protected void updateEstimateReadConsumeQuota(int numReads, int numScans) {
@@ -154,17 +176,7 @@ public class DefaultOperationQuota implements OperationQuota {
 
   private long estimateConsume(final ReadOperationType type, int numReqs) {
     if (numReqs > 0) {
-      long avgSize = 0;
-      switch (type) {
-        case GET:
-          avgSize = 100;
-          break;
-        case SCAN:
-          avgSize = 1000;
-          break;
-        default:
-          throw new RuntimeException("Invalid operation type: " + type);
-      }
+      long avgSize = getEstimateOperationSize(type);
       return avgSize * numReqs;
     }
     return 0;
@@ -180,5 +192,36 @@ public class DefaultOperationQuota implements OperationQuota {
 
   private long calculateReadCapacityUnitDiff(final long actualSize, final long estimateSize) {
     return calculateReadCapacityUnit(actualSize) - calculateReadCapacityUnit(estimateSize);
+  }
+
+  private long getEstimateOperationSize(ReadOperationType operationType) {
+    long size = getAverageOperationSize(operationType);
+    return size > 0 ? size : getDefaultOperationSize(operationType);
+  }
+
+  // get average data size for per request
+  private long getAverageOperationSize(ReadOperationType type) {
+    long size = getAverageOperationSize(userTableLimiter, type);
+    return size > 0 ? size : getAverageOperationSize(tableLimiter, type);
+  }
+
+  private long getAverageOperationSize(QuotaLimiter limiter, ReadOperationType type) {
+    return limiter != null ? limiter.getAverageOperationSize(type) : 0;
+  }
+
+  // get default data size for per request
+  private long getDefaultOperationSize(ReadOperationType type) {
+    long size;
+    switch (type) {
+      case GET:
+        size = 100;
+        break;
+      case SCAN:
+        size = 1000;
+        break;
+      default:
+        throw new RuntimeException("Invalid operation type: " + type);
+    }
+    return size;
   }
 }

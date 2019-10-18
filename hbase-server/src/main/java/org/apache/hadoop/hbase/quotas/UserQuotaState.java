@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.quotas.QuotaLimiter.QuotaLimiterType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos.Quotas;
@@ -99,8 +100,8 @@ public class UserQuotaState extends QuotaState {
   }
 
   @Override
-  public synchronized void setQuotas(final Quotas quotas, String owner) {
-    super.setQuotas(quotas, owner);
+  public synchronized void setQuotas(final Quotas quotas, String owner, QuotaLimiterType type) {
+    super.setQuotas(quotas, owner, type);
     bypassGlobals = quotas.getBypassGlobals();
   }
 
@@ -108,26 +109,29 @@ public class UserQuotaState extends QuotaState {
    * Add the quota information of the specified table.
    * (This operation is part of the QuotaState setup)
    */
-  public synchronized void setQuotas(final TableName table, Quotas quotas, String owner) {
-    tableLimiters = setLimiter(tableLimiters, table, quotas, owner);
+  public synchronized void setQuotas(final TableName table, Quotas quotas, String owner,
+      QuotaLimiterType type) {
+    tableLimiters = setLimiter(tableLimiters, table, quotas, owner, type);
   }
 
   /**
    * Add the quota information of the specified namespace.
    * (This operation is part of the QuotaState setup)
    */
-  public void setQuotas(final String namespace, Quotas quotas, String owner) {
-    namespaceLimiters = setLimiter(namespaceLimiters, namespace, quotas, owner);
+  public void setQuotas(final String namespace, Quotas quotas, String owner,
+      QuotaLimiterType type) {
+    namespaceLimiters = setLimiter(namespaceLimiters, namespace, quotas, owner, type);
   }
 
-  private <K> Map<K, QuotaLimiter> setLimiter(Map<K, QuotaLimiter> limiters,
-      final K key, final Quotas quotas, String owner) {
+  private <K> Map<K, QuotaLimiter> setLimiter(Map<K, QuotaLimiter> limiters, final K key,
+      final Quotas quotas, String owner, QuotaLimiterType type) {
     if (limiters == null) {
       limiters = new HashMap<>();
     }
 
     QuotaLimiter limiter =
-        quotas.hasThrottle() ? QuotaLimiterFactory.fromThrottle(quotas.getThrottle(), owner) : null;
+        quotas.hasThrottle() ? QuotaLimiterFactory.fromThrottle(quotas.getThrottle(), owner, type)
+            : null;
     if (limiter != null && !limiter.isBypass()) {
       limiters.put(key, limiter);
     } else {

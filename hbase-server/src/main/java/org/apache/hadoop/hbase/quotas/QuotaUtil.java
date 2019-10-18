@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.quotas.QuotaLimiter.QuotaLimiterType;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -293,7 +294,8 @@ public class QuotaUtil extends QuotaTableUtil {
           public void visitUserQuotas(String userName, String namespace, Quotas quotas) {
             quotas = updateClusterQuotaToMachineQuota(quotas, factor);
             quotaInfo.setQuotas(namespace, quotas,
-              "USER => " + userName + ", NAMESPACE => " + namespace);
+              "USER => " + userName + ", NAMESPACE => " + namespace,
+              QuotaLimiterType.USER_NAMESPACE);
           }
 
           @Override
@@ -302,13 +304,14 @@ public class QuotaUtil extends QuotaTableUtil {
               tableMachineQuotaFactors.containsKey(table) ? tableMachineQuotaFactors.get(table)
                   : 1);
             quotaInfo.setQuotas(table, quotas,
-              "USER => " + userName + ", TABLE => " + table.getNameAsString());
+              "USER => " + userName + ", TABLE => " + table.getNameAsString(),
+              QuotaLimiterType.USER_TABLE);
           }
 
           @Override
           public void visitUserQuotas(String userName, Quotas quotas) {
             quotas = updateClusterQuotaToMachineQuota(quotas, factor);
-            quotaInfo.setQuotas(quotas, "USER => " + userName);
+            quotaInfo.setQuotas(quotas, "USER => " + userName, QuotaLimiterType.USER);
           }
         });
       } catch (IOException e) {
@@ -337,6 +340,11 @@ public class QuotaUtil extends QuotaTableUtil {
       public String getOwner(TableName tableName) {
         return "TABLE => " + tableName.getNameAsString();
       }
+
+      @Override
+      public QuotaLimiterType getQuotaLimiterType() {
+        return QuotaLimiterType.TABLE;
+      }
     });
   }
 
@@ -358,6 +366,11 @@ public class QuotaUtil extends QuotaTableUtil {
       public String getOwner(String s) {
         return "NAMESPACE => " + s;
       }
+
+      @Override
+      public QuotaLimiterType getQuotaLimiterType() {
+        return QuotaLimiterType.NAMESPACE;
+      }
     });
   }
 
@@ -378,6 +391,11 @@ public class QuotaUtil extends QuotaTableUtil {
       @Override
       public String getOwner(String s) {
         return "REGIONSERVER => " + s;
+      }
+
+      @Override
+      public QuotaLimiterType getQuotaLimiterType() {
+        return QuotaLimiterType.REGIONSERVER;
       }
     });
   }
@@ -406,7 +424,7 @@ public class QuotaUtil extends QuotaTableUtil {
         Quotas quotas = quotasFromData(data);
         quotas = updateClusterQuotaToMachineQuota(quotas,
           kfr.getFactor(key));
-        quotaInfo.setQuotas(quotas, kfr.getOwner(key));
+        quotaInfo.setQuotas(quotas, kfr.getOwner(key), kfr.getQuotaLimiterType());
       } catch (IOException e) {
         LOG.error("Unable to parse " + type + " '" + key + "' quotas", e);
         globalQuotas.remove(key);
@@ -472,6 +490,7 @@ public class QuotaUtil extends QuotaTableUtil {
     T getKeyFromRow(final byte[] row);
     double getFactor(T t);
     String getOwner(T t);
+    QuotaLimiterType getQuotaLimiterType();
   }
 
   /* =========================================================================

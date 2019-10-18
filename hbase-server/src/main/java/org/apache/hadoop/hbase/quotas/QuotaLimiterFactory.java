@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hbase.quotas;
 
+import org.apache.hadoop.hbase.quotas.QuotaLimiter.QuotaLimiterType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos.Throttle;
@@ -25,8 +26,9 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos.Throttle;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class QuotaLimiterFactory {
-  public static QuotaLimiter fromThrottle(final Throttle throttle, String owner) {
-    return TimeBasedLimiter.fromThrottle(throttle, owner);
+  public static QuotaLimiter fromThrottle(final Throttle throttle, String owner,
+      QuotaLimiterType type) {
+    return TimeBasedLimiter.fromThrottle(throttle, owner, type);
   }
 
   public static QuotaLimiter update(final QuotaLimiter a, final QuotaLimiter b) {

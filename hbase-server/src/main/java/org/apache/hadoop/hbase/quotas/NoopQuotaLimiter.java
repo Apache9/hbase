@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hbase.quotas;
 
+import org.apache.hadoop.hbase.quotas.OperationQuota.ReadOperationType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 
@@ -83,5 +84,20 @@ class NoopQuotaLimiter implements QuotaLimiter {
   @Override
   public String getOwner() {
     return "";
+  }
+
+  @Override
+  public QuotaLimiterType getQuotaLimiterType() {
+    return QuotaLimiterType.NOOP;
+  }
+
+  @Override
+  public void addOperationCountAndSize(ReadOperationType operationType, long count, long size) {
+    // no-op
+  }
+
+  @Override
+  public long getAverageOperationSize(ReadOperationType operationType) {
+    return 0;
   }
 }
