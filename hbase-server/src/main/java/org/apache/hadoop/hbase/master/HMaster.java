@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.management.ObjectName;
 
@@ -108,7 +109,6 @@ import org.apache.hadoop.hbase.master.RegionState.State;
 import org.apache.hadoop.hbase.master.balancer.BalancerChore;
 import org.apache.hadoop.hbase.master.balancer.ClusterStatusChore;
 import org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory;
-import org.apache.hadoop.hbase.master.cleaner.CleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.DirScanPool;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
@@ -566,7 +566,9 @@ MasterServices, Server {
   private volatile boolean initializationBeforeMetaAssignment = false;
 
   private boolean ignoreSplitsWhenCreatingTable = false;
-  
+
+  private boolean isolateMetaWhenBalance = false;
+
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -712,6 +714,8 @@ MasterServices, Server {
     }
     this.ignoreSplitsWhenCreatingTable = conf.getBoolean(
       HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
+    this.isolateMetaWhenBalance = conf.getBoolean(HConstants.HBASE_MASTER_ISOLATE_META_WHEN_BALANCE,
+        HConstants.DEFAULT_HBASE_MASTER_ISOLATE_META_WHEN_BALANCE);
     this.snapshotBeforeDelete = conf.getBoolean(HConstants.SNAPSHOT_BEFORE_DELETE, false);
     
   }
@@ -1918,7 +1922,6 @@ MasterServices, Server {
       return false;
     }
 
-    int maxRegionsInTransition = getMaxRegionsInTransition();
     boolean balancerRan;
     synchronized (this.balancer) {
       // If balance not true, don't run balancer.
@@ -1936,6 +1939,12 @@ MasterServices, Server {
       if (this.serverManager.areDeadServersInProgress()) {
         LOG.debug("Not running balancer because processing dead regionserver(s): " +
             this.serverManager.getDeadServers());
+        return false;
+      }
+
+      if (isolateMetaWhenBalance && isClusterBalancedExcludeMetaRegionServer()) {
+        LOG.info("Not running balancer because isolateMetaWhenBalance=" + isolateMetaWhenBalance +
+            " and cluster is balanced exclude meta regionserver");
         return false;
       }
 
@@ -1967,34 +1976,13 @@ MasterServices, Server {
           plans.addAll(partialPlans);
       }
 
-      long balanceStartTime = System.currentTimeMillis();
-      long cutoffTime = balanceStartTime + this.maxBlancingTime;
-      int rpCount = 0;  // number of RegionPlans balanced so far
       balancerRan = plans != null && !plans.isEmpty();
-      if (plans != null && !plans.isEmpty()) {
-        int balanceInterval = this.maxBlancingTime / plans.size();
-        LOG.info("Balancer plans size is " + plans.size() + ", the balance interval is "
-            + balanceInterval + " ms, and the max number regions in transition is "
-            + maxRegionsInTransition);
+      int rpCount = executeBlancePlans(plans);
 
-        for (RegionPlan plan : plans) {
-          LOG.info("balance " + plan);
-          //TODO: bulk assign
-          this.assignmentManager.balance(plan);
-          rpCount++;
-
-          balanceThrottling(balanceStartTime + rpCount * balanceInterval, maxRegionsInTransition,
-              cutoffTime);
-
-          // if performing next balance exceeds cutoff time, exit the loop
-          if (rpCount < plans.size() && System.currentTimeMillis() > cutoffTime) {
-            // TODO: After balance, there should not be a cutoff time (keeping it as
-            // a security net for now)
-            LOG.debug("No more balancing till next balance run; maxBalanceTime="
-                + this.maxBlancingTime);
-            break;
-          }
-        }
+      // All balance plans executed, which means the cluster is balanced now.
+      // So we can isolate meta easily.
+      if (rpCount == plans.size() && isolateMetaWhenBalance) {
+        isolateMetaWhenClusterBalanced();
       }
 
       if (this.cpHost != null) {
@@ -2007,6 +1995,39 @@ MasterServices, Server {
       }
     }
     return balancerRan;
+  }
+
+  private int executeBlancePlans(List<RegionPlan> plans) {
+    int maxRegionsInTransition = getMaxRegionsInTransition();
+    long balanceStartTime = System.currentTimeMillis();
+    long cutoffTime = balanceStartTime + this.maxBlancingTime;
+    int rpCount = 0;  // number of RegionPlans balanced so far
+    if (plans != null && !plans.isEmpty()) {
+      int balanceInterval = this.maxBlancingTime / plans.size();
+      LOG.info("Balancer plans size is " + plans.size() + ", the balance interval is " +
+          balanceInterval + " ms, and the max number regions in transition is " +
+          maxRegionsInTransition);
+
+      for (RegionPlan plan : plans) {
+        LOG.info("balance " + plan);
+        //TODO: bulk assign
+        this.assignmentManager.balance(plan);
+        rpCount++;
+
+        balanceThrottling(balanceStartTime + rpCount * balanceInterval, maxRegionsInTransition,
+            cutoffTime);
+
+        // if performing next balance exceeds cutoff time, exit the loop
+        if (rpCount < plans.size() && System.currentTimeMillis() > cutoffTime) {
+          // TODO: After balance, there should not be a cutoff time (keeping it as
+          // a security net for now)
+          LOG.debug(
+              "No more balancing till next balance run; maxBalanceTime=" + this.maxBlancingTime);
+          break;
+        }
+      }
+    }
+    return rpCount;
   }
 
   @Override
@@ -4384,5 +4405,76 @@ MasterServices, Server {
         break;
     }
     return null;
+  }
+
+  @VisibleForTesting
+  ServerName getMetaRegionServer() {
+    for (Entry<HRegionInfo, ServerName> entry : this.assignmentManager.getRegionStates()
+        .getRegionAssignments().entrySet()) {
+      if (entry.getKey().isMetaRegion()) {
+        return entry.getValue();
+      }
+    }
+    return null;
+  }
+
+  @VisibleForTesting
+  boolean isClusterBalancedExcludeMetaRegionServer() {
+    // Find the regionserver which serve meta
+    ServerName metaRegionServer = getMetaRegionServer();
+    LOG.info("Found meta on regionserver " + metaRegionServer);
+    if (metaRegionServer == null) {
+      return false;
+    }
+    RegionStates regionStates = this.assignmentManager.getRegionStates();
+    // Serve other regions, return false
+    if (regionStates.getServerRegions(metaRegionServer).size() > 1) {
+      LOG.info("There are more than one regions on meta regionserver " + metaRegionServer);
+      return false;
+    }
+    int minRegionsNum = Integer.MAX_VALUE;
+    int maxRegionsNum = 0;
+    for (ServerName serverName : this.serverManager.getOnlineServersList()) {
+      if (!serverName.equals(metaRegionServer)) {
+        int regionsNum = regionStates.getServerRegions(serverName).size();
+        minRegionsNum = Math.min(regionsNum, minRegionsNum);
+        maxRegionsNum = Math.max(regionsNum, maxRegionsNum);
+      }
+    }
+    LOG.info("Cluster status exclude meta regionserver: maxRegionsNum=" + maxRegionsNum +
+        ", minRegionsNum=" + minRegionsNum);
+    return Math.abs(maxRegionsNum - minRegionsNum) <= 2;
+  }
+
+  private void isolateMetaWhenClusterBalanced() throws HBaseIOException {
+    LOG.info("Start to isolate meta");
+    // Find the regionserver which serve meta
+    ServerName metaRegionServer = getMetaRegionServer();
+    LOG.info("Found meta on regionserver " + metaRegionServer);
+    if (metaRegionServer != null) {
+      // Move the regions on meta regionserver out
+      List<HRegionInfo> regionInfos =
+          this.assignmentManager.getRegionStates().getServerRegions(metaRegionServer).stream()
+              .filter(ri -> !ri.isMetaRegion()).collect(Collectors.toList());
+      final ServerName tmpMetaRegionServer = metaRegionServer;
+      List<ServerName> targetServers = this.serverManager.getOnlineServersList().stream()
+          .filter(sn -> !sn.equals(tmpMetaRegionServer)).collect(Collectors.toList());
+      Map<ServerName, List<HRegionInfo>> assignmentsMap =
+          balancer.roundRobinAssignment(regionInfos, targetServers);
+      List<RegionPlan> plans = new ArrayList<>();
+      if (assignmentsMap != null) {
+        for (Entry<ServerName, List<HRegionInfo>> entry : assignmentsMap.entrySet()) {
+          for (HRegionInfo regionInfo : entry.getValue()) {
+            RegionPlan plan = new RegionPlan(regionInfo, metaRegionServer, entry.getKey());
+            LOG.info("Generate a new region plan " + plan + " for region " +
+                regionInfo.getEncodedName() + " which is on meta regionserver " + metaRegionServer);
+            plans.add(plan);
+          }
+        }
+      }
+      LOG.info("Done. Calculated " + plans.size() + " region plans for isolate meta");
+      int rpCount = executeBlancePlans(plans);
+      LOG.info("Executed " + rpCount + " region plans for isolate meta");
+    }
   }
 }
