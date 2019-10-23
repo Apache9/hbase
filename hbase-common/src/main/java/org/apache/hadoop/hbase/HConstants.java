@@ -127,6 +127,17 @@ public final class HConstants {
   /** Config for balancing the cluster by table */
   public static final String HBASE_MASTER_LOADBALANCE_BYTABLE = "hbase.master.loadbalance.bytable";
 
+  /**
+   * Config for isolate meta when balance
+   */
+  public static final String HBASE_MASTER_ISOLATE_META_WHEN_BALANCE =
+      "hbase.master.isolate.meta.when.balance";
+
+  /**
+   * Default config for isolate meta when balance
+   */
+  public static final boolean DEFAULT_HBASE_MASTER_ISOLATE_META_WHEN_BALANCE = false;
+
   /** Config for pluggable region normalizer */
   public static final String HBASE_MASTER_NORMALIZER_CLASS =
     "hbase.master.normalizer.class";

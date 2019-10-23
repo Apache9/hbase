@@ -2409,7 +2409,7 @@ public class AssignmentManager extends ZooKeeperListener {
    * @return Plan for passed <code>region</code> (If none currently, it creates one or
    * if no servers to assign, it returns null).
    */
-  private RegionPlan getRegionPlan(final HRegionInfo region,
+  RegionPlan getRegionPlan(final HRegionInfo region,
       final ServerName serverToExclude, final boolean forceNewPlan) throws HBaseIOException {
     // Pickup existing plan or make a new one
     final String encodedName = region.getEncodedName();
