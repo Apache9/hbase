@@ -161,6 +161,12 @@ public interface MetricsRegionWrapper {
    */
   long getStoreRefCount();
 
+  /**
+   * @return the max number of references active on any store file among
+   *   all store files that belong to this region
+   */
+  long getMaxStoreFileRefCount();
+
   long getReadRequestsPerSecond();
 
   long getWriteRequestsPerSecond();
