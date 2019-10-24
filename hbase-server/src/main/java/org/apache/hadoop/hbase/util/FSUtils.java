@@ -81,6 +81,7 @@ import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSHedgedReadMetrics;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.FSConstants;
+import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.util.Progressable;
@@ -2111,5 +2112,18 @@ public abstract class FSUtils {
       }
     }
     return results;
+  }
+
+  /**
+   * Only consider SafeModeException now.
+   *
+   * @return true if the exception is special filesystem exception.
+   */
+  public static boolean isSpecialFileSystemException(IOException ioe) {
+    if (ioe != null && ioe.getCause() != null) {
+      Throwable rootCause = ioe.getCause().getCause();
+      return rootCause instanceof SafeModeException;
+    }
+    return false;
   }
 }
