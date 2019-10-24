@@ -213,7 +213,7 @@ class FSHLog implements HLog, Syncable {
   private final long abortWALSize;
   private final String HBASE_REGIONSERVER_ABORT_WAL_MULTIPLIER =
       "hbase.regionserver.abort.wal.multiplier";
-  private final float DEFAULT_ABORT_WAL_MULTIPLIER = 2.0f;
+  private final float DEFAULT_ABORT_WAL_MULTIPLIER = 4.0f;
 
   /** size of current log */
   private long curLogSize = 0;
