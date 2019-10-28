@@ -17,21 +17,20 @@
  */
 package org.apache.hadoop.hbase;
 
+import static org.apache.hadoop.hbase.io.hfile.BlockType.MAGIC_LENGTH;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.Bytes;
-
-import static org.apache.hadoop.hbase.io.hfile.BlockType.MAGIC_LENGTH;
 
 /**
  * HConstants holds a bunch of HBase-related constants
@@ -1141,6 +1140,18 @@ public final class HConstants {
   public static final String HEALTH_CHORE_WAKE_FREQ =
       "hbase.node.health.script.frequency";
   public static final long DEFAULT_HEALTH_SCRIPT_TIMEOUT = 60000;
+
+  public static final String BAD_REGIONSERVER_DETECTOR_ENABLE =
+      "hbase.bad.regionserver.detector.enable";
+  public static final boolean DEFAULT_BAD_REGIONSERVER_DETECTOR_ENABLE = false;
+
+  public static final String BAD_REGIONSERVER_LOAD_THRESHOLD =
+      "hbase.bad.regionserver.detector.load.threshold";
+  public static final double DEFAULT_BAD_REGIONSERVER_LOAD_THRESHOLD =
+      Runtime.getRuntime().availableProcessors();
+  public static final String BAD_REGIONSERVER_DETECTOR_PERIOD = "hbase.bad.regionserver.detector.period";
+  public static final int DEFAULT_BAD_REGIONSERVER_DETECTOR_PERIOD = (int) TimeUnit.MINUTES.toMillis(5);
+
   /**
    * The maximum number of health check failures a server can encounter consecutively.
    */
