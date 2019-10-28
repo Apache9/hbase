@@ -43,9 +43,7 @@ import java.util.stream.Collectors;
 
 import javax.management.ObjectName;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
-import com.xiaomi.keycenter.common.iface.DataProtectionException;
+import com.xiaomi.infra.hbase.master.chore.BadRSDetector;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.SplitOrMergeTracker;
@@ -278,10 +276,10 @@ import org.apache.hadoop.hbase.regionserver.DefaultStoreEngine;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionSplitPolicy;
-import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.regionserver.compactions.ExploringCompactionPolicy;
 import org.apache.hadoop.hbase.regionserver.compactions.FIFOCompactionPolicy;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.master.ReplicationManager;
@@ -324,6 +322,7 @@ import org.apache.hadoop.net.DNS;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -333,6 +332,8 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
+import com.xiaomi.keycenter.common.iface.DataProtectionException;
 
 /**
  * HMaster is the "master server" for HBase. An HBase cluster has one active
@@ -517,6 +518,7 @@ MasterServices, Server {
   private HFileCleaner hfileCleaner;
   private SnapshotRestoreFileCleaner snapshotRestoreFileCleaner;
   private SnapshotForDeletedTableCleaner snapshotForDeletedTableCleaner;
+  private BadRSDetector badRSDetector;
 
   private MasterCoprocessorHost cpHost;
   private final ServerName serverName;
@@ -1565,6 +1567,17 @@ MasterServices, Server {
     } catch (Exception e) {
       LOG.error("start ReplicationMetaCleaner failed", e);
     }
+    if (conf.getBoolean(HConstants.BAD_REGIONSERVER_DETECTOR_ENABLE,
+        HConstants.DEFAULT_BAD_REGIONSERVER_DETECTOR_ENABLE)) {
+      int badRSDetectorPeriod = this.conf.getInt(HConstants.BAD_REGIONSERVER_DETECTOR_PERIOD,
+          HConstants.DEFAULT_BAD_REGIONSERVER_DETECTOR_PERIOD);
+      try {
+        badRSDetector = new BadRSDetector(this, this, badRSDetectorPeriod);
+        Threads.setDaemonThreadRunning(badRSDetector.getThread(), "BadRSDetector");
+      } catch (Exception e) {
+        LOG.error("Start BadRSDetector failed", e);
+      }
+    }
   }
 
   /**
@@ -1651,6 +1664,9 @@ MasterServices, Server {
     }
     if (this.normalizerChore != null){
       this.normalizerChore.interrupt();
+    }
+    if (this.badRSDetector != null) {
+      this.badRSDetector.interrupt();
     }
   }
 
@@ -1964,7 +1980,6 @@ MasterServices, Server {
 
       Map<TableName, Map<ServerName, List<HRegionInfo>>> assignmentsByTable =
           this.assignmentManager.getRegionStates().getAssignmentsByTable();
-
       // Give the balancer the current cluster state.
       this.balancer.setClusterStatus(getClusterStatus());
       this.balancer.setClusterLoad(this.assignmentManager.getRegionStates().getAssignmentsByTable(
