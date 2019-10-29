@@ -133,6 +133,7 @@ import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.AssignmentManager;
@@ -182,6 +183,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceScope;
@@ -252,7 +254,7 @@ public class HRegion implements HeapSize { // , Writable{
    * {@link #openSeqNum}.
    */
   private final AtomicLong sequenceId = new AtomicLong(-1L);
-
+  private final String rsKerberos;
   /**
    * Operation enum is used in {@link HRegion#startRegionOperation} to provide operation context for
    * startRegionOperation to possibly invoke different checks before any region operations. Not all
@@ -309,6 +311,14 @@ public class HRegion implements HeapSize { // , Writable{
   final MetricsRate readRawCellCountPerSecond = new MetricsRate("readRawCellCountPerSecond", registry);
   final MetricsRate scanCountPerSecond = new MetricsRate("scanCountPerSecond", registry);
   final MetricsRate scanRowsPerSecond = new MetricsRate("scanRowsPerSecond", registry);
+  final MetricsRate userReadRequestsPerSecond =
+      new MetricsRate("userReadRequestsPerSecond", registry);
+  final MetricsRate userWriteRequestsPerSecond =
+      new MetricsRate("userWriteRequestsPerSecond", registry);
+  final MetricsRate userReadRequestsByCapacityUnitPerSecond =
+      new MetricsRate("userReadRequestsByCapacityUnitPerSecond", registry);
+  final MetricsRate userWriteRequestsByCapacityUnitPerSecond =
+      new MetricsRate("userWriteRequestsByCapacityUnitPerSecond", registry);
 
   // Number of requests blocked by memstore size.
   private final Counter blockedRequestsCount = new Counter();
@@ -707,6 +717,9 @@ public class HRegion implements HeapSize { // , Writable{
       NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR) ? false :
         conf.getBoolean(HConstants.ENABLE_CLIENT_BACKPRESSURE,
           HConstants.DEFAULT_ENABLE_CLIENT_BACKPRESSURE);
+
+    rsKerberos =
+        conf.get("hbase.regionserver.kerberos.principal", "").replace("/hadoop@XIAOMI.HADOOP", "");
   }
 
   void setHTableSpecificConf() {
@@ -1062,6 +1075,26 @@ public class HRegion implements HeapSize { // , Writable{
   long getWriteRequestsByCapacityUnitPerSecond() {
     this.writeRequestsByCapacityUnitPerSecond.intervalHeartBeat();
     return (long) this.writeRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  long getUserReadRequestsPerSecond() {
+    this.userReadRequestsPerSecond.intervalHeartBeat();
+    return (long) this.userReadRequestsPerSecond.getPreviousIntervalValue();
+  }
+
+  long getUserWriteRequestsPerSecond() {
+    this.userWriteRequestsPerSecond.intervalHeartBeat();
+    return (long) this.userWriteRequestsPerSecond.getPreviousIntervalValue();
+  }
+
+  long getUserReadRequestsByCapacityUnitPerSecond() {
+    this.userReadRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) this.userReadRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  long getUserWriteRequestsByCapacityUnitPerSecond() {
+    this.userWriteRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) this.userWriteRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
   }
 
   long getReadCellCountPerSecond() {
@@ -6907,6 +6940,9 @@ public class HRegion implements HeapSize { // , Writable{
       this.readRequestsCount.add(num);
       this.readRequestsPerSecond.inc(num);
     }
+    if (isUserRequest()) {
+      this.userReadRequestsPerSecond.inc(num);
+    }
   }
 
   public void updateReadCellMetrics(long num) {
@@ -6936,6 +6972,9 @@ public class HRegion implements HeapSize { // , Writable{
       this.writeRequestsCount.add(num);
       this.writeRequestsPerSecond.inc(num);
     }
+    if (isUserRequest()) {
+      this.userWriteRequestsPerSecond.inc(num);
+    }
   }
 
   public void updateReadCapacityUnitMetrics(long readSize) {
@@ -6948,6 +6987,9 @@ public class HRegion implements HeapSize { // , Writable{
     if (this.metricsRegion != null) {
       this.metricsRegion.updateRead(readCapacityUnitNum);
     }
+    if (isUserRequest()) {
+      this.userReadRequestsByCapacityUnitPerSecond.inc(readCapacityUnitNum);
+    }
   }
 
   public void updateWriteCapacityUnitMetrics(long writeSize) {
@@ -6959,6 +7001,9 @@ public class HRegion implements HeapSize { // , Writable{
     this.writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnitNum);
     if (this.metricsRegion != null) {
       this.metricsRegion.updateWrite(writeCapacityUnitNum);
+    }
+    if (isUserRequest()) {
+      this.userWriteRequestsByCapacityUnitPerSecond.inc(writeCapacityUnitNum);
     }
   }
 
@@ -7329,5 +7374,27 @@ public class HRegion implements HeapSize { // , Writable{
     RegionServerQuotaManager rsQuotaManager = this.rsServices.getRegionServerQuotaManager();
     return (rsQuotaManager != null) && (rsQuotaManager.isQuotaEnabled())
         && (!rsQuotaManager.isStopped());
+  }
+
+  private boolean isUserRequest() {
+    try {
+      String userName = getUserGroupInformation().getShortUserName();
+      if (userName.equals(rsKerberos)) {
+        return false;
+      }
+    } catch (IOException e) {
+      LOG.error("Failed check if request is called by user", e);
+    }
+    return true;
+  }
+
+  private UserGroupInformation getUserGroupInformation() throws IOException {
+    UserGroupInformation ugi;
+    if (RequestContext.isInRequestContext()) {
+      ugi = RequestContext.getRequestUser().getUGI();
+    } else {
+      ugi = User.getCurrent().getUGI();
+    }
+    return ugi;
   }
 }

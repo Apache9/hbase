@@ -241,6 +241,22 @@ public class RegionLoad {
     return regionLoadPB.getStoreUncompressedSizeMB();
   }
 
+  public long getUserReadRequestsPerSecond() {
+    return regionLoadPB.getUserReadRequestsPerSecond();
+  }
+
+  public long getUserWriteRequestsPerSecond() {
+    return regionLoadPB.getUserWriteRequestsPerSecond();
+  }
+
+  public long getUserReadRequestsByCapacityUnitPerSecond() {
+    return regionLoadPB.getUserReadRequestsByCapacityUnitPerSecond();
+  }
+
+  public long getUserWriteRequestsByCapacityUnitPerSecond() {
+    return regionLoadPB.getUserWriteRequestsByCapacityUnitPerSecond();
+  }
+
   /**
    * @return the data locality of region in the regionserver.
    */
@@ -288,6 +304,10 @@ public class RegionLoad {
         this.getReadRequestsPerSecond());
     sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
         this.getWriteRequestsPerSecond());
+    sb = Strings.appendKeyValue(sb, "userReadRequestsPerSecond",
+      this.getUserReadRequestsPerSecond());
+    sb = Strings.appendKeyValue(sb, "userWriteRequestsPerSecond",
+      this.getUserWriteRequestsPerSecond());
     sb = Strings.appendKeyValue(sb, "readCellCountPerSecond",
         this.getReadCellCountPerSecond());
     sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond",
@@ -298,6 +318,10 @@ public class RegionLoad {
         this.getReadRequestsByCapacityUnitPerSecond());
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
         this.getWriteRequestsByCapacityUnitPerSecond());
+    sb = Strings.appendKeyValue(sb, "userReadRequestsByCapacityUnitPerSecond",
+      this.getUserReadRequestsByCapacityUnitPerSecond());
+    sb = Strings.appendKeyValue(sb, "userWriteRequestsByCapacityUnitPerSecond",
+      this.getUserWriteRequestsByCapacityUnitPerSecond());
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount",
         this.getThrottledReadRequestsCount());
     sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount",

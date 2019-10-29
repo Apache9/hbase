@@ -1797,7 +1797,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setThrottledReadRequestsCount(r.getThrottleadReadCount())
       .setThrottledWriteRequestsCount(r.getThrottledWriteCount())
       .setScanCountPerSecond(r.getScanCountPerSecond())
-      .setScanRowsPerSecond(r.getScanRowsPerSecond());
+      .setScanRowsPerSecond(r.getScanRowsPerSecond())
+      .setUserReadRequestsPerSecond(r.getUserReadRequestsPerSecond())
+      .setUserWriteRequestsPerSecond(r.getUserWriteRequestsPerSecond())
+      .setUserReadRequestsByCapacityUnitPerSecond(r.getUserReadRequestsByCapacityUnitPerSecond())
+      .setUserWriteRequestsByCapacityUnitPerSecond(r.getUserWriteRequestsByCapacityUnitPerSecond());
     regionLoadBldr.clearFamilyInfo();
     regionLoadBldr.addAllFamilyInfo(familyInfos);
 

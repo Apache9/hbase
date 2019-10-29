@@ -18,9 +18,7 @@
  */
 package org.apache.hadoop.hbase.namespace;
 
-import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.TableLoad;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.util.Strings;
 
 /**
@@ -90,6 +88,11 @@ public class NamespaceLoad {
    */
   private long writeRequestsByCapacityUnitPerSecond;
 
+  private long userReadRequestsPerSecond;
+  private long userWriteRequestsPerSecond;
+  private long userReadRequestsByCapacityUnitPerSecond;
+  private long userWriteRequestsByCapacityUnitPerSecond;
+
   /** the total throttled read requests count made to all tables in this namespace */
   private long throttledReadRequestsCount;
   /** the total throttled write requests count made to all tables in this namespace */
@@ -125,6 +128,10 @@ public class NamespaceLoad {
     this.readRawCellCountPerSecond = 0;
     this.scanCountPerSecond = 0;
     this.scanRowsPerSecond = 0;
+    this.userReadRequestsPerSecond = 0;
+    this.userWriteRequestsPerSecond = 0;
+    this.userReadRequestsByCapacityUnitPerSecond = 0;
+    this.userWriteRequestsByCapacityUnitPerSecond = 0;
   }
 
   public void updateNamespaceLoad(final TableLoad tableLoad) {
@@ -154,6 +161,12 @@ public class NamespaceLoad {
     this.readRawCellCountPerSecond += tableLoad.getReadRawCellCountPerSecond();
     this.scanCountPerSecond += tableLoad.getScanCountPerSecond();
     this.scanRowsPerSecond += tableLoad.getScanRowsPerSecond();
+    this.userReadRequestsPerSecond += tableLoad.getUserReadRequestsPerSecond();
+    this.userWriteRequestsPerSecond += tableLoad.getUserWriteRequestsPerSecond();
+    this.userReadRequestsByCapacityUnitPerSecond +=
+        tableLoad.getUserReadRequestsByCapacityUnitPerSecond();
+    this.userWriteRequestsByCapacityUnitPerSecond +=
+        tableLoad.getUserWriteRequestsByCapacityUnitPerSecond();
   }
 
   public String getName() {
@@ -260,6 +273,22 @@ public class NamespaceLoad {
     return this.scanRowsPerSecond;
   }
 
+  public long getUserReadRequestsPerSecond() {
+    return userReadRequestsPerSecond;
+  }
+
+  public long getUserWriteRequestsPerSecond() {
+    return userWriteRequestsPerSecond;
+  }
+
+  public long getUserReadRequestsByCapacityUnitPerSecond() {
+    return userReadRequestsByCapacityUnitPerSecond;
+  }
+
+  public long getUserWriteRequestsByCapacityUnitPerSecond() {
+    return userWriteRequestsByCapacityUnitPerSecond;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "Namespace name:", name);
@@ -301,6 +330,12 @@ public class NamespaceLoad {
       this.readRequestsByCapacityUnitPerSecond);
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
       this.writeRequestsByCapacityUnitPerSecond);
+    sb = Strings.appendKeyValue(sb, "userReadRequestsPerSecond", this.userReadRequestsPerSecond);
+    sb = Strings.appendKeyValue(sb, "userWriteRequestsPerSecond", this.userWriteRequestsPerSecond);
+    sb = Strings.appendKeyValue(sb, "userReadRequestsByCapacityUnitPerSecond",
+      this.userReadRequestsByCapacityUnitPerSecond);
+    sb = Strings.appendKeyValue(sb, "userWriteRequestsByCapacityUnitPerSecond",
+      this.userWriteRequestsByCapacityUnitPerSecond);
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount", this.throttledReadRequestsCount);
     sb = Strings
         .appendKeyValue(sb, "throttledWriteRequestsCount", this.throttledWriteRequestsCount);

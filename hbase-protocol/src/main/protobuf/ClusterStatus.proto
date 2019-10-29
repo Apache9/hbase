@@ -166,6 +166,18 @@ message RegionLoad {
 
   /** family info */
   repeated FamilyInfo family_info = 28;
+
+  /** read requests per second made to region by user */
+  optional uint64 user_read_requests_per_second = 29;
+
+  /** write requests per second made to region by user */
+  optional uint64 user_write_requests_per_second = 30;
+
+  /** the current read capacity unit count per second made to region by user */
+  optional uint64 user_read_requests_by_capacity_unit_per_second = 31;
+
+  /** the current write capacity unit count per second made to region by user */
+  optional uint64 user_write_requests_by_capacity_unit_per_second = 32;
 }
 
 /* Server-level protobufs */
