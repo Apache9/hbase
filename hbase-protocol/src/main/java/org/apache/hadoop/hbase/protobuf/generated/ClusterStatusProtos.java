@@ -3662,6 +3662,78 @@ public final class ClusterStatusProtos {
      */
     org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder getFamilyInfoOrBuilder(
         int index);
+
+    // optional uint64 user_read_requests_per_second = 29;
+    /**
+     * <code>optional uint64 user_read_requests_per_second = 29;</code>
+     *
+     * <pre>
+     ** read requests per second made to region by user 
+     * </pre>
+     */
+    boolean hasUserReadRequestsPerSecond();
+    /**
+     * <code>optional uint64 user_read_requests_per_second = 29;</code>
+     *
+     * <pre>
+     ** read requests per second made to region by user 
+     * </pre>
+     */
+    long getUserReadRequestsPerSecond();
+
+    // optional uint64 user_write_requests_per_second = 30;
+    /**
+     * <code>optional uint64 user_write_requests_per_second = 30;</code>
+     *
+     * <pre>
+     ** write requests per second made to region by user 
+     * </pre>
+     */
+    boolean hasUserWriteRequestsPerSecond();
+    /**
+     * <code>optional uint64 user_write_requests_per_second = 30;</code>
+     *
+     * <pre>
+     ** write requests per second made to region by user 
+     * </pre>
+     */
+    long getUserWriteRequestsPerSecond();
+
+    // optional uint64 user_read_requests_by_capacity_unit_per_second = 31;
+    /**
+     * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+     *
+     * <pre>
+     ** the current read capacity unit count per second made to region by user 
+     * </pre>
+     */
+    boolean hasUserReadRequestsByCapacityUnitPerSecond();
+    /**
+     * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+     *
+     * <pre>
+     ** the current read capacity unit count per second made to region by user 
+     * </pre>
+     */
+    long getUserReadRequestsByCapacityUnitPerSecond();
+
+    // optional uint64 user_write_requests_by_capacity_unit_per_second = 32;
+    /**
+     * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+     *
+     * <pre>
+     ** the current write capacity unit count per second made to region by user 
+     * </pre>
+     */
+    boolean hasUserWriteRequestsByCapacityUnitPerSecond();
+    /**
+     * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+     *
+     * <pre>
+     ** the current write capacity unit count per second made to region by user 
+     * </pre>
+     */
+    long getUserWriteRequestsByCapacityUnitPerSecond();
   }
   /**
    * Protobuf type {@code RegionLoad}
@@ -3863,6 +3935,26 @@ public final class ClusterStatusProtos {
                 mutable_bitField0_ |= 0x08000000;
               }
               familyInfo_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.PARSER, extensionRegistry));
+              break;
+            }
+            case 232: {
+              bitField0_ |= 0x08000000;
+              userReadRequestsPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 240: {
+              bitField0_ |= 0x10000000;
+              userWriteRequestsPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 248: {
+              bitField0_ |= 0x20000000;
+              userReadRequestsByCapacityUnitPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 256: {
+              bitField0_ |= 0x40000000;
+              userWriteRequestsByCapacityUnitPerSecond_ = input.readUInt64();
               break;
             }
           }
@@ -4630,6 +4722,102 @@ public final class ClusterStatusProtos {
       return familyInfo_.get(index);
     }
 
+    // optional uint64 user_read_requests_per_second = 29;
+    public static final int USER_READ_REQUESTS_PER_SECOND_FIELD_NUMBER = 29;
+    private long userReadRequestsPerSecond_;
+    /**
+     * <code>optional uint64 user_read_requests_per_second = 29;</code>
+     *
+     * <pre>
+     ** read requests per second made to region by user 
+     * </pre>
+     */
+    public boolean hasUserReadRequestsPerSecond() {
+      return ((bitField0_ & 0x08000000) == 0x08000000);
+    }
+    /**
+     * <code>optional uint64 user_read_requests_per_second = 29;</code>
+     *
+     * <pre>
+     ** read requests per second made to region by user 
+     * </pre>
+     */
+    public long getUserReadRequestsPerSecond() {
+      return userReadRequestsPerSecond_;
+    }
+
+    // optional uint64 user_write_requests_per_second = 30;
+    public static final int USER_WRITE_REQUESTS_PER_SECOND_FIELD_NUMBER = 30;
+    private long userWriteRequestsPerSecond_;
+    /**
+     * <code>optional uint64 user_write_requests_per_second = 30;</code>
+     *
+     * <pre>
+     ** write requests per second made to region by user 
+     * </pre>
+     */
+    public boolean hasUserWriteRequestsPerSecond() {
+      return ((bitField0_ & 0x10000000) == 0x10000000);
+    }
+    /**
+     * <code>optional uint64 user_write_requests_per_second = 30;</code>
+     *
+     * <pre>
+     ** write requests per second made to region by user 
+     * </pre>
+     */
+    public long getUserWriteRequestsPerSecond() {
+      return userWriteRequestsPerSecond_;
+    }
+
+    // optional uint64 user_read_requests_by_capacity_unit_per_second = 31;
+    public static final int USER_READ_REQUESTS_BY_CAPACITY_UNIT_PER_SECOND_FIELD_NUMBER = 31;
+    private long userReadRequestsByCapacityUnitPerSecond_;
+    /**
+     * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+     *
+     * <pre>
+     ** the current read capacity unit count per second made to region by user 
+     * </pre>
+     */
+    public boolean hasUserReadRequestsByCapacityUnitPerSecond() {
+      return ((bitField0_ & 0x20000000) == 0x20000000);
+    }
+    /**
+     * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+     *
+     * <pre>
+     ** the current read capacity unit count per second made to region by user 
+     * </pre>
+     */
+    public long getUserReadRequestsByCapacityUnitPerSecond() {
+      return userReadRequestsByCapacityUnitPerSecond_;
+    }
+
+    // optional uint64 user_write_requests_by_capacity_unit_per_second = 32;
+    public static final int USER_WRITE_REQUESTS_BY_CAPACITY_UNIT_PER_SECOND_FIELD_NUMBER = 32;
+    private long userWriteRequestsByCapacityUnitPerSecond_;
+    /**
+     * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+     *
+     * <pre>
+     ** the current write capacity unit count per second made to region by user 
+     * </pre>
+     */
+    public boolean hasUserWriteRequestsByCapacityUnitPerSecond() {
+      return ((bitField0_ & 0x40000000) == 0x40000000);
+    }
+    /**
+     * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+     *
+     * <pre>
+     ** the current write capacity unit count per second made to region by user 
+     * </pre>
+     */
+    public long getUserWriteRequestsByCapacityUnitPerSecond() {
+      return userWriteRequestsByCapacityUnitPerSecond_;
+    }
+
     private void initFields() {
       regionSpecifier_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.getDefaultInstance();
       stores_ = 0;
@@ -4659,6 +4847,10 @@ public final class ClusterStatusProtos {
       scanCountPerSecond_ = 0L;
       scanRowsPerSecond_ = 0L;
       familyInfo_ = java.util.Collections.emptyList();
+      userReadRequestsPerSecond_ = 0L;
+      userWriteRequestsPerSecond_ = 0L;
+      userReadRequestsByCapacityUnitPerSecond_ = 0L;
+      userWriteRequestsByCapacityUnitPerSecond_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -4769,6 +4961,18 @@ public final class ClusterStatusProtos {
       }
       for (int i = 0; i < familyInfo_.size(); i++) {
         output.writeMessage(28, familyInfo_.get(i));
+      }
+      if (((bitField0_ & 0x08000000) == 0x08000000)) {
+        output.writeUInt64(29, userReadRequestsPerSecond_);
+      }
+      if (((bitField0_ & 0x10000000) == 0x10000000)) {
+        output.writeUInt64(30, userWriteRequestsPerSecond_);
+      }
+      if (((bitField0_ & 0x20000000) == 0x20000000)) {
+        output.writeUInt64(31, userReadRequestsByCapacityUnitPerSecond_);
+      }
+      if (((bitField0_ & 0x40000000) == 0x40000000)) {
+        output.writeUInt64(32, userWriteRequestsByCapacityUnitPerSecond_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -4890,6 +5094,22 @@ public final class ClusterStatusProtos {
       for (int i = 0; i < familyInfo_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(28, familyInfo_.get(i));
+      }
+      if (((bitField0_ & 0x08000000) == 0x08000000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(29, userReadRequestsPerSecond_);
+      }
+      if (((bitField0_ & 0x10000000) == 0x10000000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(30, userWriteRequestsPerSecond_);
+      }
+      if (((bitField0_ & 0x20000000) == 0x20000000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(31, userReadRequestsByCapacityUnitPerSecond_);
+      }
+      if (((bitField0_ & 0x40000000) == 0x40000000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(32, userWriteRequestsByCapacityUnitPerSecond_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -5050,6 +5270,26 @@ public final class ClusterStatusProtos {
       }
       result = result && getFamilyInfoList()
           .equals(other.getFamilyInfoList());
+      result = result && (hasUserReadRequestsPerSecond() == other.hasUserReadRequestsPerSecond());
+      if (hasUserReadRequestsPerSecond()) {
+        result = result && (getUserReadRequestsPerSecond()
+            == other.getUserReadRequestsPerSecond());
+      }
+      result = result && (hasUserWriteRequestsPerSecond() == other.hasUserWriteRequestsPerSecond());
+      if (hasUserWriteRequestsPerSecond()) {
+        result = result && (getUserWriteRequestsPerSecond()
+            == other.getUserWriteRequestsPerSecond());
+      }
+      result = result && (hasUserReadRequestsByCapacityUnitPerSecond() == other.hasUserReadRequestsByCapacityUnitPerSecond());
+      if (hasUserReadRequestsByCapacityUnitPerSecond()) {
+        result = result && (getUserReadRequestsByCapacityUnitPerSecond()
+            == other.getUserReadRequestsByCapacityUnitPerSecond());
+      }
+      result = result && (hasUserWriteRequestsByCapacityUnitPerSecond() == other.hasUserWriteRequestsByCapacityUnitPerSecond());
+      if (hasUserWriteRequestsByCapacityUnitPerSecond()) {
+        result = result && (getUserWriteRequestsByCapacityUnitPerSecond()
+            == other.getUserWriteRequestsByCapacityUnitPerSecond());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -5175,6 +5415,22 @@ public final class ClusterStatusProtos {
       if (getFamilyInfoCount() > 0) {
         hash = (37 * hash) + FAMILY_INFO_FIELD_NUMBER;
         hash = (53 * hash) + getFamilyInfoList().hashCode();
+      }
+      if (hasUserReadRequestsPerSecond()) {
+        hash = (37 * hash) + USER_READ_REQUESTS_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getUserReadRequestsPerSecond());
+      }
+      if (hasUserWriteRequestsPerSecond()) {
+        hash = (37 * hash) + USER_WRITE_REQUESTS_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getUserWriteRequestsPerSecond());
+      }
+      if (hasUserReadRequestsByCapacityUnitPerSecond()) {
+        hash = (37 * hash) + USER_READ_REQUESTS_BY_CAPACITY_UNIT_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getUserReadRequestsByCapacityUnitPerSecond());
+      }
+      if (hasUserWriteRequestsByCapacityUnitPerSecond()) {
+        hash = (37 * hash) + USER_WRITE_REQUESTS_BY_CAPACITY_UNIT_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getUserWriteRequestsByCapacityUnitPerSecond());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -5351,6 +5607,14 @@ public final class ClusterStatusProtos {
         } else {
           familyInfoBuilder_.clear();
         }
+        userReadRequestsPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x10000000);
+        userWriteRequestsPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x20000000);
+        userReadRequestsByCapacityUnitPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x40000000);
+        userWriteRequestsByCapacityUnitPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x80000000);
         return this;
       }
 
@@ -5500,6 +5764,22 @@ public final class ClusterStatusProtos {
         } else {
           result.familyInfo_ = familyInfoBuilder_.build();
         }
+        if (((from_bitField0_ & 0x10000000) == 0x10000000)) {
+          to_bitField0_ |= 0x08000000;
+        }
+        result.userReadRequestsPerSecond_ = userReadRequestsPerSecond_;
+        if (((from_bitField0_ & 0x20000000) == 0x20000000)) {
+          to_bitField0_ |= 0x10000000;
+        }
+        result.userWriteRequestsPerSecond_ = userWriteRequestsPerSecond_;
+        if (((from_bitField0_ & 0x40000000) == 0x40000000)) {
+          to_bitField0_ |= 0x20000000;
+        }
+        result.userReadRequestsByCapacityUnitPerSecond_ = userReadRequestsByCapacityUnitPerSecond_;
+        if (((from_bitField0_ & 0x80000000) == 0x80000000)) {
+          to_bitField0_ |= 0x40000000;
+        }
+        result.userWriteRequestsByCapacityUnitPerSecond_ = userWriteRequestsByCapacityUnitPerSecond_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -5622,6 +5902,18 @@ public final class ClusterStatusProtos {
               familyInfoBuilder_.addAllMessages(other.familyInfo_);
             }
           }
+        }
+        if (other.hasUserReadRequestsPerSecond()) {
+          setUserReadRequestsPerSecond(other.getUserReadRequestsPerSecond());
+        }
+        if (other.hasUserWriteRequestsPerSecond()) {
+          setUserWriteRequestsPerSecond(other.getUserWriteRequestsPerSecond());
+        }
+        if (other.hasUserReadRequestsByCapacityUnitPerSecond()) {
+          setUserReadRequestsByCapacityUnitPerSecond(other.getUserReadRequestsByCapacityUnitPerSecond());
+        }
+        if (other.hasUserWriteRequestsByCapacityUnitPerSecond()) {
+          setUserWriteRequestsByCapacityUnitPerSecond(other.getUserWriteRequestsByCapacityUnitPerSecond());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -7417,6 +7709,202 @@ public final class ClusterStatusProtos {
           familyInfo_ = null;
         }
         return familyInfoBuilder_;
+      }
+
+      // optional uint64 user_read_requests_per_second = 29;
+      private long userReadRequestsPerSecond_ ;
+      /**
+       * <code>optional uint64 user_read_requests_per_second = 29;</code>
+       *
+       * <pre>
+       ** read requests per second made to region by user 
+       * </pre>
+       */
+      public boolean hasUserReadRequestsPerSecond() {
+        return ((bitField0_ & 0x10000000) == 0x10000000);
+      }
+      /**
+       * <code>optional uint64 user_read_requests_per_second = 29;</code>
+       *
+       * <pre>
+       ** read requests per second made to region by user 
+       * </pre>
+       */
+      public long getUserReadRequestsPerSecond() {
+        return userReadRequestsPerSecond_;
+      }
+      /**
+       * <code>optional uint64 user_read_requests_per_second = 29;</code>
+       *
+       * <pre>
+       ** read requests per second made to region by user 
+       * </pre>
+       */
+      public Builder setUserReadRequestsPerSecond(long value) {
+        bitField0_ |= 0x10000000;
+        userReadRequestsPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 user_read_requests_per_second = 29;</code>
+       *
+       * <pre>
+       ** read requests per second made to region by user 
+       * </pre>
+       */
+      public Builder clearUserReadRequestsPerSecond() {
+        bitField0_ = (bitField0_ & ~0x10000000);
+        userReadRequestsPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 user_write_requests_per_second = 30;
+      private long userWriteRequestsPerSecond_ ;
+      /**
+       * <code>optional uint64 user_write_requests_per_second = 30;</code>
+       *
+       * <pre>
+       ** write requests per second made to region by user 
+       * </pre>
+       */
+      public boolean hasUserWriteRequestsPerSecond() {
+        return ((bitField0_ & 0x20000000) == 0x20000000);
+      }
+      /**
+       * <code>optional uint64 user_write_requests_per_second = 30;</code>
+       *
+       * <pre>
+       ** write requests per second made to region by user 
+       * </pre>
+       */
+      public long getUserWriteRequestsPerSecond() {
+        return userWriteRequestsPerSecond_;
+      }
+      /**
+       * <code>optional uint64 user_write_requests_per_second = 30;</code>
+       *
+       * <pre>
+       ** write requests per second made to region by user 
+       * </pre>
+       */
+      public Builder setUserWriteRequestsPerSecond(long value) {
+        bitField0_ |= 0x20000000;
+        userWriteRequestsPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 user_write_requests_per_second = 30;</code>
+       *
+       * <pre>
+       ** write requests per second made to region by user 
+       * </pre>
+       */
+      public Builder clearUserWriteRequestsPerSecond() {
+        bitField0_ = (bitField0_ & ~0x20000000);
+        userWriteRequestsPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 user_read_requests_by_capacity_unit_per_second = 31;
+      private long userReadRequestsByCapacityUnitPerSecond_ ;
+      /**
+       * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+       *
+       * <pre>
+       ** the current read capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public boolean hasUserReadRequestsByCapacityUnitPerSecond() {
+        return ((bitField0_ & 0x40000000) == 0x40000000);
+      }
+      /**
+       * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+       *
+       * <pre>
+       ** the current read capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public long getUserReadRequestsByCapacityUnitPerSecond() {
+        return userReadRequestsByCapacityUnitPerSecond_;
+      }
+      /**
+       * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+       *
+       * <pre>
+       ** the current read capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public Builder setUserReadRequestsByCapacityUnitPerSecond(long value) {
+        bitField0_ |= 0x40000000;
+        userReadRequestsByCapacityUnitPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 user_read_requests_by_capacity_unit_per_second = 31;</code>
+       *
+       * <pre>
+       ** the current read capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public Builder clearUserReadRequestsByCapacityUnitPerSecond() {
+        bitField0_ = (bitField0_ & ~0x40000000);
+        userReadRequestsByCapacityUnitPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 user_write_requests_by_capacity_unit_per_second = 32;
+      private long userWriteRequestsByCapacityUnitPerSecond_ ;
+      /**
+       * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+       *
+       * <pre>
+       ** the current write capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public boolean hasUserWriteRequestsByCapacityUnitPerSecond() {
+        return ((bitField0_ & 0x80000000) == 0x80000000);
+      }
+      /**
+       * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+       *
+       * <pre>
+       ** the current write capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public long getUserWriteRequestsByCapacityUnitPerSecond() {
+        return userWriteRequestsByCapacityUnitPerSecond_;
+      }
+      /**
+       * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+       *
+       * <pre>
+       ** the current write capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public Builder setUserWriteRequestsByCapacityUnitPerSecond(long value) {
+        bitField0_ |= 0x80000000;
+        userWriteRequestsByCapacityUnitPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 user_write_requests_by_capacity_unit_per_second = 32;</code>
+       *
+       * <pre>
+       ** the current write capacity unit count per second made to region by user 
+       * </pre>
+       */
+      public Builder clearUserWriteRequestsByCapacityUnitPerSecond() {
+        bitField0_ = (bitField0_ & ~0x80000000);
+        userWriteRequestsByCapacityUnitPerSecond_ = 0L;
+        onChanged();
+        return this;
       }
 
       // @@protoc_insertion_point(builder_scope:RegionLoad)
@@ -19399,7 +19887,7 @@ public final class ClusterStatusProtos {
       "e\"u\n\nFamilyInfo\022\022\n\nfamilyname\030\001 \002(\t\022\021\n\tr" +
       "ow_count\030\002 \002(\004\022\020\n\010kv_count\030\003 \002(\004\022\024\n\014del_" +
       "kv_count\030\004 \002(\004\022\030\n\020del_family_count\030\005 \002(\004" +
-      "\"\251\007\n\nRegionLoad\022*\n\020region_specifier\030\001 \002(" +
+      "\"\351\010\n\nRegionLoad\022*\n\020region_specifier\030\001 \002(" +
       "\0132\020.RegionSpecifier\022\016\n\006stores\030\002 \001(\r\022\022\n\ns" +
       "torefiles\030\003 \001(\r\022\"\n\032store_uncompressed_si" +
       "ze_MB\030\004 \001(\r\022\031\n\021storefile_size_MB\030\005 \001(\r\022\030" +
@@ -19422,62 +19910,67 @@ public final class ClusterStatusProtos {
       "\030 \001(\004\022&\n\036read_raw_cell_count_per_second\030" +
       "\031 \001(\004\022\035\n\025scan_count_per_second\030\032 \001(\004\022\034\n\024" +
       "scan_rows_per_second\030\033 \001(\004\022 \n\013family_inf" +
-      "o\030\034 \003(\0132\013.FamilyInfo\"T\n\023ReplicationLoadS" +
-      "ink\022\032\n\022ageOfLastAppliedOp\030\001 \002(\004\022!\n\031timeS",
-      "tampsOfLastAppliedOp\030\002 \002(\004\"\225\001\n\025Replicati" +
-      "onLoadSource\022\016\n\006peerID\030\001 \002(\t\022\032\n\022ageOfLas" +
-      "tShippedOp\030\002 \002(\004\022\026\n\016sizeOfLogQueue\030\003 \002(\r" +
-      "\022 \n\030timeStampOfLastShippedOp\030\004 \002(\004\022\026\n\016re" +
-      "plicationLag\030\005 \002(\004\"\364\004\n\nServerLoad\022\032\n\022num" +
-      "ber_of_requests\030\001 \001(\r\022 \n\030total_number_of" +
-      "_requests\030\002 \001(\r\022\024\n\014used_heap_MB\030\003 \001(\r\022\023\n" +
-      "\013max_heap_MB\030\004 \001(\r\022!\n\014region_loads\030\005 \003(\013" +
-      "2\013.RegionLoad\022\"\n\014coprocessors\030\006 \003(\0132\014.Co" +
-      "processor\022\031\n\021report_start_time\030\007 \001(\004\022\027\n\017",
-      "report_end_time\030\010 \001(\004\022\030\n\020info_server_por" +
-      "t\030\t \001(\r\022.\n\016replLoadSource\030\n \003(\0132\026.Replic" +
-      "ationLoadSource\022*\n\014replLoadSink\030\013 \001(\0132\024." +
-      "ReplicationLoadSink\022 \n\030read_requests_per" +
-      "_second\030\014 \001(\004\022!\n\031write_requests_per_seco" +
-      "nd\030\r \001(\004\022\"\n\032read_cell_count_per_second\030\016" +
-      " \001(\004\022&\n\036read_raw_cell_count_per_second\030\017" +
-      " \001(\004\022\035\n\025scan_count_per_second\030\020 \001(\004\022\034\n\024s" +
-      "can_rows_per_second\030\021 \001(\004\022>\n\033region_serv" +
-      "er_table_latency\030\022 \003(\0132\031.RegionServerTab",
-      "leLatency\"\273\004\n\030RegionServerTableLatency\022\022" +
-      "\n\ntable_name\030\001 \002(\t\022\025\n\rget_time_mean\030\002 \001(" +
-      "\004\022\025\n\rput_time_mean\030\003 \001(\004\022\026\n\016scan_time_me" +
-      "an\030\004 \001(\004\022\027\n\017batch_time_mean\030\005 \001(\004\022\030\n\020app" +
-      "end_time_mean\030\006 \001(\004\022\030\n\020delete_time_mean\030" +
-      "\007 \001(\004\022\033\n\023increment_time_mean\030\010 \001(\004\022\033\n\023ge" +
-      "t_operation_count\030\t \001(\004\022\033\n\023put_operation" +
-      "_count\030\n \001(\004\022\034\n\024scan_operation_count\030\013 \001" +
-      "(\004\022\035\n\025batch_operation_count\030\014 \001(\004\022\036\n\026app" +
-      "end_operation_count\030\r \001(\004\022\036\n\026delete_oper",
-      "ation_count\030\016 \001(\004\022!\n\031increment_operation" +
-      "_count\030\017 \001(\004\022\036\n\026get_time_99_percentile\030\020" +
-      " \001(\004\022\036\n\026put_time_99_percentile\030\021 \001(\004\022\037\n\027" +
-      "scan_time_99_percentile\030\022 \001(\004\022 \n\030batch_t" +
-      "ime_99_percentile\030\023 \001(\004\"O\n\016LiveServerInf" +
-      "o\022\033\n\006server\030\001 \002(\0132\013.ServerName\022 \n\013server" +
-      "_load\030\002 \002(\0132\013.ServerLoad\"\203\003\n\rClusterStat" +
-      "us\022/\n\rhbase_version\030\001 \001(\0132\030.HBaseVersion" +
-      "FileContent\022%\n\014live_servers\030\002 \003(\0132\017.Live" +
-      "ServerInfo\022!\n\014dead_servers\030\003 \003(\0132\013.Serve",
-      "rName\0222\n\025regions_in_transition\030\004 \003(\0132\023.R" +
-      "egionInTransition\022\036\n\ncluster_id\030\005 \001(\0132\n." +
-      "ClusterId\022)\n\023master_coprocessors\030\006 \003(\0132\014" +
-      ".Coprocessor\022\033\n\006master\030\007 \001(\0132\013.ServerNam" +
-      "e\022#\n\016backup_masters\030\010 \003(\0132\013.ServerName\022\023" +
-      "\n\013balancer_on\030\t \001(\010\022!\n\014servers_name\030\n \003(" +
-      "\0132\013.ServerName*\334\001\n\006Option\022\021\n\rHBASE_VERSI" +
-      "ON\020\000\022\016\n\nCLUSTER_ID\020\001\022\020\n\014LIVE_SERVERS\020\002\022\020" +
-      "\n\014DEAD_SERVERS\020\003\022\n\n\006MASTER\020\004\022\022\n\016BACKUP_M" +
-      "ASTERS\020\005\022\027\n\023MASTER_COPROCESSORS\020\006\022\031\n\025REG",
-      "IONS_IN_TRANSITION\020\007\022\017\n\013BALANCER_ON\020\010\022\024\n" +
-      "\020MASTER_INFO_PORT\020\t\022\020\n\014SERVERS_NAME\020\nBF\n" +
-      "*org.apache.hadoop.hbase.protobuf.genera" +
-      "tedB\023ClusterStatusProtosH\001\240\001\001"
+      "o\030\034 \003(\0132\013.FamilyInfo\022%\n\035user_read_reques" +
+      "ts_per_second\030\035 \001(\004\022&\n\036user_write_reques",
+      "ts_per_second\030\036 \001(\004\0226\n.user_read_request" +
+      "s_by_capacity_unit_per_second\030\037 \001(\004\0227\n/u" +
+      "ser_write_requests_by_capacity_unit_per_" +
+      "second\030  \001(\004\"T\n\023ReplicationLoadSink\022\032\n\022a" +
+      "geOfLastAppliedOp\030\001 \002(\004\022!\n\031timeStampsOfL" +
+      "astAppliedOp\030\002 \002(\004\"\225\001\n\025ReplicationLoadSo" +
+      "urce\022\016\n\006peerID\030\001 \002(\t\022\032\n\022ageOfLastShipped" +
+      "Op\030\002 \002(\004\022\026\n\016sizeOfLogQueue\030\003 \002(\r\022 \n\030time" +
+      "StampOfLastShippedOp\030\004 \002(\004\022\026\n\016replicatio" +
+      "nLag\030\005 \002(\004\"\364\004\n\nServerLoad\022\032\n\022number_of_r",
+      "equests\030\001 \001(\r\022 \n\030total_number_of_request" +
+      "s\030\002 \001(\r\022\024\n\014used_heap_MB\030\003 \001(\r\022\023\n\013max_hea" +
+      "p_MB\030\004 \001(\r\022!\n\014region_loads\030\005 \003(\0132\013.Regio" +
+      "nLoad\022\"\n\014coprocessors\030\006 \003(\0132\014.Coprocesso" +
+      "r\022\031\n\021report_start_time\030\007 \001(\004\022\027\n\017report_e" +
+      "nd_time\030\010 \001(\004\022\030\n\020info_server_port\030\t \001(\r\022" +
+      ".\n\016replLoadSource\030\n \003(\0132\026.ReplicationLoa" +
+      "dSource\022*\n\014replLoadSink\030\013 \001(\0132\024.Replicat" +
+      "ionLoadSink\022 \n\030read_requests_per_second\030" +
+      "\014 \001(\004\022!\n\031write_requests_per_second\030\r \001(\004",
+      "\022\"\n\032read_cell_count_per_second\030\016 \001(\004\022&\n\036" +
+      "read_raw_cell_count_per_second\030\017 \001(\004\022\035\n\025" +
+      "scan_count_per_second\030\020 \001(\004\022\034\n\024scan_rows" +
+      "_per_second\030\021 \001(\004\022>\n\033region_server_table" +
+      "_latency\030\022 \003(\0132\031.RegionServerTableLatenc" +
+      "y\"\273\004\n\030RegionServerTableLatency\022\022\n\ntable_" +
+      "name\030\001 \002(\t\022\025\n\rget_time_mean\030\002 \001(\004\022\025\n\rput" +
+      "_time_mean\030\003 \001(\004\022\026\n\016scan_time_mean\030\004 \001(\004" +
+      "\022\027\n\017batch_time_mean\030\005 \001(\004\022\030\n\020append_time" +
+      "_mean\030\006 \001(\004\022\030\n\020delete_time_mean\030\007 \001(\004\022\033\n",
+      "\023increment_time_mean\030\010 \001(\004\022\033\n\023get_operat" +
+      "ion_count\030\t \001(\004\022\033\n\023put_operation_count\030\n" +
+      " \001(\004\022\034\n\024scan_operation_count\030\013 \001(\004\022\035\n\025ba" +
+      "tch_operation_count\030\014 \001(\004\022\036\n\026append_oper" +
+      "ation_count\030\r \001(\004\022\036\n\026delete_operation_co" +
+      "unt\030\016 \001(\004\022!\n\031increment_operation_count\030\017" +
+      " \001(\004\022\036\n\026get_time_99_percentile\030\020 \001(\004\022\036\n\026" +
+      "put_time_99_percentile\030\021 \001(\004\022\037\n\027scan_tim" +
+      "e_99_percentile\030\022 \001(\004\022 \n\030batch_time_99_p" +
+      "ercentile\030\023 \001(\004\"O\n\016LiveServerInfo\022\033\n\006ser",
+      "ver\030\001 \002(\0132\013.ServerName\022 \n\013server_load\030\002 " +
+      "\002(\0132\013.ServerLoad\"\203\003\n\rClusterStatus\022/\n\rhb" +
+      "ase_version\030\001 \001(\0132\030.HBaseVersionFileCont" +
+      "ent\022%\n\014live_servers\030\002 \003(\0132\017.LiveServerIn" +
+      "fo\022!\n\014dead_servers\030\003 \003(\0132\013.ServerName\0222\n" +
+      "\025regions_in_transition\030\004 \003(\0132\023.RegionInT" +
+      "ransition\022\036\n\ncluster_id\030\005 \001(\0132\n.ClusterI" +
+      "d\022)\n\023master_coprocessors\030\006 \003(\0132\014.Coproce" +
+      "ssor\022\033\n\006master\030\007 \001(\0132\013.ServerName\022#\n\016bac" +
+      "kup_masters\030\010 \003(\0132\013.ServerName\022\023\n\013balanc",
+      "er_on\030\t \001(\010\022!\n\014servers_name\030\n \003(\0132\013.Serv" +
+      "erName*\334\001\n\006Option\022\021\n\rHBASE_VERSION\020\000\022\016\n\n" +
+      "CLUSTER_ID\020\001\022\020\n\014LIVE_SERVERS\020\002\022\020\n\014DEAD_S" +
+      "ERVERS\020\003\022\n\n\006MASTER\020\004\022\022\n\016BACKUP_MASTERS\020\005" +
+      "\022\027\n\023MASTER_COPROCESSORS\020\006\022\031\n\025REGIONS_IN_" +
+      "TRANSITION\020\007\022\017\n\013BALANCER_ON\020\010\022\024\n\020MASTER_" +
+      "INFO_PORT\020\t\022\020\n\014SERVERS_NAME\020\nBF\n*org.apa" +
+      "che.hadoop.hbase.protobuf.generatedB\023Clu" +
+      "sterStatusProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -19507,7 +20000,7 @@ public final class ClusterStatusProtos {
           internal_static_RegionLoad_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionLoad_descriptor,
-              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadRequestsByCapacityUnitPerSecond", "WriteRequestsByCapacityUnitPerSecond", "ThrottledReadRequestsCount", "ThrottledWriteRequestsCount", "GetRequestsCount", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", "ScanCountPerSecond", "ScanRowsPerSecond", "FamilyInfo", });
+              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadRequestsByCapacityUnitPerSecond", "WriteRequestsByCapacityUnitPerSecond", "ThrottledReadRequestsCount", "ThrottledWriteRequestsCount", "GetRequestsCount", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", "ScanCountPerSecond", "ScanRowsPerSecond", "FamilyInfo", "UserReadRequestsPerSecond", "UserWriteRequestsPerSecond", "UserReadRequestsByCapacityUnitPerSecond", "UserWriteRequestsByCapacityUnitPerSecond", });
           internal_static_ReplicationLoadSink_descriptor =
             getDescriptor().getMessageTypes().get(4);
           internal_static_ReplicationLoadSink_fieldAccessorTable = new
