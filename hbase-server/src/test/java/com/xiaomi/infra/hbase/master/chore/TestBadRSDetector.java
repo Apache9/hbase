@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.master.HMaster;
@@ -59,7 +60,7 @@ import com.google.common.collect.Sets;
 @Category(MediumTests.class)
 public class TestBadRSDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BadRSDetector.class.getName());
-  private static final int REGION_SERVER_COUNT = 2;
+  private static final int REGION_SERVER_COUNT = 5;
   private static final TableName TABLE_NAME = TableName.valueOf("t");
   private static final byte[] ROW = Bytes.toBytes("r");
   private static final byte[] COLUMN_FAMILY = Bytes.toBytes("cf");
@@ -82,7 +83,6 @@ public class TestBadRSDetector {
 
     UTIL = new HBaseTestingUtility(conf);
     UTIL.startMiniCluster(REGION_SERVER_COUNT);
-
     connection = HConnectionManager.createConnection(UTIL.getConfiguration());
     admin = UTIL.getHBaseAdmin();
     master = UTIL.getMiniHBaseCluster().getMaster();
@@ -90,15 +90,24 @@ public class TestBadRSDetector {
 
   @Before
   public void setup() throws Exception {
-    HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
-    HColumnDescriptor columnFamilyDescriptor = new HColumnDescriptor(COLUMN_FAMILY);
-    tableDescriptor.addFamily(columnFamilyDescriptor);
-    admin.createTable(tableDescriptor);
+    HTable table = UTIL.createTable(TABLE_NAME, COLUMN_FAMILY);
+
+    UTIL.createMultiRegions(UTIL.getConfiguration(), table, COLUMN_FAMILY,20);
     tableInterface = connection.getTable(TABLE_NAME);
 
-    Put put = new Put(ROW);
-    put.add(COLUMN_FAMILY, QUALIFIER, VALUE);
-    tableInterface.put(put);
+    for (char first = 'a'; first <= 'z'; ++first) {
+      String row = "" + first;
+      for (char second = 'a'; second <= 'z'; ++second) {
+        row += second;
+        for (char third = 'a'; third <= 'z'; ++third) {
+          row += third;
+          Put put = new Put(ROW);
+          put.add(COLUMN_FAMILY, QUALIFIER, VALUE);
+          tableInterface.put(put);
+        }
+      }
+    }
+
   }
 
   @AfterClass
@@ -119,7 +128,7 @@ public class TestBadRSDetector {
   public void testBadRsDetector() throws Exception {
     BadRSDetector badRSDetector =
         new BadRSDetector(master, master, (int) TimeUnit.MINUTES.toMillis(5));
-    Assert.assertEquals(UTIL.getMiniHBaseCluster().getRegionServerThreads().size(), 2);
+    Assert.assertEquals(UTIL.getMiniHBaseCluster().getRegionServerThreads().size(), REGION_SERVER_COUNT);
     ServerName server0 = UTIL.getMiniHBaseCluster().getRegionServer(0).getServerName();
     ServerName server1 = UTIL.getMiniHBaseCluster().getRegionServer(1).getServerName();
 
@@ -141,7 +150,7 @@ public class TestBadRSDetector {
 
   @Test
   public void testRestartServer() throws Exception {
-    Assert.assertEquals(UTIL.getMiniHBaseCluster().getRegionServerThreads().size(), 2);
+    Assert.assertEquals(UTIL.getMiniHBaseCluster().getRegionServerThreads().size(), REGION_SERVER_COUNT);
     ServerName server0 = UTIL.getMiniHBaseCluster().getRegionServer(0).getServerName();
     BadRSDetector badRSDetector =
         new BadRSDetector(master, master, (int) TimeUnit.MINUTES.toMillis(5));
@@ -156,7 +165,7 @@ public class TestBadRSDetector {
   public void testRecover() throws Exception {
     BadRSDetector badRSDetector =
         new BadRSDetector(master, master, (int) TimeUnit.MINUTES.toMillis(5));
-    Assert.assertEquals(UTIL.getMiniHBaseCluster().getRegionServerThreads().size(), 2);
+    Assert.assertEquals(UTIL.getMiniHBaseCluster().getRegionServerThreads().size(), REGION_SERVER_COUNT);
     ServerName server0 = UTIL.getMiniHBaseCluster().getRegionServer(0).getServerName();
     ServerName server1 = UTIL.getMiniHBaseCluster().getRegionServer(1).getServerName();
 
@@ -166,10 +175,10 @@ public class TestBadRSDetector {
     for (ServerName serverName : serverMap.keySet()) {
       ServerName dest =
           (serverName.getHostAndPort().contains(server0.getHostAndPort()) ? server1 : server0);
-      Set<HRegionInfo> sourceRegionInfo =
+      Set<HRegionInfo> sourceRegionInfos =
           master.getAssignmentManager().getRegionStates().getServerRegions(dest);
       Map<ServerName, Set<HRegionInfo>> sourceMap = new HashMap<>();
-      sourceMap.put(serverName, sourceRegionInfo);
+      sourceMap.put(serverName, sourceRegionInfos);
       Set<HRegionInfo> failedRegionInfos =
           badRSDetector.recoverRegionServers(sourceMap, Arrays.asList(dest));
       Assert.assertTrue("Fail to move RegionInfo " + badRSDetector.toString(failedRegionInfos),

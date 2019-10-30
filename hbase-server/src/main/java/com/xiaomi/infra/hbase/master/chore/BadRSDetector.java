@@ -101,9 +101,9 @@ public class BadRSDetector extends Chore {
 			LOG.info("Not running BadRSDetector because there is at least one region in RIT");
 			return;
 		}
-
+		boolean originalBalanceSwitch = true;
 		try {
-			master.balanceSwitch(false);
+			originalBalanceSwitch = master.balanceSwitch(false);
 		} catch (IOException e) {
 			LOG.warn("Failed to turn off the balance switch, return", e);
 			return;
@@ -111,11 +111,13 @@ public class BadRSDetector extends Chore {
 
 		process(statsBuilder);
 
-		try {
-			master.balanceSwitch(true);
-		} catch (IOException e) {
-			LOG.error("Failed to turn on the balance switch", e);
-			return;
+		if (originalBalanceSwitch) {
+			try {
+				master.balanceSwitch(true);
+			} catch (IOException e) {
+				LOG.error("Failed to turn on the balance switch", e);
+				return;
+			}
 		}
 	}
 
@@ -152,7 +154,10 @@ public class BadRSDetector extends Chore {
 				vacatedServerMap.values().stream().flatMap(regionInfo -> regionInfo.stream())
 						.map(HRegionInfo::getEncodedName)
 				.collect(Collectors.toSet());
-
+		boolean isMetaMoved =
+				vacatedServerMap.values().stream().flatMap(regionInfo -> regionInfo.stream())
+						.anyMatch(HRegionInfo::isMetaRegion);
+		statsBuilder.setIsMetaMoved(isMetaMoved);
 		Set<HRegionInfo> failVacatedRegions =
 				vacateRegionServers(vacatedServerMap, vacatedDestinations);
     if (!failVacatedRegions.isEmpty()) {
@@ -280,7 +285,7 @@ public class BadRSDetector extends Chore {
 	}
 
 	private Set<HRegionInfo> moveRegion(Map<ServerName, Set<HRegionInfo>> sourceMap,
-			List<ServerName> destinations, boolean waitWithinTimeout) {
+			List<ServerName> destinations, boolean isVacated) {
 	  if (destinations.isEmpty()) {
 		  return sourceMap.values().stream()
 				  .flatMap(regionInfos -> regionInfos.stream()).collect(Collectors.toSet());
@@ -289,19 +294,38 @@ public class BadRSDetector extends Chore {
 		int i = 0;
 		int destSize = destinations.size();
 		List<RegionPlan> movePlans = new ArrayList<>();
+		RegionPlan metaRegionPlan = null;
 		for (Map.Entry<ServerName, Set<HRegionInfo>> entry : sourceMap.entrySet()) {
 			ServerName source = entry.getKey();
 			Set<HRegionInfo> regionInfos = entry.getValue();
 			for (HRegionInfo regionInfo : regionInfos) {
 				ServerName destination = destinations.get((i++) % destSize);
 				RegionPlan regionPlan = new RegionPlan(regionInfo, source, destination);
-				LOG.info("Moving region {} from {} to {} ",
-						new Object[] { regionInfo.getRegionNameAsString(), source, destination });
-				master.getAssignmentManager().balance(regionPlan);
-				movePlans.add(regionPlan);
+				if (regionInfo.isMetaRegion()) {
+					metaRegionPlan = regionPlan;
+				} else {
+					movePlans.add(regionPlan);
+				}
 			}
 		}
-		if (!waitWithinTimeout) {
+
+		if (isVacated) {
+			if (metaRegionPlan != null) {
+				LOG.info("Moving meta region {} from {} to {} ",
+						new Object[] { metaRegionPlan.getRegionInfo().getRegionNameAsString(), metaRegionPlan.getSource(),
+								metaRegionPlan.getDestination() });
+				master.getAssignmentManager().balance(metaRegionPlan);
+
+			}
+		}
+		for (RegionPlan regionPlan : movePlans) {
+			LOG.info("Moving region {} from {} to {} ",
+					new Object[] { regionPlan.getRegionInfo().getRegionNameAsString(), regionPlan.getSource(),
+							regionPlan.getDestination() });
+			master.getAssignmentManager().balance(regionPlan);
+		}
+
+		if (!isVacated) {
 			return Collections.emptySet();
 		}
 
