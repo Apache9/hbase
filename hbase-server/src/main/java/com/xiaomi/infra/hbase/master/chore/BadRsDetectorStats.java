@@ -41,6 +41,7 @@ public final class BadRsDetectorStats {
 	private long startTime;
 	private long endTime;
 	private boolean isSuccess;
+	private boolean isMetaMoved;
 	private String regionServer;
 	private double load;
 	private double loadThreshold;
@@ -52,6 +53,7 @@ public final class BadRsDetectorStats {
 		startTime = builder.startTime;
 		endTime = builder.endTime;
 		isSuccess = builder.isSuccess;
+		isMetaMoved = builder.isMetaMoved;
 		regionServer = builder.regionServer;
 		load = builder.load;
 		loadThreshold = builder.loadThreshold;
@@ -67,6 +69,7 @@ public final class BadRsDetectorStats {
 				.append(toLine("detector startTime", timeToString(startTime)))
 				.append(toLine("detector endTime", timeToString(endTime)))
 				.append(toLine("isSuccess", isSuccess))
+				.append(toLine("isMetaMoved", isMetaMoved))
 				.append(toLine("regionNames", regionNames.stream().collect(Collectors.joining(","))))
 				.toString();
 	}
@@ -98,6 +101,7 @@ public final class BadRsDetectorStats {
 		private long startTime = 0L;
 		private long endTime = 0L;
 		private boolean isSuccess = false;
+		private boolean isMetaMoved = false;
 		private String regionServer = "";
 		private double load = 0.0;
 		private double loadThreshold = 0.0;
@@ -125,6 +129,11 @@ public final class BadRsDetectorStats {
 
 		public Builder setIsSuccess(boolean isSuccess) {
 			this.isSuccess = isSuccess;
+			return this;
+		}
+
+		public Builder setIsMetaMoved(boolean isMetaMoved) {
+			this.isMetaMoved = isMetaMoved;
 			return this;
 		}
 
