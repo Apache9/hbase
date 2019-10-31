@@ -1054,7 +1054,7 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
   }
 
   public long getByteBuffAllocatorHeapAllocationBytes() {
-    return this.allocator.getHeapAllocationBytes();
+    return ByteBuffAllocator.getHeapAllocationBytes(allocator, ByteBuffAllocator.HEAP);
   }
 
   @Override
