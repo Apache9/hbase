@@ -516,12 +516,15 @@ public class SplitTransaction {
             // add 2nd daughter first (see HBASE-4335)
             services.postOpenDeployTasks(b, server.getCatalogTracker());
           } else {
-            if (!services.reportRegionStateTransition(TransitionCode.SPLIT,
-              parent.getRegionInfo(), hri_a, hri_b)) {
-            throw new IOException(
-                "Failed to report split region to master: " + parent.getRegionInfo().getShortNameToLog());
-            } else {
+            String failedMessage = "Failed to report split region to master: " +
+                parent.getRegionInfo().getShortNameToLog();
+            boolean succeed = HRegionServer
+                .reportRegionStateTransitionWithRetry(services, failedMessage, TransitionCode.SPLIT,
+                    parent.getRegionInfo(), hri_a, hri_b);
+            if (succeed) {
               services.postOpenDeployTasks(b, server.getCatalogTracker());
+            } else {
+              throw new IOException(failedMessage);
             }
           }
           // Should add it to OnlineRegions

@@ -1324,6 +1324,10 @@ public final class HConstants {
       "hbase.master.executor.snapshot.threads";
   public static final int MASTER_SNAPSHOT_OPERATIONS_THREADS_DEFAULT = 3;
 
+  public static final String REPORT_REGION_TRANSITION_RETRIES_NUMBER =
+      "hbase.report.region.transition.retries.number";
+  public static final int DEFAULT_REPORT_REGION_TRANSITION_RETRIES_NUMBER = 3;
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

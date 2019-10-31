@@ -572,11 +572,15 @@ public class RegionMergeTransaction {
         if (useZKForAssignment) {
           services.postOpenDeployTasks(merged, server.getCatalogTracker());
         } else {
-          if (!services.reportRegionStateTransition(TransitionCode.MERGED,
-            mergedRegionInfo, region_a.getRegionInfo(), region_b.getRegionInfo())) {
-          throw new IOException("Failed to report merged region to master: " + mergedRegionInfo.getShortNameToLog());
-          } else {
+          String failedMessage =
+              "Failed to report merged region to master: " + mergedRegionInfo.getShortNameToLog();
+          boolean succeed = HRegionServer
+              .reportRegionStateTransitionWithRetry(services, failedMessage, TransitionCode.MERGED,
+                  mergedRegionInfo, region_a.getRegionInfo(), region_b.getRegionInfo());
+          if (succeed) {
             services.postOpenDeployTasks(merged, server.getCatalogTracker());
+          } else {
+            throw new IOException(failedMessage);
           }
         }
         services.addToOnlineRegions(merged);
