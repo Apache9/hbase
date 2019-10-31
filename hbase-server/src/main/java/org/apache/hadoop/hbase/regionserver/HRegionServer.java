@@ -6103,4 +6103,30 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public SplitOrMergeTracker getSplitOrMergeTracker() {
     return splitOrMergeTracker;
   }
+
+  /**
+   * Only call this when {@link SplitTransaction} or {@link RegionMergeTransaction} got in the step
+   * point-of-no-return. It means that if report failed, will abort the regionserver. So need to
+   * take care of this and report region transition with retry.
+   */
+  public static boolean reportRegionStateTransitionWithRetry(RegionServerServices services,
+      String failedMessage, TransitionCode code, HRegionInfo... hris) {
+    int retries = services.getConfiguration()
+        .getInt(HConstants.REPORT_REGION_TRANSITION_RETRIES_NUMBER,
+            HConstants.DEFAULT_REPORT_REGION_TRANSITION_RETRIES_NUMBER);
+    int pauseTime = services.getConfiguration()
+        .getInt(HConstants.HBASE_SERVER_PAUSE, HConstants.DEFAULT_HBASE_SERVER_PAUSE);
+    for (int i = 0; i < retries; i++) {
+      if (services.reportRegionStateTransition(code, hris)) {
+        return true;
+      }
+      LOG.warn(failedMessage + ", will sleep " + pauseTime + " ms and retry, tries = " + i);
+      try {
+        Thread.sleep(pauseTime);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    return false;
+  }
 }
