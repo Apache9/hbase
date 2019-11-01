@@ -58,6 +58,9 @@ public interface MetricsHBaseServerSource extends BaseSource {
   String READ_QUEUE_NAME = "numCallsInReadQueue";
   String READ_QUEUE_DESC = "Number of calls in the read call queue; "
       + "parsed requests waiting in scheduler to be executed";
+  String SCAN_QUEUE_NAME = "numCallsInScanQueue";
+  String SCAN_QUEUE_DESC = "Number of calls in the scan call queue; "
+      + "parsed requests waiting in scheduler to be executed";
   String NUM_OPEN_CONNECTIONS_DESC = "Number of open connections.";
   String NUM_ACTIVE_HANDLER_NAME = "numActiveHandler";
   String NUM_ACTIVE_HANDLER_DESC = "Number of active rpc handlers.";
@@ -65,6 +68,8 @@ public interface MetricsHBaseServerSource extends BaseSource {
   String NUM_ACTIVE_WRITE_HANDLER_DESC = "Number of active write rpc handlers.";
   String NUM_ACTIVE_READ_HANDLER_NAME = "numActiveReadHandler";
   String NUM_ACTIVE_READ_HANDLER_DESC = "Number of active read rpc handlers.";
+  String NUM_ACTIVE_SCAN_HANDLER_NAME = "numActiveScanHandler";
+  String NUM_ACTIVE_SCAN_HANDLER_DESC = "Number of active scan rpc handlers.";
   String FAILED_CALLS_NAME = "failedCalls";
   String FAILED_CALLS_DESC = "Number of failed rpc calls.";
   String NUM_GENERAL_CALLS_DROPPED_NAME = "numGeneralCallsDropped";

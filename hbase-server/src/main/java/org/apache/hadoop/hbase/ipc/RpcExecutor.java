@@ -239,7 +239,15 @@ public abstract class RpcExecutor {
     return 0;
   }
 
+  public int getActiveScanHandlerCount() {
+    return 0;
+  }
+
   public int getReadQueueLength() {
+    return 0;
+  }
+
+  public int getScanQueueLength() {
     return 0;
   }
 

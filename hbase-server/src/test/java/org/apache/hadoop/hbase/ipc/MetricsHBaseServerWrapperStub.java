@@ -60,12 +60,22 @@ public class MetricsHBaseServerWrapperStub implements MetricsHBaseServerWrapper{
   }
 
   @Override
+  public int getScanQueueLength() {
+    return 51;
+  }
+
+  @Override
   public int getActiveWriteRpcHandlerCount() {
     return 53;
   }
 
   @Override
   public int getActiveReadRpcHandlerCount() {
+    return 53;
+  }
+
+  @Override
+  public int getActiveScanRpcHandlerCount() {
     return 53;
   }
 

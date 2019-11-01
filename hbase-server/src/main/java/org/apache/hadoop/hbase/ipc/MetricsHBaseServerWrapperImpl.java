@@ -96,6 +96,14 @@ public class MetricsHBaseServerWrapperImpl implements MetricsHBaseServerWrapper 
   }
 
   @Override
+  public int getScanQueueLength() {
+    if (!isServerStarted() || this.server.getScheduler() == null) {
+      return 0;
+    }
+    return server.getScheduler().getScanQueueLength();
+  }
+
+  @Override
   public int getActiveWriteRpcHandlerCount() {
     if (!isServerStarted() || this.server.getScheduler() == null) {
       return 0;
@@ -109,6 +117,14 @@ public class MetricsHBaseServerWrapperImpl implements MetricsHBaseServerWrapper 
       return 0;
     }
     return server.getScheduler().getActiveReadRpcHandlerCount();
+  }
+
+  @Override
+  public int getActiveScanRpcHandlerCount() {
+    if (!isServerStarted() || this.server.getScheduler() == null) {
+      return 0;
+    }
+    return server.getScheduler().getActiveScanRpcHandlerCount();
   }
 
   @Override
