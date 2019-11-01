@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.hadoop.hbase.ipc.CallRunner;
 import org.apache.hadoop.hbase.util.QueueCounter;
 
 /**
@@ -122,12 +121,22 @@ public class FifoRpcScheduler extends RpcScheduler {
   }
 
   @Override
+  public int getScanQueueLength() {
+    return 0;
+  }
+
+  @Override
   public int getActiveWriteRpcHandlerCount() {
     return 0;
   }
 
   @Override
   public int getActiveReadRpcHandlerCount() {
+    return 0;
+  }
+
+  @Override
+  public int getActiveScanRpcHandlerCount() {
     return 0;
   }
 

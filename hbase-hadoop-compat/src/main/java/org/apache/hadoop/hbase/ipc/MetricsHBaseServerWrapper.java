@@ -36,9 +36,13 @@ public interface MetricsHBaseServerWrapper {
 
   int getReadQueueLength();
 
+  int getScanQueueLength();
+
   int getActiveWriteRpcHandlerCount();
 
   int getActiveReadRpcHandlerCount();
+
+  int getActiveScanRpcHandlerCount();
 
   long getNumGeneralCallsDropped();
 

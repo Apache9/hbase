@@ -46,6 +46,8 @@ public class SimpleRpcScheduler extends RpcScheduler {
 
   public static final String CALL_QUEUE_READ_SHARE_CONF_KEY =
     "hbase.ipc.server.callqueue.read.share";
+  public static final String CALL_QUEUE_SCAN_SHARE_CONF_KEY =
+      "hbase.ipc.server.callqueue.scan.ratio";
   public static final String CALL_QUEUE_HANDLER_FACTOR_CONF_KEY =
     "hbase.ipc.server.callqueue.handler.factor";
   public static final String CALL_QUEUE_MAX_LENGTH_CONF_KEY =
@@ -219,6 +221,11 @@ public class SimpleRpcScheduler extends RpcScheduler {
   }
 
   @Override
+  public int getScanQueueLength() {
+    return callExecutor.getScanQueueLength();
+  }
+
+  @Override
   public int getActiveWriteRpcHandlerCount() {
     return callExecutor.getActiveWriteHandlerCount();
   }
@@ -228,6 +235,11 @@ public class SimpleRpcScheduler extends RpcScheduler {
     return callExecutor.getActiveReadHandlerCount();
   }
 
+  @Override
+  public int getActiveScanRpcHandlerCount() {
+    return callExecutor.getActiveScanHandlerCount();
+  }
+  
   @Override
   public List<QueueCounter> getQueueCounters() {
     return callExecutor.getQueueCounters();

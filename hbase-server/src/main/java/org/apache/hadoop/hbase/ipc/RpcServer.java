@@ -329,6 +329,10 @@ public class RpcServer implements RpcServerInterface {
       return this.header;
     }
 
+    protected Message getParam() {
+      return param;
+    }
+
     /*
      * Short string representation without param info because param itself could be huge depends on
      * the payload of a command
