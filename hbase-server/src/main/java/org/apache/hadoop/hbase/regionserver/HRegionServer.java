@@ -18,20 +18,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Maps;
-import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.Service;
-import com.google.protobuf.ServiceException;
-import com.google.protobuf.TextFormat;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -68,9 +54,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
+
 import javax.management.ObjectName;
 
-import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.SplitOrMergeTracker;
@@ -112,6 +99,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.MasterSwitchType;
@@ -164,10 +152,10 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionResponse;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionLoadResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetServerInfoRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetServerInfoResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetStoreFileRequest;
@@ -290,6 +278,22 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.data.Stat;
 import org.cliffc.high_scale_lib.Counter;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.Maps;
+import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Message;
+import com.google.protobuf.RpcCallback;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.Service;
+import com.google.protobuf.ServiceException;
+import com.google.protobuf.TextFormat;
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
+import com.xiaomi.infra.hbase.util.MailUtils;
 
 /**
  * HRegionServer makes a set of HRegions available to clients. It checks in with
@@ -1912,6 +1916,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     private int sampleThreshold;
     private int rejectThreshold;
     private List<QueueCounter> queueCounters;
+    private int continuousQueueFullCount;
+    private int continuousQueueFullCountThreshold;
+    private String clusterName;
 
     public QueueFullDetector(HRegionServer server, Configuration conf) {
       super("QueueFullDetector", conf.getInt("hbase.regionserver.queuefull.detector.sparseperiod",
@@ -1933,8 +1940,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             + rejectThreshold + ", will use 95 instead");
         rejectThreshold = 95;
       }
+      this.continuousQueueFullCountThreshold =
+          conf.getInt("hbase.regionserver.queuefull.detector.continuous.threshold", 100);
+
 
       this.queueCounters = server.getRpcServer().getScheduler().getQueueCounters();
+      this.clusterName = conf.get(HConstants.CLUSTER_NAME, "");
 
       LOG.info("QueueFullDetector is started, denseCheckNum=" + denseCheckNum + ", densePeriod="
           + densePeriod + ", sampleThreshold=" + sampleThreshold + ", rejectThreshold="
@@ -1943,66 +1954,121 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
     private void checkQueueFull(QueueCounter queueCounter) {
       boolean queueFull = queueCounter.getQueueFull();
-      if (queueFull) {
-        // Found "queue full" events, start dense detecting
-        LOG.warn("Detected queue full events for " + queueCounter + ",  start dense checking");
-        int queueFullNum = 0;
-        int maxNotHit = Math.max((int) (denseCheckNum * (100 - sampleThreshold) / 100.0), 1);
-        long beforeCheckRequestCount = queueCounter.getIncomeRequestCount();
-        long beforeCheckRejectedRequestCount = queueCounter.getRejectedRequestCount();
-        // To detect queue full events in a higher frequency
-        for (int i = 0; i < denseCheckNum; i++) {
-          try {
-            Thread.sleep(densePeriod);
-          } catch (InterruptedException e) {
-            // Check if we should stop after the try-catch block
-          }
-          if (isStopping() || isStopped()) {
-            LOG.info("Exit queue full dense checking for " + queueCounter
-                + ", because region server is stopping or stopped!");
-            return;
-          }
-          if (queueCounter.getQueueFull()) {
-            queueFullNum++;
-          }
-          int notHit = i + 1 - queueFullNum;
-          if (notHit > maxNotHit) {
-            LOG.info("Exit queue full dense checking for " + queueCounter + ", queueFullNum= "
-                + queueFullNum + ", notHit=" + notHit + ", maxNotHit=" + maxNotHit);
-            return;
-          }
+      if (!queueFull) {
+        continuousQueueFullCount = 0;
+        return;
+      }
+      ++continuousQueueFullCount;
+      // Found "queue full" events, start dense detecting
+      LOG.warn("Detected queue full events for " + queueCounter
+          + ",  start dense checking, continuousQueueFullCount=" + continuousQueueFullCount);
+      int queueFullNum = 0;
+      int maxNotHit = Math.max((int) (denseCheckNum * (100 - sampleThreshold) / 100.0), 1);
+      long beforeCheckRequestCount = queueCounter.getIncomeRequestCount();
+      long beforeCheckRejectedRequestCount = queueCounter.getRejectedRequestCount();
+      // To detect queue full events in a higher frequency
+      for (int i = 0; i < denseCheckNum; i++) {
+        try {
+          Thread.sleep(densePeriod);
+        } catch (InterruptedException e) {
+          // Check if we should stop after the try-catch block
         }
-
-        long afterCheckRequestCount = queueCounter.getIncomeRequestCount();
-        long afterCheckRejectedRequestCount = queueCounter.getRejectedRequestCount();
-        long newRequestCount = afterCheckRequestCount - beforeCheckRequestCount;
-        long newRejectedRequestCount = afterCheckRejectedRequestCount
-            - beforeCheckRejectedRequestCount;
-        StringBuilder sb = new StringBuilder();
-        sb.append("After dense checking for ").append(queueCounter).append(", queueFullNum is ")
-            .append(queueFullNum);
-        sb.append(", new incoming requests count is ").append(newRequestCount)
-            .append(", rejected requests count is ").append(newRejectedRequestCount);
-        // If the following conditions are detected, we should exit gracefully:
-        // a. the percentage of queueFullNum has reached the configured threshold
-        // b. the region server is not idle (i.e. there are new incoming rpc)
-        // c. the percentage of rejected new incoming request in this period (due to queue full) has
-        // reached the configured threshold
-        boolean shouldExit = false;
-        if (queueFullNum * 100 > sampleThreshold * denseCheckNum) {
-          if (newRequestCount > 0
-              && (newRejectedRequestCount * 100 > rejectThreshold * newRequestCount)) {
-            shouldExit = true;
-          }
+        if (isStopping() || isStopped()) {
+          LOG.info("Exit queue full dense checking for " + queueCounter
+              + ", because region server is stopping or stopped!");
+          return;
         }
-        sb.append(", shouldExit is ").append(shouldExit);
-        LOG.info(sb.toString());
-        if (shouldExit) {
-          ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
-          queueFullDetected = true;
-          abort("Detected queue full and canot come back to normal state in a long duration");
+        if (queueCounter.getQueueFull()) {
+          queueFullNum++;
+        }
+        int notHit = i + 1 - queueFullNum;
+        if (notHit > maxNotHit) {
+          LOG.info("Exit queue full dense checking for " + queueCounter + ", queueFullNum= "
+              + queueFullNum + ", notHit=" + notHit + ", maxNotHit=" + maxNotHit);
+          return;
         }
       }
+
+      long afterCheckRequestCount = queueCounter.getIncomeRequestCount();
+      long afterCheckRejectedRequestCount = queueCounter.getRejectedRequestCount();
+      long newRequestCount = afterCheckRequestCount - beforeCheckRequestCount;
+      long newRejectedRequestCount =
+          afterCheckRejectedRequestCount - beforeCheckRejectedRequestCount;
+      StringBuilder sb = new StringBuilder();
+      sb.append("After dense checking for ").append(queueCounter).append(", queueFullNum is ")
+          .append(queueFullNum);
+      sb.append(", new incoming requests count is ").append(newRequestCount)
+          .append(", rejected requests count is ").append(newRejectedRequestCount);
+      // If the following conditions are detected, we should exit gracefully:
+      // a. the percentage of queueFullNum has reached the configured threshold
+      // b. the region server is not idle (i.e. there are new incoming rpc)
+      // c. the percentage of rejected new incoming request in this period (due to queue full) has
+      // reached the configured threshold
+      // d. the dense check is executed frequently but not exit, e.g queue full, drop timeout,
+      // queue full and drop timeout again and again.
+      boolean shouldExit = isUnrecoverable(queueFullNum, newRequestCount, newRejectedRequestCount);
+      sb.append(", shouldExit is ").append(shouldExit);
+      LOG.info(sb.toString());
+      if (shouldExit) {
+        ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
+        queueFullDetected = true;
+        cleanRegionsBeforeAbort();
+        sendEmailWhenAbort();
+        abort("Detected queue full and canot come back to normal state in a long duration");
+      }
+
+    }
+
+    private boolean isUnrecoverable(int queueFullNum, long newRequestCount,
+        long newRejectedRequestCount) {
+      return
+          (queueFullDetectedFrequently(queueFullNum) && tooManyNewRequestsRejected(newRequestCount,
+              newRejectedRequestCount)) || denseCheckFrequently();
+    }
+
+    private boolean denseCheckFrequently() {
+      return continuousQueueFullCount > continuousQueueFullCountThreshold;
+    }
+
+    private boolean queueFullDetectedFrequently(int queueFullNum) {
+      return queueFullNum * 100 > sampleThreshold * denseCheckNum;
+    }
+
+    private boolean tooManyNewRequestsRejected(long newRequestCount, long newRejectedRequestCount) {
+      return newRequestCount > 0 && (newRejectedRequestCount * 100
+          > rejectThreshold * newRequestCount);
+    }
+
+    private void cleanRegionsBeforeAbort() {
+      List<HRegionInfo> regionInfoList =
+          server.getCopyOfOnlineRegionsSortedBySize().values().stream().map(HRegion::getRegionInfo)
+              .collect(Collectors.toList());
+      try (HBaseAdmin admin = new HBaseAdmin(
+          HConnectionManager.getConnection(server.getConfiguration()))) {
+        ServerName serverName = server.getServerName();
+
+        for (HRegionInfo regionInfo : regionInfoList) {
+          try {
+            admin.move(regionInfo.getEncodedNameAsBytes(), null);
+            LOG.info("Success to move region " + regionInfo.getRegionNameAsString() + " from "
+                + serverName + " before exit for queue full");
+
+          } catch (IOException e) {
+            LOG.warn("Failed to move region " + regionInfo.getRegionNameAsString() + " from "
+                + serverName + " before exit for queue full");
+          }
+        }
+      } catch (IOException e) {
+        LOG.warn("Failed to new HBaseAdmin when move regions before exit for queue full", e);
+      }
+    }
+
+    private void sendEmailWhenAbort() {
+      String mailBody = "Cluster " + clusterName + " abort regionserver " + serverName
+          + " because of full queue";
+      MailUtils.sendMail(HConstants.MAIL_TO,
+          "QueueFullDetector for cluster " + clusterName + " abort regionserver " + serverName,
+          mailBody);
     }
 
     @Override
