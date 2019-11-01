@@ -1327,6 +1327,8 @@ public final class HConstants {
   public static final String REPORT_REGION_TRANSITION_RETRIES_NUMBER =
       "hbase.report.region.transition.retries.number";
   public static final int DEFAULT_REPORT_REGION_TRANSITION_RETRIES_NUMBER = 3;
+  public static final String CLUSTER_NAME = "hbase.cluster.name";
+  public static final String MAIL_TO = "hbase-help@xiaomi.com";
 
   private HConstants() {
     // Can't be instantiated with this ctor.

@@ -62,8 +62,6 @@ import com.xiaomi.infra.hbase.util.MailUtils;
  */
 public class BadRSDetector extends Chore {
 	private static final Logger LOG = LoggerFactory.getLogger(BadRSDetector.class.getName());
-	private static final String CLUSTER_NAME_CONFIG_KEY = "hbase.cluster.name";
-	private static final String MAIL_TO = "hbase-help@xiaomi.com";
 	private static final Gson GSON = new Gson();
 	private final long maxExecutionTime;
 
@@ -83,7 +81,7 @@ public class BadRSDetector extends Chore {
     this.master = master;
     this.maxExecutionTime = period;
 
-    clusterName = master.getConfiguration().get(CLUSTER_NAME_CONFIG_KEY, "");
+	  clusterName = master.getConfiguration().get(HConstants.CLUSTER_NAME, "");
     badRsLoadThreshold = master.getConfiguration()
         .getDouble(HConstants.BAD_REGIONSERVER_LOAD_THRESHOLD,
             HConstants.DEFAULT_BAD_REGIONSERVER_LOAD_THRESHOLD);
@@ -359,8 +357,8 @@ public class BadRSDetector extends Chore {
       LOG.warn(message);
     }
     BadRsDetectorStats stats = statsBuilder.setDetails(message).setIsSuccess(success).build();
-    MailUtils
-        .sendMail(MAIL_TO, "BadRSDetector for cluster " + stats.getClusterName(), stats.toString());
+	  MailUtils.sendMail(HConstants.MAIL_TO, "BadRSDetector for cluster " + stats.getClusterName(),
+			  stats.toString());
   }
 
 	@VisibleForTesting
