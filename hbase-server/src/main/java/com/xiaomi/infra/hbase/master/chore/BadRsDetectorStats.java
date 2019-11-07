@@ -32,10 +32,10 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
  * This class is to log the result of the BadRSDetector chore execution.
  */
 public final class BadRsDetectorStats {
-	private static final String SEPARATOR = "\t:\t";
+	private static final String SEPARATOR = " : ";
 	private static final String END_LINE = "\n";
 	private static final DateTimeFormatter DATE_TIME_FORMATTER =
-			DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss");
+			DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 	private String clusterName;
 	private String details;
 	private long startTime;

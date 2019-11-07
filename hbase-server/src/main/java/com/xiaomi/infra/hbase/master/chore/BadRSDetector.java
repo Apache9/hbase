@@ -121,7 +121,7 @@ public class BadRSDetector extends Chore {
 
 	private void process(BadRsDetectorStats.Builder statsBuilder) {
 		Map<HRegionInfo, ServerName> regionAssignments = getRegionAssignments();
-		Collection<ServerName> serverNames = regionAssignments.values();
+		Set<ServerName> serverNames = new HashSet<>(regionAssignments.values());
 		Map<String, Double> serverLoads = getServerLoad(serverNames);
 		if (serverLoads == null || serverLoads.isEmpty()) {
 			LOG.warn("Failed to get regionserver loads from falcon, return");
@@ -263,7 +263,7 @@ public class BadRSDetector extends Chore {
 	  return moveRegion(vacatedServerMap, targetServerNames, false);
   }
 
-	private Map<String, Double> getServerLoad(Collection<ServerName> serverNames) {
+	private Map<String, Double> getServerLoad(Set<ServerName> serverNames) {
 		Map<String, Double> serverLoads = new HashMap<>();
 		for (ServerName serverName : serverNames) {
 			FalconLatestRequest request =
