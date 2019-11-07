@@ -24,9 +24,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 /**
@@ -52,9 +55,11 @@ import com.google.common.base.Preconditions;
  */
 @InterfaceAudience.Private
 public class MemStoreLAB {
+  static final Log LOG = LogFactory.getLog(MemStoreLAB.class);
+
   private AtomicReference<Chunk> curChunk = new AtomicReference<Chunk>();
-  // A queue of chunks contained by this memstore
-  private BlockingQueue<Chunk> chunkQueue = new LinkedBlockingQueue<Chunk>();
+  // A queue of chunks contained by this memstore, used with chunk pool
+  private BlockingQueue<Chunk> chunkQueue = null;
 
   final static String CHUNK_SIZE_KEY = "hbase.hregion.memstore.mslab.chunksize";
   final static int CHUNK_SIZE_DEFAULT = 2048 * 1024;
@@ -88,6 +93,12 @@ public class MemStoreLAB {
     chunkSize = conf.getInt(CHUNK_SIZE_KEY, CHUNK_SIZE_DEFAULT);
     maxAlloc = conf.getInt(MAX_ALLOC_KEY, MAX_ALLOC_DEFAULT);
     this.chunkPool = pool;
+    // currently chunkQueue is only used for chunkPool
+    if (this.chunkPool != null) {
+      // set queue length to chunk pool max count to avoid keeping reference of
+      // too many non-reclaimable chunks
+      chunkQueue = new LinkedBlockingQueue<Chunk>(chunkPool.getMaxCount());
+    }
 
     // if we don't exclude allocations >CHUNK_SIZE, we'd infiniteloop on one!
     Preconditions.checkArgument(
@@ -163,6 +174,8 @@ public class MemStoreLAB {
    * Try to retire the current chunk if it is still
    * <code>c</code>. Postcondition is that curChunk.get()
    * != c
+   * @param c the chunk to retire
+   * @return true if we won the race to retire the chunk
    */
   private void tryRetireChunk(Chunk c) {
     curChunk.compareAndSet(c, null);
@@ -194,7 +207,12 @@ public class MemStoreLAB {
         // we won race - now we need to actually do the expensive
         // allocation step
         c.init();
-        this.chunkQueue.add(c);
+        if (chunkQueue != null && !this.closed && !this.chunkQueue.offer(c)) {
+          if (LOG.isTraceEnabled()) {
+            LOG.trace("Chunk queue is full, won't reuse this new chunk. Current queue size: "
+                + chunkQueue.size());
+          }
+        }
         return c;
       } else if (chunkPool != null) {
         chunkPool.putbackChunk(c);
@@ -202,6 +220,16 @@ public class MemStoreLAB {
       // someone else won race - that's fine, we'll try to grab theirs
       // in the next iteration of the loop.
     }
+  }
+
+  @VisibleForTesting
+  Chunk getCurrentChunk() {
+    return this.curChunk.get();
+  }
+
+  @VisibleForTesting
+  BlockingQueue<Chunk> getChunkQueue() {
+    return this.chunkQueue;
   }
 
   /**
@@ -308,6 +336,11 @@ public class MemStoreLAB {
       return "Chunk@" + System.identityHashCode(this) +
         " allocs=" + allocCount.get() + "waste=" +
         (data.length - nextFreeOffset.get());
+    }
+
+    @VisibleForTesting
+    int getNextFreeOffset() {
+      return this.nextFreeOffset.get();
     }
   }
 

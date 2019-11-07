@@ -31,6 +31,7 @@ import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -236,7 +237,8 @@ public class MemStore implements HeapSize {
    */
   long add(final KeyValue kv) {
     KeyValue toAdd = maybeCloneWithAllocator(kv);
-    return internalAdd(toAdd);
+    boolean mslabUsed = (toAdd != kv);
+    return internalAdd(toAdd, mslabUsed);
   }
 
   long timeOfOldestEdit() {
@@ -267,15 +269,32 @@ public class MemStore implements HeapSize {
    *
    * Callers should ensure they already have the read lock taken
    */
-  private long internalAdd(final KeyValue toAdd) {
-    boolean succ = addToKVSet(toAdd);
-    long s = heapSizeChange(toAdd, succ);
+  private long internalAdd(final KeyValue toAdd, boolean mslabUsed) {
+    boolean notPresent = addToKVSet(toAdd);
+    long s = heapSizeChange(toAdd, notPresent);
+    // If there's already a same cell in the CellSet and we are using MSLAB, we must count in the
+    // MSLAB allocation size as well, or else there will be memory leak (occupied heap size larger
+    // than the counted number)
+    if (!notPresent && mslabUsed) {
+      s += getCellLength(toAdd);
+    }
     timeRangeTracker.includeTimestamp(toAdd);
     this.size.addAndGet(s);
-    if (succ) {
+    if (notPresent) {
       this.cellsCount.incrementAndGet();
     }
     return s;
+  }
+
+  /**
+   * Get cell length after serialized in {@link KeyValue}
+   *
+   * @param cell The cell to get length
+   * @return the serialized cell length
+   */
+  @VisibleForTesting
+  int getCellLength(Cell cell) {
+    return KeyValueUtil.length(cell);
   }
 
   private KeyValue maybeCloneWithAllocator(KeyValue kv) {
@@ -334,16 +353,9 @@ public class MemStore implements HeapSize {
    * @return approximate size of the passed key and value.
    */
   long delete(final KeyValue delete) {
-    long s = 0;
     KeyValue toAdd = maybeCloneWithAllocator(delete);
-    boolean succ = addToKVSet(toAdd);
-    s += heapSizeChange(toAdd, succ);
-    timeRangeTracker.includeTimestamp(toAdd);
-    this.size.addAndGet(s);
-    if (succ) {
-      this.cellsCount.addAndGet(1);
-    }
-    return s;
+    boolean mslabUsed = (toAdd != delete);
+    return internalAdd(toAdd, mslabUsed);
   }
 
   /**
@@ -582,7 +594,7 @@ public class MemStore implements HeapSize {
     // test that triggers the pathological case if we don't avoid MSLAB
     // here.
     KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-    long addedSize = internalAdd(kv);
+    long addedSize = internalAdd(kv, false);
 
     // Get the KeyValues for the row/family/qualifier regardless of timestamp.
     // For this case we want to clean up any other puts
