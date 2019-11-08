@@ -400,9 +400,10 @@ public class MasterRpcServices extends RSRpcServices
   }
 
   @Override
-  protected RpcServerInterface createRpcServer(Server server, Configuration conf,
-      RpcSchedulerFactory rpcSchedulerFactory, InetSocketAddress bindAddress, String name)
-      throws IOException {
+  protected RpcServerInterface createRpcServer(final Server server,
+      final RpcSchedulerFactory rpcSchedulerFactory, final InetSocketAddress bindAddress,
+      final String name) throws IOException {
+    final Configuration conf = regionServer.getConfiguration();
     // RpcServer at HM by default enable ByteBufferPool iff HM having user table region in it
     boolean reservoirEnabled = conf.getBoolean(ALLOCATOR_POOL_ENABLED_KEY,
         (LoadBalancer.isTablesOnMaster(conf) && !LoadBalancer.isSystemTablesOnlyOnMaster(conf)));

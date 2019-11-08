@@ -135,7 +135,7 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
     initBlockCache();
     initMobFileCache();
 
-    this.period = regionServer.conf.getLong(HConstants.REGIONSERVER_METRICS_PERIOD,
+    this.period = regionServer.getConfiguration().getLong(HConstants.REGIONSERVER_METRICS_PERIOD,
       HConstants.DEFAULT_REGIONSERVER_METRICS_PERIOD);
 
     this.executor = CompatibilitySingletonFactory.getInstance(MetricsExecutor.class).getExecutor();
@@ -281,10 +281,10 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
   @Override
   public int getFlushQueueSize() {
     //If there is no flusher there should be no queue.
-    if (this.regionServer.cacheFlusher == null) {
+    if (this.regionServer.getMemStoreFlusher() == null) {
       return 0;
     }
-    return this.regionServer.cacheFlusher.getFlushQueueSize();
+    return this.regionServer.getMemStoreFlusher().getFlushQueueSize();
   }
 
   @Override
@@ -545,10 +545,10 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
 
   @Override
   public long getUpdatesBlockedTime() {
-    if (this.regionServer.cacheFlusher == null) {
+    if (this.regionServer.getMemStoreFlusher() == null) {
       return 0;
     }
-    return this.regionServer.cacheFlusher.getUpdatesBlockedMsHighWater().sum();
+    return this.regionServer.getMemStoreFlusher().getUpdatesBlockedMsHighWater().sum();
   }
 
   @Override
@@ -813,8 +813,8 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
         }
         lastRan = currentTime;
 
-        WALProvider provider = regionServer.walFactory.getWALProvider();
-        WALProvider metaProvider = regionServer.walFactory.getMetaWALProvider();
+        final WALProvider provider = regionServer.getWalFactory().getWALProvider();
+        final WALProvider metaProvider = regionServer.getWalFactory().getMetaWALProvider();
         numWALFiles = (provider == null ? 0 : provider.getNumLogFiles()) +
             (metaProvider == null ? 0 : metaProvider.getNumLogFiles());
         walFileSize = (provider == null ? 0 : provider.getLogFileSize()) +
