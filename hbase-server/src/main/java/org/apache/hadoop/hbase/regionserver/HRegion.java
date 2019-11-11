@@ -719,7 +719,7 @@ public class HRegion implements HeapSize { // , Writable{
           HConstants.DEFAULT_ENABLE_CLIENT_BACKPRESSURE);
 
     rsKerberos =
-        conf.get("hbase.regionserver.kerberos.principal", "").replace("/hadoop@XIAOMI.HADOOP", "");
+        conf.get(HConstants.REGIONSERVER_KERBEROS, "").replace("/hadoop@XIAOMI.HADOOP", "");
   }
 
   void setHTableSpecificConf() {

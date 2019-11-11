@@ -37,13 +37,8 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Action;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateRequest;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
-import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RequestHeader;
 import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 
@@ -212,24 +207,6 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     t.setDaemon(true);
     t.setName("RWQueue-QueueFullLogger");
     t.start();
-  }
-
-  private boolean isWriteRequest(final RequestHeader header, final Message param) {
-    // TODO: Is there a better way to do this?
-    if (param instanceof MultiRequest) {
-      MultiRequest multi = (MultiRequest) param;
-      for (RegionAction regionAction : multi.getRegionActionList()) {
-        for (Action action : regionAction.getActionList()) {
-          if (action.hasMutation()) {
-            return true;
-          }
-        }
-      }
-    }
-    if (param instanceof MutateRequest) {
-      return true;
-    }
-    return false;
   }
 
   @VisibleForTesting
