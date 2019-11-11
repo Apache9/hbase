@@ -1161,6 +1161,9 @@ public class HStore implements Store, HeapSize, StoreConfigInformation, Propagat
                                 .withDataBlockEncoding(family.getDataBlockEncoding())
                                 .withEncryptionContext(cryptoContext)
                                 .withCreateTime(EnvironmentEdgeManager.currentTime())
+                                .withColumnFamily(family.getName())
+                                .withTableName(region.getTableDescriptor()
+                                    .getTableName().getName())
                                 .build();
     return hFileContext;
   }
