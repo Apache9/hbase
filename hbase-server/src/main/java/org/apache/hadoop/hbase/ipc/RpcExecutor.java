@@ -36,6 +36,13 @@ import org.apache.hadoop.util.StringUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.protobuf.Message;
+
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Action;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
+import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RequestHeader;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -256,4 +263,22 @@ public abstract class RpcExecutor {
   }
 
   public abstract List<QueueCounter> getQueueCounters();
+
+  protected boolean isWriteRequest(final RequestHeader header, final Message param) {
+    // TODO: Is there a better way to do this?
+    if (param instanceof MultiRequest) {
+      MultiRequest multi = (MultiRequest) param;
+      for (RegionAction regionAction : multi.getRegionActionList()) {
+        for (Action action : regionAction.getActionList()) {
+          if (action.hasMutation()) {
+            return true;
+          }
+        }
+      }
+    }
+    if (param instanceof MutateRequest) {
+      return true;
+    }
+    return false;
+  }
 }

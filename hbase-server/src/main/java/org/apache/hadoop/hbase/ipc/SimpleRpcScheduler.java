@@ -44,6 +44,10 @@ public class SimpleRpcScheduler extends RpcScheduler {
   public static final String CALL_QUEUE_TYPE_CODEL_CONF_VALUE = "codel";
   public static final String CALL_QUEUE_TYPE_FIFO_CONF_VALUE = "fifo";
 
+  private static final String META_CALL_QUEUE_TYPE_CONF_KEY =
+      "hbase.ipc.server.meta.callqueue.type";
+  private static final String META_CALL_QUEUE_TYPE_CONF_VALUE = "MetaRWQ";
+
   public static final String CALL_QUEUE_READ_SHARE_CONF_KEY =
     "hbase.ipc.server.callqueue.read.share";
   public static final String CALL_QUEUE_SCAN_SHARE_CONF_KEY =
@@ -148,9 +152,23 @@ public class SimpleRpcScheduler extends RpcScheduler {
       }
     }
 
-    this.priorityExecutor =
-        priorityHandlerCount > 0 ? new BalancedQueueRpcExecutor("Priority", priorityHandlerCount,
-          1, maxQueueLength, conf, abortable) : null;
+    String metaCallQueueType = conf.get(META_CALL_QUEUE_TYPE_CONF_KEY, "");
+    if (priorityHandlerCount > 0) {
+      if (metaCallQueueType.equals(META_CALL_QUEUE_TYPE_CONF_VALUE)) {
+        float priorityQueuesHandlersFactor =
+            conf.getFloat(MetaRWQueueRpcExecutor.META_CALL_QUEUE_HANDLER_FACTOR_CONF_KEY,
+              MetaRWQueueRpcExecutor.META_CALL_QUEUE_HANDLER_FACTOR_CONF_VALUE);
+        int priorityQueueCount =
+            Math.max(1, Math.round(priorityHandlerCount * priorityQueuesHandlersFactor));
+        this.priorityExecutor = new MetaRWQueueRpcExecutor("MetaRWQ.Priority", priorityHandlerCount,
+            priorityQueueCount, maxQueueLength, conf, abortable);
+      } else {
+        this.priorityExecutor = new BalancedQueueRpcExecutor("Priority", priorityHandlerCount, 1,
+            maxQueueLength, conf, abortable);
+      }
+    } else {
+      this.priorityExecutor = null;
+    }
     this.replicationExecutor =
        replicationHandlerCount > 0 ? new BalancedQueueRpcExecutor("Replication",
          replicationHandlerCount, 1, maxQueueLength, conf, abortable) : null;
