@@ -169,5 +169,13 @@
         <include>lib*</include>
       </includes>
     </fileSet>
+    <fileSet>
+      <directory>${project.basedir}/../hbase-zookeeper/target/</directory>
+      <outputDirectory>lib</outputDirectory>
+      <includes>
+        <include>${zookeeper.test.jar}</include>
+      </includes>
+      <fileMode>0644</fileMode>
+    </fileSet>
   </fileSets>
 </component>
