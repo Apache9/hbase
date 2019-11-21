@@ -2928,12 +2928,17 @@ public class HRegion implements HeapSize { // , Writable{
       // ------------------------------------------------------------------
 
       if (Trace.isTracing() && Trace.currentSpan() != null) {
-        Trace.currentSpan().addTimelineAnnotation("start dealing with other issues");
+        Trace.currentSpan().addTimelineAnnotation("Start advance mvcc");
       }
 
       if (w != null) {
         mvcc.completeMemstoreInsert(w);
         w = null;
+      }
+
+      if (Trace.isTracing() && Trace.currentSpan() != null) {
+        Trace.currentSpan().addTimelineAnnotation(
+            "Start dealing with other issues(Coprocessor, releaseRowLocks, Metrics)");
       }
 
       // ------------------------------------
