@@ -47,7 +47,6 @@
         <include>org.apache.hbase:hbase-mapreduce</include>
         <include>org.apache.hbase:hbase-metrics</include>
         <include>org.apache.hbase:hbase-metrics-api</include>
-        <include>org.apache.hbase:hbase-procedure</include>
         <include>org.apache.hbase:hbase-protocol</include>
         <include>org.apache.hbase:hbase-protocol-shaded</include>
         <include>org.apache.hbase:hbase-replication</include>
