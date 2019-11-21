@@ -17,12 +17,113 @@
  */
 package org.apache.hadoop.hbase.procedure2.store.region;
 
+import java.io.IOException;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+import org.apache.hadoop.hbase.procedure2.Procedure;
+import org.apache.hadoop.hbase.procedure2.store.ProcedureStoreBase;
+import org.apache.hadoop.hbase.regionserver.Region;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.wal.WAL;
+import org.apache.hadoop.hbase.wal.WALProvider;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A procedure store which uses a region to store all the procedures.
  */
 @InterfaceAudience.Private
-public class RegionProcedureStore {
+public class RegionProcedureStore extends ProcedureStoreBase {
+
+  private static final Logger LOG = LoggerFactory.getLogger(RegionProcedureStore.class);
+
+  private static final TableName TABLE_NAME = TableName.valueOf("hbase:procedure");
+
+  private static final byte[] FAMILY = Bytes.toBytes("info");
+
+  private static final TableDescriptor TABLE_DESC = TableDescriptorBuilder.newBuilder(TABLE_NAME)
+    .setColumnFamily(ColumnFamilyDescriptorBuilder.of(FAMILY)).build();
+
+  private WALProvider provider;
+
+  private WAL wal;
+
+  private Region region;
+
+  public RegionProcedureStore() {
+
+  }
+
+  @Override
+  public void start(int numThreads) throws IOException {
+
+  }
+
+  @Override
+  public void stop(boolean abort) {
+  }
+
+  @Override
+  public int getNumThreads() {
+    // TODO Implement ProcedureStore.getNumThreads
+    return 0;
+  }
+
+  @Override
+  public int setRunningProcedureCount(int count) {
+    // TODO Implement ProcedureStore.setRunningProcedureCount
+    return 0;
+  }
+
+  @Override
+  public void recoverLease() throws IOException {
+    // TODO Implement ProcedureStore.recoverLease
+
+  }
+
+  @Override
+  public void load(ProcedureLoader loader) throws IOException {
+    // TODO Implement ProcedureStore.load
+
+  }
+
+  @Override
+  public void insert(Procedure<?> proc, Procedure<?>[] subprocs) {
+    // TODO Implement ProcedureStore.insert
+
+  }
+
+  @Override
+  public void insert(Procedure<?>[] procs) {
+    // TODO Implement ProcedureStore.insert
+
+  }
+
+  @Override
+  public void update(Procedure<?> proc) {
+    // TODO Implement ProcedureStore.update
+
+  }
+
+  @Override
+  public void delete(long procId) {
+    // TODO Implement ProcedureStore.delete
+
+  }
+
+  @Override
+  public void delete(Procedure<?> parentProc, long[] subProcIds) {
+    // TODO Implement ProcedureStore.delete
+
+  }
+
+  @Override
+  public void delete(long[] procIds, int offset, int count) {
+    // TODO Implement ProcedureStore.delete
+
+  }
 
 }
