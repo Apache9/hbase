@@ -137,6 +137,10 @@ public final class HConstants {
    */
   public static final boolean DEFAULT_HBASE_MASTER_ISOLATE_META_WHEN_BALANCE = false;
 
+  public static final String HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT =
+      "hbase.master.balanced.max.diff.percent";
+  public static final double DEFAULT_HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT = 0.01;
+
   /** Config for pluggable region normalizer */
   public static final String HBASE_MASTER_NORMALIZER_CLASS =
     "hbase.master.normalizer.class";

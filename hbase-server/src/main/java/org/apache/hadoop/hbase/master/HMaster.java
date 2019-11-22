@@ -4456,9 +4456,12 @@ MasterServices, Server {
         maxRegionsNum = Math.max(regionsNum, maxRegionsNum);
       }
     }
+    double maxDiffPercent = conf.getDouble(HConstants.HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT,
+        HConstants.DEFAULT_HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT);
+    int maxDiff = Math.max(2, (int) (maxRegionsNum * maxDiffPercent));
     LOG.info("Cluster status exclude meta regionserver: maxRegionsNum=" + maxRegionsNum +
-        ", minRegionsNum=" + minRegionsNum);
-    return Math.abs(maxRegionsNum - minRegionsNum) <= 2;
+        ", minRegionsNum=" + minRegionsNum + ", maxDiff=" + maxDiff);
+    return Math.abs(maxRegionsNum - minRegionsNum) <= maxDiff;
   }
 
   private void isolateMetaWhenClusterBalanced() throws HBaseIOException {
