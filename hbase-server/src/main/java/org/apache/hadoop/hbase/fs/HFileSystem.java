@@ -150,7 +150,7 @@ public class HFileSystem extends FilterFileSystem {
    * Returns the underlying filesystem
    * @return The underlying FileSystem for this FilterFileSystem object.
    */
-  public FileSystem getBackingFs() throws IOException {
+  public FileSystem getBackingFs() {
     return fs;
   }
 

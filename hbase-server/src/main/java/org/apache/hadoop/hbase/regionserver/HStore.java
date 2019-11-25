@@ -184,10 +184,7 @@ public class HStore implements Store {
   private static final AtomicBoolean offPeakCompactionTracker = new AtomicBoolean();
   private final OffPeakHours offPeakHours;
 
-  // The default retry number to 15. The default pause is 1 seconds. The default backoff is
-  // {@link HConstants#RETRY_BACKOFF}. So if flush got a special filesystem exception, it will wait
-  // 1081 seconds (18 minutes) at most.
-  private static final int DEFAULT_FLUSH_RETRIES_NUMBER = 15;
+  private static final int DEFAULT_FLUSH_RETRIES_NUMBER = 10;
   private int flushRetriesNumber;
   private int pauseTime;
 
@@ -861,16 +858,8 @@ public class HStore implements Store {
         lastException = e;
       }
       if (lastException != null && i < (flushRetriesNumber - 1)) {
-        long sleepTime = pauseTime;
-        // If the root cause means there were problem in filesystem, it will be better to wait here
-        // and retry. Because throw exception out will abort the regionserver. But the filesystem
-        // had problem, so the failover will fail too.
-        if (FSUtils.isSpecialFileSystemException(lastException)) {
-          sleepTime = ConnectionUtils.getPauseTime(pauseTime, i);
-        }
-        LOG.warn("Got IOException, will sleep " + sleepTime + " ms and retry");
         try {
-          Thread.sleep(sleepTime);
+          Thread.sleep(pauseTime);
         } catch (InterruptedException e) {
           IOException iie = new InterruptedIOException();
           iie.initCause(e);

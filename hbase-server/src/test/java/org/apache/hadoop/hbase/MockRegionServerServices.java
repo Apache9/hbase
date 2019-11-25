@@ -289,4 +289,8 @@ class MockRegionServerServices implements RegionServerServices {
   public AccessCounter getAccessCounter() {
     return null;
   }
+
+  @Override
+  public void abortIfFileSystemAvailable(String why, Throwable e) {
+  }
 }

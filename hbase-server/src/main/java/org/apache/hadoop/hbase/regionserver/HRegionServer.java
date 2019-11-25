@@ -2510,6 +2510,15 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     abort(reason, null);
   }
 
+  public void abortIfFileSystemAvailable(String why, Throwable e) {
+    if (FSUtils.isFileSystemAvailable(this.fs)) {
+      abort(why, e);
+    } else {
+      // Just log here but not abort regionserver.
+      LOG.error(why + ", but filesystem is not available so not abort regionserver!!!", e);
+    }
+  }
+
   @Override
   public boolean isAborted() {
     return this.abortRequested;
@@ -5134,7 +5143,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       // section, we get a DroppedSnapshotException and a replay of hlog
       // is required. Currently the only way to do this is a restart of
       // the server.
-      abort("Replay of HLog required. Forcing server shutdown", ex);
+      abortIfFileSystemAvailable("Replay of HLog required. Forcing server shutdown", ex);
       throw new ServiceException(ex);
     } catch (IOException ie) {
       throw new ServiceException(ie);

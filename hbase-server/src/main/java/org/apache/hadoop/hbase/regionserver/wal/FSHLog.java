@@ -616,14 +616,15 @@ class FSHLog implements HLog, Syncable {
             this.latestSequenceNums = new HashMap<byte[], Long>();
           }
         }
-        if (oldFile == null) LOG.info("New WAL " + FSUtils.getPath(newPath));
-        else {
+        // Donot abort regionserver when filesystem is not available. The oldFile may be not exist.
+        if (oldFile == null || !fs.exists(oldFile)) {
+          LOG.info("New WAL " + FSUtils.getPath(newPath));
+        } else {
           long oldFileLen = this.fs.getFileStatus(oldFile).getLen();
           this.totalLogSize.addAndGet(oldFileLen);
-          LOG.info("Rolled WAL " + FSUtils.getPath(oldFile) + " with entries="
-              + oldNumEntries + ", filesize="
-              + StringUtils.humanReadableInt(oldFileLen) + "; new WAL "
-              + FSUtils.getPath(newPath));
+          LOG.info("Rolled WAL " + FSUtils.getPath(oldFile) + " with entries=" + oldNumEntries +
+              ", filesize=" + StringUtils.humanReadableInt(oldFileLen) + "; new WAL " +
+              FSUtils.getPath(newPath));
         }
 
         // Tell our listeners that a new log was created
