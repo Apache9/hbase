@@ -181,4 +181,10 @@ public interface RegionServerServices
    * @return access counter
    */
   public AccessCounter getAccessCounter();
+
+  /**
+   * Only abort when filesystem is available. If not available, just log the error. Because the
+   * failover will fail too.
+   */
+  void abortIfFileSystemAvailable(String why, Throwable e);
 }

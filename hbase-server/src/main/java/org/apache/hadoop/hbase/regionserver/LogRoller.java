@@ -111,23 +111,14 @@ class LogRoller extends HasThread implements WALActionsListener {
           for (byte [] r: regionsToFlush) scheduleFlush(r);
         }
       } catch (FailedLogCloseException e) {
-        server.abort("Failed log close in log roller", e);
+        services.abortIfFileSystemAvailable("Failed log close in log roller", e);
       } catch (java.net.ConnectException e) {
-        server.abort("Failed log close in log roller", e);
+        services.abortIfFileSystemAvailable("Failed log close in log roller", e);
       } catch (IOException ex) {
-        if (FSUtils.isSpecialFileSystemException(ex)) {
-          // Just log here but not abort regionserver. Because filesystem had problem, the failover
-          // will fail too. But for safe, we have a config
-          // {@link FSHLog#HBASE_REGIONSERVER_ABORT_WAL_MULTIPLIER}. It will abort regionserver
-          // when WAL is too big.
-          LOG.warn("Log rolling failed but not abort regionserver", ex);
-        } else {
-          // Abort if we get here.  We probably won't recover an IOE. HBASE-1132
-          server.abort("IOE in log roller", RemoteExceptionHandler.checkIOException(ex));
-        }
+        services.abortIfFileSystemAvailable("IOE in log roller",
+            RemoteExceptionHandler.checkIOException(ex));
       } catch (Exception ex) {
-        LOG.error("Log rolling failed", ex);
-        server.abort("Log rolling failed", ex);
+        services.abortIfFileSystemAvailable("Log rolling failed", ex);
       } finally {
         try {
           rollLog.set(false);

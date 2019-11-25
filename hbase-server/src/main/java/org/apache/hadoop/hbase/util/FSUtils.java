@@ -84,6 +84,7 @@ import org.apache.hadoop.hdfs.protocol.FSConstants;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
@@ -448,6 +449,33 @@ public abstract class FSUtils {
     IOException io = new IOException("File system is not available");
     io.initCause(exception);
     throw io;
+  }
+
+  public static boolean isFileSystemAvailable(FileSystem fs) {
+    if (fs instanceof HFileSystem) {
+      fs = ((HFileSystem) fs).getBackingFs();
+    }
+    if (!(fs instanceof DistributedFileSystem)) {
+      return true;
+    }
+    DistributedFileSystem dfs = (DistributedFileSystem) fs;
+    try {
+      if (isInSafeMode(dfs)) {
+        LOG.error("File system is in safemode, it can't be written now!!!");
+        return false;
+      }
+    } catch (IOException e) {
+      LOG.warn("Failed to check whether dfs is in safemode", e);
+    }
+    try {
+      if (dfs.exists(new Path("/"))) {
+        LOG.info("File system is available, path / exists");
+        return true;
+      }
+    } catch (IOException e) {
+      LOG.error("File system is not available!!!", e);
+    }
+    return false;
   }
 
   /**
@@ -2112,18 +2140,5 @@ public abstract class FSUtils {
       }
     }
     return results;
-  }
-
-  /**
-   * Only consider SafeModeException now.
-   *
-   * @return true if the exception is special filesystem exception.
-   */
-  public static boolean isSpecialFileSystemException(IOException ioe) {
-    if (ioe != null && ioe.getCause() != null) {
-      Throwable rootCause = ioe.getCause().getCause();
-      return rootCause instanceof SafeModeException;
-    }
-    return false;
   }
 }
