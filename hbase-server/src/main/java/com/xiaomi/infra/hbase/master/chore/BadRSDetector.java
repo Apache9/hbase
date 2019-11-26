@@ -310,16 +310,15 @@ public class BadRSDetector extends Chore {
 		if (isVacated) {
 			if (metaRegionPlan != null) {
 				LOG.info("Moving meta region {} from {} to {} ",
-						new Object[] { metaRegionPlan.getRegionInfo().getRegionNameAsString(), metaRegionPlan.getSource(),
-								metaRegionPlan.getDestination() });
+						metaRegionPlan.getRegionInfo().getRegionNameAsString(), metaRegionPlan.getSource(),
+						metaRegionPlan.getDestination());
 				master.getAssignmentManager().balance(metaRegionPlan);
-
 			}
 		}
 		for (RegionPlan regionPlan : movePlans) {
 			LOG.info("Moving region {} from {} to {} ",
-					new Object[] { regionPlan.getRegionInfo().getRegionNameAsString(), regionPlan.getSource(),
-							regionPlan.getDestination() });
+					regionPlan.getRegionInfo().getRegionNameAsString(), regionPlan.getSource(),
+					regionPlan.getDestination());
 			master.getAssignmentManager().balance(regionPlan);
 		}
 
@@ -334,7 +333,7 @@ public class BadRSDetector extends Chore {
 			try {
 				Thread.sleep(TimeUnit.SECONDS.toMillis(10));
 			} catch (InterruptedException e) {
-				LOG.warn("Interrupted when waiting for moving the region to succeed by {} ", e);
+				LOG.warn("Interrupted when waiting for moving the region to succeed by ", e);
 				Thread.currentThread().interrupt();
 			}
 			mayFailedRegionInfos = sourceServerNames.stream().flatMap(
