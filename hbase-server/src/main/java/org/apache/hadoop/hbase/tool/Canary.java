@@ -289,7 +289,7 @@ public final class Canary implements Tool {
     }
 
     public CompletableFuture<Void> call() {
-      if (tableDesc.getNameAsString().equals(CANARY_TABLE_NAME)) {
+      if (tableDesc.getNameAsString().equals(HConstants.CANARY_TABLE_NAME)) {
         return write();
       } else {
         return read();
@@ -302,8 +302,6 @@ public final class Canary implements Tool {
 
   public static final String CANARY = "canary";
   public static final String CANARY_CONF = "canary_conf";
-  public static final String CANARY_TABLE_NAME = "_canary_";
-  private static final String CANARY_TABLE_FAMILY_NAME = "Test";
   private static int DEFAULT_REGIONS_PER_SERVER = 2;
 
   private static final int DEFAULT_MAX_CONCURRENCY = 200;
@@ -681,7 +679,7 @@ public final class Canary implements Tool {
   }
 
   private void checkCanaryDistribution() throws IOException {
-    if (!isTableExists(Bytes.toBytes(CANARY_TABLE_NAME))) {
+    if (!isTableExists(Bytes.toBytes(HConstants.CANARY_TABLE_NAME))) {
       int numberOfServers =
           admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers().size();
       if (numberOfServers == 0) {
@@ -690,20 +688,20 @@ public final class Canary implements Tool {
       createCanaryTable(numberOfServers);
     }
 
-    if (!isTableEnabled(Bytes.toBytes(CANARY_TABLE_NAME))) {
-      admin.enableTable(CANARY_TABLE_NAME);
+    if (!isTableEnabled(Bytes.toBytes(HConstants.CANARY_TABLE_NAME))) {
+      admin.enableTable(HConstants.CANARY_TABLE_NAME);
     }
 
     int numberOfServers =
         admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers().size();
-    HTable table = new HTable(getConf(), CANARY_TABLE_NAME);
+    HTable table = new HTable(getConf(), HConstants.CANARY_TABLE_NAME);
     Collection<ServerName> regionsevers = table.getRegionLocations().values();
     int numberOfRegions = regionsevers.size();
     double rate = 1.0 * numberOfRegions / numberOfServers;
     if ((rate < DEFAULT_REGIONS_PER_SERVER * 0.7) || (rate > DEFAULT_REGIONS_PER_SERVER * 1.5)) {
       LOG.info("Current canary region num: " + numberOfRegions + " server num: " + numberOfServers);
-      admin.disableTable(CANARY_TABLE_NAME);
-      admin.deleteTable(CANARY_TABLE_NAME);
+      admin.disableTable(HConstants.CANARY_TABLE_NAME);
+      admin.deleteTable(HConstants.CANARY_TABLE_NAME);
       createCanaryTable(numberOfServers);
     }
     int numberOfCoveredServers = new HashSet<ServerName>(regionsevers).size();
@@ -720,8 +718,8 @@ public final class Canary implements Tool {
         "pre-splitting the canary table into " + totalNumberOfRegions + " regions " +
         "(default regions per server: " + DEFAULT_REGIONS_PER_SERVER + ")");
 
-    HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(CANARY_TABLE_NAME));
-    HColumnDescriptor family = new HColumnDescriptor(CANARY_TABLE_FAMILY_NAME);
+    HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(HConstants.CANARY_TABLE_NAME));
+    HColumnDescriptor family = new HColumnDescriptor(HConstants.CANARY_TABLE_FAMILY_NAME);
     family.setMaxVersions(1);
     // 1day
     family.setTimeToLive(24 * 60 * 60 * 1000);
@@ -757,7 +755,7 @@ public final class Canary implements Tool {
     int retrys = 3;
     while (retrys > 0) {
       try {
-        this.admin.getTableDescriptor(TableName.valueOf(CANARY_TABLE_NAME));
+        this.admin.getTableDescriptor(TableName.valueOf(HConstants.CANARY_TABLE_NAME));
         sink.publishMasterAvilability(100.0);
         return;
       } catch (IOException e) {
@@ -781,7 +779,8 @@ public final class Canary implements Tool {
       conf.get("hbase.canary.kerberos.principal"));
     conf = HBaseConfiguration.create();
 
-    conf.setInt("hbase.rpc.timeout", conf.getInt("hbase.canary.rpc.timeout", 200));
+    conf.setInt("hbase.rpc.timeout",
+        conf.getInt(HConstants.CANARY_RPC_TIMEOUT, HConstants.DEFAULT_CANARY_RPC_TIMEOUT));
     conf.setInt("hbase.client.pause", conf.getInt("hbase.canary.client.pause", 100));
     conf.setInt("hbase.client.operation.timeout",
       conf.getInt("hbase.canary.client.operation.timeout", 500));

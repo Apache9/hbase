@@ -17,17 +17,16 @@
  */
 package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.hbase.HealthChecker.HealthCheckerExitStatus;
 
 /**
  * The Class HealthReport containing information about health of the node.
  */
-class HealthReport {
+public class HealthReport {
 
   private HealthCheckerExitStatus status;
   private String healthReport;
 
-  HealthReport(HealthCheckerExitStatus status, String healthReport) {
+  public HealthReport(HealthCheckerExitStatus status, String healthReport) {
     super();
     this.status = status;
     this.healthReport = healthReport;
@@ -38,8 +37,12 @@ class HealthReport {
    *
    * @return HealthCheckerExitStatus
    */
-  HealthCheckerExitStatus getStatus() {
+  public HealthCheckerExitStatus getStatus() {
     return status;
+  }
+
+  public String getReport() {
+    return this.healthReport;
   }
 
   @Override

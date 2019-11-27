@@ -1138,12 +1138,30 @@ public final class HConstants {
       new String[] { TableName.META_TABLE_NAME.getNameAsString() },
       HBASE_NON_TABLE_DIRS.toArray())));
 
+  // canary
+  public static final String CANARY_RPC_TIMEOUT = "hbase.canary.rpc.timeout";
+  public static final int DEFAULT_CANARY_RPC_TIMEOUT = 200;
+  public static final String CANARY_TABLE_NAME = "_canary_";
+  public static final String CANARY_TABLE_FAMILY_NAME = "Test";
+
+
   /** Health script related settings. */
+  public static final String HEALTH_CHECKER_ENABLE = "hbase.node.health.checker.enable";
+  public static final boolean HEALTH_CHECKER_OFF = false;
+  public static final String HEALTH_CHECKER_PERIOD = "hbase.node.health.checker.period";
+  public static final int DEFAULT_HEALTH_CHECKER_PERIOD = 3 * 60 * 1000;
+  public static final String DIRECT_HEALTH_CHECKER_SUCCESS_RATE_THRESHOLD =
+      "hbase.regionserver.direct.health.checker.success.rate.threshold";
+  public static final double DEFAULT_DIRECT_HEALTH_CHECKER_SUCCESS_RATE_THRESHOLD = 0.5;
+
   public static final String HEALTH_SCRIPT_LOC = "hbase.node.health.script.location";
   public static final String HEALTH_SCRIPT_TIMEOUT = "hbase.node.health.script.timeout";
   public static final String HEALTH_CHORE_WAKE_FREQ =
       "hbase.node.health.script.frequency";
   public static final long DEFAULT_HEALTH_SCRIPT_TIMEOUT = 60000;
+  public static final String DIRECT_HEALTH_CHECKER_EXECUTOR_THREAD_POOL_SIZE =
+      "hbase.regionserver.direct.health.checker.executor.threadpool.size";
+  public static final int DEFAULT_DIRECT_HEALTH_CHECKER_EXECUTOR_THREAD_POOL_SIZE = 8;
 
   public static final String BAD_REGIONSERVER_DETECTOR_ENABLE =
       "hbase.bad.regionserver.detector.enable";

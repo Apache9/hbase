@@ -686,8 +686,8 @@ MasterServices, Server {
     this.preLoadTableDescriptors = conf.getBoolean("hbase.master.preload.tabledescriptors", true);
 
     // Health checker thread.
-    int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
-      HConstants.DEFAULT_THREAD_WAKE_FREQUENCY);
+    int sleepTime = this.conf.getInt(HConstants.HEALTH_CHECKER_PERIOD,
+      HConstants.DEFAULT_HEALTH_CHECKER_PERIOD);
     if (isHealthCheckerConfigured()) {
       healthCheckChore = new HealthCheckChore(sleepTime, this, getConfiguration());
     }
@@ -2322,7 +2322,7 @@ MasterServices, Server {
     }
 
     if (!(hTableDescriptor instanceof UnmodifyableHTableDescriptor) && ignoreSplitsWhenCreatingTable
-        && !hTableDescriptor.getNameAsString().equals(Canary.CANARY_TABLE_NAME)) {
+        && !hTableDescriptor.getNameAsString().equals(HConstants.CANARY_TABLE_NAME)) {
       boolean isSalted = hTableDescriptor.isSalted();
       if (isSalted) {
         hTableDescriptor.setSlotsCount(1);
@@ -3970,8 +3970,7 @@ MasterServices, Server {
   }
 
   private boolean isHealthCheckerConfigured() {
-    String healthScriptLocation = this.conf.get(HConstants.HEALTH_SCRIPT_LOC);
-    return org.apache.commons.lang.StringUtils.isNotBlank(healthScriptLocation);
+    return conf.getBoolean(HConstants.HEALTH_CHECKER_ENABLE, HConstants.HEALTH_CHECKER_OFF);
   }
 
   @Override

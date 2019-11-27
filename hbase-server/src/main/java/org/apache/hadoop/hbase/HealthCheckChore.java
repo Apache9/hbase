@@ -19,51 +19,68 @@
  */
 package org.apache.hadoop.hbase;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HealthChecker.HealthCheckerExitStatus;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.util.StringUtils;
+
+import com.xiaomi.infra.hbase.regionserver.chore.DirectHealthChecker;
+import com.xiaomi.infra.hbase.util.MailUtils;
 
 /**
  * The Class HealthCheckChore for running health checker regularly.
  */
  public class HealthCheckChore extends Chore {
   private static Log LOG = LogFactory.getLog(HealthCheckChore.class);
-  private HealthChecker healthChecker;
-  private Configuration config;
-  private int threshold;
+  private final List<HealthChecker> healthCheckerList = new ArrayList<>();
+	private final Stoppable stopper;
+	private final int threshold;
+  private final long failureWindow;
   private int numTimesUnhealthy = 0;
-  private long failureWindow;
   private long startWindow;
 
-  public HealthCheckChore(int sleepTime, Stoppable stopper, Configuration conf) {
-    super("HealthChecker", sleepTime, stopper);
+	public HealthCheckChore(int sleepTime, Stoppable stopper, Configuration conf) {
+		super("HealthCheckerChore", sleepTime, stopper);
     LOG.info("Health Check Chore runs every " + StringUtils.formatTime(sleepTime));
-    this.config = conf;
-    String healthCheckScript = this.config.get(HConstants.HEALTH_SCRIPT_LOC);
-    long scriptTimeout = this.config.getLong(HConstants.HEALTH_SCRIPT_TIMEOUT,
-      HConstants.DEFAULT_HEALTH_SCRIPT_TIMEOUT);
-    healthChecker = new HealthChecker();
-    healthChecker.init(healthCheckScript, scriptTimeout);
-    this.threshold = config.getInt(HConstants.HEALTH_FAILURE_THRESHOLD,
+		this.stopper = stopper;
+
+		if (stopper instanceof HRegionServer) {
+			HRegionServer regionserver = (HRegionServer) stopper;
+			healthCheckerList.add(new DirectHealthChecker(regionserver));
+		}
+		healthCheckerList.add(new ExternalScriptHealthChecker(conf));
+		this.threshold = conf.getInt(HConstants.HEALTH_FAILURE_THRESHOLD,
       HConstants.DEFAULT_HEALTH_FAILURE_THRESHOLD);
     this.failureWindow = (long)this.threshold * (long)sleepTime;
   }
 
   @Override
   protected void chore() {
-    HealthReport report = healthChecker.checkHealth();
-    boolean isHealthy = (report.getStatus() == HealthCheckerExitStatus.SUCCESS);
+	  if (healthCheckerList.isEmpty()) {
+		  return;
+	  }
+	  boolean isHealthy = healthCheckerList.stream().allMatch(healthChecker -> {
+		  HealthReport healthReport = healthChecker.checkHealth();
+		  LOG.info("Health status  " + healthReport.getHealthReport());
+		  return HealthCheckerExitStatus.SUCCESS == healthChecker.checkHealth().getStatus();
+	  });
     if (!isHealthy) {
       boolean needToStop = decideToStop();
       if (needToStop) {
-        this.stopper.stop("The  node reported unhealthy " + threshold
-            + " number of times consecutively.");
+	      String errorMessage =
+			      "The  node reported unhealthy " + threshold + " number of times consecutively.";
+	      if (stopper instanceof HRegionServer) {
+		      HRegionServer server = (HRegionServer) stopper;
+		      processBeforeStopForRegionServer(server, errorMessage);
+		      server.abort(errorMessage);
+	      } else {
+		      this.stopper.stop(errorMessage);
+	      }
       }
-      // Always log health report.
-      LOG.info("Health status at " + StringUtils.formatTime(System.currentTimeMillis()) + " : "
-          + report.getHealthReport());
     }
   }
 
@@ -78,6 +95,8 @@ import org.apache.hadoop.util.StringUtils;
       if ((System.currentTimeMillis() - startWindow) < failureWindow) {
         numTimesUnhealthy++;
         if (numTimesUnhealthy == threshold) {
+	        LOG.warn("The numTimesUnhealthy=" + numTimesUnhealthy + ",threshold=" + threshold
+			        + ", so STOP!");
           stop = true;
         } else {
           stop = false;
@@ -90,6 +109,17 @@ import org.apache.hadoop.util.StringUtils;
       }
     }
     return stop;
+  }
+
+  private void processBeforeStopForRegionServer(HRegionServer regionServer, String errorMessage) {
+	  regionServer.moveOutRegions("health checker failure");
+	  String clusterName = regionServer.getClusterName();
+	  String subject =
+			  "HealthChecker for cluster " + clusterName + " abort regionserver " + regionServer
+					  .getServerName().getHostAndPort();
+	  if ((clusterName != null) && !"".equals(clusterName)) { // exclude UT
+		  MailUtils.sendMail(HConstants.MAIL_TO, subject, errorMessage);
+	  }
   }
 
 }
