@@ -667,6 +667,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   /** RS instance flag to indicate whether allows compaction or not*/
   private volatile boolean enableCompact = true;
+
+  private String clusterName;
   
   /**
    * Starts a HRegionServer at the default location
@@ -799,6 +801,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
     closedScanners = CacheBuilder.newBuilder()
         .expireAfterAccess(scannerLeaseTimeoutPeriod, TimeUnit.MILLISECONDS).build();
+    clusterName = conf.get(HConstants.CLUSTER_NAME, "");
   }
 
   public static String getHostname(Configuration conf) throws UnknownHostException {
@@ -1014,8 +1017,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
 
     // Health checker thread.
-    int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
-      HConstants.DEFAULT_THREAD_WAKE_FREQUENCY);
+    int sleepTime = this.conf.getInt(HConstants.HEALTH_CHECKER_PERIOD,
+      HConstants.DEFAULT_HEALTH_CHECKER_PERIOD);
     if (isHealthCheckerConfigured()) {
       healthCheckChore = new HealthCheckChore(sleepTime, this, getConfiguration());
     }
@@ -1046,6 +1049,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         this.isa.getAddress(), 0));
     jvmThreadMonitor = new JvmThreadMonitor(conf);
     jvmThreadMonitor.start();
+  }
+
+  public String getClusterName() {
+    return clusterName;
   }
 
   /**
@@ -1296,6 +1303,47 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       "; zookeeper connection closed.");
 
     LOG.info(Thread.currentThread().getName() + " exiting");
+  }
+
+  public void moveOutRegions(String reason) {
+    List<HRegionInfo> regionInfoList =
+        getCopyOfOnlineRegionsSortedBySize().values().stream().map(HRegion::getRegionInfo)
+            .collect(Collectors.toList());
+    try (HBaseAdmin admin = new HBaseAdmin(HConnectionManager.getConnection(getConfiguration()))) {
+      ServerName serverName = getServerName();
+
+      for (HRegionInfo regionInfo : regionInfoList) {
+        try {
+          admin.move(regionInfo.getEncodedNameAsBytes(), null);
+          LOG.info(
+              "Success to move region " + regionInfo.getRegionNameAsString() + " from " + serverName
+                  + " before exit for " + reason);
+
+        } catch (IOException e) {
+          LOG.warn(
+              "Failed to move region " + regionInfo.getRegionNameAsString() + " from " + serverName
+                  + " before exit for " + reason);
+        }
+      }
+    } catch (IOException e) {
+      LOG.warn("Failed to new HBaseAdmin when move regions before exit for " + reason, e);
+    }
+  }
+
+  private void moveRegion(HRegionInfo region, ServerName source, ServerName dest, HBaseAdmin admin,
+      String reason) {
+	  try {
+      byte[] destBytes = (dest == null ? null : Bytes.toBytes(dest.getServerName()));
+		  admin.move(region.getEncodedNameAsBytes(), destBytes);
+		  LOG.info(
+				  "Success to move region " + region.getRegionNameAsString() + " from " + source
+              + " before exit for " + reason);
+
+	  } catch (IOException e) {
+		  LOG.warn(
+				  "Failed to move region " + region.getRegionNameAsString() + " from " + source
+              + " before exit for " + reason);
+	  }
   }
 
   private boolean containsMetaTableRegions() {
@@ -1918,7 +1966,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     private List<QueueCounter> queueCounters;
     private int continuousQueueFullCount;
     private int continuousQueueFullCountThreshold;
-    private String clusterName;
 
     public QueueFullDetector(HRegionServer server, Configuration conf) {
       super("QueueFullDetector", conf.getInt("hbase.regionserver.queuefull.detector.sparseperiod",
@@ -1945,7 +1992,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
 
       this.queueCounters = server.getRpcServer().getScheduler().getQueueCounters();
-      this.clusterName = conf.get(HConstants.CLUSTER_NAME, "");
 
       LOG.info("QueueFullDetector is started, denseCheckNum=" + denseCheckNum + ", densePeriod="
           + densePeriod + ", sampleThreshold=" + sampleThreshold + ", rejectThreshold="
@@ -2012,7 +2058,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if (shouldExit) {
         ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
         queueFullDetected = true;
-        cleanRegionsBeforeAbort();
+        moveOutRegions(" queue full");
         sendEmailWhenAbort();
         abort("Detected queue full and canot come back to normal state in a long duration");
       }
@@ -2039,29 +2085,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           > rejectThreshold * newRequestCount);
     }
 
-    private void cleanRegionsBeforeAbort() {
-      List<HRegionInfo> regionInfoList =
-          server.getCopyOfOnlineRegionsSortedBySize().values().stream().map(HRegion::getRegionInfo)
-              .collect(Collectors.toList());
-      try (HBaseAdmin admin = new HBaseAdmin(
-          HConnectionManager.getConnection(server.getConfiguration()))) {
-        ServerName serverName = server.getServerName();
-
-        for (HRegionInfo regionInfo : regionInfoList) {
-          try {
-            admin.move(regionInfo.getEncodedNameAsBytes(), null);
-            LOG.info("Success to move region " + regionInfo.getRegionNameAsString() + " from "
-                + serverName + " before exit for queue full");
-
-          } catch (IOException e) {
-            LOG.warn("Failed to move region " + regionInfo.getRegionNameAsString() + " from "
-                + serverName + " before exit for queue full");
-          }
-        }
-      } catch (IOException e) {
-        LOG.warn("Failed to new HBaseAdmin when move regions before exit for queue full", e);
-      }
-    }
 
     private void sendEmailWhenAbort() {
       if ((clusterName != null) && !"".equals(clusterName)) {
@@ -2609,8 +2632,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * @return master + port, or null if server has been stopped
    */
   @VisibleForTesting
-  protected synchronized ServerName
-  createRegionServerStatusStub() {
+  protected synchronized ServerName createRegionServerStatusStub() {
     if (rssStub != null) {
       return masterAddressTracker.getMasterAddress();
     }
@@ -3315,6 +3337,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public HRegion getOnlineRegion(final byte[] regionName) {
     String encodedRegionName = HRegionInfo.encodeRegionName(regionName);
     return this.onlineRegions.get(encodedRegionName);
+  }
+
+  public List<HRegion> getOnlineRegions() {
+    return new ArrayList<>(onlineRegions.values());
   }
 
   public InetSocketAddress[] getRegionBlockLocations(final String encodedRegionName) {
@@ -5943,8 +5969,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
 
   private boolean isHealthCheckerConfigured() {
-    String healthScriptLocation = this.conf.get(HConstants.HEALTH_SCRIPT_LOC);
-    return org.apache.commons.lang.StringUtils.isNotBlank(healthScriptLocation);
+    return conf.getBoolean(HConstants.HEALTH_CHECKER_ENABLE, HConstants.HEALTH_CHECKER_OFF);
   }
 
   /**

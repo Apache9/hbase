@@ -32,7 +32,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.HealthChecker.HealthCheckerExitStatus;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.util.Shell;
 import org.junit.After;
@@ -82,7 +82,7 @@ public class TestNodeHealthCheckChore {
     String location = healthScriptFile.getAbsolutePath();
     long timeout = config.getLong(HConstants.HEALTH_SCRIPT_TIMEOUT, SCRIPT_TIMEOUT);
 
-    HealthChecker checker = new HealthChecker();
+    ExternalScriptHealthChecker checker = new ExternalScriptHealthChecker(config);
     checker.init(location, timeout);
 
     createScript(script, true);
@@ -96,20 +96,22 @@ public class TestNodeHealthCheckChore {
 
   @Test(timeout=60000)
   public void testRSHealthChore() throws Exception{
-    Stoppable stop = new StoppableImplementation();
+    MiniHBaseCluster miniHBaseCluster = UTIL.startMiniCluster();
+    HRegionServer regionserver = miniHBaseCluster.startRegionServer().getRegionServer();
     Configuration conf = getConfForNodeHealthScript();
     String errorScript = "echo ERROR" + eol + " echo \"Server not healthy\"";
     createScript(errorScript, true);
-    HealthCheckChore rsChore = new HealthCheckChore(5000, stop, conf);
+    HealthCheckChore rsChore = new HealthCheckChore(5000, regionserver, conf);
     try {
       //Default threshold is three.
       rsChore.chore();
       rsChore.chore();
-      assertFalse("Stoppable must not be stopped.", stop.isStopped());
+      assertFalse("Stoppable must not be stopped.", regionserver.isStopped());
       rsChore.chore();
-      assertTrue("Stoppable must have been stopped.", stop.isStopped());
+      assertTrue("Stoppable must have been stopped.", regionserver.isStopped());
     } finally {
-      stop.stop("Finished w/ test");
+      regionserver.stop("Finished w/ test");
+      UTIL.shutdownMiniCluster();
     }
   }
 
