@@ -26,8 +26,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.util.StringUtils;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.hbase.regionserver.chore.DirectHealthChecker;
 import com.xiaomi.infra.hbase.util.MailUtils;
 
@@ -39,7 +41,7 @@ import com.xiaomi.infra.hbase.util.MailUtils;
   private final List<HealthChecker> healthCheckerList = new ArrayList<>();
 	private final Stoppable stopper;
 	private final int threshold;
-  private final long failureWindow;
+  private final long windowWidth;
   private int numTimesUnhealthy = 0;
   private long startWindow;
 
@@ -55,7 +57,7 @@ import com.xiaomi.infra.hbase.util.MailUtils;
 		healthCheckerList.add(new ExternalScriptHealthChecker(conf));
 		this.threshold = conf.getInt(HConstants.HEALTH_FAILURE_THRESHOLD,
       HConstants.DEFAULT_HEALTH_FAILURE_THRESHOLD);
-    this.failureWindow = (long)this.threshold * (long)sleepTime;
+    this.windowWidth = (long)this.threshold * (long)sleepTime;
   }
 
   @Override
@@ -71,6 +73,8 @@ import com.xiaomi.infra.hbase.util.MailUtils;
     if (!isHealthy) {
       boolean needToStop = decideToStop();
       if (needToStop) {
+	      LOG.warn("The numTimesUnhealthy=" + numTimesUnhealthy + ",threshold=" + threshold
+			      + ", so STOP!");
 	      String errorMessage =
 			      "The  node reported unhealthy " + threshold + " number of times consecutively.";
 	      if (stopper instanceof HRegionServer) {
@@ -84,31 +88,20 @@ import com.xiaomi.infra.hbase.util.MailUtils;
     }
   }
 
-  private boolean decideToStop() {
-    boolean stop = false;
-    if (numTimesUnhealthy == 0) {
-      // First time we are seeing a failure. No need to stop, just
-      // record the time.
-      numTimesUnhealthy++;
-      startWindow = System.currentTimeMillis();
-    } else {
-      if ((System.currentTimeMillis() - startWindow) < failureWindow) {
-        numTimesUnhealthy++;
-        if (numTimesUnhealthy == threshold) {
-	        LOG.warn("The numTimesUnhealthy=" + numTimesUnhealthy + ",threshold=" + threshold
-			        + ", so STOP!");
-          stop = true;
-        } else {
-          stop = false;
-        }
-      } else {
-        // Outside of failure window, so we reset to 1.
-        numTimesUnhealthy = 1;
-        startWindow = System.currentTimeMillis();
-        stop = false;
-      }
+  @VisibleForTesting
+  boolean decideToStop() {
+		++numTimesUnhealthy;
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    if (now - startWindow >= windowWidth) {
+      setStartWindow(now);
+      numTimesUnhealthy = 1;
     }
-    return stop;
+    return numTimesUnhealthy >= threshold;
+  }
+
+  @VisibleForTesting
+  void setStartWindow(long startWindow) {
+		this.startWindow = startWindow;
   }
 
   private void processBeforeStopForRegionServer(HRegionServer regionServer, String errorMessage) {
