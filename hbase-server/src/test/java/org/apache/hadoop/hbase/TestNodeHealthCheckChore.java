@@ -20,12 +20,12 @@ package org.apache.hadoop.hbase;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.util.Shell;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -112,6 +113,24 @@ public class TestNodeHealthCheckChore {
     } finally {
       regionserver.stop("Finished w/ test");
       UTIL.shutdownMiniCluster();
+    }
+  }
+
+  @Test
+  public void testDecideStop() throws Exception {
+    MiniHBaseCluster miniHBaseCluster = UTIL.startMiniCluster();
+    HRegionServer regionserver = miniHBaseCluster.startRegionServer().getRegionServer();
+    Configuration conf = getConfForNodeHealthScript();
+    HealthCheckChore healthCheckChore =
+        new HealthCheckChore((int)TimeUnit.MINUTES.toMillis(3), regionserver, conf);
+    int stopThreshold = conf.getInt(HConstants.HEALTH_FAILURE_THRESHOLD, 3);
+    for (int i = 0; i < stopThreshold - 1; ++i) {
+      Assert.assertFalse(healthCheckChore.decideToStop());
+    }
+    Assert.assertTrue(healthCheckChore.decideToStop());
+    for (int i = 0; i < stopThreshold * 2; ++i) {
+      healthCheckChore.setStartWindow(0L);
+      Assert.assertFalse(healthCheckChore.decideToStop());
     }
   }
 
