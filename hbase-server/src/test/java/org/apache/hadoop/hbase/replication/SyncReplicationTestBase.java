@@ -257,12 +257,14 @@ public class SyncReplicationTestBase {
         new Entry(new WALKeyImpl(HConstants.EMPTY_BYTE_ARRAY, TABLE_NAME, 0), new WALEdit());
     }
     if (!expectedRejection) {
-      ReplicationProtbufUtil.replicateWALEntry(connection.getAdmin(regionServer.getServerName()),
-        entries, null, null, null);
+      ReplicationProtbufUtil
+        .replicateWALEntry(connection.getAdmin(regionServer.getServerName()), entries, null, null,
+          null, 3000);
     } else {
       try {
-        ReplicationProtbufUtil.replicateWALEntry(connection.getAdmin(regionServer.getServerName()),
-          entries, null, null, null);
+        ReplicationProtbufUtil
+          .replicateWALEntry(connection.getAdmin(regionServer.getServerName()), entries, null, null,
+            null, 3000);
         fail("Should throw IOException when sync-replication state is in A or DA");
       } catch (DoNotRetryIOException e) {
         assertTrue(e.getMessage().contains("Reject to apply to sink cluster"));
