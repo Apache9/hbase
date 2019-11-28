@@ -1318,6 +1318,7 @@ public final class HConstants {
   public static final String TALOS_ACCESS_KEY = "galaxy.talos.access.key";
   public static final String TALOS_ACCESS_SECRET = "galaxy.talos.access.secret";
   public static final String TALOS_ACCESS_ENDPOINT = "galaxy.talos.service.endpoint";
+  public static final String TALOS_UPDATE_ES_TABLE = "galaxy.talos.update.es.table";
 
   /**
    * Configurations for master executor services.

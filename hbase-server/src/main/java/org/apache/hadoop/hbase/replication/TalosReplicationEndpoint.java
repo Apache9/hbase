@@ -129,13 +129,18 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
   }
 
 
-  private synchronized SimpleProducer getSimpleProducer(TableName tableName,
+
+  String getEncodeTableName(TableName tableName){
+    return TalosUtil.encodeTableName(tableName.getNameAsString());
+  }
+
+  protected synchronized SimpleProducer getSimpleProducer(TableName tableName,
       String encodedRegionName) throws TException, IOException {
     SimpleProducer producer = producers.get(encodedRegionName);
     if (producer != null) {
       return producer;
     }
-    String topicName = TalosUtil.encodeTableName(tableName.getNameAsString());
+    String topicName = getEncodeTableName(tableName);
     Topic topic = getOrCreateTopic(tableName, topicName);
     producer = createSimpleProducer(topic, topicName, encodedRegionName);
     producers.put(encodedRegionName, producer);
@@ -272,18 +277,25 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
     }
   }
 
-  private Map<TableName, Map<String, List<Message>>>
+  protected void assembleMessage(Map<TableName, Map<String, List<Message>>> messages , HLog.Entry entry,
+      List<Message> constructedMessages){
+    TableName tableName = entry.getKey().getTablename();
+    Map<String, List<Message>> regionMessages =
+        messages.computeIfAbsent(tableName, key -> new HashMap<>());
+    String encodedRegionName = Bytes.toStringBinary(entry.getKey().getEncodedRegionName());
+    List<Message> messageList =
+        regionMessages.computeIfAbsent(encodedRegionName, key -> new ArrayList<>());
+    messageList.addAll(constructedMessages);
+
+  }
+
+
+  protected Map<TableName, Map<String, List<Message>>>
       constructTalosMessages(List<HLog.Entry> entries) throws IOException {
     Map<TableName, Map<String, List<Message>>> messages = new HashMap<>();
     for (HLog.Entry entry : entries) {
       List<Message> constructedMessages = TalosUtil.constructMessages(entry);
-      TableName tableName = entry.getKey().getTablename();
-      Map<String, List<Message>> regionMessages =
-          messages.computeIfAbsent(tableName, key -> new HashMap<>());
-      String encodedRegionName = Bytes.toStringBinary(entry.getKey().getEncodedRegionName());
-      List<Message> messageList =
-          regionMessages.computeIfAbsent(encodedRegionName, key -> new ArrayList<>());
-      messageList.addAll(constructedMessages);
+      assembleMessage(messages, entry, constructedMessages);
     }
     return messages;
   }
