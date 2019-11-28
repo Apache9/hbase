@@ -144,11 +144,11 @@ public abstract class ModifyPeerProcedure extends AbstractPeerProcedure<PeerModi
         continue;
       }
       TableName tn = td.getTableName();
-      if (!ReplicationUtils.contains(peerConfig, tn)) {
+      if (!peerConfig.needToReplicate(tn)) {
         continue;
       }
       if (oldPeerConfig != null && oldPeerConfig.isSerial() &&
-        ReplicationUtils.contains(oldPeerConfig, tn)) {
+        oldPeerConfig.needToReplicate(tn)) {
         continue;
       }
       if (needReopen(tsm, tn)) {
