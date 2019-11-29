@@ -49,14 +49,15 @@ public interface MetricsRegionAggregateSource extends BaseSource {
   /**
    * Register a MetricsRegionSource as being open.
    *
+   * @param encodedRegionName the region name
    * @param source the source for the region being opened.
    */
-  void register(MetricsRegionSource source);
+  void register(String encodedRegionName, MetricsRegionSource source);
 
   /**
    * Remove a region's source. This is called when a region is closed.
    *
-   * @param source The region to remove.
+   * @param encodedRegionName the region name
    */
-  void deregister(MetricsRegionSource source);
+  void deregister(String encodedRegionName);
 }

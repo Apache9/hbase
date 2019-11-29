@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -36,8 +37,7 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
   private final MetricsRegionWrapper regionWrapper;
 
-
-  private boolean closed = false;
+  private volatile boolean closed = false;
   private MetricsRegionAggregateSourceImpl agg;
   private DynamicMetricsRegistry registry;
   private static final Log LOG = LogFactory.getLog(MetricsRegionSourceImpl.class);
@@ -82,9 +82,9 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
                                  MetricsRegionAggregateSourceImpl aggregate) {
     this.regionWrapper = regionWrapper;
     agg = aggregate;
-    agg.register(this);
+    agg.register(regionWrapper.getRegionName(), this);
 
-    LOG.debug("Creating new MetricsRegionSourceImpl for table " +
+    LOG.info("Creating new MetricsRegionSourceImpl for table " +
         regionWrapper.getTableName() + " " + regionWrapper.getRegionName());
 
     registry = agg.getMetricsRegistry();
@@ -129,26 +129,28 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
   @Override
   public void close() {
-    closed = true;
-    agg.deregister(this);
+    if (closed) {
+      return;
+    }
 
-    LOG.trace("Removing region Metrics: " + regionWrapper.getRegionName());
+    synchronized (this) {
+      // Before removing the metrics remove this region from the aggregate region bean.
+      // This should mean that it's unlikely that snapshot and close happen at the same time.
+      agg.deregister(regionWrapper.getRegionName());
+      closed = true;
+    }
+
+    LOG.info("Removing region Metrics: " + regionWrapper.getRegionName());
     registry.removeMetric(regionPutKey);
     registry.removeMetric(regionDeleteKey);
-
     registry.removeMetric(regionIncrementKey);
-
     registry.removeMetric(regionAppendKey);
-
     registry.removeMetric(regionGetKey);
     registry.removeMetric(regionScanNextKey);
-
     registry.removeMetric(regionReadKey);
     registry.removeMetric(regionWriteKey);
-
     registry.removeMetric(regionThrottledReadKey);
     registry.removeMetric(regionThrottledWriteKey);
-
     JmxCacheBuster.clearJmxCache();
   }
 
@@ -236,64 +238,72 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   }
 
   void snapshot(MetricsRecordBuilder mrb, boolean ignored) {
-    if (closed) return;
+    // This ensures that removes of the metrics
+    // can't happen while we are putting them back in.
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
 
-    if (!metricsStringInited) {
-      STORE_COUNT = regionNamePrefix + MetricsRegionServerSource.STORE_COUNT;
-      STOREFILE_COUNT = regionNamePrefix + MetricsRegionServerSource.STOREFILE_COUNT;
-      MEMSTORE_SIZE = regionNamePrefix + MetricsRegionServerSource.MEMSTORE_SIZE;
-      STOREFILE_SIZE = regionNamePrefix + MetricsRegionServerSource.STOREFILE_SIZE;
-      COMPACTIONS_COMPLETED_COUNT = regionNamePrefix +
-          MetricsRegionSource.COMPACTIONS_COMPLETED_COUNT;
-      NUM_BYTES_COMPACTED_COUNT = regionNamePrefix + MetricsRegionSource.NUM_BYTES_COMPACTED_COUNT;
-      NUM_FILES_COMPACTED_COUNT = regionNamePrefix + MetricsRegionSource.NUM_FILES_COMPACTED_COUNT;
-      metricsStringInited = true;
+      if (!metricsStringInited) {
+        STORE_COUNT = regionNamePrefix + MetricsRegionServerSource.STORE_COUNT;
+        STOREFILE_COUNT = regionNamePrefix + MetricsRegionServerSource.STOREFILE_COUNT;
+        MEMSTORE_SIZE = regionNamePrefix + MetricsRegionServerSource.MEMSTORE_SIZE;
+        STOREFILE_SIZE = regionNamePrefix + MetricsRegionServerSource.STOREFILE_SIZE;
+        COMPACTIONS_COMPLETED_COUNT =
+            regionNamePrefix + MetricsRegionSource.COMPACTIONS_COMPLETED_COUNT;
+        NUM_BYTES_COMPACTED_COUNT =
+            regionNamePrefix + MetricsRegionSource.NUM_BYTES_COMPACTED_COUNT;
+        NUM_FILES_COMPACTED_COUNT =
+            regionNamePrefix + MetricsRegionSource.NUM_FILES_COMPACTED_COUNT;
+        metricsStringInited = true;
+      }
+
+      mrb.addGauge(Interns.info(STORE_COUNT, MetricsRegionServerSource.STORE_COUNT_DESC),
+          this.regionWrapper.getNumStores());
+      mrb.addGauge(Interns.info(STOREFILE_COUNT, MetricsRegionServerSource.STOREFILE_COUNT_DESC),
+          this.regionWrapper.getNumStoreFiles());
+      mrb.addGauge(Interns.info(MEMSTORE_SIZE, MetricsRegionServerSource.MEMSTORE_SIZE_DESC),
+          this.regionWrapper.getMemstoreSize());
+      mrb.addGauge(Interns.info(STOREFILE_SIZE, MetricsRegionServerSource.STOREFILE_SIZE_DESC),
+          this.regionWrapper.getStoreFileSize());
+      mrb.addCounter(
+          Interns.info(COMPACTIONS_COMPLETED_COUNT, MetricsRegionSource.COMPACTIONS_COMPLETED_DESC),
+          this.regionWrapper.getNumCompactionsCompleted());
+      mrb.addCounter(
+          Interns.info(NUM_BYTES_COMPACTED_COUNT, MetricsRegionSource.NUM_BYTES_COMPACTED_DESC),
+          this.regionWrapper.getNumBytesCompacted());
+      mrb.addCounter(
+          Interns.info(NUM_FILES_COMPACTED_COUNT, MetricsRegionSource.NUM_FILES_COMPACTED_DESC),
+          this.regionWrapper.getNumFilesCompacted());
+      for (Map.Entry<String, DescriptiveStatistics> entry : this.regionWrapper
+          .getCoprocessorExecutionStatistics().entrySet()) {
+        DescriptiveStatistics ds = entry.getValue();
+        mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " " +
+                MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
+            MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "Min: "),
+            ds.getMin() / 1000);
+        mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " " +
+                MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
+            MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "Mean: "),
+            ds.getMean() / 1000);
+        mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " " +
+                MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
+            MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "Max: "),
+            ds.getMax() / 1000);
+        mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " " +
+                MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
+            MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "90th percentile: "),
+            ds.getPercentile(90d) / 1000);
+        mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " " +
+                MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
+            MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "95th percentile: "),
+            ds.getPercentile(95d) / 1000);
+        mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " " +
+                MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
+            MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "99th percentile: "),
+            ds.getPercentile(99d) / 1000);
+      }
     }
-
-    mrb.addGauge(
-        Interns.info(STORE_COUNT, MetricsRegionServerSource.STORE_COUNT_DESC),
-        this.regionWrapper.getNumStores());
-    mrb.addGauge(Interns.info(STOREFILE_COUNT, MetricsRegionServerSource.STOREFILE_COUNT_DESC),
-        this.regionWrapper.getNumStoreFiles());
-    mrb.addGauge(Interns.info(MEMSTORE_SIZE, MetricsRegionServerSource.MEMSTORE_SIZE_DESC),
-        this.regionWrapper.getMemstoreSize());
-    mrb.addGauge(Interns.info(STOREFILE_SIZE, MetricsRegionServerSource.STOREFILE_SIZE_DESC),
-        this.regionWrapper.getStoreFileSize());
-    mrb.addCounter(Interns.info(COMPACTIONS_COMPLETED_COUNT,
-        MetricsRegionSource.COMPACTIONS_COMPLETED_DESC),
-        this.regionWrapper.getNumCompactionsCompleted());
-    mrb.addCounter(Interns.info(NUM_BYTES_COMPACTED_COUNT,
-        MetricsRegionSource.NUM_BYTES_COMPACTED_DESC),
-        this.regionWrapper.getNumBytesCompacted());
-    mrb.addCounter(Interns.info(NUM_FILES_COMPACTED_COUNT,
-        MetricsRegionSource.NUM_FILES_COMPACTED_DESC),
-        this.regionWrapper.getNumFilesCompacted());
-    for (Map.Entry<String, DescriptiveStatistics> entry : this.regionWrapper
-        .getCoprocessorExecutionStatistics()
-        .entrySet()) {
-      DescriptiveStatistics ds = entry.getValue();
-      mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " "
-          + MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
-        MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "Min: "), ds.getMin() / 1000);
-      mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " "
-          + MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
-        MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "Mean: "), ds.getMean() / 1000);
-      mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " "
-          + MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
-        MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "Max: "), ds.getMax() / 1000);
-      mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " "
-          + MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
-        MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "90th percentile: "), ds
-          .getPercentile(90d) / 1000);
-      mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " "
-          + MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
-        MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "95th percentile: "), ds
-          .getPercentile(95d) / 1000);
-      mrb.addGauge(Interns.info(regionNamePrefix + " " + entry.getKey() + " "
-          + MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS,
-        MetricsRegionSource.COPROCESSOR_EXECUTION_STATISTICS_DESC + "99th percentile: "), ds
-          .getPercentile(99d) / 1000);
-    }
-
   }
 }
