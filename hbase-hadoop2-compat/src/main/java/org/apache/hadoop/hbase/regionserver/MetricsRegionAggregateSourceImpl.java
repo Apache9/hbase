@@ -18,8 +18,8 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
@@ -29,12 +29,8 @@ import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 @InterfaceAudience.Private
 public class MetricsRegionAggregateSourceImpl extends BaseSourceImpl
     implements MetricsRegionAggregateSource {
-
-  // lock to guard against concurrent access to regionSources
-  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-
-  private final TreeSet<MetricsRegionSourceImpl> regionSources =
-      new TreeSet<MetricsRegionSourceImpl>();
+  private final ConcurrentMap<String, MetricsRegionSource> regionSources =
+      new ConcurrentHashMap<>();
 
   public MetricsRegionAggregateSourceImpl() {
     this(METRICS_NAME, METRICS_DESCRIPTION, METRICS_CONTEXT, METRICS_JMX_CONTEXT);
@@ -49,23 +45,13 @@ public class MetricsRegionAggregateSourceImpl extends BaseSourceImpl
   }
 
   @Override
-  public void register(MetricsRegionSource source) {
-    lock.writeLock().lock();
-    try {
-      regionSources.add((MetricsRegionSourceImpl) source);
-    } finally {
-      lock.writeLock().unlock();
-    }
+  public void register(String encodedRegionName, MetricsRegionSource source) {
+    regionSources.put(encodedRegionName, source);
   }
 
   @Override
-  public void deregister(MetricsRegionSource source) {
-    lock.writeLock().lock();
-    try {
-      regionSources.remove(source);
-    } finally {
-      lock.writeLock().unlock();
-    }
+  public void deregister(String encodedRegionName) {
+    regionSources.remove(encodedRegionName);
   }
 
   /**
@@ -78,21 +64,15 @@ public class MetricsRegionAggregateSourceImpl extends BaseSourceImpl
    */
   @Override
   public void getMetrics(MetricsCollector collector, boolean all) {
-
-
     MetricsRecordBuilder mrb = collector.addRecord(metricsName);
 
     if (regionSources != null) {
-      lock.readLock().lock();
-      try {
-        for (MetricsRegionSourceImpl regionMetricSource : regionSources) {
-          regionMetricSource.snapshot(mrb, all);
+      for (MetricsRegionSource regionMetricSource : regionSources.values()) {
+        if (regionMetricSource instanceof MetricsRegionSourceImpl) {
+          ((MetricsRegionSourceImpl) regionMetricSource).snapshot(mrb, all);
         }
-      } finally {
-        lock.readLock().unlock();
       }
+      metricsRegistry.snapshot(mrb, all);
     }
-
-    metricsRegistry.snapshot(mrb, all);
   }
 }
