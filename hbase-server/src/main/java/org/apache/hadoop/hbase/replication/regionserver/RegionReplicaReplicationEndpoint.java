@@ -61,11 +61,10 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.wal.EntryBuffers;
+import org.apache.hadoop.hbase.wal.EntryBuffers.RegionEntryBuffer;
 import org.apache.hadoop.hbase.wal.OutputSink;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.wal.WALSplitter.PipelineController;
-import org.apache.hadoop.hbase.wal.WALSplitter.RegionEntryBuffer;
-import org.apache.hadoop.hbase.wal.WALSplitter.SinkWriter;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -157,7 +156,7 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
   protected void doStop() {
     if (outputSink != null) {
       try {
-        outputSink.finishWritingAndClose();
+        outputSink.close();
       } catch (IOException ex) {
         LOG.warn("Got exception while trying to close OutputSink", ex);
       }
@@ -293,7 +292,7 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
 
     @Override
     public void append(RegionEntryBuffer buffer) throws IOException {
-      List<Entry> entries = buffer.getEntryBuffer();
+      List<Entry> entries = buffer.getEntries();
 
       if (entries.isEmpty() || entries.get(0).getEdit().getCells().isEmpty()) {
         return;
@@ -309,12 +308,10 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
         CellUtil.cloneRow(entries.get(0).getEdit().getCells().get(0)), entries);
     }
 
-    @Override
-    public boolean flush() throws IOException {
+    void flush() throws IOException {
       // nothing much to do for now. Wait for the Writer threads to finish up
       // append()'ing the data.
       entryBuffers.waitUntilDrained();
-      return super.flush();
     }
 
     @Override
@@ -323,8 +320,8 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
     }
 
     @Override
-    public List<Path> finishWritingAndClose() throws IOException {
-      finishWriting(true);
+    public List<Path> close() throws IOException {
+      finishWriterThreads(true);
       return null;
     }
 
@@ -339,7 +336,7 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
     }
 
     AtomicLong getSkippedEditsCounter() {
-      return skippedEdits;
+      return totalSkippedEdits;
     }
 
     /**
@@ -375,13 +372,19 @@ public class RegionReplicaReplicationEndpoint extends HBaseReplicationEndpoint {
             skipEdits++;
           }
         }
-        skippedEdits.addAndGet(skipEdits);
+        totalSkippedEdits.addAndGet(skipEdits);
       }
       return requiresReplication;
     }
+
+    @Override
+    protected int getNumOpenWriters() {
+      // TODO Auto-generated method stub
+      return 0;
+    }
   }
 
-  static class RegionReplicaSinkWriter extends SinkWriter {
+  static class RegionReplicaSinkWriter {
     RegionReplicaOutputSink sink;
     ClusterConnection connection;
     RpcControllerFactory rpcControllerFactory;
