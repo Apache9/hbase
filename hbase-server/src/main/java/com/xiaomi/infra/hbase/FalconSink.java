@@ -24,11 +24,17 @@ import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.tool.Canary.Sink;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -71,7 +77,8 @@ public class FalconSink implements Sink, Configurable {
   private int upperRplicationLagInSeconds;
   private int lowerRplicationLagInSeconds;
   private double masterAvailability = 100.0;
-
+  private Pair<TableName, Double> tableMinAvailabilityPair = new Pair<>();
+  private Pair<ServerName, Double> regionServerMinAvailabilityPair = new Pair<>();
 
   private FalconSink() {
   }
@@ -146,6 +153,23 @@ public class FalconSink implements Sink, Configurable {
     LOG.info("The availability of HMaster was set to " + availability + "%");
   }
 
+  @Override
+  public void publishTableMinAvilability(Pair<TableName, Double> tableNameDoublePair) {
+    this.tableMinAvailabilityPair.setFirst(tableNameDoublePair.getFirst());
+    this.tableMinAvailabilityPair.setSecond(tableNameDoublePair.getSecond());
+    LOG.info("The min availability of table " + tableNameDoublePair.getFirst() + " was set to "
+        + tableNameDoublePair.getSecond() + "%");
+  }
+
+  @Override
+  public void publishRegionServerMinAvilability(Pair<ServerName, Double> serverNameDoublePair) {
+    this.regionServerMinAvailabilityPair.setFirst(serverNameDoublePair.getFirst());
+    this.regionServerMinAvailabilityPair.setSecond(serverNameDoublePair.getSecond());
+    LOG.info(
+        "The min availability of regionServer " + serverNameDoublePair.getFirst() + " was set to "
+            + serverNameDoublePair.getSecond() + "%");
+
+  }
 
 
   @Override
@@ -250,7 +274,8 @@ public class FalconSink implements Sink, Configurable {
     }
   }
 
-  private JsonObject buildFalconMetric(String clusterName, String key, double value)
+
+  private JsonObject buildFalconMetric(String clusterName, String key, double value, Map<String, String> customTags)
       throws IOException {
     JsonObject metric = new JsonObject();
     metric.addProperty("endpoint", "hbase-canary");
@@ -260,20 +285,44 @@ public class FalconSink implements Sink, Configurable {
     metric.addProperty("step", 60);
     metric.addProperty("counterType", "GAUGE");
     ClusterType type = new ClusterInfo(clusterName).getZkClusterInfo().getClusterType();
+    StringBuilder customTagStr = new StringBuilder();
+    customTags.forEach((tagk, tagv) -> {
+      customTagStr.append("," + tagk + "=");
+      customTagStr.append(tagv);
+    });
     metric.addProperty("tags",
-      "srv=hbase,type=" + type.toString().toLowerCase() + ",cluster=" + clusterName);
+      "srv=hbase,type=" + type.toString().toLowerCase() + ",cluster=" + clusterName+customTagStr.toString());
     return metric;
   }
+
+  private JsonObject buildFalconMetric(String clusterName, String key, double value) throws IOException {
+    return buildFalconMetric(clusterName, key, value, new HashMap<>());
+  }
+
 
   private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail,double replicationAvail) {
     JsonArray data = new JsonArray();
     try {
-     data.add(buildFalconMetric(clusterName, "cluster-master-availability", this.masterAvailability));
+      data.add(buildFalconMetric(clusterName, "cluster-master-availability", this.masterAvailability));
       data.add(buildFalconMetric(clusterName, "cluster-replication-availability", replicationAvail));
       data.add(buildFalconMetric(clusterName, "cluster-availability", avail));
       data.add(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
       data.add(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
       data.add(buildFalconMetric(clusterName, "cluster-oldWals-files-count", oldWalsFilesCount));
+      if (tableMinAvailabilityPair.getFirst() != null) {
+        Map<String, String> tableMinAvailabilityTag = new HashMap<>();
+        tableMinAvailabilityTag.put("tableName", this.tableMinAvailabilityPair.getFirst().toString());
+        data.add(buildFalconMetric(clusterName, "cluster-table-min-availability",
+          this.tableMinAvailabilityPair.getSecond(), tableMinAvailabilityTag));
+      }
+      if (regionServerMinAvailabilityPair.getFirst() != null) {
+        Map<String, String> serverMinAvailabilityTag = new HashMap<>();
+        serverMinAvailabilityTag.put("serverName",
+          this.regionServerMinAvailabilityPair.getFirst().toString()
+            .replace(ServerName.SERVERNAME_SEPARATOR, ":"));
+        data.add(buildFalconMetric(clusterName, "cluster-rs-min-availability",
+          this.regionServerMinAvailabilityPair.getSecond(), serverMinAvailabilityTag));
+      }
     } catch (IOException e) {
       LOG.error("Create json error", e);
       return;
