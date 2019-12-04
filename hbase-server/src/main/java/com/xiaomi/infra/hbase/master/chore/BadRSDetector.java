@@ -50,7 +50,10 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
+import com.xiaomi.infra.base.nameservice.ClusterInfo;
+import com.xiaomi.infra.base.nameservice.ZkClusterInfo;
 import com.xiaomi.infra.hbase.falcon.FalconConstant;
+import com.xiaomi.infra.hbase.falcon.FalconDataPoint;
 import com.xiaomi.infra.hbase.falcon.FalconLatestRequest;
 import com.xiaomi.infra.hbase.falcon.FalconLatestResponse;
 import com.xiaomi.infra.hbase.util.HttpClientUtils;
@@ -69,6 +72,7 @@ public class BadRSDetector extends Chore {
 
 	private String clusterName;
 	private double badRsLoadThreshold;
+	private int continuousCount = 0;
 
 	/**
 	 * This chore is to detect very high load regionservers and restart them, which are seen as one
@@ -108,6 +112,7 @@ public class BadRSDetector extends Chore {
 		}
 
 		process(statsBuilder);
+		postFalcon();
 
 		if (originalBalanceSwitch) {
 			try {
@@ -136,7 +141,9 @@ public class BadRSDetector extends Chore {
     LOG.info(
         "The max load is " + maxLoadHost.getValue() + " by regionserver " + maxLoadHost.getKey() +
             ", load threshold is " + badRsLoadThreshold);
+
     if (maxLoadHost.getValue() < badRsLoadThreshold) {
+	    continuousCount = 0;
 			return;
 		}
 
@@ -168,6 +175,7 @@ public class BadRSDetector extends Chore {
         vacatedServerMap.keySet().stream().map(ServerName::getHostAndPort)
             .collect(Collectors.toSet());
     if (restartRegionServers(hostAndPortsToRestart)) {
+	    ++continuousCount;
 	    List<ServerName> recoverDestinations =
 			    master.getServerManager().getOnlineServersList().stream()
           .filter(serverName -> hostAndPortsToRestart.contains(serverName.getHostAndPort()))
@@ -379,5 +387,27 @@ public class BadRSDetector extends Chore {
 	@VisibleForTesting
 	Map<HRegionInfo, ServerName> getRegionAssignments() {
 		return master.getAssignmentManager().getRegionStates().getRegionAssignments();
+	}
+
+	private void postFalcon() {
+  	if (StringUtils.isBlank(clusterName)) {
+  		return;
+	  }
+		String type = "unknown";
+		try {
+			ZkClusterInfo.ClusterType clusterType =
+					new ClusterInfo(clusterName).getZkClusterInfo().getClusterType();
+			type = clusterType.toString().toLowerCase();
+		} catch (IOException e) {
+			LOG.warn("Failed to new ClusterInfo for {}", clusterName, e);
+		}
+
+		String tags = "type=" + type + ",cluster=" + clusterName;
+		FalconDataPoint dataPoint =
+				new FalconDataPoint.Builder().setEndpoint(HConstants.MASTER_ENDPOINT)
+				.setMetric(HConstants.FALCON_METRIC_CONTINUOUS_RESTART_COUNT)
+						.setTimestamp(EnvironmentEdgeManager.currentTimeMillis()).setStep(getPeriod() / 1000)
+						.setTags(tags).setValue(continuousCount).build();
+		HttpClientUtils.post(HConstants.DEFAULT_FALCON_URI, dataPoint);
 	}
 }
