@@ -80,6 +80,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.RegionSplitter;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -109,6 +110,11 @@ public final class Canary implements Tool {
     public void publishReplicationLag(String PeerId, long replicationLagInMilliseconds);
 
     public void publishMasterAvilability(double availability);
+
+    public void publishTableMinAvilability(Pair<TableName, Double> tableNameDoublePair);
+
+    public void publishRegionServerMinAvilability(Pair<ServerName, Double> serverNameDoublePair);
+
 
     public void reportSummary();
 
@@ -178,6 +184,18 @@ public final class Canary implements Tool {
     }
 
     @Override
+    public void publishTableMinAvilability(Pair<TableName, Double> tableNameDoublePair) {
+      LOG.info("The minAvailability of table " + tableNameDoublePair.getFirst() + " was set to "
+          + tableNameDoublePair.getSecond() + "%");
+    }
+
+    @Override
+    public void publishRegionServerMinAvilability(Pair<ServerName, Double> serverNameDoublePair) {
+      LOG.info("The minAvailability of regionServer " + serverNameDoublePair.getFirst() + " was set to "
+              + serverNameDoublePair.getSecond() + "%");
+    }
+
+    @Override
     public void reportSummary() {
     }
   }
@@ -226,6 +244,7 @@ public final class Canary implements Tool {
                 .withStopRow(region.getEndKey()).addFamily(column.getName()).setRaw(true)
                 .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit())
             .whenComplete((r, e) -> {
+              canary.caclTotalRequest(server, tableDesc.getTableName());
               if (e != null) {
                 handleReadException(e, column);
               } else {
@@ -276,6 +295,7 @@ public final class Canary implements Tool {
                 .put(new Put(randomKey(region.getStartKey(), region.getEndKey()))
                     .add(column.getName(), EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY))
                 .whenComplete((r, e) -> {
+                  canary.caclTotalRequest(server, tableDesc.getTableName());
                   if (e != null) {
                     sink.publishWriteFailure(region, column, e);
                     canary.recordFailure(server, tableDesc.getTableName());
@@ -326,12 +346,17 @@ public final class Canary implements Tool {
   private Path rootdir;
   private ConcurrentMap<ServerName, Integer> failuresByServer;
   private ConcurrentMap<TableName, Integer> failuresByTable;
+  private ConcurrentMap<ServerName, Integer> totalRequestByServer;
+  private ConcurrentMap<TableName, Integer> totalRequestByTable;
   private InfoServer infoServer;
 
   public Canary(Sink sink) {
     this.sink = sink;
     this.failuresByServer = new ConcurrentHashMap<>();
     this.failuresByTable = new ConcurrentHashMap<>();
+    this.totalRequestByServer = new ConcurrentHashMap<>();
+    this.totalRequestByTable = new ConcurrentHashMap<>();
+
   }
 
   @Override
@@ -387,6 +412,10 @@ public final class Canary implements Tool {
     this.failuresByServer.clear();
     this.failuresByTable.clear();
 
+    //clear the previous total count
+    this.totalRequestByServer.clear();
+    this.totalRequestByTable.clear();
+
     List<RegionTask> tasksNotRun = new ArrayList<>();
     Semaphore concurrencyControl = new Semaphore(maxConcurrency);
     CountDownLatch unfinishedTasks = new CountDownLatch(tasks.size());
@@ -421,6 +450,8 @@ public final class Canary implements Tool {
     unfinishedTasks.await();
     getReplicationLag();
     getMasterAvailability();
+    getTableMinAvailability();
+    getRegionServerMinAvailability();
     sink.reportSummary();
     long finishTime = EnvironmentEdgeManager.currentTimeMillis();
     LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)=" +
@@ -587,6 +618,11 @@ public final class Canary implements Tool {
   protected void recordFailure(ServerName server, TableName table) {
     failuresByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
     failuresByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
+  }
+
+  protected void caclTotalRequest(ServerName server, TableName table) {
+    totalRequestByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
+    totalRequestByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
   }
 
   /*
@@ -765,6 +801,43 @@ public final class Canary implements Tool {
     }
     LOG.warn("HMaster is unavailable after 3 retrys");
     sink.publishMasterAvilability(0.0);
+  }
+
+  private void getTableMinAvailability() {
+    Pair<TableName, Double> tableMinAvailabilityPair = new Pair<>();
+    totalRequestByTable.forEach((table, totalCount) -> {
+      if (totalCount != 0) {
+        double tableFailures = failuresByTable.get(table) != null ? failuresByTable.get(table) : 0;
+        double tableAvailability = (totalCount - tableFailures) * 100.0 / totalCount;
+        if (tableMinAvailabilityPair.getFirst() == null
+            || tableAvailability < tableMinAvailabilityPair.getSecond()) {
+          tableMinAvailabilityPair.setFirst(table);
+          tableMinAvailabilityPair.setSecond(tableAvailability);
+        }
+      }
+    });
+    if (tableMinAvailabilityPair.getFirst() != null) {
+      sink.publishTableMinAvilability(tableMinAvailabilityPair);
+    }
+  }
+
+  private void getRegionServerMinAvailability(){
+    Pair<ServerName, Double> regionServerMinAvailabilityPair = new Pair<>();
+    totalRequestByServer.forEach((server, totalCount) -> {
+      if (totalCount != 0) {
+        double serverFailures =
+            failuresByServer.get(server) != null ? failuresByServer.get(server) : 0;
+        double serverAvailability = (totalCount - serverFailures) * 100.0 / totalCount;
+        if (regionServerMinAvailabilityPair.getFirst() == null
+            || serverAvailability < regionServerMinAvailabilityPair.getSecond()) {
+          regionServerMinAvailabilityPair.setFirst(server);
+          regionServerMinAvailabilityPair.setSecond(serverAvailability);
+        }
+      }
+    });
+    if (regionServerMinAvailabilityPair.getFirst() != null) {
+      sink.publishRegionServerMinAvilability(regionServerMinAvailabilityPair);
+    }
   }
 
   public static void main(String[] args) {
