@@ -1354,6 +1354,10 @@ public final class HConstants {
 
   public static final String REGIONSERVER_KERBEROS = "hbase.regionserver.kerberos.principal";
 
+  public static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
+  public static final String FALCON_METRIC_CONTINUOUS_RESTART_COUNT = "continuous-restart-count";
+  public static final String MASTER_ENDPOINT = "hbase-master";
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

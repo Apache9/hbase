@@ -33,6 +33,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
@@ -44,7 +45,6 @@ import org.codehaus.jettison.json.JSONObject;
 
 public class FalconSink implements Sink, Configurable {
   private static final Log LOG = LogFactory.getLog(FalconSink.class);
-  private static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
   private static final String DEFAULT_COLLECTOR_URI = "http://10.105.5.111:8000/canary/push_metric/";
   private static final int DEFAULT_REPLICATION_LAG_UPPER_IN_SECONDS = 10800;
   private static final int DEFAULT_REPLICATION_LAG_LOWER_IN_SECONDS = 10;
@@ -286,7 +286,7 @@ public class FalconSink implements Sink, Configurable {
 
   private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail,
       double replicationAvail) {
-    String uri = conf.get("hbase.canary.sink.falcon.uri", DEFAULT_FALCON_URI);
+    String uri = conf.get("hbase.canary.sink.falcon.uri", HConstants.DEFAULT_FALCON_URI);
     PostMethod post = new PostMethod(uri);
     JSONArray data = new JSONArray();
     try {
