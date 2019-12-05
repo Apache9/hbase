@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.quotas;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -460,6 +461,38 @@ public class TestQuotaAdmin {
       admin.setQuota(
         QuotaSettingsFactory.unthrottleNamespace(TABLE_NAMES[0].getNamespaceAsString()));
     }
+  }
+
+  @Test
+  public void testSetRegionQuota() throws Exception {
+    final HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    byte[] regionName = Bytes.toBytes("f1585cd9db728378575b9250b35431");
+    // set write limit to 100
+    admin.setRegionQuota(regionName, ThrottleType.WRITE_NUMBER, 100, TimeUnit.MINUTES);
+    assertEquals(1, admin.listRegionQuota().size());
+    // set read limit to 200
+    admin.setRegionQuota(regionName, ThrottleType.READ_NUMBER, 200, TimeUnit.SECONDS);
+    assertEquals(2, admin.listRegionQuota().size());
+    // set read limit to 300
+    admin.setRegionQuota(regionName, ThrottleType.READ_NUMBER, 300, TimeUnit.SECONDS);
+    assertEquals(2, admin.listRegionQuota().size());
+    // check region quotas
+    for (RegionQuotaSettings regionQuota : admin.listRegionQuota()) {
+      assertTrue(Bytes.equals(regionName, Bytes.toBytes(regionQuota.getRegionName())));
+      if (regionQuota.getThrottleType() == ThrottleType.READ_NUMBER) {
+        assertEquals(300, regionQuota.getLimit());
+        assertTrue(TimeUnit.SECONDS == regionQuota.getTimeUnit());
+      } else {
+        assertEquals(100, regionQuota.getLimit());
+        assertTrue(TimeUnit.MINUTES == regionQuota.getTimeUnit());
+      }
+    }
+    // remove region read quota
+    admin.removeRegionQuota(regionName, ThrottleType.READ_NUMBER);
+    assertEquals(1, admin.listRegionQuota().size());
+    // remove region quotas
+    admin.removeRegionQuota(regionName);
+    assertEquals(0, admin.listRegionQuota().size());
   }
 
   private void assertNumResults(int expected, final QuotaFilter filter) throws Exception {

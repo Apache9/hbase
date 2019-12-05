@@ -202,6 +202,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEna
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableNamesByNamespaceRequest;
@@ -224,6 +226,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunnin
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
@@ -288,7 +292,6 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.HdfsAclManager;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
-import org.apache.hadoop.hbase.tool.Canary;
 import org.apache.hadoop.hbase.trace.SpanReceiverHost;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CompressionTest;
@@ -4407,6 +4410,28 @@ MasterServices, Server {
   public boolean isSplitOrMergeEnabled(MasterSwitchType switchType) {
     return splitOrMergeTracker != null ? splitOrMergeTracker.isSplitOrMergeEnabled(switchType)
         : true;
+  }
+
+  @Override
+  public SetRegionQuotaResponse setRegionQuota(RpcController controller,
+      SetRegionQuotaRequest request) throws ServiceException {
+    try {
+      checkInitialized();
+      return getMasterQuotaManager().setRegionQuota(request);
+    } catch (Exception e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public ListRegionQuotaResponse listRegionQuota(RpcController controller,
+      ListRegionQuotaRequest request) throws ServiceException {
+    try {
+      checkInitialized();
+      return getMasterQuotaManager().listRegionQuota(request);
+    } catch (Exception e) {
+      throw new ServiceException(e);
+    }
   }
 
   private MasterSwitchType convert(MasterProtos.MasterSwitchType switchType) {

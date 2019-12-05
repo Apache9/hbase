@@ -32,6 +32,7 @@ module HBaseQuotasConstants
   REQUEST = 'REQUEST'
   WRITE = 'WRITE'
   READ = 'READ'
+  REGION = 'REGION'
 end
 
 module Hbase
@@ -231,5 +232,32 @@ module Hbase
       end
       return value
     end
+
+    def set_region_quota(args)
+      raise(ArgumentError, "Arguments should be a Hash") unless args.kind_of?(Hash)
+      region = args.delete(REGION)
+      if args.has_key?(TYPE)
+        type = ThrottleType.valueOf(args.delete(TYPE) + "_NUMBER")
+        if args[LIMIT].eql? NONE
+          @admin.removeRegionQuota(region.to_java_bytes, type)
+        elsif
+          limit = args.delete(LIMIT)
+          @admin.setRegionQuota(region.to_java_bytes, type, limit, TimeUnit::SECONDS)
+        end
+      elsif
+        @admin.removeRegionQuota(region.to_java_bytes)
+      end
+    end
+
+    def list_region_quotas
+      count  = 0
+      list = @admin.listRegionQuota
+      list.each do |region_quota|
+        yield(region_quota.getRegionName, region_quota.getThrottleType, region_quota.getLimit) if block_given?
+      count += 1
+      end
+      return count
+    end
+
   end
 end

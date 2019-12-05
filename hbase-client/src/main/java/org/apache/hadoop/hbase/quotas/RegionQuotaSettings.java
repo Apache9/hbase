@@ -1,4 +1,5 @@
 /**
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,25 +16,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.quotas;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class QuotaLimiterFactory {
-  public static QuotaLimiter fromThrottle(final Throttle throttle) {
-    return TimeBasedLimiter.fromThrottle(throttle);
+public class RegionQuotaSettings {
+  private final String regionName;
+  private final ThrottleRequest throttle;
+
+  public RegionQuotaSettings(final String regionName, final ThrottleRequest throttle) {
+    this.regionName = regionName;
+    this.throttle = throttle;
   }
 
-  public static QuotaLimiter update(final QuotaLimiter a, final QuotaLimiter b) {
-    if (a.getClass().equals(b.getClass()) && a instanceof TimeBasedLimiter) {
-      ((TimeBasedLimiter)a).update(((TimeBasedLimiter)b));
-      return a;
-    }
-    throw new UnsupportedOperationException("TODO not implemented yet");
+  public String getRegionName() {
+    return regionName;
+  }
+
+  public ThrottleRequest getThrottle() {
+    return throttle;
+  }
+
+  public ThrottleType getThrottleType() {
+    return ProtobufUtil.toThrottleType(throttle.getType());
+  }
+
+  public long getLimit() {
+    return throttle.getTimedQuota().getSoftLimit();
+  }
+
+  public TimeUnit getTimeUnit() {
+    return ProtobufUtil.toTimeUnit(throttle.getTimedQuota().getTimeUnit());
+  }
+
+  @Override
+  public String toString() {
+    return "RegionQuotaSettings{" + "regionName='" + regionName + '\'' + ", throttle=" + throttle
+        + '}';
   }
 }

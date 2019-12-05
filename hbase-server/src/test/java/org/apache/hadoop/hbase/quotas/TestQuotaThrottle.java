@@ -21,12 +21,15 @@ package org.apache.hadoop.hbase.quotas;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -40,6 +43,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
 import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
+import org.apache.hadoop.hbase.zookeeper.RegionQuotaTracker;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -48,7 +52,7 @@ import org.junit.experimental.categories.Category;
 
 @Category({MediumTests.class})
 public class TestQuotaThrottle {
-  final Log LOG = LogFactory.getLog(getClass());
+  private static final Log LOG = LogFactory.getLog(TestQuotaThrottle.class);
 
   private final static int REFRESH_TIME = 30 * 60000;
   
@@ -552,7 +556,38 @@ public class TestQuotaThrottle {
     assertEquals(30, doGets(30, tables[1]));
   }
 
-  private int doPuts(int maxOps, final HTable... tables) throws Exception {
+  @Test(timeout = 60000)
+  public void testRegionQuota() throws Exception {
+    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    List<HRegionInfo> tableRegions = admin.getTableRegions(TABLE_NAMES[0]);
+    assertTrue(tableRegions.size() >= 1);
+    assertEquals(50, doPuts(50, tables[0]));
+    // set write limit to 1
+    admin.setRegionQuota(tableRegions.get(0).getEncodedNameAsBytes(), ThrottleType.WRITE_NUMBER, 1,
+      TimeUnit.MINUTES);
+    assertEquals(1, admin.listRegionQuota().size());
+    // check RS region quota is refreshed
+    waitRegionQuotasRefreshed(TEST_UTIL, 1, 0);
+    // do read and write
+    assertEquals(1, doPuts(2, tables[0]));
+    assertEquals(51, doGets(51, tables[0]));
+    waitMinuteQuota();
+    // set read limit to 50
+    admin.setRegionQuota(tableRegions.get(0).getEncodedNameAsBytes(), ThrottleType.READ_NUMBER, 50,
+      TimeUnit.MINUTES);
+    assertEquals(2, admin.listRegionQuota().size());
+    // check RS region quota is refreshed
+    waitRegionQuotasRefreshed(TEST_UTIL, 1, 1);
+    // do read and write
+    assertEquals(1, doPuts(2, tables[0]));
+    assertEquals(50, doGets(51, tables[0]));
+    // remove region quota
+    admin.removeRegionQuota(tableRegions.get(0).getEncodedNameAsBytes());
+    // check RS region quota is refreshed
+    waitRegionQuotasRefreshed(TEST_UTIL, 0, 0);
+  }
+
+  static int doPuts(int maxOps, final HTable... tables) throws Exception {
     int count = 0;
     try {
       while (count < maxOps) {
@@ -570,7 +605,7 @@ public class TestQuotaThrottle {
     return count;
   }
 
-  private long doGets(int maxOps, final HTable... tables) throws Exception {
+  static long doGets(int maxOps, final HTable... tables) throws Exception {
     int count = 0;
     try {
       while (count < maxOps) {
@@ -646,5 +681,25 @@ public class TestQuotaThrottle {
 
   private void waitMinuteQuota() {
     envEdge.incValue(70000);
+  }
+
+  static void waitRegionQuotasRefreshed(HBaseTestingUtility testingUtility, int writeQuotaSize,
+      int readQuotaSize) {
+    testingUtility.waitFor(10000, () -> {
+      for (RegionServerThread regionServerThread : testingUtility.getMiniHBaseCluster()
+          .getRegionServerThreads()) {
+        RegionQuotaTracker regionQuotaTracker = regionServerThread.getRegionServer()
+            .getRegionServerQuotaManager().getRegionQuotaTracker();
+        ConcurrentHashMap<String, QuotaLimiter> regionReadLimiters =
+            regionQuotaTracker.getRegionReadLimiters();
+        ConcurrentHashMap<String, QuotaLimiter> regionWriteLimiters =
+            regionQuotaTracker.getRegionWriteLimiters();
+        if (!(regionReadLimiters.size() == readQuotaSize
+            && regionWriteLimiters.size() == writeQuotaSize)) {
+          return false;
+        }
+      }
+      return true;
+    });
   }
 }

@@ -131,6 +131,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEna
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableNamesByNamespaceRequest;
@@ -154,6 +156,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunnin
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
@@ -1816,6 +1820,18 @@ public class HConnectionImplementation implements HConnection, Closeable {
       public IsSplitOrMergeEnabledResponse isSplitOrMergeEnabled(RpcController controller,
           IsSplitOrMergeEnabledRequest request) throws ServiceException {
         return stub.isSplitOrMergeEnabled(controller, request);
+      }
+
+      @Override
+      public SetRegionQuotaResponse setRegionQuota(RpcController controller,
+          SetRegionQuotaRequest request) throws ServiceException {
+        return stub.setRegionQuota(controller, request);
+      }
+
+      @Override
+      public ListRegionQuotaResponse listRegionQuota(RpcController controller,
+          ListRegionQuotaRequest request) throws ServiceException {
+        return stub.listRegionQuota(controller, request);
       }
     };
   }

@@ -185,6 +185,8 @@ public class TestQuotaManager {
 
   @Test
   public void testGrabQuota() throws Exception {
+    final HRegion region =
+        TEST_UTIL.getMiniHBaseCluster().getRegionServer(0).getOnlineRegions(TABLE_NAME).get(0);
     final UserGroupInformation ugi = User.getCurrent().getUGI();
     // update cache need one get first
     quotaManager.getQuotaCache().getUserLimiter(ugi, table.getName());
@@ -194,13 +196,13 @@ public class TestQuotaManager {
 
     // allow exceed to 10
     for (int i = 0; i < 10; i++) {
-      quotaManager.checkQuota(ugi, table.getName(), OperationType.GET);
-      quotaManager.grabQuota(ugi, table.getName(), Result.create(new ArrayList<Cell>()));
+      quotaManager.checkQuota(region, OperationType.GET);
+      quotaManager.grabQuota(region, Result.create(new ArrayList<Cell>()));
     }
     runWithExpectedException(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
-        quotaManager.checkQuota(ugi, table.getName(), OperationType.GET);
+        quotaManager.checkQuota(region, OperationType.GET);
         return null;
       }
     }, ThrottlingException.class);
@@ -208,11 +210,26 @@ public class TestQuotaManager {
 
   @Test
   public void testGetQuota() throws IOException, InterruptedException {
+    final HRegion region =
+        TEST_UTIL.getMiniHBaseCluster().getRegionServer(0).getOnlineRegions(TABLE_NAME).get(0);
     UserGroupInformation ugi = User.getCurrent().getUGI();
-    OperationQuota quota = quotaManager.getQuota(ugi, table.getName());
+    OperationQuota quota = quotaManager.getQuota(ugi, region);
     Thread.sleep(1000);
-    quota = quotaManager.getQuota(ugi, table.getName());
+    quota = quotaManager.getQuota(ugi, region);
     assertTrue(quota.getClass().getName().equals(AllowExceedOperationQuota.class.getName()));
+  }
+
+  @Test
+  public void testGetRegionQuota() throws IOException, InterruptedException {
+    final HRegion region =
+        TEST_UTIL.getMiniHBaseCluster().getRegionServer(0).getOnlineRegions(TABLE_NAME).get(0);
+    admin.setRegionQuota(region.getRegionInfo().getEncodedNameAsBytes(), ThrottleType.READ_NUMBER,
+      100, TimeUnit.SECONDS);
+    TestQuotaThrottle.waitRegionQuotasRefreshed(TEST_UTIL, 0, 1);
+    UserGroupInformation ugi = User.getCurrent().getUGI();
+    OperationQuota quota = quotaManager.getQuota(ugi, region);
+    assertTrue(quota instanceof RegionOperationQuota);
+    admin.removeRegionQuota(region.getRegionInfo().getEncodedNameAsBytes());
   }
 
   @Test

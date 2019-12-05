@@ -408,6 +408,25 @@ message IsSplitOrMergeEnabledResponse {
   required bool enabled = 1;
 }
 
+message RegionQuota {
+  required bytes region = 1;
+  optional ThrottleRequest throttle = 2;
+}
+
+message SetRegionQuotaRequest {
+  required RegionQuota region_quota = 1;
+}
+
+message SetRegionQuotaResponse {
+}
+
+message ListRegionQuotaRequest {
+}
+
+message ListRegionQuotaResponse {
+  repeated RegionQuota region_quota = 1;
+}
+
 service MasterService {
   /** Used by the client to get the number of regions that have received the updated schema */
   rpc GetSchemaAlterStatus(GetSchemaAlterStatusRequest)
@@ -667,4 +686,7 @@ service MasterService {
 
   /** Query whether the split or merge switch is on/off. */
   rpc IsSplitOrMergeEnabled (IsSplitOrMergeEnabledRequest) returns (IsSplitOrMergeEnabledResponse);
+
+  rpc SetRegionQuota (SetRegionQuotaRequest) returns (SetRegionQuotaResponse);
+  rpc ListRegionQuota (ListRegionQuotaRequest) returns (ListRegionQuotaResponse);
 }

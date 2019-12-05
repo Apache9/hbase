@@ -45847,6 +45847,2622 @@ public final class MasterProtos {
     // @@protoc_insertion_point(class_scope:IsSplitOrMergeEnabledResponse)
   }
 
+  public interface RegionQuotaOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // required bytes region = 1;
+    /**
+     * <code>required bytes region = 1;</code>
+     */
+    boolean hasRegion();
+    /**
+     * <code>required bytes region = 1;</code>
+     */
+    com.google.protobuf.ByteString getRegion();
+
+    // optional .ThrottleRequest throttle = 2;
+    /**
+     * <code>optional .ThrottleRequest throttle = 2;</code>
+     */
+    boolean hasThrottle();
+    /**
+     * <code>optional .ThrottleRequest throttle = 2;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest getThrottle();
+    /**
+     * <code>optional .ThrottleRequest throttle = 2;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequestOrBuilder getThrottleOrBuilder();
+  }
+  /**
+   * Protobuf type {@code RegionQuota}
+   */
+  public static final class RegionQuota extends
+      com.google.protobuf.GeneratedMessage
+      implements RegionQuotaOrBuilder {
+    // Use RegionQuota.newBuilder() to construct.
+    private RegionQuota(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private RegionQuota(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final RegionQuota defaultInstance;
+    public static RegionQuota getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public RegionQuota getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private RegionQuota(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              bitField0_ |= 0x00000001;
+              region_ = input.readBytes();
+              break;
+            }
+            case 18: {
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000002) == 0x00000002)) {
+                subBuilder = throttle_.toBuilder();
+              }
+              throttle_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(throttle_);
+                throttle_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000002;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_RegionQuota_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_RegionQuota_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<RegionQuota> PARSER =
+        new com.google.protobuf.AbstractParser<RegionQuota>() {
+      public RegionQuota parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new RegionQuota(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<RegionQuota> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // required bytes region = 1;
+    public static final int REGION_FIELD_NUMBER = 1;
+    private com.google.protobuf.ByteString region_;
+    /**
+     * <code>required bytes region = 1;</code>
+     */
+    public boolean hasRegion() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required bytes region = 1;</code>
+     */
+    public com.google.protobuf.ByteString getRegion() {
+      return region_;
+    }
+
+    // optional .ThrottleRequest throttle = 2;
+    public static final int THROTTLE_FIELD_NUMBER = 2;
+    private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest throttle_;
+    /**
+     * <code>optional .ThrottleRequest throttle = 2;</code>
+     */
+    public boolean hasThrottle() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>optional .ThrottleRequest throttle = 2;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest getThrottle() {
+      return throttle_;
+    }
+    /**
+     * <code>optional .ThrottleRequest throttle = 2;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequestOrBuilder getThrottleOrBuilder() {
+      return throttle_;
+    }
+
+    private void initFields() {
+      region_ = com.google.protobuf.ByteString.EMPTY;
+      throttle_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.getDefaultInstance();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (!hasRegion()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (hasThrottle()) {
+        if (!getThrottle().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(1, region_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeMessage(2, throttle_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(1, region_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(2, throttle_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota) obj;
+
+      boolean result = true;
+      result = result && (hasRegion() == other.hasRegion());
+      if (hasRegion()) {
+        result = result && getRegion()
+            .equals(other.getRegion());
+      }
+      result = result && (hasThrottle() == other.hasThrottle());
+      if (hasThrottle()) {
+        result = result && getThrottle()
+            .equals(other.getThrottle());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasRegion()) {
+        hash = (37 * hash) + REGION_FIELD_NUMBER;
+        hash = (53 * hash) + getRegion().hashCode();
+      }
+      if (hasThrottle()) {
+        hash = (37 * hash) + THROTTLE_FIELD_NUMBER;
+        hash = (53 * hash) + getThrottle().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code RegionQuota}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_RegionQuota_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_RegionQuota_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getThrottleFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        region_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        if (throttleBuilder_ == null) {
+          throttle_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.getDefaultInstance();
+        } else {
+          throttleBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000002);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_RegionQuota_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.region_ = region_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        if (throttleBuilder_ == null) {
+          result.throttle_ = throttle_;
+        } else {
+          result.throttle_ = throttleBuilder_.build();
+        }
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance()) return this;
+        if (other.hasRegion()) {
+          setRegion(other.getRegion());
+        }
+        if (other.hasThrottle()) {
+          mergeThrottle(other.getThrottle());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasRegion()) {
+          
+          return false;
+        }
+        if (hasThrottle()) {
+          if (!getThrottle().isInitialized()) {
+            
+            return false;
+          }
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // required bytes region = 1;
+      private com.google.protobuf.ByteString region_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>required bytes region = 1;</code>
+       */
+      public boolean hasRegion() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required bytes region = 1;</code>
+       */
+      public com.google.protobuf.ByteString getRegion() {
+        return region_;
+      }
+      /**
+       * <code>required bytes region = 1;</code>
+       */
+      public Builder setRegion(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        region_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bytes region = 1;</code>
+       */
+      public Builder clearRegion() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        region_ = getDefaultInstance().getRegion();
+        onChanged();
+        return this;
+      }
+
+      // optional .ThrottleRequest throttle = 2;
+      private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest throttle_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequestOrBuilder> throttleBuilder_;
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public boolean hasThrottle() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest getThrottle() {
+        if (throttleBuilder_ == null) {
+          return throttle_;
+        } else {
+          return throttleBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public Builder setThrottle(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest value) {
+        if (throttleBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          throttle_ = value;
+          onChanged();
+        } else {
+          throttleBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000002;
+        return this;
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public Builder setThrottle(
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.Builder builderForValue) {
+        if (throttleBuilder_ == null) {
+          throttle_ = builderForValue.build();
+          onChanged();
+        } else {
+          throttleBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000002;
+        return this;
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public Builder mergeThrottle(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest value) {
+        if (throttleBuilder_ == null) {
+          if (((bitField0_ & 0x00000002) == 0x00000002) &&
+              throttle_ != org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.getDefaultInstance()) {
+            throttle_ =
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.newBuilder(throttle_).mergeFrom(value).buildPartial();
+          } else {
+            throttle_ = value;
+          }
+          onChanged();
+        } else {
+          throttleBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000002;
+        return this;
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public Builder clearThrottle() {
+        if (throttleBuilder_ == null) {
+          throttle_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.getDefaultInstance();
+          onChanged();
+        } else {
+          throttleBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000002);
+        return this;
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.Builder getThrottleBuilder() {
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return getThrottleFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequestOrBuilder getThrottleOrBuilder() {
+        if (throttleBuilder_ != null) {
+          return throttleBuilder_.getMessageOrBuilder();
+        } else {
+          return throttle_;
+        }
+      }
+      /**
+       * <code>optional .ThrottleRequest throttle = 2;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequestOrBuilder> 
+          getThrottleFieldBuilder() {
+        if (throttleBuilder_ == null) {
+          throttleBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest.Builder, org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequestOrBuilder>(
+                  throttle_,
+                  getParentForChildren(),
+                  isClean());
+          throttle_ = null;
+        }
+        return throttleBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:RegionQuota)
+    }
+
+    static {
+      defaultInstance = new RegionQuota(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:RegionQuota)
+  }
+
+  public interface SetRegionQuotaRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // required .RegionQuota region_quota = 1;
+    /**
+     * <code>required .RegionQuota region_quota = 1;</code>
+     */
+    boolean hasRegionQuota();
+    /**
+     * <code>required .RegionQuota region_quota = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota getRegionQuota();
+    /**
+     * <code>required .RegionQuota region_quota = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder getRegionQuotaOrBuilder();
+  }
+  /**
+   * Protobuf type {@code SetRegionQuotaRequest}
+   */
+  public static final class SetRegionQuotaRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements SetRegionQuotaRequestOrBuilder {
+    // Use SetRegionQuotaRequest.newBuilder() to construct.
+    private SetRegionQuotaRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private SetRegionQuotaRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final SetRegionQuotaRequest defaultInstance;
+    public static SetRegionQuotaRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public SetRegionQuotaRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private SetRegionQuotaRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = regionQuota_.toBuilder();
+              }
+              regionQuota_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(regionQuota_);
+                regionQuota_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<SetRegionQuotaRequest> PARSER =
+        new com.google.protobuf.AbstractParser<SetRegionQuotaRequest>() {
+      public SetRegionQuotaRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new SetRegionQuotaRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<SetRegionQuotaRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // required .RegionQuota region_quota = 1;
+    public static final int REGION_QUOTA_FIELD_NUMBER = 1;
+    private org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota regionQuota_;
+    /**
+     * <code>required .RegionQuota region_quota = 1;</code>
+     */
+    public boolean hasRegionQuota() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required .RegionQuota region_quota = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota getRegionQuota() {
+      return regionQuota_;
+    }
+    /**
+     * <code>required .RegionQuota region_quota = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder getRegionQuotaOrBuilder() {
+      return regionQuota_;
+    }
+
+    private void initFields() {
+      regionQuota_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (!hasRegionQuota()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!getRegionQuota().isInitialized()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeMessage(1, regionQuota_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, regionQuota_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest) obj;
+
+      boolean result = true;
+      result = result && (hasRegionQuota() == other.hasRegionQuota());
+      if (hasRegionQuota()) {
+        result = result && getRegionQuota()
+            .equals(other.getRegionQuota());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasRegionQuota()) {
+        hash = (37 * hash) + REGION_QUOTA_FIELD_NUMBER;
+        hash = (53 * hash) + getRegionQuota().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code SetRegionQuotaRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getRegionQuotaFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (regionQuotaBuilder_ == null) {
+          regionQuota_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance();
+        } else {
+          regionQuotaBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        if (regionQuotaBuilder_ == null) {
+          result.regionQuota_ = regionQuota_;
+        } else {
+          result.regionQuota_ = regionQuotaBuilder_.build();
+        }
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.getDefaultInstance()) return this;
+        if (other.hasRegionQuota()) {
+          mergeRegionQuota(other.getRegionQuota());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasRegionQuota()) {
+          
+          return false;
+        }
+        if (!getRegionQuota().isInitialized()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // required .RegionQuota region_quota = 1;
+      private org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota regionQuota_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder> regionQuotaBuilder_;
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public boolean hasRegionQuota() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota getRegionQuota() {
+        if (regionQuotaBuilder_ == null) {
+          return regionQuota_;
+        } else {
+          return regionQuotaBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public Builder setRegionQuota(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota value) {
+        if (regionQuotaBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          regionQuota_ = value;
+          onChanged();
+        } else {
+          regionQuotaBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public Builder setRegionQuota(
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder builderForValue) {
+        if (regionQuotaBuilder_ == null) {
+          regionQuota_ = builderForValue.build();
+          onChanged();
+        } else {
+          regionQuotaBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public Builder mergeRegionQuota(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota value) {
+        if (regionQuotaBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001) &&
+              regionQuota_ != org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance()) {
+            regionQuota_ =
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.newBuilder(regionQuota_).mergeFrom(value).buildPartial();
+          } else {
+            regionQuota_ = value;
+          }
+          onChanged();
+        } else {
+          regionQuotaBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public Builder clearRegionQuota() {
+        if (regionQuotaBuilder_ == null) {
+          regionQuota_ = org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance();
+          onChanged();
+        } else {
+          regionQuotaBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder getRegionQuotaBuilder() {
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return getRegionQuotaFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder getRegionQuotaOrBuilder() {
+        if (regionQuotaBuilder_ != null) {
+          return regionQuotaBuilder_.getMessageOrBuilder();
+        } else {
+          return regionQuota_;
+        }
+      }
+      /**
+       * <code>required .RegionQuota region_quota = 1;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder> 
+          getRegionQuotaFieldBuilder() {
+        if (regionQuotaBuilder_ == null) {
+          regionQuotaBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder>(
+                  regionQuota_,
+                  getParentForChildren(),
+                  isClean());
+          regionQuota_ = null;
+        }
+        return regionQuotaBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:SetRegionQuotaRequest)
+    }
+
+    static {
+      defaultInstance = new SetRegionQuotaRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:SetRegionQuotaRequest)
+  }
+
+  public interface SetRegionQuotaResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+  }
+  /**
+   * Protobuf type {@code SetRegionQuotaResponse}
+   */
+  public static final class SetRegionQuotaResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements SetRegionQuotaResponseOrBuilder {
+    // Use SetRegionQuotaResponse.newBuilder() to construct.
+    private SetRegionQuotaResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private SetRegionQuotaResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final SetRegionQuotaResponse defaultInstance;
+    public static SetRegionQuotaResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public SetRegionQuotaResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private SetRegionQuotaResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<SetRegionQuotaResponse> PARSER =
+        new com.google.protobuf.AbstractParser<SetRegionQuotaResponse>() {
+      public SetRegionQuotaResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new SetRegionQuotaResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<SetRegionQuotaResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private void initFields() {
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse) obj;
+
+      boolean result = true;
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code SetRegionQuotaResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SetRegionQuotaResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse(this);
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance()) return this;
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:SetRegionQuotaResponse)
+    }
+
+    static {
+      defaultInstance = new SetRegionQuotaResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:SetRegionQuotaResponse)
+  }
+
+  public interface ListRegionQuotaRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+  }
+  /**
+   * Protobuf type {@code ListRegionQuotaRequest}
+   */
+  public static final class ListRegionQuotaRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements ListRegionQuotaRequestOrBuilder {
+    // Use ListRegionQuotaRequest.newBuilder() to construct.
+    private ListRegionQuotaRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private ListRegionQuotaRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final ListRegionQuotaRequest defaultInstance;
+    public static ListRegionQuotaRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public ListRegionQuotaRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private ListRegionQuotaRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<ListRegionQuotaRequest> PARSER =
+        new com.google.protobuf.AbstractParser<ListRegionQuotaRequest>() {
+      public ListRegionQuotaRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new ListRegionQuotaRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<ListRegionQuotaRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private void initFields() {
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest) obj;
+
+      boolean result = true;
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code ListRegionQuotaRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest(this);
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.getDefaultInstance()) return this;
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:ListRegionQuotaRequest)
+    }
+
+    static {
+      defaultInstance = new ListRegionQuotaRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:ListRegionQuotaRequest)
+  }
+
+  public interface ListRegionQuotaResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // repeated .RegionQuota region_quota = 1;
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota> 
+        getRegionQuotaList();
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota getRegionQuota(int index);
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    int getRegionQuotaCount();
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder> 
+        getRegionQuotaOrBuilderList();
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder getRegionQuotaOrBuilder(
+        int index);
+  }
+  /**
+   * Protobuf type {@code ListRegionQuotaResponse}
+   */
+  public static final class ListRegionQuotaResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements ListRegionQuotaResponseOrBuilder {
+    // Use ListRegionQuotaResponse.newBuilder() to construct.
+    private ListRegionQuotaResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private ListRegionQuotaResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final ListRegionQuotaResponse defaultInstance;
+    public static ListRegionQuotaResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public ListRegionQuotaResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private ListRegionQuotaResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+                regionQuota_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota>();
+                mutable_bitField0_ |= 0x00000001;
+              }
+              regionQuota_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.PARSER, extensionRegistry));
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+          regionQuota_ = java.util.Collections.unmodifiableList(regionQuota_);
+        }
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<ListRegionQuotaResponse> PARSER =
+        new com.google.protobuf.AbstractParser<ListRegionQuotaResponse>() {
+      public ListRegionQuotaResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new ListRegionQuotaResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<ListRegionQuotaResponse> getParserForType() {
+      return PARSER;
+    }
+
+    // repeated .RegionQuota region_quota = 1;
+    public static final int REGION_QUOTA_FIELD_NUMBER = 1;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota> regionQuota_;
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota> getRegionQuotaList() {
+      return regionQuota_;
+    }
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder> 
+        getRegionQuotaOrBuilderList() {
+      return regionQuota_;
+    }
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    public int getRegionQuotaCount() {
+      return regionQuota_.size();
+    }
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota getRegionQuota(int index) {
+      return regionQuota_.get(index);
+    }
+    /**
+     * <code>repeated .RegionQuota region_quota = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder getRegionQuotaOrBuilder(
+        int index) {
+      return regionQuota_.get(index);
+    }
+
+    private void initFields() {
+      regionQuota_ = java.util.Collections.emptyList();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      for (int i = 0; i < getRegionQuotaCount(); i++) {
+        if (!getRegionQuota(i).isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      for (int i = 0; i < regionQuota_.size(); i++) {
+        output.writeMessage(1, regionQuota_.get(i));
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      for (int i = 0; i < regionQuota_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, regionQuota_.get(i));
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse) obj;
+
+      boolean result = true;
+      result = result && getRegionQuotaList()
+          .equals(other.getRegionQuotaList());
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (getRegionQuotaCount() > 0) {
+        hash = (37 * hash) + REGION_QUOTA_FIELD_NUMBER;
+        hash = (53 * hash) + getRegionQuotaList().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code ListRegionQuotaResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getRegionQuotaFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (regionQuotaBuilder_ == null) {
+          regionQuota_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000001);
+        } else {
+          regionQuotaBuilder_.clear();
+        }
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_ListRegionQuotaResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse(this);
+        int from_bitField0_ = bitField0_;
+        if (regionQuotaBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001)) {
+            regionQuota_ = java.util.Collections.unmodifiableList(regionQuota_);
+            bitField0_ = (bitField0_ & ~0x00000001);
+          }
+          result.regionQuota_ = regionQuota_;
+        } else {
+          result.regionQuota_ = regionQuotaBuilder_.build();
+        }
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance()) return this;
+        if (regionQuotaBuilder_ == null) {
+          if (!other.regionQuota_.isEmpty()) {
+            if (regionQuota_.isEmpty()) {
+              regionQuota_ = other.regionQuota_;
+              bitField0_ = (bitField0_ & ~0x00000001);
+            } else {
+              ensureRegionQuotaIsMutable();
+              regionQuota_.addAll(other.regionQuota_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.regionQuota_.isEmpty()) {
+            if (regionQuotaBuilder_.isEmpty()) {
+              regionQuotaBuilder_.dispose();
+              regionQuotaBuilder_ = null;
+              regionQuota_ = other.regionQuota_;
+              bitField0_ = (bitField0_ & ~0x00000001);
+              regionQuotaBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getRegionQuotaFieldBuilder() : null;
+            } else {
+              regionQuotaBuilder_.addAllMessages(other.regionQuota_);
+            }
+          }
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        for (int i = 0; i < getRegionQuotaCount(); i++) {
+          if (!getRegionQuota(i).isInitialized()) {
+            
+            return false;
+          }
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // repeated .RegionQuota region_quota = 1;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota> regionQuota_ =
+        java.util.Collections.emptyList();
+      private void ensureRegionQuotaIsMutable() {
+        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+          regionQuota_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota>(regionQuota_);
+          bitField0_ |= 0x00000001;
+         }
+      }
+
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder> regionQuotaBuilder_;
+
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota> getRegionQuotaList() {
+        if (regionQuotaBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(regionQuota_);
+        } else {
+          return regionQuotaBuilder_.getMessageList();
+        }
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public int getRegionQuotaCount() {
+        if (regionQuotaBuilder_ == null) {
+          return regionQuota_.size();
+        } else {
+          return regionQuotaBuilder_.getCount();
+        }
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota getRegionQuota(int index) {
+        if (regionQuotaBuilder_ == null) {
+          return regionQuota_.get(index);
+        } else {
+          return regionQuotaBuilder_.getMessage(index);
+        }
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder setRegionQuota(
+          int index, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota value) {
+        if (regionQuotaBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRegionQuotaIsMutable();
+          regionQuota_.set(index, value);
+          onChanged();
+        } else {
+          regionQuotaBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder setRegionQuota(
+          int index, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder builderForValue) {
+        if (regionQuotaBuilder_ == null) {
+          ensureRegionQuotaIsMutable();
+          regionQuota_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          regionQuotaBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder addRegionQuota(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota value) {
+        if (regionQuotaBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRegionQuotaIsMutable();
+          regionQuota_.add(value);
+          onChanged();
+        } else {
+          regionQuotaBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder addRegionQuota(
+          int index, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota value) {
+        if (regionQuotaBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRegionQuotaIsMutable();
+          regionQuota_.add(index, value);
+          onChanged();
+        } else {
+          regionQuotaBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder addRegionQuota(
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder builderForValue) {
+        if (regionQuotaBuilder_ == null) {
+          ensureRegionQuotaIsMutable();
+          regionQuota_.add(builderForValue.build());
+          onChanged();
+        } else {
+          regionQuotaBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder addRegionQuota(
+          int index, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder builderForValue) {
+        if (regionQuotaBuilder_ == null) {
+          ensureRegionQuotaIsMutable();
+          regionQuota_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          regionQuotaBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder addAllRegionQuota(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota> values) {
+        if (regionQuotaBuilder_ == null) {
+          ensureRegionQuotaIsMutable();
+          super.addAll(values, regionQuota_);
+          onChanged();
+        } else {
+          regionQuotaBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder clearRegionQuota() {
+        if (regionQuotaBuilder_ == null) {
+          regionQuota_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000001);
+          onChanged();
+        } else {
+          regionQuotaBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public Builder removeRegionQuota(int index) {
+        if (regionQuotaBuilder_ == null) {
+          ensureRegionQuotaIsMutable();
+          regionQuota_.remove(index);
+          onChanged();
+        } else {
+          regionQuotaBuilder_.remove(index);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder getRegionQuotaBuilder(
+          int index) {
+        return getRegionQuotaFieldBuilder().getBuilder(index);
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder getRegionQuotaOrBuilder(
+          int index) {
+        if (regionQuotaBuilder_ == null) {
+          return regionQuota_.get(index);  } else {
+          return regionQuotaBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder> 
+           getRegionQuotaOrBuilderList() {
+        if (regionQuotaBuilder_ != null) {
+          return regionQuotaBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(regionQuota_);
+        }
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder addRegionQuotaBuilder() {
+        return getRegionQuotaFieldBuilder().addBuilder(
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder addRegionQuotaBuilder(
+          int index) {
+        return getRegionQuotaFieldBuilder().addBuilder(
+            index, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .RegionQuota region_quota = 1;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder> 
+           getRegionQuotaBuilderList() {
+        return getRegionQuotaFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder> 
+          getRegionQuotaFieldBuilder() {
+        if (regionQuotaBuilder_ == null) {
+          regionQuotaBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota.Builder, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuotaOrBuilder>(
+                  regionQuota_,
+                  ((bitField0_ & 0x00000001) == 0x00000001),
+                  getParentForChildren(),
+                  isClean());
+          regionQuota_ = null;
+        }
+        return regionQuotaBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:ListRegionQuotaResponse)
+    }
+
+    static {
+      defaultInstance = new ListRegionQuotaResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:ListRegionQuotaResponse)
+  }
+
   /**
    * Protobuf service {@code MasterService}
    */
@@ -46550,6 +49166,22 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse> done);
 
+      /**
+       * <code>rpc SetRegionQuota(.SetRegionQuotaRequest) returns (.SetRegionQuotaResponse);</code>
+       */
+      public abstract void setRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse> done);
+
+      /**
+       * <code>rpc ListRegionQuota(.ListRegionQuotaRequest) returns (.ListRegionQuotaResponse);</code>
+       */
+      public abstract void listRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -47011,6 +49643,22 @@ public final class MasterProtos {
           impl.isSplitOrMergeEnabled(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void setRegionQuota(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse> done) {
+          impl.setRegionQuota(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void listRegionQuota(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse> done) {
+          impl.listRegionQuota(controller, request, done);
+        }
+
       };
     }
 
@@ -47147,6 +49795,10 @@ public final class MasterProtos {
               return impl.setSplitOrMergeEnabled(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest)request);
             case 56:
               return impl.isSplitOrMergeEnabled(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest)request);
+            case 57:
+              return impl.setRegionQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest)request);
+            case 58:
+              return impl.listRegionQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -47275,6 +49927,10 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.getDefaultInstance();
             case 56:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.getDefaultInstance();
+            case 57:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.getDefaultInstance();
+            case 58:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -47403,6 +50059,10 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance();
             case 56:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance();
+            case 57:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance();
+            case 58:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -48106,6 +50766,22 @@ public final class MasterProtos {
         org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse> done);
 
+    /**
+     * <code>rpc SetRegionQuota(.SetRegionQuotaRequest) returns (.SetRegionQuotaResponse);</code>
+     */
+    public abstract void setRegionQuota(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse> done);
+
+    /**
+     * <code>rpc ListRegionQuota(.ListRegionQuotaRequest) returns (.ListRegionQuotaResponse);</code>
+     */
+    public abstract void listRegionQuota(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -48413,6 +51089,16 @@ public final class MasterProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse>specializeCallback(
               done));
           return;
+        case 57:
+          this.setRegionQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse>specializeCallback(
+              done));
+          return;
+        case 58:
+          this.listRegionQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -48541,6 +51227,10 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest.getDefaultInstance();
         case 56:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest.getDefaultInstance();
+        case 57:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.getDefaultInstance();
+        case 58:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -48669,6 +51359,10 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledResponse.getDefaultInstance();
         case 56:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance();
+        case 57:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance();
+        case 58:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -49544,6 +52238,36 @@ public final class MasterProtos {
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance()));
       }
+
+      public  void setRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(57),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance()));
+      }
+
+      public  void listRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(58),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -49835,6 +52559,16 @@ public final class MasterProtos {
       public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse isSplitOrMergeEnabled(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse setRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse listRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -50528,6 +53262,30 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse setRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(57),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse listRegionQuota(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(58),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:MasterService)
@@ -50983,6 +53741,31 @@ public final class MasterProtos {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_IsSplitOrMergeEnabledResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_RegionQuota_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_RegionQuota_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_SetRegionQuotaRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_SetRegionQuotaRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_SetRegionQuotaResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_SetRegionQuotaResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_ListRegionQuotaRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_ListRegionQuotaRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_ListRegionQuotaResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_ListRegionQuotaResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -51119,118 +53902,127 @@ public final class MasterProtos {
       "\"F\n\034IsSplitOrMergeEnabledRequest\022&\n\013swit" +
       "ch_type\030\001 \002(\0162\021.MasterSwitchType\"0\n\035IsSp" +
       "litOrMergeEnabledResponse\022\017\n\007enabled\030\001 \002" +
-      "(\010*(\n\020MasterSwitchType\022\t\n\005SPLIT\020\000\022\t\n\005MER" +
-      "GE\020\0012\350!\n\rMasterService\022S\n\024GetSchemaAlter" +
-      "Status\022\034.GetSchemaAlterStatusRequest\032\035.G",
-      "etSchemaAlterStatusResponse\022P\n\023GetTableD" +
-      "escriptors\022\033.GetTableDescriptorsRequest\032" +
-      "\034.GetTableDescriptorsResponse\022>\n\rGetTabl" +
-      "eNames\022\025.GetTableNamesRequest\032\026.GetTable" +
-      "NamesResponse\022G\n\020GetClusterStatus\022\030.GetC" +
-      "lusterStatusRequest\032\031.GetClusterStatusRe" +
-      "sponse\022D\n\017IsMasterRunning\022\027.IsMasterRunn" +
-      "ingRequest\032\030.IsMasterRunningResponse\0222\n\t" +
-      "AddColumn\022\021.AddColumnRequest\032\022.AddColumn" +
-      "Response\022;\n\014DeleteColumn\022\024.DeleteColumnR",
-      "equest\032\025.DeleteColumnResponse\022;\n\014ModifyC" +
-      "olumn\022\024.ModifyColumnRequest\032\025.ModifyColu" +
-      "mnResponse\0225\n\nMoveRegion\022\022.MoveRegionReq" +
-      "uest\032\023.MoveRegionResponse\022Y\n\026DispatchMer" +
-      "gingRegions\022\036.DispatchMergingRegionsRequ" +
-      "est\032\037.DispatchMergingRegionsResponse\022;\n\014" +
-      "AssignRegion\022\024.AssignRegionRequest\032\025.Ass" +
-      "ignRegionResponse\022A\n\016UnassignRegion\022\026.Un" +
-      "assignRegionRequest\032\027.UnassignRegionResp" +
-      "onse\022>\n\rOfflineRegion\022\025.OfflineRegionReq",
-      "uest\032\026.OfflineRegionResponse\0228\n\013DeleteTa" +
-      "ble\022\023.DeleteTableRequest\032\024.DeleteTableRe" +
-      "sponse\0228\n\013EnableTable\022\023.EnableTableReque" +
-      "st\032\024.EnableTableResponse\022;\n\014DisableTable" +
-      "\022\024.DisableTableRequest\032\025.DisableTableRes" +
-      "ponse\0228\n\013ModifyTable\022\023.ModifyTableReques" +
-      "t\032\024.ModifyTableResponse\0228\n\013CreateTable\022\023" +
-      ".CreateTableRequest\032\024.CreateTableRespons" +
-      "e\022/\n\010Shutdown\022\020.ShutdownRequest\032\021.Shutdo" +
-      "wnResponse\0225\n\nStopMaster\022\022.StopMasterReq",
-      "uest\032\023.StopMasterResponse\022,\n\007Balance\022\017.B" +
-      "alanceRequest\032\020.BalanceResponse\022M\n\022SetBa" +
-      "lancerRunning\022\032.SetBalancerRunningReques" +
-      "t\032\033.SetBalancerRunningResponse\022A\n\016RunCat" +
-      "alogScan\022\026.RunCatalogScanRequest\032\027.RunCa" +
-      "talogScanResponse\022S\n\024EnableCatalogJanito" +
-      "r\022\034.EnableCatalogJanitorRequest\032\035.Enable" +
-      "CatalogJanitorResponse\022\\\n\027IsCatalogJanit" +
-      "orEnabled\022\037.IsCatalogJanitorEnabledReque" +
-      "st\032 .IsCatalogJanitorEnabledResponse\022L\n\021",
-      "ExecMasterService\022\032.CoprocessorServiceRe" +
-      "quest\032\033.CoprocessorServiceResponse\022/\n\010Sn" +
-      "apshot\022\020.SnapshotRequest\032\021.SnapshotRespo" +
-      "nse\022V\n\025GetCompletedSnapshots\022\035.GetComple" +
-      "tedSnapshotsRequest\032\036.GetCompletedSnapsh" +
-      "otsResponse\022A\n\016DeleteSnapshot\022\026.DeleteSn" +
-      "apshotRequest\032\027.DeleteSnapshotResponse\022A" +
-      "\n\016IsSnapshotDone\022\026.IsSnapshotDoneRequest" +
-      "\032\027.IsSnapshotDoneResponse\022D\n\017RestoreSnap" +
-      "shot\022\027.RestoreSnapshotRequest\032\030.RestoreS",
-      "napshotResponse\022V\n\025IsRestoreSnapshotDone" +
-      "\022\035.IsRestoreSnapshotDoneRequest\032\036.IsRest" +
-      "oreSnapshotDoneResponse\022>\n\rExecProcedure" +
-      "\022\025.ExecProcedureRequest\032\026.ExecProcedureR" +
-      "esponse\022D\n\017IsProcedureDone\022\027.IsProcedure" +
-      "DoneRequest\032\030.IsProcedureDoneResponse\022D\n" +
-      "\017ModifyNamespace\022\027.ModifyNamespaceReques" +
-      "t\032\030.ModifyNamespaceResponse\022D\n\017CreateNam" +
-      "espace\022\027.CreateNamespaceRequest\032\030.Create" +
-      "NamespaceResponse\022D\n\017DeleteNamespace\022\027.D",
-      "eleteNamespaceRequest\032\030.DeleteNamespaceR" +
-      "esponse\022Y\n\026GetNamespaceDescriptor\022\036.GetN" +
-      "amespaceDescriptorRequest\032\037.GetNamespace" +
-      "DescriptorResponse\022_\n\030ListNamespaceDescr" +
-      "iptors\022 .ListNamespaceDescriptorsRequest" +
-      "\032!.ListNamespaceDescriptorsResponse\022t\n\037L" +
-      "istTableDescriptorsByNamespace\022\'.ListTab" +
-      "leDescriptorsByNamespaceRequest\032(.ListTa" +
-      "bleDescriptorsByNamespaceResponse\022b\n\031Lis" +
-      "tTableNamesByNamespace\022!.ListTableNamesB",
-      "yNamespaceRequest\032\".ListTableNamesByName" +
-      "spaceResponse\022>\n\rtruncateTable\022\025.Truncat" +
-      "eTableRequest\032\026.TruncateTableResponse\022/\n" +
-      "\010SetQuota\022\020.SetQuotaRequest\032\021.SetQuotaRe" +
-      "sponse\022A\n\016SwitchThrottle\022\026.SwitchThrottl" +
-      "eRequest\032\027.SwitchThrottleResponse\022M\n\022Add" +
-      "ReplicationPeer\022\032.AddReplicationPeerRequ" +
-      "est\032\033.AddReplicationPeerResponse\022V\n\025Remo" +
-      "veReplicationPeer\022\035.RemoveReplicationPee" +
-      "rRequest\032\036.RemoveReplicationPeerResponse",
-      "\022V\n\025EnableReplicationPeer\022\035.EnableReplic" +
-      "ationPeerRequest\032\036.EnableReplicationPeer" +
-      "Response\022Y\n\026DisableReplicationPeer\022\036.Dis" +
-      "ableReplicationPeerRequest\032\037.DisableRepl" +
-      "icationPeerResponse\022_\n\030GetReplicationPee" +
-      "rConfig\022 .GetReplicationPeerConfigReques" +
-      "t\032!.GetReplicationPeerConfigResponse\022h\n\033" +
-      "UpdateReplicationPeerConfig\022#.UpdateRepl" +
-      "icationPeerConfigRequest\032$.UpdateReplica" +
-      "tionPeerConfigResponse\022S\n\024ListReplicatio",
-      "nPeers\022\034.ListReplicationPeersRequest\032\035.L" +
-      "istReplicationPeersResponse\022b\n\031GetPeerMa" +
-      "xReplicationLoad\022!.GetPeerMaxReplication" +
-      "LoadRequest\032\".GetPeerMaxReplicationLoadR" +
-      "esponse\022`\n\036ListReplicationPeersForBranch" +
-      "2\022\034.ListReplicationPeersRequest\032 .NewLis" +
-      "tReplicationPeersResponse\022Z\n\034AddReplicat" +
-      "ionPeerForBranch2\022\035.NewAddReplicationPee" +
-      "rRequest\032\033.AddReplicationPeerResponse\022u\n" +
-      "%UpdateReplicationPeerConfigForBranch2\022&",
-      ".NewUpdateReplicationPeerConfigRequest\032$" +
-      ".UpdateReplicationPeerConfigResponse\022Y\n\026" +
-      "SetSplitOrMergeEnabled\022\036.SetSplitOrMerge" +
-      "EnabledRequest\032\037.SetSplitOrMergeEnabledR" +
-      "esponse\022V\n\025IsSplitOrMergeEnabled\022\035.IsSpl" +
-      "itOrMergeEnabledRequest\032\036.IsSplitOrMerge" +
-      "EnabledResponseBB\n*org.apache.hadoop.hba" +
-      "se.protobuf.generatedB\014MasterProtosH\001\210\001\001" +
-      "\240\001\001"
+      "(\010\"A\n\013RegionQuota\022\016\n\006region\030\001 \002(\014\022\"\n\010thr" +
+      "ottle\030\002 \001(\0132\020.ThrottleRequest\";\n\025SetRegi" +
+      "onQuotaRequest\022\"\n\014region_quota\030\001 \002(\0132\014.R",
+      "egionQuota\"\030\n\026SetRegionQuotaResponse\"\030\n\026" +
+      "ListRegionQuotaRequest\"=\n\027ListRegionQuot" +
+      "aResponse\022\"\n\014region_quota\030\001 \003(\0132\014.Region" +
+      "Quota*(\n\020MasterSwitchType\022\t\n\005SPLIT\020\000\022\t\n\005" +
+      "MERGE\020\0012\361\"\n\rMasterService\022S\n\024GetSchemaAl" +
+      "terStatus\022\034.GetSchemaAlterStatusRequest\032" +
+      "\035.GetSchemaAlterStatusResponse\022P\n\023GetTab" +
+      "leDescriptors\022\033.GetTableDescriptorsReque" +
+      "st\032\034.GetTableDescriptorsResponse\022>\n\rGetT" +
+      "ableNames\022\025.GetTableNamesRequest\032\026.GetTa",
+      "bleNamesResponse\022G\n\020GetClusterStatus\022\030.G" +
+      "etClusterStatusRequest\032\031.GetClusterStatu" +
+      "sResponse\022D\n\017IsMasterRunning\022\027.IsMasterR" +
+      "unningRequest\032\030.IsMasterRunningResponse\022" +
+      "2\n\tAddColumn\022\021.AddColumnRequest\032\022.AddCol" +
+      "umnResponse\022;\n\014DeleteColumn\022\024.DeleteColu" +
+      "mnRequest\032\025.DeleteColumnResponse\022;\n\014Modi" +
+      "fyColumn\022\024.ModifyColumnRequest\032\025.ModifyC" +
+      "olumnResponse\0225\n\nMoveRegion\022\022.MoveRegion" +
+      "Request\032\023.MoveRegionResponse\022Y\n\026Dispatch",
+      "MergingRegions\022\036.DispatchMergingRegionsR" +
+      "equest\032\037.DispatchMergingRegionsResponse\022" +
+      ";\n\014AssignRegion\022\024.AssignRegionRequest\032\025." +
+      "AssignRegionResponse\022A\n\016UnassignRegion\022\026" +
+      ".UnassignRegionRequest\032\027.UnassignRegionR" +
+      "esponse\022>\n\rOfflineRegion\022\025.OfflineRegion" +
+      "Request\032\026.OfflineRegionResponse\0228\n\013Delet" +
+      "eTable\022\023.DeleteTableRequest\032\024.DeleteTabl" +
+      "eResponse\0228\n\013EnableTable\022\023.EnableTableRe" +
+      "quest\032\024.EnableTableResponse\022;\n\014DisableTa",
+      "ble\022\024.DisableTableRequest\032\025.DisableTable" +
+      "Response\0228\n\013ModifyTable\022\023.ModifyTableReq" +
+      "uest\032\024.ModifyTableResponse\0228\n\013CreateTabl" +
+      "e\022\023.CreateTableRequest\032\024.CreateTableResp" +
+      "onse\022/\n\010Shutdown\022\020.ShutdownRequest\032\021.Shu" +
+      "tdownResponse\0225\n\nStopMaster\022\022.StopMaster" +
+      "Request\032\023.StopMasterResponse\022,\n\007Balance\022" +
+      "\017.BalanceRequest\032\020.BalanceResponse\022M\n\022Se" +
+      "tBalancerRunning\022\032.SetBalancerRunningReq" +
+      "uest\032\033.SetBalancerRunningResponse\022A\n\016Run",
+      "CatalogScan\022\026.RunCatalogScanRequest\032\027.Ru" +
+      "nCatalogScanResponse\022S\n\024EnableCatalogJan" +
+      "itor\022\034.EnableCatalogJanitorRequest\032\035.Ena" +
+      "bleCatalogJanitorResponse\022\\\n\027IsCatalogJa" +
+      "nitorEnabled\022\037.IsCatalogJanitorEnabledRe" +
+      "quest\032 .IsCatalogJanitorEnabledResponse\022" +
+      "L\n\021ExecMasterService\022\032.CoprocessorServic" +
+      "eRequest\032\033.CoprocessorServiceResponse\022/\n" +
+      "\010Snapshot\022\020.SnapshotRequest\032\021.SnapshotRe" +
+      "sponse\022V\n\025GetCompletedSnapshots\022\035.GetCom",
+      "pletedSnapshotsRequest\032\036.GetCompletedSna" +
+      "pshotsResponse\022A\n\016DeleteSnapshot\022\026.Delet" +
+      "eSnapshotRequest\032\027.DeleteSnapshotRespons" +
+      "e\022A\n\016IsSnapshotDone\022\026.IsSnapshotDoneRequ" +
+      "est\032\027.IsSnapshotDoneResponse\022D\n\017RestoreS" +
+      "napshot\022\027.RestoreSnapshotRequest\032\030.Resto" +
+      "reSnapshotResponse\022V\n\025IsRestoreSnapshotD" +
+      "one\022\035.IsRestoreSnapshotDoneRequest\032\036.IsR" +
+      "estoreSnapshotDoneResponse\022>\n\rExecProced" +
+      "ure\022\025.ExecProcedureRequest\032\026.ExecProcedu",
+      "reResponse\022D\n\017IsProcedureDone\022\027.IsProced" +
+      "ureDoneRequest\032\030.IsProcedureDoneResponse" +
+      "\022D\n\017ModifyNamespace\022\027.ModifyNamespaceReq" +
+      "uest\032\030.ModifyNamespaceResponse\022D\n\017Create" +
+      "Namespace\022\027.CreateNamespaceRequest\032\030.Cre" +
+      "ateNamespaceResponse\022D\n\017DeleteNamespace\022" +
+      "\027.DeleteNamespaceRequest\032\030.DeleteNamespa" +
+      "ceResponse\022Y\n\026GetNamespaceDescriptor\022\036.G" +
+      "etNamespaceDescriptorRequest\032\037.GetNamesp" +
+      "aceDescriptorResponse\022_\n\030ListNamespaceDe",
+      "scriptors\022 .ListNamespaceDescriptorsRequ" +
+      "est\032!.ListNamespaceDescriptorsResponse\022t" +
+      "\n\037ListTableDescriptorsByNamespace\022\'.List" +
+      "TableDescriptorsByNamespaceRequest\032(.Lis" +
+      "tTableDescriptorsByNamespaceResponse\022b\n\031" +
+      "ListTableNamesByNamespace\022!.ListTableNam" +
+      "esByNamespaceRequest\032\".ListTableNamesByN" +
+      "amespaceResponse\022>\n\rtruncateTable\022\025.Trun" +
+      "cateTableRequest\032\026.TruncateTableResponse" +
+      "\022/\n\010SetQuota\022\020.SetQuotaRequest\032\021.SetQuot",
+      "aResponse\022A\n\016SwitchThrottle\022\026.SwitchThro" +
+      "ttleRequest\032\027.SwitchThrottleResponse\022M\n\022" +
+      "AddReplicationPeer\022\032.AddReplicationPeerR" +
+      "equest\032\033.AddReplicationPeerResponse\022V\n\025R" +
+      "emoveReplicationPeer\022\035.RemoveReplication" +
+      "PeerRequest\032\036.RemoveReplicationPeerRespo" +
+      "nse\022V\n\025EnableReplicationPeer\022\035.EnableRep" +
+      "licationPeerRequest\032\036.EnableReplicationP" +
+      "eerResponse\022Y\n\026DisableReplicationPeer\022\036." +
+      "DisableReplicationPeerRequest\032\037.DisableR",
+      "eplicationPeerResponse\022_\n\030GetReplication" +
+      "PeerConfig\022 .GetReplicationPeerConfigReq" +
+      "uest\032!.GetReplicationPeerConfigResponse\022" +
+      "h\n\033UpdateReplicationPeerConfig\022#.UpdateR" +
+      "eplicationPeerConfigRequest\032$.UpdateRepl" +
+      "icationPeerConfigResponse\022S\n\024ListReplica" +
+      "tionPeers\022\034.ListReplicationPeersRequest\032" +
+      "\035.ListReplicationPeersResponse\022b\n\031GetPee" +
+      "rMaxReplicationLoad\022!.GetPeerMaxReplicat" +
+      "ionLoadRequest\032\".GetPeerMaxReplicationLo",
+      "adResponse\022`\n\036ListReplicationPeersForBra" +
+      "nch2\022\034.ListReplicationPeersRequest\032 .New" +
+      "ListReplicationPeersResponse\022Z\n\034AddRepli" +
+      "cationPeerForBranch2\022\035.NewAddReplication" +
+      "PeerRequest\032\033.AddReplicationPeerResponse" +
+      "\022u\n%UpdateReplicationPeerConfigForBranch" +
+      "2\022&.NewUpdateReplicationPeerConfigReques" +
+      "t\032$.UpdateReplicationPeerConfigResponse\022" +
+      "Y\n\026SetSplitOrMergeEnabled\022\036.SetSplitOrMe" +
+      "rgeEnabledRequest\032\037.SetSplitOrMergeEnabl",
+      "edResponse\022V\n\025IsSplitOrMergeEnabled\022\035.Is" +
+      "SplitOrMergeEnabledRequest\032\036.IsSplitOrMe" +
+      "rgeEnabledResponse\022A\n\016SetRegionQuota\022\026.S" +
+      "etRegionQuotaRequest\032\027.SetRegionQuotaRes" +
+      "ponse\022D\n\017ListRegionQuota\022\027.ListRegionQuo" +
+      "taRequest\032\030.ListRegionQuotaResponseBB\n*o" +
+      "rg.apache.hadoop.hbase.protobuf.generate" +
+      "dB\014MasterProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -51777,6 +54569,36 @@ public final class MasterProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_IsSplitOrMergeEnabledResponse_descriptor,
               new java.lang.String[] { "Enabled", });
+          internal_static_RegionQuota_descriptor =
+            getDescriptor().getMessageTypes().get(90);
+          internal_static_RegionQuota_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_RegionQuota_descriptor,
+              new java.lang.String[] { "Region", "Throttle", });
+          internal_static_SetRegionQuotaRequest_descriptor =
+            getDescriptor().getMessageTypes().get(91);
+          internal_static_SetRegionQuotaRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_SetRegionQuotaRequest_descriptor,
+              new java.lang.String[] { "RegionQuota", });
+          internal_static_SetRegionQuotaResponse_descriptor =
+            getDescriptor().getMessageTypes().get(92);
+          internal_static_SetRegionQuotaResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_SetRegionQuotaResponse_descriptor,
+              new java.lang.String[] { });
+          internal_static_ListRegionQuotaRequest_descriptor =
+            getDescriptor().getMessageTypes().get(93);
+          internal_static_ListRegionQuotaRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_ListRegionQuotaRequest_descriptor,
+              new java.lang.String[] { });
+          internal_static_ListRegionQuotaResponse_descriptor =
+            getDescriptor().getMessageTypes().get(94);
+          internal_static_ListRegionQuotaResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_ListRegionQuotaResponse_descriptor,
+              new java.lang.String[] { "RegionQuota", });
           return null;
         }
       };
