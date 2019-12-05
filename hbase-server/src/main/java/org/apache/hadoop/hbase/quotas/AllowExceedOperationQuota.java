@@ -11,14 +11,10 @@
 
 package org.apache.hadoop.hbase.quotas;
 
-import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hbase.client.Mutation;
-import org.apache.hadoop.hbase.client.Result;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -74,6 +70,7 @@ public class AllowExceedOperationQuota implements OperationQuota {
     }
   }
 
+  @Override
   public void grabQuota(int numWrites, int numReads, int numScans) {
     int readNeed = numReads + numScans;
     int writeNeed = numWrites;
@@ -110,27 +107,6 @@ public class AllowExceedOperationQuota implements OperationQuota {
         userLimiter.getWriteReqsAvailable());
     }
     return writeReqsAvailable;
-  }
-
-  @Override
-  public void addGetResult(final Result result) {
-  }
-
-  @Override
-  public void addScanResult(final List<Result> results) {
-  }
-
-  @Override
-  public void addMutation(final Mutation mutation) {
-  }
-
-  @Override
-  public long getAvgOperationSize(OperationType type) {
-    return 0;
-  }
-
-  private long estimateConsume(final OperationType type, int numReqs, long avgSize) {
-    return 0;
   }
 
   @Override

@@ -18,14 +18,8 @@
 
 package org.apache.hadoop.hbase.quotas;
 
-import java.util.List;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hbase.client.Mutation;
-import org.apache.hadoop.hbase.client.Result;
 
 /**
  * Noop operation quota returned when no quota is associated to the user/table
@@ -55,21 +49,6 @@ class NoopOperationQuota implements OperationQuota {
   }
 
   @Override
-  public void addGetResult(final Result result) {
-    // no-op
-  }
-
-  @Override
-  public void addScanResult(final List<Result> results) {
-    // no-op
-  }
-
-  @Override
-  public void addMutation(final Mutation mutation) {
-    // no-op
-  }
-
-  @Override
   public long getReadAvailable() {
     return Long.MAX_VALUE;
   }
@@ -80,12 +59,12 @@ class NoopOperationQuota implements OperationQuota {
   }
 
   @Override
-  public long getAvgOperationSize(OperationType type) {
-    return -1;
+  public boolean canLogThrottlingException() {
+    return true;
   }
 
   @Override
-  public boolean canLogThrottlingException() {
-    return true;
+  public void grabQuota(int numWrites, int numReads, int numScans) {
+    // no-op
   }
 }

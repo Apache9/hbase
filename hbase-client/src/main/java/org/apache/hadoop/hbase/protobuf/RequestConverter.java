@@ -24,6 +24,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.hadoop.hbase.CellScannable;
@@ -123,11 +124,13 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.OfflineRegionRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
@@ -140,7 +143,9 @@ import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplic
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.quotas.QuotaScope;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
+import org.apache.hadoop.hbase.quotas.ThrottleType;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -1827,5 +1832,20 @@ public final class RequestConverter {
         break;
     }
     throw new UnsupportedOperationException("Unsupport switch type:" + switchType);
+  }
+
+  public static SetRegionQuotaRequest buildSetRegionQuotaRequest(byte[] regionName,
+      ThrottleType type, long limit, TimeUnit timeUnit) {
+    MasterProtos.RegionQuota.Builder regionQuotaBuilder =
+        MasterProtos.RegionQuota.newBuilder().setRegion(ByteStringer.wrap(regionName));
+    if (type != null) {
+      ThrottleRequest.Builder builder = ThrottleRequest.newBuilder();
+      builder.setType(ProtobufUtil.toProtoThrottleType(type));
+      if (limit > 0 && timeUnit != null) {
+        builder.setTimedQuota(ProtobufUtil.toTimedQuota(limit, timeUnit, QuotaScope.MACHINE));
+      }
+      regionQuotaBuilder.setThrottle(builder.build());
+    }
+    return SetRegionQuotaRequest.newBuilder().setRegionQuota(regionQuotaBuilder.build()).build();
   }
 }

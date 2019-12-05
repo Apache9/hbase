@@ -76,7 +76,7 @@ public class TimeBasedLimiter implements QuotaLimiter {
       QuotaUtil.DEFAULT_THROTTLING_MIN_WAIT_INTERVAL);
   }
 
-  static QuotaLimiter fromThrottle(final Throttle throttle) {
+  public static QuotaLimiter fromThrottle(final Throttle throttle) {
     TimeBasedLimiter limiter = new TimeBasedLimiter();
     boolean isBypass = true;
     if (throttle.hasReqNum()) {

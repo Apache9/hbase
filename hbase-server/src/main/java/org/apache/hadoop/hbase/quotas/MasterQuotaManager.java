@@ -38,14 +38,21 @@ import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.namespace.NamespaceAuditor;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TimeUnit;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleType;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.zookeeper.RegionQuotaTracker;
+import org.apache.zookeeper.KeeperException;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -75,9 +82,13 @@ public class MasterQuotaManager implements RegionStateListener {
   public static final float DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR = 0.7f;
   private int regionServerReadLimit;
   private int regionServerWriteLimit;
+  // Tracker for region quotas which is a hard limit
+  private RegionQuotaTracker regionQuotaTracker;
 
   public MasterQuotaManager(final MasterServices masterServices) {
     this.masterServices = masterServices;
+    this.regionQuotaTracker = new RegionQuotaTracker(masterServices.getZooKeeper(), masterServices);
+    this.regionQuotaTracker.start();
   }
 
   public void start() throws IOException {
@@ -843,5 +854,40 @@ public class MasterQuotaManager implements RegionStateListener {
     if (enabled) {
       this.namespaceQuotaManager.removeRegionFromNamespaceUsage(hri);
     }
+  }
+
+  public SetRegionQuotaResponse setRegionQuota(final SetRegionQuotaRequest req) throws IOException {
+    String regionName = Bytes.toString(req.getRegionQuota().getRegion().toByteArray());
+    try {
+      if (req.getRegionQuota().hasThrottle()) {
+        ThrottleRequest throttle = req.getRegionQuota().getThrottle();
+        org.apache.hadoop.hbase.quotas.ThrottleType type =
+            ProtobufUtil.toThrottleType(throttle.getType());
+        if (throttle.hasTimedQuota()) {
+          regionQuotaTracker.setRegionQuota(regionName, type, throttle);
+        } else {
+          regionQuotaTracker.removeRegionQuota(regionName, type);
+        }
+      } else {
+        regionQuotaTracker.removeRegionQuota(regionName);
+      }
+    } catch (KeeperException e) {
+      throw new IOException(e);
+    }
+    return SetRegionQuotaResponse.getDefaultInstance();
+  }
+
+  public ListRegionQuotaResponse listRegionQuota(final ListRegionQuotaRequest req)
+      throws IOException {
+    ListRegionQuotaResponse.Builder builder = ListRegionQuotaResponse.newBuilder();
+    try {
+      for (RegionQuotaSettings regionQuota : regionQuotaTracker.listRegionQuotas()) {
+        builder.addRegionQuota(
+          ProtobufUtil.createRegionQuota(regionQuota.getRegionName(), regionQuota.getThrottle()));
+      }
+    } catch (KeeperException e) {
+      throw new IOException(e);
+    }
+    return builder.build();
   }
 }

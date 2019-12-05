@@ -15,25 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.hadoop.hbase.client;
 
-package org.apache.hadoop.hbase.quotas;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
+import org.jruby.embed.PathType;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
+@Category(LargeTests.class)
+public class TestQuotaShell extends AbstractTestShell {
 
-@InterfaceAudience.Private
-@InterfaceStability.Evolving
-public class QuotaLimiterFactory {
-  public static QuotaLimiter fromThrottle(final Throttle throttle) {
-    return TimeBasedLimiter.fromThrottle(throttle);
+  @Test
+  public void testRunShellTests() {
+    System.setProperty("shell.test.include", "quota_admin_test.rb");
+    // Start all ruby tests
+    jruby.runScriptlet(PathType.ABSOLUTE, "src/test/ruby/tests_runner.rb");
   }
 
-  public static QuotaLimiter update(final QuotaLimiter a, final QuotaLimiter b) {
-    if (a.getClass().equals(b.getClass()) && a instanceof TimeBasedLimiter) {
-      ((TimeBasedLimiter)a).update(((TimeBasedLimiter)b));
-      return a;
-    }
-    throw new UnsupportedOperationException("TODO not implemented yet");
-  }
 }

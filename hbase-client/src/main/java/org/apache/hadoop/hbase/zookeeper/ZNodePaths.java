@@ -61,6 +61,7 @@ public class ZNodePaths {
   public final String throttleZNode;
   // znode containing the state of all switches, currently there are split and merge child node.
   public final String switchZNode;
+  public final String regionQuotaZNode;
 
   public ZNodePaths(Configuration conf) {
     baseZNode =
@@ -90,5 +91,7 @@ public class ZNodePaths {
         ZKUtil.joinZNode(baseZNode, conf.get("zookeeper.znode.namespace", "namespace"));
     throttleZNode = ZKUtil.joinZNode(baseZNode, conf.get("zookeeper.znode.throttle", "throttle"));
     switchZNode = ZKUtil.joinZNode(baseZNode, conf.get("zookeeper.znode.switch", "switch"));
+    regionQuotaZNode =
+        ZKUtil.joinZNode(baseZNode, conf.get("zookeeper.znode.region.quota", "region-quotas"));
   }
 }

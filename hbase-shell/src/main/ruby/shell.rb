@@ -392,6 +392,8 @@ Shell.load_command_group(
     start_throttle
     simulate_throttle
     stop_throttle
+    set_region_quota
+    list_region_quotas
   ]
 )
 

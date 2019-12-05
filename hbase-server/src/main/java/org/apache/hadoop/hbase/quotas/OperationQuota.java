@@ -20,8 +20,6 @@ package org.apache.hadoop.hbase.quotas;
 
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.Mutation;
@@ -101,36 +99,17 @@ public interface OperationQuota {
   /** Cleanup method on operation completion */
   void close();
 
-  /**
-   * Add a get result. This will be used to calculate the exact quota and
-   * have a better short-read average size for the next time.
-   */
-  void addGetResult(Result result);
-
-  /**
-   * Add a scan result. This will be used to calculate the exact quota and
-   * have a better long-read average size for the next time.
-   */
-  void addScanResult(List<Result> results);
-
-  /**
-   * Add a mutation result. This will be used to calculate the exact quota and
-   * have a better mutation average size for the next time.
-   */
-  void addMutation(Mutation mutation);
-
   /** @return the number of bytes available to read to avoid exceeding the quota */
   long getReadAvailable();
 
   /** @return the number of bytes available to write to avoid exceeding the quota */
   long getWriteAvailable();
 
-  /** @return the average data size of the specified operation */
-  long getAvgOperationSize(OperationType type);
-
   /**
    * avoid log too much exception when overload
    * @return true if it need to log throttling exception
    **/
   boolean canLogThrottlingException();
+
+  void grabQuota(int numWrites, int numReads, int numScans);
 }

@@ -18,19 +18,13 @@
 
 package org.apache.hadoop.hbase.quotas;
 
-import java.io.IOException;
 import java.util.Arrays;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hbase.client.Mutation;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.quotas.OperationQuota.AvgOperationSize;
-import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -110,26 +104,6 @@ public class DefaultOperationQuota implements OperationQuota {
     return writeAvailable;
   }
 
-  @Override
-  public void addGetResult(final Result result) {
-    avgOpSize.addGetResult(result);
-  }
-
-  @Override
-  public void addScanResult(final List<Result> results) {
-    avgOpSize.addScanResult(results);
-  }
-
-  @Override
-  public void addMutation(final Mutation mutation) {
-    avgOpSize.addMutation(mutation);
-  }
-
-  @Override
-  public long getAvgOperationSize(OperationType type) {
-    return avgOpSize.getAvgOperationSize(type);
-  }
-
   private long estimateConsume(final OperationType type, int numReqs, long avgSize) {
     if (numReqs > 0) {
       for (final QuotaLimiter limiter: limiters) {
@@ -152,7 +126,7 @@ public class DefaultOperationQuota implements OperationQuota {
     }
     return ifLog;
   }
-  
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
@@ -162,5 +136,10 @@ public class DefaultOperationQuota implements OperationQuota {
     }
     builder.append(" ]");
     return builder.toString();
+  }
+
+  @Override
+  public void grabQuota(int numWrites, int numReads, int numScans) {
+    // no-op
   }
 }

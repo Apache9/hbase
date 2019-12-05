@@ -37,6 +37,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -129,6 +130,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshot
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableNamesByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
@@ -143,6 +146,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotRe
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetSplitOrMergeEnabledRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
@@ -158,7 +162,9 @@ import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescrip
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaRetriever;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
+import org.apache.hadoop.hbase.quotas.RegionQuotaSettings;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
+import org.apache.hadoop.hbase.quotas.ThrottleType;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
@@ -3830,5 +3836,85 @@ public class HBaseAdmin implements Abortable, Closeable {
         return master.isSplitOrMergeEnabled(controller, request).getEnabled();
       }
     });
+  }
+
+  /**
+   * Set region quota which is a hard limit
+   * @param regionName thd encoded region name
+   * @param type throttle type
+   * @param limit throttle limit
+   * @param timeUnit time unit
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void setRegionQuota(byte[] regionName, ThrottleType type, long limit, TimeUnit timeUnit)
+      throws IOException {
+    final SetRegionQuotaRequest req =
+        RequestConverter.buildSetRegionQuotaRequest(regionName, type, limit, timeUnit);
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        master.setRegionQuota(controller, req);
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Remove region quota of the specified throttle type
+   * @param regionName the encoded region name
+   * @param type throttle type
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void removeRegionQuota(byte[] regionName, ThrottleType type) throws IOException {
+    final SetRegionQuotaRequest req =
+        RequestConverter.buildSetRegionQuotaRequest(regionName, type, -1, null);
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        master.setRegionQuota(controller, req);
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Remove region quota of all throttle types
+   * @param regionName the encoded region name
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void removeRegionQuota(byte[] regionName) throws IOException {
+    final SetRegionQuotaRequest req =
+        RequestConverter.buildSetRegionQuotaRequest(regionName, null, -1, null);
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        master.setRegionQuota(controller, req);
+        return null;
+      }
+    });
+  }
+
+  /**
+   * List region quotas which is a hard limit
+   * @return region quotas
+   * @throws IOException if a remote or network exception occurs
+   */
+  public List<RegionQuotaSettings> listRegionQuota() throws IOException {
+    final ListRegionQuotaRequest req = ListRegionQuotaRequest.getDefaultInstance();
+    ListRegionQuotaResponse response =
+        executeCallable(new MasterCallable<ListRegionQuotaResponse>(getConnection()) {
+          @Override
+          protected ListRegionQuotaResponse rpcCall(BlockingInterface master,
+              HBaseRpcController controller) throws Exception {
+            return master.listRegionQuota(controller, req);
+          }
+        });
+    return response.getRegionQuotaList().stream()
+        .map(regionQuota -> new RegionQuotaSettings(
+            Bytes.toString(regionQuota.getRegion().toByteArray()), regionQuota.getThrottle()))
+        .collect(Collectors.toList());
   }
 }
