@@ -67,6 +67,17 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.CellComparator;
+import org.apache.hadoop.hbase.KeyValueUtil;
+
 @InterfaceAudience.Private
 public class TalosUtil {
   private static final Logger LOG = LoggerFactory.getLogger(TalosUtil.class);
@@ -77,6 +88,10 @@ public class TalosUtil {
   private static final String DASH = "-";
   private static final int CHUNK_SIZE = 4194304; // 4MB
   public static final int HEADER_SIZE = Bytes.SIZEOF_LONG + 2 * Bytes.SIZEOF_INT;
+  //in utf-8 code,　3b per chinese character
+  private static final int MAX_STRFING_LEN = CHUNK_SIZE / 3;
+  private static final String ES_PREFIX = "es-";
+
 
   private TalosUtil(){}
 
@@ -85,6 +100,160 @@ public class TalosUtil {
     int messageLength = in.readInt();
     return readMessageChunk(in, messageLength);
   }
+
+
+  /**
+   *  Message is filled with bytes of josnString, E.g.
+   *  {
+   * 　　 "r":"row1",
+   *     "kv": [
+   *         {
+   *             "op": "PUT",
+   *             "c": "A:c",
+   *             "v": "value1"
+   *         }
+   *     ]
+   *  }
+   *
+   */
+  public static List<Message> constructJsonMessages(WAL.Entry entry, Set<String> properties) {
+    ArrayList<Cell> cells = entry.getEdit().getCells();
+    Map<String, JsonArray> row2kvsMap = new HashMap<>();
+    cells.forEach(cell -> {
+      if (cell.getRowArray() == null) {
+        LOG.error("constructJsonMessages cell is empty");
+        return;
+      }
+      String rowkey = Bytes.toString(CellUtil.cloneRow(cell));
+      if (rowkey == null || rowkey.equals("")) {
+        LOG.error("constructJsonMessages rowkey is empty");
+        return;
+      }
+      row2kvsMap.computeIfAbsent(rowkey, key -> new JsonArray())
+        .addAll(toJsonArray(cell, properties));
+    });
+
+    List<Message> messages = new ArrayList<>();
+    /**
+     * for each rowkey, traversal it's jsonKvList, use totalSize to count KV size
+     * and temp resultJsonKvList to store kvObject
+     *   for each jsonKvObject in jsonKvList
+     *   1) if the size of KvObject exceed upper limit of message, discard KvObject
+     *   2) if totalSize + size(kvObject) bigger then upper limit of message, generate
+     *      a message with this rowkey and temp resultJsonKvList, then clear the temp
+     *      resultJsonKvList and totalSize
+     *
+     *   3) add kvObject to temp resultJsonKvList, accumulate totalSize
+     *   4) after traversal one rowkey's jsonKvList, check if the temp resultJsonKvList
+     *      not empty, generate a message
+     *   all the generated message will be put into the variable result, a list of Message
+     */
+    row2kvsMap.forEach((rowKey, jsonKvList) -> {
+      if (jsonKvList.size() > 0) {
+        JsonArray resultJsonKvList = new JsonArray();
+        int totalSize = 0;
+        for (JsonElement jsonKvObject : jsonKvList) {
+          int jsonKvSize = getJsonKvSize((JsonObject) jsonKvObject);
+          if (jsonKvSize > MAX_STRFING_LEN) {
+            LOG.error("Discard jsonObject　in constructJsonMessages due oversize :" + jsonKvObject
+              .toString());
+            continue;
+          }
+          if (totalSize + jsonKvSize > MAX_STRFING_LEN) {
+            messages.add(toMessage(rowKey, resultJsonKvList));
+            resultJsonKvList = new JsonArray();
+            totalSize = 0;
+
+          }
+          resultJsonKvList.add(jsonKvObject);
+          totalSize += jsonKvSize;
+        }
+        if (resultJsonKvList.size() > 0) {
+          messages.add(toMessage(rowKey, resultJsonKvList));
+        }
+      }
+    });
+    return messages;
+  }
+
+  private static JsonArray toJsonArray(Cell cell, Set<String> properties) {
+    String family = Bytes.toString(CellUtil.cloneFamily(cell));
+    String qualifier = Bytes.toString(CellUtil.cloneQualifier(cell));
+    String value = Bytes.toString(CellUtil.cloneValue(cell));
+    String column = family + COLON + qualifier;
+    KeyValue.Type opType = KeyValue.Type.codeToType(cell.getTypeByte());
+    JsonArray jsonKvList = new JsonArray();
+
+    switch (opType) {
+    case Put:
+      if (properties.contains(column)) {
+        jsonKvList.add(toJsonKVObject("PUT", column, value));
+      }
+      break;
+    case Delete:
+      jsonKvList.add(toJsonKVObject("DELETE", null, null));
+      break;
+    /**
+     * convert DeleteFamily to put empty string for each column in family
+     **/
+    case DeleteFamily:
+      properties.forEach(propertyNeedRep -> {
+        if (propertyNeedRep.startsWith(family + COLON)) {
+          jsonKvList.add(toJsonKVObject("PUT", propertyNeedRep, ""));
+        }
+      });
+      break;
+    case DeleteColumn:
+      if (properties.contains(column)) {
+        jsonKvList.add(toJsonKVObject("PUT", column, ""));
+      }
+    }
+    return jsonKvList;
+  }
+
+  private static JsonObject toJsonKVObject(String opType, String column, String value) {
+    JsonObject jsonKvObj = new JsonObject();
+    jsonKvObj.addProperty("op", opType);
+    if (column != null) {
+      jsonKvObj.addProperty("c", column);
+    }
+    if (value != null) {
+      jsonKvObj.addProperty("v", value);
+    }
+    return jsonKvObj;
+  }
+
+  private static Message toMessage(String rowKey, JsonArray jsonKvList) {
+    JsonObject jsonMap = new JsonObject();
+    jsonMap.addProperty("r", rowKey);
+    jsonMap.add("kv", jsonKvList);
+    Message message = new Message(ByteBuffer.wrap(jsonMap.toString().getBytes()));
+    LOG.trace("constructJsonMessages success, jsonObject: " + jsonMap.toString());
+    return message;
+  }
+
+  private static int getJsonKvSize(JsonObject jsonKvObj) {
+    int jsonKvSize = 0;
+    jsonKvSize += "op".length();
+    jsonKvSize += jsonKvObj.get("op").getAsString().length();
+    JsonElement value = jsonKvObj.get("v");
+    if (value != null) {
+      jsonKvSize += value.getAsString().length();
+    }
+    JsonElement column = jsonKvObj.get("c");
+    if (column != null) {
+      jsonKvSize += column.getAsString().length();
+    }
+    return jsonKvSize;
+  }
+
+
+
+  public static String encodeESTableName(String tableName) {
+    return ES_PREFIX + tableName.replaceAll(DASH, ESCAPE_DASH).replaceAll(COLON, ESCAPE_COLON);
+  }
+
+
 
   public static MessageChunk readMessageChunk(DataInputStream in, int messageLength)
       throws IOException {
