@@ -166,7 +166,7 @@ public class TestMetaCache {
     }
 
     HTableInterface table = conn.getTable(TABLE_NAME);
-    byte[] row = badRS.getOnlineRegions(TABLE_NAME).get(0).getRegionInfo().getStartKey();
+    byte[] row = badRS.getOnlineRegions(TABLE_NAME).get(0).getRegionInfo().getEndKey();
 
     Put put = new Put(row);
     put.add(FAMILY, QUALIFIER, Bytes.toBytes(10));
