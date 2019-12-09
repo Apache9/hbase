@@ -4519,4 +4519,9 @@ MasterServices, Server {
       LOG.info("Executed " + rpCount + " region plans for isolate meta");
     }
   }
+
+  @VisibleForTesting
+  public CatalogJanitor getCatalogJanitorChore() {
+      return catalogJanitorChore;
+  }
 }

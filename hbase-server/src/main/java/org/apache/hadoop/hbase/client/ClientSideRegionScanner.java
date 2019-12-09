@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -36,13 +37,16 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
+import org.apache.hadoop.hbase.io.HFileLink;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest.FamilyFiles;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.Store;
-import org.apache.hadoop.hbase.snapshot.SnapshotReferenceUtil;
+import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
 import com.google.protobuf.ByteString;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 
 /**
  * A client scanner for a region opened for read-only on the client side. Assumes region data
@@ -85,17 +89,21 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
     region.startRegionOperation();
   }
 
-  private void checkStoreFiles(HRegion region, SnapshotRegionManifest snapshotRegionManifest, Path rootDir)
-      throws IOException {
+  private void checkStoreFiles(HRegion region, SnapshotRegionManifest snapshotRegionManifest,
+      Path rootDir) throws IOException {
     if (snapshotRegionManifest != null) {
       Map<byte[], Store> regionStores = region.getStores();
+      String encodedRegionName = region.getRegionInfo().getEncodedName();
+      Path tableDir = FSUtils.getTableDir(rootDir, region.getTableDesc().getTableName());
+      Path regionDir = new Path(tableDir, encodedRegionName);
       for (FamilyFiles snapshotFamilyFiles : snapshotRegionManifest.getFamilyFilesList()) {
         // family
         ByteString snapshotFamily = snapshotFamilyFiles.getFamilyName();
+        Path familyDir = new Path(regionDir, Bytes.toString(snapshotFamily.toByteArray()));
         // reference files read from snapshot manifest
         Set<String> snapshotStoreFiles = snapshotFamilyFiles.getStoreFilesList().stream()
-            .map(storeFile -> SnapshotReferenceUtil.getHFileName(storeFile.getName()))
-            .collect(Collectors.toSet());
+            .map(storeFile -> getHFileName(new Path(familyDir, storeFile.getName())))
+            .filter(path -> path != null).map(path -> path.getName()).collect(Collectors.toSet());
         // reference files read from restore directory
         if (regionStores.get(snapshotFamily.toByteArray()) == null) {
           throw new IOException("Family {" + snapshotFamily.toStringUtf8()
@@ -103,10 +111,9 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
               + region.getRegionInfo().getRegionNameAsString() + "}, restoreDir {"
               + rootDir.toString() + "}");
         }
-        Set<String> restoredStoreFiles =
-            regionStores.get(snapshotFamily.toByteArray()).getStorefiles().stream()
-                .map(sf -> SnapshotReferenceUtil.getHFileName(sf.getPath().getName()))
-                .collect(Collectors.toSet());
+        Set<String> restoredStoreFiles = regionStores.get(snapshotFamily.toByteArray())
+            .getStorefiles().stream().map(sf -> getHFileName(sf.getPath()))
+            .filter(path -> path != null).map(path -> path.getName()).collect(Collectors.toSet());
         for (String snapshotStoreFile : snapshotStoreFiles) {
           if (!restoredStoreFiles.contains(snapshotStoreFile)) {
             throw new IOException("Storefile {" + snapshotStoreFile
@@ -119,6 +126,26 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
     } else {
       LOG.error(
         "snapshot region manifest is NULL and skip check storefiles when open a restored region");
+    }
+  }
+
+  private Path getHFileName(Path path) {
+    if (HFileLink.isHFileLink(path)) {
+      String hfile = path.getName();
+      String referencedHfile = HFileLink.getReferencedHFileName(hfile);
+      String referencedRegion = HFileLink.getReferencedRegionName(hfile);
+      TableName referencedTable = HFileLink.getReferencedTableName(hfile);
+      return new Path(new Path(
+          new Path(new Path(referencedTable.getNamespaceAsString(),
+              referencedTable.getQualifierAsString()), referencedRegion),
+          path.getParent().getName()), referencedHfile);
+    } else if (StoreFileInfo.isReference(path)) {
+      // return StoreFileInfo.getReferredToFile(path);
+      // TODO return null because this is another region's file, so the restored region does not
+      // contain this file
+      return null;
+    } else {
+      return path;
     }
   }
 

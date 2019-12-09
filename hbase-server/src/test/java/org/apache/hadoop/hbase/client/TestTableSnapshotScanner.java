@@ -18,9 +18,11 @@
 
 package org.apache.hadoop.hbase.client;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,14 +34,17 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.master.cleaner.TimeToLiveHFileCleaner;
+import org.apache.hadoop.hbase.regionserver.HRegionFileSystem;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.mapreduce.TestTableSnapshotInputFormat;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.snapshot.SnapshotTestingUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.HFileArchiveUtil;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,7 +53,7 @@ import org.junit.experimental.categories.Category;
 @Category(LargeTests.class)
 public class TestTableSnapshotScanner {
 
-  private static final Log LOG = LogFactory.getLog(TestTableSnapshotInputFormat.class);
+  private static final Log LOG = LogFactory.getLog(TestTableSnapshotScanner.class);
   private final HBaseTestingUtility UTIL = new HBaseTestingUtility();
   private static final int NUM_REGION_SERVERS = 2;
   private static final byte[][] FAMILIES = {Bytes.toBytes("f1"), Bytes.toBytes("f2")};
@@ -330,6 +335,108 @@ public class TestTableSnapshotScanner {
       UTIL.getHBaseAdmin().deleteSnapshot(snapshotName);
       UTIL.deleteTable(tableName);
       tearDownCluster();
+    }
+  }
+
+  @Test
+  public void testMergeRegion() throws Exception {
+    setupCluster();
+    TableName tableName = TableName.valueOf("testMergeRegion");
+    String snapshotName = tableName.getNameAsString() + "_snapshot";
+    Configuration conf = UTIL.getConfiguration();
+    Path rootDir = UTIL.getHBaseCluster().getMaster().getMasterFileSystem().getRootDir();
+    long timeout = 20000; // 20s
+    try (HBaseAdmin admin = UTIL.getHBaseAdmin()) {
+      // create table with 3 regions
+      HTable table = UTIL.createTable(tableName, FAMILIES, 1, bbb, yyy, 3);
+      List<HRegionInfo> regions = admin.getTableRegions(tableName);
+      Assert.assertEquals(3, regions.size());
+      HRegionInfo region0 = regions.get(0);
+      HRegionInfo region1 = regions.get(1);
+      HRegionInfo region2 = regions.get(2);
+      // put some data in the table
+      UTIL.loadTable(table, FAMILIES);
+      admin.flush(tableName.getNameAsString());
+      // wait flush is finished
+      UTIL.waitFor(timeout, () -> {
+        try {
+          Path tableDir = FSUtils.getTableDir(rootDir, tableName);
+          for (HRegionInfo region : regions) {
+            Path regionDir = new Path(tableDir, region.getEncodedName());
+            List<Path> familyDirs = FSUtils.getFamilyDirs(fs, regionDir);
+            for (Path familyDir : familyDirs) {
+              if (fs.listStatus(familyDir).length != 1) {
+                return false;
+              }
+            }
+          }
+          return true;
+        } catch (IOException e) {
+          LOG.error("Check if flush is finished error", e);
+          return false;
+        }
+      });
+      // merge 2 regions
+      admin.setCompactionEnable(false);
+      admin.mergeRegions(region0.getEncodedNameAsBytes(), region1.getEncodedNameAsBytes(), true);
+      UTIL.waitFor(timeout, () -> admin.getTableRegions(tableName).size() == 2);
+      List<HRegionInfo> mergedRegions = admin.getTableRegions(tableName);
+      HRegionInfo mergedRegion =
+          mergedRegions.get(0).getEncodedName().equals(region2.getEncodedName())
+              ? mergedRegions.get(1)
+              : mergedRegions.get(0);
+      // snapshot
+      admin.snapshot(snapshotName, tableName);
+      Assert.assertEquals(1, admin.listSnapshots().size());
+      // major compact and wait until merged region has no reference
+      admin.setCompactionEnable(true);
+      admin.majorCompact(tableName.getNameAsString());
+      UTIL.waitFor(timeout, () -> {
+        try {
+            Path tableDir = FSUtils.getTableDir(rootDir, tableName);
+          HRegionFileSystem regionFs = HRegionFileSystem
+              .openRegionFromFileSystem(UTIL.getConfiguration(), fs, tableDir, mergedRegion, true);
+          return !regionFs.hasReferences(admin.getTableDescriptor(tableName));
+        } catch (IOException e) {
+          LOG.error("Check merged region has no reference error", e);
+          return false;
+        }
+      });
+      // run catalog janitor to clean
+      UTIL.getMiniHBaseCluster().getMaster().getCatalogJanitorChore().choreForTesting();
+      // set file modify time and then run cleaner
+      long time = System.currentTimeMillis() - TimeToLiveHFileCleaner.MIN_TTL * 1000;
+      traverseAndSetFileTime(HFileArchiveUtil.getArchivePath(conf), time);
+      UTIL.getMiniHBaseCluster().getMaster().getHFileCleaner().runCleaner();
+      // scan snapshot
+      try (TableSnapshotScanner scanner = new TableSnapshotScanner(conf,
+          UTIL.getDataTestDirOnTestFS(snapshotName), snapshotName, new Scan(bbb, yyy))) {
+        verifyScanner(scanner, bbb, yyy);
+      }
+    } catch (Exception e) {
+      LOG.error("scan snapshot error", e);
+      Assert.fail("Should not throw FileNotFoundException");
+      Assert.assertTrue(e.getCause() != null);
+      Assert.assertTrue(e.getCause().getCause() instanceof FileNotFoundException);
+    } finally {
+      tearDownCluster();
+    }
+  }
+
+  private void traverseAndSetFileTime(Path path, long time) throws IOException {
+    fs.setTimes(path, time, -1);
+    if (fs.isDirectory(path)) {
+      List<FileStatus> allPaths = Arrays.asList(fs.listStatus(path));
+      List<FileStatus> subDirs =
+          allPaths.stream().filter(FileStatus::isDirectory).collect(Collectors.toList());
+      List<FileStatus> files =
+          allPaths.stream().filter(FileStatus::isFile).collect(Collectors.toList());
+      for (FileStatus subDir : subDirs) {
+        traverseAndSetFileTime(subDir.getPath(), time);
+      }
+      for (FileStatus file : files) {
+        fs.setTimes(file.getPath(), time, -1);
+      }
     }
   }
 }
