@@ -50,17 +50,24 @@ class ExternalScriptHealthChecker implements HealthChecker {
 	  String healthCheckScript = config.get(HConstants.HEALTH_SCRIPT_LOC);
     scriptTimeout = config.getLong(HConstants.HEALTH_SCRIPT_TIMEOUT,
         HConstants.DEFAULT_HEALTH_SCRIPT_TIMEOUT);
-    init(healthCheckScript, scriptTimeout);
+    long period =
+        config.getLong(HConstants.HEALTH_CHECKER_PERIOD, HConstants.DEFAULT_HEALTH_CHECKER_PERIOD);
+    String clusterName = config.get(HConstants.CLUSTER_NAME, "");
+    init(healthCheckScript, scriptTimeout, period, clusterName);
   }
 
   /**
    * Initialize.
    *
-   * @param configuration
+   * @healthCheckScript: The bash script location for health checker
    */
-  public void init(String healthCheckScript, long timeout) {
+  public void init(String healthCheckScript, long timeout, long period, String clusterName) {
     if (StringUtils.isNotBlank(healthCheckScript)) {
+      execScript.add("/bin/bash");
       execScript.add(healthCheckScript);
+      execScript.add(String.valueOf(period));
+      execScript.add(clusterName);
+
       this.shexec =
           new ShellCommandExecutor(execScript.toArray(new String[execScript.size()]), null, null,
               scriptTimeout);
@@ -78,6 +85,7 @@ class ExternalScriptHealthChecker implements HealthChecker {
     try {
       // Calling this execute leaves around running executor threads.
       shexec.execute();
+      LOG.info("Script output: " + shexec.getOutput());
     } catch (ExitCodeException e) {
       // ignore the exit code of the script
       LOG.warn("Caught exception : " + e + ",exit code:" + e.getExitCode());
@@ -96,13 +104,15 @@ class ExternalScriptHealthChecker implements HealthChecker {
         }
       }
     }
-    return new HealthReport(status, getHealthReport(status));
+    // Here we ignore the errors, because we just want to post message to falcon.
+    // See the script for more details.
+    return new HealthReport(HealthCheckerExitStatus.SUCCESS, getHealthReport(status));
   }
 
   private boolean hasErrors(String output) {
     String[] splits = output.split("\n");
     for (String split : splits) {
-      if (split.startsWith(ERROR_PATTERN)) {
+      if (split.contains(ERROR_PATTERN)) {
         return true;
       }
     }
