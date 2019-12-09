@@ -99,10 +99,10 @@ public class TestSnapshotRestoreFileCleaner {
   public void testDaemonCleaner() throws Exception {
     FileSystem fs = FileSystem.get(conf);
 
-    long ttl = 1000L;
+    int ttl = 100;
     conf.set(SnapshotRestoreFileCleaner.MASTER_SNAPSHOT_RESTORE_FILE_CLEANER_PLUGINS,
       "org.apache.hadoop.hbase.master.cleaner.TimeToLiveSnapshotRestoreFileCleaner");
-    conf.setLong(SnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_INTERVAL, ttl / 4);
+    conf.setLong(SnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_INTERVAL, ttl);
     conf.setLong(TimeToLiveSnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_TTL, ttl);
 
     // create dirs and files
@@ -122,17 +122,12 @@ public class TestSnapshotRestoreFileCleaner {
 
     Server server = new DummyServer();
     SnapshotRestoreFileCleaner cleaner =
-        new SnapshotRestoreFileCleaner(1000, server, conf, fs, restoreDir, POOL);
+        new SnapshotRestoreFileCleaner(ttl, server, conf, fs, restoreDir, POOL);
     Threads.setDaemonThreadRunning(cleaner.getThread(),
       Thread.currentThread().getName() + ".restoredHFileCleaner");
 
-    Thread.sleep(ttl * 2);
-    Assert.assertFalse(fs.exists(dirExist));
-    Assert.assertFalse(fs.exists(dirDelete));
-    Assert.assertFalse(fs.exists(dirWithFile));
-    Assert.assertFalse(fs.exists(subDir));
-    Assert.assertFalse(fs.exists(file1));
-    Assert.assertFalse(fs.exists(file2));
+    TEST_UTIL.waitFor(20000, () -> !fs.exists(dirExist) && !fs.exists(dirDelete)
+        && !fs.exists(file1) && !fs.exists(file2) && !fs.exists(subDir) && !fs.exists(dirWithFile));
   }
 
   static class DummyServer implements Server {
