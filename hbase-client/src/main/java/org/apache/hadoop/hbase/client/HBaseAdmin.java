@@ -1956,7 +1956,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    *         exception if <code>tableNameOrRegionName</code> is null.
    * @throws IOException
    */
-  Pair<HRegionInfo, ServerName> getRegion(byte[] tableNameOrRegionName) throws IOException {
+  public Pair<HRegionInfo, ServerName> getRegion(byte[] tableNameOrRegionName) throws IOException {
     if (tableNameOrRegionName == null) {
       throw new IllegalArgumentException("Pass a table name or region name");
     }

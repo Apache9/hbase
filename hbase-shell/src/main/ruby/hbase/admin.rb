@@ -28,7 +28,7 @@ java_import org.apache.hadoop.hbase.util.RegionSplitter
 java_import com.xiaomi.infra.galaxy.sds.core.schema.TableSchema
 java_import java.util.EnumSet
 java_import org.apache.hadoop.hbase.ClusterStatus::Option
-
+java_import org.apache.hadoop.hbase.ServerName
 # Wrapper for org.apache.hadoop.hbase.client.HBaseAdmin
 
 module Hbase
@@ -1139,6 +1139,71 @@ module Hbase
         puts "Updating table with the new schema..."
         alter_status(table_name)
       end
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # isolate a region
+    def isolate_region(encoded_region_name)
+      balance_switch(false)
+      region_servername_pair = @admin.getRegion(encoded_region_name.to_java_bytes)
+      if region_servername_pair == nil
+        puts "no regions found  #{encoded_region_name}"
+        return
+      end
+      region_servers = getServers()
+      if(region_servers.size <= 1)
+        puts "can't find valid target region server"
+        return
+      end
+      source_server = region_servername_pair.getSecond().getServerName()
+      pre_source_server = source_server
+      if has_meta_region(source_server)
+        puts "region #{encoded_region_name} and meta_region on same server."
+        puts "will move region #{encoded_region_name} first."
+        @admin.move(encoded_region_name.to_java_bytes, nil)
+        while pre_source_server == source_server do
+          sleep 1
+          source_server = @admin.getRegion(encoded_region_name.to_java_bytes).getSecond().getServerName()
+        end
+      end
+
+      regions = @admin.getOnlineRegions(ServerName.valueOf(source_server))
+      puts "will move #{regions.size-1} regions on server #{source_server}"
+      for region in regions:
+        encode_name = region.getEncodedName
+        if encoded_region_name != encode_name
+          @admin.move(Bytes.toBytes(encode_name), nil)
+          puts "finished moving region #{encode_name} from #{source_server}"
+        end
+      end
+      puts "finished isolating region #{encoded_region_name} on #{source_server}"
+    end
+
+    def has_meta_region(server_name)
+      regions = @admin.getOnlineRegions(ServerName.valueOf(server_name))
+      for region in regions :
+        if region.getRegionNameAsString().include?"hbase:meta"
+          return true
+        end
+      end
+      return false
+    end
+    #----------------------------------------------------------------------------------------------
+    # isolate regions of a table
+    def isolate_table(table_name, server = nil)
+      balance_switch(false)
+      region_servers = getServers()
+      if(region_servers.size <= 1)
+        puts "can't find valid target region server"
+        return
+      end
+      while server == nil or (table_name !="hbase:meta" and has_meta_region(server)) do
+        server = region_servers[rand(region_servers.size)]
+      end
+      puts "begin to isolate table #{table_name}"
+      move_server(server)
+      move_table(table_name, server)
+      puts "finished isolating table #{table_name} to #{server}"
     end
 
     #----------------------------------------------------------------------------------------------
