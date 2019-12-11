@@ -335,6 +335,8 @@ Shell.load_command_group(
     compact_switch
     splitormerge_enabled
     splitormerge_switch
+    isolate_region
+    isolate_table
   ]
 )
 
