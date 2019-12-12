@@ -2078,11 +2078,6 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
   }
 
   @Override
-  public int getCurrentNrHRS() throws IOException {
-    return get(this.registry.getCurrentNrHRS());
-  }
-
-  @Override
   public void close() {
     if (this.closed) {
       return;
