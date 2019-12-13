@@ -9059,14 +9059,18 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   }
 
   private void updateReadRequestsByCapacityUnitPerSecond(long readSize) {
-    long readCapacityUnit =
-        rsServices.getRegionServerRpcQuotaManager().calculateReadCapacityUnit(readSize);
-    readRequestsByCapacityUnitPerSecond.inc(readCapacityUnit);
+    if (rsServices != null) {
+      long readCapacityUnit =
+          rsServices.getRegionServerRpcQuotaManager().calculateReadCapacityUnit(readSize);
+      readRequestsByCapacityUnitPerSecond.inc(readCapacityUnit);
+    }
   }
 
   private void updateWriteRequestsByCapacityUnitPerSecond(long writeSize) {
-    long writeCapacityUnit =
-        rsServices.getRegionServerRpcQuotaManager().calculateWriteCapacityUnit(writeSize);
-    writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnit);
+    if (rsServices != null) {
+      long writeCapacityUnit =
+          rsServices.getRegionServerRpcQuotaManager().calculateWriteCapacityUnit(writeSize);
+      writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnit);
+    }
   }
 }
