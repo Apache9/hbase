@@ -465,7 +465,7 @@ public class RegionServerQuotaManager {
   }
 
   public long calculateReadCapacityUnitNum(final long size) {
-    return (long) Math.ceil(size * 1.0 / this.readCapacityUnit);
+    return Math.max(1, (long) Math.ceil(size * 1.0 / this.readCapacityUnit));
   }
 
   public long calculateWriteCapacityUnitNum(final long size) {
@@ -479,7 +479,7 @@ public class RegionServerQuotaManager {
   }
 
   public long calculateScanCapacityUnitNum(final long size) {
-    return (long) Math.ceil(size * 1.0 / this.scanCapacityUnit);
+    return Math.max(1, (long) Math.ceil(size * 1.0 / this.scanCapacityUnit));
   }
 
   public long getQuotaReadAvailable(OperationQuota quota) {
