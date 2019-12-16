@@ -78,7 +78,6 @@ public class TestBadRSDetector {
   public static void setupCluster() throws Exception {
     conf = HBaseConfiguration.create();
     conf.setInt(HConstants.BAD_REGIONSERVER_DETECTOR_PERIOD, (int) TimeUnit.SECONDS.toMillis(1));
-    conf.setDouble(HConstants.BAD_REGIONSERVER_LOAD_THRESHOLD, 0.8);
     conf.setBoolean(HConstants.BAD_REGIONSERVER_DETECTOR_ENABLE, false);
 
     UTIL = new HBaseTestingUtility(conf);

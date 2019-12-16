@@ -1167,12 +1167,11 @@ public final class HConstants {
       "hbase.bad.regionserver.detector.enable";
   public static final boolean DEFAULT_BAD_REGIONSERVER_DETECTOR_ENABLE = false;
 
-  public static final String BAD_REGIONSERVER_LOAD_THRESHOLD =
-      "hbase.bad.regionserver.detector.load.threshold";
-  public static final double DEFAULT_BAD_REGIONSERVER_LOAD_THRESHOLD =
-      Runtime.getRuntime().availableProcessors();
+  public static final String BAD_REGIONSERVER_LOAD_PER_CORE_THRESHOLD =
+      "hbase.bad.regionserver.detector.load.per.core.threshold";
+  public static final double DEFAULT_BAD_REGIONSERVER_LOAD_PER_CORE_THRESHOLD = 1.5;
   public static final String BAD_REGIONSERVER_DETECTOR_PERIOD = "hbase.bad.regionserver.detector.period";
-  public static final int DEFAULT_BAD_REGIONSERVER_DETECTOR_PERIOD = (int) TimeUnit.MINUTES.toMillis(5);
+  public static final int DEFAULT_BAD_REGIONSERVER_DETECTOR_PERIOD = (int) TimeUnit.MINUTES.toMillis(3);
 
   /**
    * The maximum number of health check failures a server can encounter consecutively.
