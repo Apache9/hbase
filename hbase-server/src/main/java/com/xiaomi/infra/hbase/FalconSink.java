@@ -65,6 +65,8 @@ public class FalconSink implements Sink, Configurable {
   private int upperRplicationLagInSeconds;
   private int lowerRplicationLagInSeconds;
   private double masterAvailability = 100.0;
+  private boolean enablePushTableMinAvailability;
+  private boolean enablePushRSMinAvailability;
   private Pair<TableName, Double> tableMinAvailabilityPair = new Pair<>();
   private Pair<ServerName, Double> regionServerMinAvailabilityPair = new Pair<>();
 
@@ -145,20 +147,18 @@ public class FalconSink implements Sink, Configurable {
 
   @Override
   public void publishTableMinAvilability(Pair<TableName, Double> tableNameDoublePair) {
-    this.tableMinAvailabilityPair.setFirst(tableNameDoublePair.getFirst());
-    this.tableMinAvailabilityPair.setSecond(tableNameDoublePair.getSecond());
-    LOG.info("The min availability of table " + tableNameDoublePair.getFirst() + " was set to "
-        + tableNameDoublePair.getSecond() + "%");
+      this.tableMinAvailabilityPair.setFirst(tableNameDoublePair.getFirst());
+      this.tableMinAvailabilityPair.setSecond(tableNameDoublePair.getSecond());
+      LOG.info("The min availability of table " + tableNameDoublePair.getFirst() + " was set to "
+          + tableNameDoublePair.getSecond() + "%");
   }
 
   @Override
   public void publishRegionServerMinAvilability(Pair<ServerName, Double> serverNameDoublePair) {
-    this.regionServerMinAvailabilityPair.setFirst(serverNameDoublePair.getFirst());
-    this.regionServerMinAvailabilityPair.setSecond(serverNameDoublePair.getSecond());
-    LOG.info(
-        "The min availability of regionServer " + serverNameDoublePair.getFirst() + " was set to "
-            + serverNameDoublePair.getSecond() + "%");
-
+      this.regionServerMinAvailabilityPair.setFirst(serverNameDoublePair.getFirst());
+      this.regionServerMinAvailabilityPair.setSecond(serverNameDoublePair.getSecond());
+      LOG.info("The min availability of regionServer " + serverNameDoublePair.getFirst() + " was set to "
+          + serverNameDoublePair.getSecond() + "%");
   }
 
 
@@ -297,13 +297,13 @@ public class FalconSink implements Sink, Configurable {
       data.put(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
       data.put(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
       data.put(buildFalconMetric(clusterName, "cluster-oldWals-files-count", oldWalsFilesCount));
-      if (tableMinAvailabilityPair.getFirst() != null) {
+      if (tableMinAvailabilityPair.getFirst() != null && enablePushTableMinAvailability) {
         Map<String, String> tableMinAvailabilityTag = new HashMap<>();
         tableMinAvailabilityTag.put("tableName", this.tableMinAvailabilityPair.getFirst().toString());
         data.put(buildFalconMetric(clusterName, "cluster-table-min-availability",
             this.tableMinAvailabilityPair.getSecond(), tableMinAvailabilityTag));
       }
-      if (regionServerMinAvailabilityPair.getFirst() != null) {
+      if (regionServerMinAvailabilityPair.getFirst() != null && enablePushRSMinAvailability) {
         Map<String, String> serverMinAvailabilityTag = new HashMap<>();
         serverMinAvailabilityTag.put("serverName",
             this.regionServerMinAvailabilityPair.getFirst().toString()
@@ -336,7 +336,10 @@ public class FalconSink implements Sink, Configurable {
         DEFAULT_REPLICATION_LAG_UPPER_IN_SECONDS);
     lowerRplicationLagInSeconds = conf.getInt("hbase.canary.replication.lag.lower.bound.in.seconds",
         DEFAULT_REPLICATION_LAG_LOWER_IN_SECONDS);
-
+    enablePushTableMinAvailability = conf.getBoolean(HConstants.CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE,
+        HConstants.CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE_DEFAULT);
+    enablePushRSMinAvailability = conf.getBoolean(HConstants.CANARY_PUSH_RS_MIN_AVAIL_ENABLE,
+        HConstants.CANARY_PUSH_RS_MIN_AVAIL_ENABLE_DEFAULT);
   }
 
   @Override

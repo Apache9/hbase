@@ -1359,6 +1359,10 @@ public final class HConstants {
   public static final String FALCON_METRIC_CONTINUOUS_RESTART_COUNT = "continuous-restart-count";
   public static final String MASTER_ENDPOINT = "hbase-master";
 
+  public static final String CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE = "hbase.canary.push.table.min.availability.enable";
+  public static final Boolean CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE_DEFAULT = false;
+  public static final String CANARY_PUSH_RS_MIN_AVAIL_ENABLE = "hbase.canary.push.rs.min.availability.enable";
+  public static final Boolean CANARY_PUSH_RS_MIN_AVAIL_ENABLE_DEFAULT = false;
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
