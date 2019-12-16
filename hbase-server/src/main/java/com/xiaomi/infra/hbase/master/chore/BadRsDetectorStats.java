@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 /**
@@ -44,7 +45,7 @@ public final class BadRsDetectorStats {
 	private boolean isMetaMoved;
 	private String regionServer;
 	private double load;
-	private double loadThreshold;
+	private double loadPerCoreThreshold;
 	private List<String> regionNames;
 
 	private BadRsDetectorStats(Builder builder) {
@@ -56,7 +57,7 @@ public final class BadRsDetectorStats {
 		isMetaMoved = builder.isMetaMoved;
 		regionServer = builder.regionServer;
 		load = builder.load;
-		loadThreshold = builder.loadThreshold;
+		loadPerCoreThreshold = builder.loadPerCoreThreshold;
 		regionNames = builder.regionNames;
 	}
 
@@ -65,7 +66,7 @@ public final class BadRsDetectorStats {
 		StringBuilder sb = new StringBuilder();
 		return sb.append(toLine("details", details)).append(toLine("clusterName", clusterName))
 				.append(toLine("RegionServer", regionServer)).append(toLine("load", load))
-				.append(toLine("loadThreshold", loadThreshold))
+				.append(toLine("loadPerCoreThreshold", loadPerCoreThreshold))
 				.append(toLine("detector startTime", timeToString(startTime)))
 				.append(toLine("detector endTime", timeToString(endTime)))
 				.append(toLine("isSuccess", isSuccess))
@@ -104,7 +105,8 @@ public final class BadRsDetectorStats {
 		private boolean isMetaMoved = false;
 		private String regionServer = "";
 		private double load = 0.0;
-		private double loadThreshold = 0.0;
+		private double loadPerCoreThreshold =
+				HConstants.DEFAULT_BAD_REGIONSERVER_LOAD_PER_CORE_THRESHOLD;
 		private List<String> regionNames = new ArrayList<>();
 
 		public Builder setClusterName(String clusterName) {
@@ -147,8 +149,8 @@ public final class BadRsDetectorStats {
 			return this;
 		}
 
-		public Builder setLoadThreshold(double loadThreshold) {
-			this.loadThreshold = loadThreshold;
+		public Builder setLoadPerCoreThreshold(double loadPerCoreThreshold) {
+			this.loadPerCoreThreshold = loadPerCoreThreshold;
 			return this;
 		}
 

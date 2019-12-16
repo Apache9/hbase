@@ -1,19 +1,12 @@
 package com.xiaomi.infra.hbase.falcon;
 
+import java.util.List;
+
 public class FalconLatestResponse {
-	private String counter;
-	private String endpoint;
-	private FalconValue value;
+	private String msg;
+	private List<List<Double>> data;
 
-	public String getCounter() {
-		return counter;
-	}
-
-	public String getEndpoint() {
-		return endpoint;
-	}
-
-	public FalconValue getValue() {
-		return value;
+	public List<List<Double>> getLoad() {
+		return data;
 	}
 }

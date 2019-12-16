@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +32,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -71,7 +70,7 @@ public class BadRSDetector extends Chore {
 	private HMaster master;
 
 	private String clusterName;
-	private double badRsLoadThreshold;
+	private double badRsLoadPerCoreThreshold;
 	private int continuousCount = 0;
 
 	/**
@@ -86,9 +85,9 @@ public class BadRSDetector extends Chore {
     this.maxExecutionTime = period;
 
 	  clusterName = master.getConfiguration().get(HConstants.CLUSTER_NAME, "");
-    badRsLoadThreshold = master.getConfiguration()
-        .getDouble(HConstants.BAD_REGIONSERVER_LOAD_THRESHOLD,
-            HConstants.DEFAULT_BAD_REGIONSERVER_LOAD_THRESHOLD);
+	  badRsLoadPerCoreThreshold = master.getConfiguration()
+        .getDouble(HConstants.BAD_REGIONSERVER_LOAD_PER_CORE_THRESHOLD,
+            HConstants.DEFAULT_BAD_REGIONSERVER_LOAD_PER_CORE_THRESHOLD);
   }
 
 	@Override
@@ -127,29 +126,19 @@ public class BadRSDetector extends Chore {
 	private void process(BadRsDetectorStats.Builder statsBuilder) {
 		Map<HRegionInfo, ServerName> regionAssignments = getRegionAssignments();
 		Set<ServerName> serverNames = new HashSet<>(regionAssignments.values());
-		Map<String, Double> serverLoads = getServerLoad(serverNames);
-		if (serverLoads == null || serverLoads.isEmpty()) {
-			LOG.warn("Failed to get regionserver loads from falcon, return");
-			return;
-		}
-
-		// Find the max load host
-		Map.Entry<String, Double> maxLoadHost = serverLoads.entrySet().stream()
-				.max(Comparator.comparing(Map.Entry<String, Double>::getValue)).get();
+		Pair<String, Double> maxLoadHost = getMaxLoadServer(serverNames);
 		statsBuilder.setRegionServer(maxLoadHost.getKey()).setLoad(maxLoadHost.getValue())
-				.setLoadThreshold(badRsLoadThreshold);
-    LOG.info(
-        "The max load is " + maxLoadHost.getValue() + " by regionserver " + maxLoadHost.getKey() +
-            ", load threshold is " + badRsLoadThreshold);
-
-    if (maxLoadHost.getValue() < badRsLoadThreshold) {
-	    continuousCount = 0;
+				.setLoadPerCoreThreshold(badRsLoadPerCoreThreshold);
+		LOG.info("The max load per core is " + maxLoadHost.getValue() + " by regionserver "
+				+ maxLoadHost.getKey() + ", load per core threshold is " + badRsLoadPerCoreThreshold);
+		if (maxLoadHost.getValue() < badRsLoadPerCoreThreshold) {
+			continuousCount = 0;
 			return;
 		}
 
 		List<ServerName> vacatedDestinations =
-				master.getServerManager().getOnlineServersList().stream()
-						.filter(serverName -> !serverName.getHostAndPort().contains(maxLoadHost.getKey()))
+				master.getServerManager().getOnlineServersList().stream().filter(
+						serverName -> !serverName.getHostAndPort().contains(maxLoadHost.getKey()))
 				.collect(Collectors.toList());
 
 		Map<ServerName, Set<HRegionInfo>> vacatedServerMap = filterRegion(regionAssignments,
@@ -271,23 +260,36 @@ public class BadRSDetector extends Chore {
 	  return moveRegion(vacatedServerMap, targetServerNames, false);
   }
 
-	private Map<String, Double> getServerLoad(Set<ServerName> serverNames) {
-		Map<String, Double> serverLoads = new HashMap<>();
+	private Pair<String, Double> getMaxLoadServer(Set<ServerName> serverNames) {
+		Pair<String, Double> maxLoad = Pair.of("", 0.0);
 		for (ServerName serverName : serverNames) {
 			FalconLatestRequest request =
 					new FalconLatestRequest.Builder(serverName.getHostname(), FalconConstant.METRIC_LOAD_1MIN)
 							.build();
-			String result = HttpClientUtils.post(FalconConstant.QUERY_LATEST_URL, request);
+			String result = HttpClientUtils
+					.post("http://" + serverName.getHostname() + ":1988/page/system/loadavg", request);
 			if (result == null || StringUtils.isBlank(result)) {
 				LOG.debug("Failed to get [{}] 's load from Falcon.", serverName);
 				continue;
 			}
-			FalconLatestResponse[] responses = GSON.fromJson(result, FalconLatestResponse[].class);
-			for (FalconLatestResponse response : responses) {
-				serverLoads.put(response.getEndpoint(), response.getValue().getValue());
+			FalconLatestResponse response = GSON.fromJson(result, FalconLatestResponse.class);
+			// The data format is data:[[1.55, 6], [2.19, 9], [3.64, 15]], the left is the load,
+			// and the right is the load / (cpu cores * 100 ).
+			// Obviously the right one makes more sense, and we choose the right one as the compactor to
+			// sort.
+			List<List<Double>> loads = response.getLoad();
+			if (loads == null || loads.size() != 3) {
+				continue;
+			}
+			List<Double> lastOneMinuteLoad = loads.get(0);
+			if ((lastOneMinuteLoad.size() == 2) && (lastOneMinuteLoad.get(1) > maxLoad.getRight())) {
+				maxLoad = Pair.of(serverName.getHostname(), lastOneMinuteLoad.get(1));
 			}
 		}
-		return serverLoads;
+		// The load per core from falcon is the percent, which may be confusing in some cases,
+		// so here use load per core instead of percent.
+		maxLoad = Pair.of(maxLoad.getLeft(), maxLoad.getValue() / 100.0);
+		return maxLoad;
 	}
 
 	private Set<HRegionInfo> moveRegion(Map<ServerName, Set<HRegionInfo>> sourceMap,
