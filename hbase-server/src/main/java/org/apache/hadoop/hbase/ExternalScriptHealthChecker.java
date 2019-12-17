@@ -45,8 +45,10 @@ class ExternalScriptHealthChecker implements HealthChecker {
   static private final String ERROR_PATTERN = "ERROR";
   private ArrayList<String> execScript = new ArrayList<String>();
   private final long scriptTimeout;
+  private final Configuration config;
 
-  public ExternalScriptHealthChecker(Configuration config) {
+  public ExternalScriptHealthChecker(Configuration conf) {
+    this.config = conf;
 	  String healthCheckScript = config.get(HConstants.HEALTH_SCRIPT_LOC);
     scriptTimeout = config.getLong(HConstants.HEALTH_SCRIPT_TIMEOUT,
         HConstants.DEFAULT_HEALTH_SCRIPT_TIMEOUT);
@@ -106,7 +108,11 @@ class ExternalScriptHealthChecker implements HealthChecker {
     }
     // Here we ignore the errors, because we just want to post message to falcon.
     // See the script for more details.
-    return new HealthReport(HealthCheckerExitStatus.SUCCESS, getHealthReport(status));
+    if (StringUtils.isNotBlank(config.get(HConstants.CLUSTER_NAME))) {
+      return new HealthReport(HealthCheckerExitStatus.SUCCESS, getHealthReport(status));
+    } else {
+      return new HealthReport(status, getHealthReport(status));
+    }
   }
 
   private boolean hasErrors(String output) {
