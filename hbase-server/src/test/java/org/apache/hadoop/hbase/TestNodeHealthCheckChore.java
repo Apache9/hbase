@@ -84,9 +84,6 @@ public class TestNodeHealthCheckChore {
     long timeout = config.getLong(HConstants.HEALTH_SCRIPT_TIMEOUT, SCRIPT_TIMEOUT);
 
     ExternalScriptHealthChecker checker = new ExternalScriptHealthChecker(config);
-    checker.init(location, timeout,
-        config.getLong(HConstants.HEALTH_CHECKER_PERIOD, HConstants.DEFAULT_HEALTH_CHECKER_PERIOD),
-        config.get(HConstants.CLUSTER_NAME, ""));
 
     createScript(script, true);
     HealthReport report = checker.checkHealth();
