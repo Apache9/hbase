@@ -37,6 +37,8 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.util.QueueCounter;
@@ -50,6 +52,10 @@ import org.apache.hadoop.hbase.util.ReflectionUtils;
 @InterfaceStability.Evolving
 public class RWQueueRpcExecutor extends RpcExecutor {
   private static final Log LOG = LogFactory.getLog(RWQueueRpcExecutor.class);
+
+  public static final String MULTI_GET_THRESHOLD = "hbase.regionserver.multi.get.threshold";
+  public static final int DEFAULT_MULTI_GET_THRESHOLD = 10;
+  private final int multiGetThreshold;
 
   private final List<BlockingQueue<CallRunner>> queues;
   private final QueueBalancer writeBalancer;
@@ -131,7 +137,8 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     this.writeQueueCounter = new QueueCounter("Write");
     this.scanQueueCounter = new QueueCounter("Scan");
 
-    queues = new ArrayList<BlockingQueue<CallRunner>>(numWriteQueues + numReadQueues + numScanQueues);
+    queues = new ArrayList<>(numWriteQueues + numReadQueues + numScanQueues);
+    this.multiGetThreshold = conf.getInt(MULTI_GET_THRESHOLD, DEFAULT_MULTI_GET_THRESHOLD);
     LOG.info(name + " writeQueues=" + numWriteQueues + " writeHandlers=" + writeHandlersCount
         + " readQueues=" + numReadQueues + " readHandlers=" + readHandlersCount
         + ((numScanQueues == 0) ? ""
@@ -168,7 +175,7 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     if (isWriteRequest(call.getHeader(), call.getParam())) {
       queueIndex = writeBalancer.getNextQueue();
       queueCounter = writeQueueCounter;
-    } else if (scanHandlersCount > 0 && isHeavyScanRequest(call.getParam())) {
+    } else if (scanHandlersCount > 0 && isHeavyReadRequest(call.getParam())) {
       queueIndex = numWriteQueues + numReadQueues + scanBalancer.getNextQueue();
       queueCounter = scanQueueCounter;
     } else {
@@ -210,12 +217,22 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   }
 
   @VisibleForTesting
-  protected boolean isHeavyScanRequest(final Message param) {
+  protected boolean isHeavyReadRequest(final Message param) {
     if (param instanceof ScanRequest) {
       ScanRequest scanRequest = (ScanRequest) param;
       Scan scan = scanRequest.getScan();
       if (scan.hasFilter() && !isScanFromCanary(scanRequest)) {
         return true;
+      }
+    }
+    if (param instanceof MultiRequest) {
+      MultiRequest multi = (MultiRequest) param;
+      int multiGetNum = 0;
+      for (RegionAction regionAction : multi.getRegionActionList()) {
+        multiGetNum += regionAction.getActionCount();
+        if (multiGetNum >= multiGetThreshold) {
+          return true;
+        }
       }
     }
     return false;

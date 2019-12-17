@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import static org.apache.hadoop.hbase.ipc.RWQueueRpcExecutor.DEFAULT_MULTI_GET_THRESHOLD;
+import static org.apache.hadoop.hbase.ipc.RWQueueRpcExecutor.MULTI_GET_THRESHOLD;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -24,16 +26,24 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Action;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.filter.RandomRowFilter;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.QueueCounter;
@@ -51,19 +61,50 @@ public class TestRWQueueRpcExecutor {
   private ScanRequest scanWithFilter;
   private ScanRequest scanLimitOneRow;
   private MutateRequest mutateRequest;
+  private MultiRequest smallMultiGetRequest;
+  private MultiRequest bigMultiGetRequest;
+  private MultiRequest multiPutRequest;
 
   @Before
   public void setUp() throws IOException {
     conf = HBaseConfiguration.create();
     scanWithoutFilter = RequestConverter.buildScanRequest(regionName, new Scan(), 1, true);
-    scanWithFilter = RequestConverter.buildScanRequest(regionName,
-      new Scan().setFilter(new RandomRowFilter(10)), 1, true);
-    scanLimitOneRow =
-        RequestConverter.buildScanRequest(regionName,
-          new Scan().withStartRow(regionName).withStopRow(regionName).setRaw(true)
-              .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit(),
-          10, true);
+    scanWithFilter = RequestConverter
+        .buildScanRequest(regionName, new Scan().setFilter(new RandomRowFilter(10)), 1, true);
+    scanLimitOneRow = RequestConverter.buildScanRequest(regionName,
+        new Scan().withStartRow(regionName).withStopRow(regionName).setRaw(true)
+            .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit(), 10, true);
     mutateRequest = RequestConverter.buildMutateRequest(regionName, new Put(regionName));
+
+    int multiGetThreshold = 10;
+    conf.setInt(MULTI_GET_THRESHOLD, multiGetThreshold);
+    smallMultiGetRequest = buildMultiRequest(true, multiGetThreshold - 1);
+    bigMultiGetRequest = buildMultiRequest(true, multiGetThreshold + 1);
+    multiPutRequest = buildMultiRequest(false, multiGetThreshold);
+  }
+
+  private MultiRequest buildMultiRequest(boolean isGet, int number) throws IOException {
+    MultiRequest.Builder multiRequestBuilder = MultiRequest.newBuilder();
+    ClientProtos.RegionAction.Builder regionActionBuilder = ClientProtos.RegionAction.newBuilder();
+    ClientProtos.Action.Builder actionBuilder = ClientProtos.Action.newBuilder();
+    ClientProtos.MutationProto.Builder mutationBuilder = ClientProtos.MutationProto.newBuilder();
+    List<Action<Row>> actions = new ArrayList<>();
+    for (int i = 0; i < number; i++) {
+      if (isGet) {
+        actions.add(new Action<>(new Get(Bytes.toBytes(i)), i));
+      } else {
+        actions.add(new Action<>(new Put(Bytes.toBytes(i)), i));
+      }
+    }
+    regionActionBuilder.clear();
+    regionActionBuilder.setRegion(RequestConverter
+        .buildRegionSpecifier(HBaseProtos.RegionSpecifier.RegionSpecifierType.REGION_NAME,
+            regionName));
+    regionActionBuilder = RequestConverter
+        .buildRegionAction(regionName, actions, regionActionBuilder, actionBuilder,
+            mutationBuilder);
+    multiRequestBuilder.addRegionAction(regionActionBuilder.build());
+    return multiRequestBuilder.build();
   }
 
   @Test
@@ -71,11 +112,19 @@ public class TestRWQueueRpcExecutor {
     RWQueueRpcExecutor rwQueueRpcExecutor =
         new RWQueueRpcExecutor("test", 100, 4, 0.5f, 100, conf, null);
     // scan without filter
-    assertFalse(rwQueueRpcExecutor.isHeavyScanRequest(scanWithoutFilter));
+    assertFalse(rwQueueRpcExecutor.isHeavyReadRequest(scanWithoutFilter));
     // scan with filter
-    assertTrue(rwQueueRpcExecutor.isHeavyScanRequest(scanWithFilter));
+    assertTrue(rwQueueRpcExecutor.isHeavyReadRequest(scanWithFilter));
     // scan with filter and limit one row (like Canary scan request)
-    assertFalse(rwQueueRpcExecutor.isHeavyScanRequest(scanLimitOneRow));
+    assertFalse(rwQueueRpcExecutor.isHeavyReadRequest(scanLimitOneRow));
+    // small multi get
+    assertFalse(rwQueueRpcExecutor.isHeavyReadRequest(smallMultiGetRequest));
+    // big multi get
+    assertTrue(rwQueueRpcExecutor.isHeavyReadRequest(bigMultiGetRequest));
+
+    assertFalse(rwQueueRpcExecutor.isWriteRequest(null, smallMultiGetRequest));
+    assertFalse(rwQueueRpcExecutor.isWriteRequest(null, bigMultiGetRequest));
+    assertTrue(rwQueueRpcExecutor.isWriteRequest(null, multiPutRequest));
     rwQueueRpcExecutor.stop();
   }
 
@@ -96,6 +145,12 @@ public class TestRWQueueRpcExecutor {
     checkQueueCounters(rpcExecutor, 0, 2, 1);
     rpcExecutor.dispatch(createMockCall(mutateRequest));
     checkQueueCounters(rpcExecutor, 1, 2, 1);
+    rpcExecutor.dispatch(createMockCall(multiPutRequest));
+    checkQueueCounters(rpcExecutor, 2, 2, 1);
+    rpcExecutor.dispatch(createMockCall(smallMultiGetRequest));
+    checkQueueCounters(rpcExecutor, 2, 3, 1);
+    rpcExecutor.dispatch(createMockCall(bigMultiGetRequest));
+    checkQueueCounters(rpcExecutor, 2, 3, 2);
     rpcExecutor.stop();
   }
 
