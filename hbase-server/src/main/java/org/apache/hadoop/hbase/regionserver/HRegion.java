@@ -5664,7 +5664,8 @@ public class HRegion implements HeapSize { // , Writable{
       this.updateReadCellMetrics(results.size());
     } finally {
       if (scanner != null) {
-        scanner.close();
+        // Skip to update read CU. It will be updated below.
+        scanner.close(false);
       }
     }
 
