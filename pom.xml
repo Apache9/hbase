@@ -1018,7 +1018,7 @@
     <minikdc.version>${hadoop-mdh.version}</minikdc.version>
     <keycenter.version>2.1.10</keycenter.version>
     <rrd-on-hbase.version>1.0.11</rrd-on-hbase.version>
-    <galaxy-sds-core.version>2.5.6</galaxy-sds-core.version>
+    <galaxy-sds-core.version>2.5.18</galaxy-sds-core.version>
     <themis-coprocessor.version>2.4.2</themis-coprocessor.version>
     <slf4j.version>1.7.25</slf4j.version>
     <hadoop-snappy.version>0.0.1-SNAPSHOT</hadoop-snappy.version>
