@@ -102,25 +102,16 @@ public class BadRSDetector extends Chore {
 			LOG.info("Not running BadRSDetector because there is at least one region in RIT");
 			return;
 		}
-		boolean originalBalanceSwitch = true;
-		try {
-			originalBalanceSwitch = master.balanceSwitch(false);
-		} catch (IOException e) {
-			LOG.warn("Failed to turn off the balance switch, return", e);
-			return;
-		}
-
+		boolean originalBalanceSwitch = master.isBalancerOn();
 		process(statsBuilder);
-		postFalcon();
-
 		if (originalBalanceSwitch) {
 			try {
-				master.balanceSwitch(true);
+				master.balanceSwitch(originalBalanceSwitch);
 			} catch (IOException e) {
-				LOG.error("Failed to turn on the balance switch", e);
-				return;
+				LOG.warn("Failed to set balance switch " + originalBalanceSwitch, e);
 			}
 		}
+		postFalcon();
 	}
 
 	private void process(BadRsDetectorStats.Builder statsBuilder) {
@@ -133,6 +124,7 @@ public class BadRSDetector extends Chore {
 				+ maxLoadHost.getKey() + ", load per core threshold is " + badRsLoadPerCoreThreshold);
 		if (maxLoadHost.getValue() < badRsLoadPerCoreThreshold) {
 			continuousCount = 0;
+			LOG.info("Not running BadRSDetector because the max load is less than threshold");
 			return;
 		}
 
@@ -152,10 +144,18 @@ public class BadRSDetector extends Chore {
 				vacatedServerMap.values().stream().flatMap(regionInfo -> regionInfo.stream())
 						.anyMatch(HRegionInfo::isMetaRegion);
 		statsBuilder.setIsMetaMoved(isMetaMoved);
+		try {
+			master.balanceSwitch(false);
+		} catch (IOException e) {
+			LOG.warn("Not running BadRSDetector because failed to turn off the "
+					+ "balance switch before vacate RS!", e);
+			return;
+		}
+
 		Set<HRegionInfo> failVacatedRegions =
 				vacateRegionServers(vacatedServerMap, vacatedDestinations);
     if (!failVacatedRegions.isEmpty()) {
-      String errorMessage = "Failed to vacate region(s) " + toString(failVacatedRegions);
+	    String errorMessage = "Failed to vacate region(s) " + toString(failVacatedRegions);
       logAndSendMail(statsBuilder, false, errorMessage);
       return;
     }
@@ -180,7 +180,7 @@ public class BadRSDetector extends Chore {
 	      String message = "Success to recover regionservers " + toString(recoverDestinations);
         logAndSendMail(statsBuilder, true, message);
       } else {
-        String errorMessage = "Failed to recover regions " + toString(failRecoveredRegions);
+	      String errorMessage = "Failed to recover regions " + toString(failRecoveredRegions);
         logAndSendMail(statsBuilder, false, errorMessage);
       }
 		}
