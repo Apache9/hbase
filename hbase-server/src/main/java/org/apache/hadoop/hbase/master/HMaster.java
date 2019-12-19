@@ -1934,6 +1934,10 @@ MasterServices, Server {
     return this.balancer;
   }
 
+  public boolean isBalancerOn() {
+    return loadBalancerTracker.isBalancerOn();
+  }
+
   public boolean balance() throws HBaseIOException {
     // if master not initialized, don't run balancer.
     if (!this.initialized) {
@@ -1944,19 +1948,21 @@ MasterServices, Server {
     boolean balancerRan;
     synchronized (this.balancer) {
       // If balance not true, don't run balancer.
-      if (!this.loadBalancerTracker.isBalancerOn())
+      if (!isBalancerOn()) {
+        LOG.info("Not running balancer because the balancer is off.");
         return false;
+      }
       // Only allow one balance run at at time.
       if (this.assignmentManager.getRegionStates().isRegionsInTransition()) {
         Map<String, RegionState> regionsInTransition =
             this.assignmentManager.getRegionStates().getRegionsInTransition();
-        LOG.debug("Not running balancer because " + regionsInTransition.size() +
+        LOG.info("Not running balancer because " + regionsInTransition.size() +
             " region(s) in transition: " + org.apache.commons.lang.StringUtils.
             abbreviate(regionsInTransition.toString(), 256));
         return false;
       }
       if (this.serverManager.areDeadServersInProgress()) {
-        LOG.debug("Not running balancer because processing dead regionserver(s): " +
+        LOG.info("Not running balancer because processing dead regionserver(s): " +
             this.serverManager.getDeadServers());
         return false;
       }
