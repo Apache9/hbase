@@ -301,7 +301,8 @@ public class FalconSink implements Sink, Configurable {
   }
 
 
-  private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail,double replicationAvail) {
+  private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail,
+      double replicationAvail) {
     JsonArray data = new JsonArray();
     try {
       data.add(buildFalconMetric(clusterName, "cluster-master-availability", this.masterAvailability));
@@ -311,18 +312,12 @@ public class FalconSink implements Sink, Configurable {
       data.add(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
       data.add(buildFalconMetric(clusterName, "cluster-oldWals-files-count", oldWalsFilesCount));
       if (tableMinAvailabilityPair.getFirst() != null && enablePushTableMinAvailability) {
-        Map<String, String> tableMinAvailabilityTag = new HashMap<>();
-        tableMinAvailabilityTag.put("tableName", this.tableMinAvailabilityPair.getFirst().toString());
         data.add(buildFalconMetric(clusterName, "cluster-table-min-availability",
-          this.tableMinAvailabilityPair.getSecond(), tableMinAvailabilityTag));
+          this.tableMinAvailabilityPair.getSecond()));
       }
       if (regionServerMinAvailabilityPair.getFirst() != null && enablePushRSMinAvailability) {
-        Map<String, String> serverMinAvailabilityTag = new HashMap<>();
-        serverMinAvailabilityTag.put("serverName",
-          this.regionServerMinAvailabilityPair.getFirst().toString()
-            .replace(ServerName.SERVERNAME_SEPARATOR, ":"));
         data.add(buildFalconMetric(clusterName, "cluster-rs-min-availability",
-          this.regionServerMinAvailabilityPair.getSecond(), serverMinAvailabilityTag));
+          this.regionServerMinAvailabilityPair.getSecond()));
       }
     } catch (IOException e) {
       LOG.error("Create json error", e);
