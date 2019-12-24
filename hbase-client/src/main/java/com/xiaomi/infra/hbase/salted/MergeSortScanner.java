@@ -173,4 +173,9 @@ public class MergeSortScanner extends BaseSaltedScanner {
       throw new UnsupportedOperationException();
     }
   }
+
+  @Override
+  public boolean renewLease() {
+    throw new UnsupportedOperationException();
+  }
 }

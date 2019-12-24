@@ -324,4 +324,9 @@ public class FDSMessageScanner extends AbstractClientScanner {
     }
     System.out.print("" + scanner.getOffset());
   }
+
+  @Override
+  public boolean renewLease() {
+    throw new UnsupportedOperationException();
+  }
 }

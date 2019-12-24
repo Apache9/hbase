@@ -281,4 +281,9 @@ public class TableSnapshotScanner extends AbstractClientScanner {
       cleanup();
     }
   }
+
+  @Override
+  public boolean renewLease() {
+    throw new UnsupportedOperationException();
+  }
 }

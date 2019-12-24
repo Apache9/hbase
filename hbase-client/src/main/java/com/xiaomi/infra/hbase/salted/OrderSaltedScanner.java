@@ -44,4 +44,9 @@ public class OrderSaltedScanner extends BaseSaltedScanner {
     }
     this.closed = true;
   }
+
+  @Override
+  public boolean renewLease() {
+    throw new UnsupportedOperationException();
+  }
 }
