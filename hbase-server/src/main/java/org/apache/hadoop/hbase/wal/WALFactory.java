@@ -83,6 +83,8 @@ public class WALFactory {
 
   public static final String META_WAL_PROVIDER = "hbase.wal.meta_provider";
 
+  public static final String WAL_ENABLED = "hbase.regionserver.hlog.enabled";
+
   final String factoryId;
   private final WALProvider provider;
   // The meta updates are written to a different wal. If this
