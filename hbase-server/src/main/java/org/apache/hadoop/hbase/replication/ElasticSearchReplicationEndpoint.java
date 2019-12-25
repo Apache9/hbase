@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.replication;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
@@ -153,19 +154,21 @@ public class ElasticSearchReplicationEndpoint extends TalosReplicationEndpoint {
   }
 
   /** in HTableDescriptor
-   *  key = "es"
+   *  key = "es_config"
    *  value = "
-   * {
-   *　   "properties": {
-   *    　"A:c1": {
-   *         "type": "text"
-   *       },
-   *      "A:c2": {
-   *           "type": "keyword",
-   *           "analyzer": "standard"
-   *       }
-   *    }
-   *  }"
+   　　{
+   　　　　"properties": [
+   　　　　　　{
+   　　　　　　　　"column": "A:c1",
+   　　　　　　　　"type": "keyword"
+   　　　　　　},
+   　　　　　　{
+   　　　　　　　　"column": "A:c2",
+   　　　　　　　　"type": "text",
+   　　　　　　　　"analyzer": "standard"
+  　　　　　　 }
+   　　　　]
+   　　}"　　
    *
    */
   private void getEsIndexProperties(TableName tableName) throws IOException{
@@ -173,13 +176,13 @@ public class ElasticSearchReplicationEndpoint extends TalosReplicationEndpoint {
     try {
       HTableDescriptor desc = localAdmin.getTableDescriptor(tableName);
       Set<String> propertiesSet = new HashSet<>();
-      esTablePropertyJsonStr = desc.getValue("es");
+      esTablePropertyJsonStr = desc.getValue("es_config");
       if (esTablePropertyJsonStr != null) {
         JsonObject esIndexJson = new JsonParser().parse(esTablePropertyJsonStr).getAsJsonObject();
-        JsonObject esPropertyJson = (JsonObject) esIndexJson.get("properties");
-        if(!esPropertyJson.isJsonNull()) {
-          esPropertyJson.entrySet().forEach(set->{
-            propertiesSet.add(set.getKey());
+        JsonArray esPropertyArray = (JsonArray) esIndexJson.get("properties");
+        if(!esPropertyArray.isJsonNull()) {
+          esPropertyArray.forEach(jsonElement -> {
+            propertiesSet.add(((JsonObject)jsonElement).get("column").getAsString());
           });
           esIndexPropertiesCache.put(tableName, propertiesSet);
           LOG.info("getEsIndexProperties success ,tableName = " + tableName + " properties = "
