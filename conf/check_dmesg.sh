@@ -32,7 +32,7 @@ LATEST_UNIXTIMESTAMP=0
 METRIC=""
 
 function set_io_error() {
-  ERRORS=`dmesg | egrep -i 'error|hang'|egrep -v 'ioapic|ACPI|ERST'|egrep 'EXT4-fs error|I/O error'`
+  ERRORS=`dmesg | egrep -i 'error|hang'|egrep -v 'ioapic|ACPI|ERST'|egrep 'EXT4-fs|I/O'`
 }
 
 function set_mem_error() {
