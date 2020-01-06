@@ -174,7 +174,7 @@ public class ElasticSearchReplicationEndpoint extends TalosReplicationEndpoint {
     try {
       HTableDescriptor desc = localAdmin.getTableDescriptor(tableName);
       Set<String> propertiesSet = new HashSet<>();
-      esTablePropertyJsonStr = desc.getValue("es");
+      esTablePropertyJsonStr = desc.getValue("es_config");
       if (esTablePropertyJsonStr != null) {
         JsonObject esIndexJson = new JsonParser().parse(esTablePropertyJsonStr).getAsJsonObject();
         JsonArray esPropertyArray = (JsonArray) esIndexJson.get("properties");
