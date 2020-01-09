@@ -371,7 +371,7 @@ public class RegionProcedureStore extends ProcedureStoreBase {
     if (!fs.exists(procWALDir)) {
       return;
     }
-    LOG.info("The old procedure wal directory {} exists, start migrating", procWALDir);
+    LOG.info("The old WALProcedureStore wal directory {} exists, migrating...", procWALDir);
     WALProcedureStore store = new WALProcedureStore(conf, leaseRecovery);
     store.start(numThreads);
     store.recoverLease();
@@ -437,7 +437,7 @@ public class RegionProcedureStore extends ProcedureStoreBase {
           PROC_QUALIFIER, EMPTY_BYTE_ARRAY));
       }
     } else if (maxProcIdSet.longValue() < maxProcIdFromProcs.longValue()) {
-      LOG.warn("The max pid is less than the max pid of all loaded procedures");
+      LOG.warn("The WALProcedureStore max pid is less than the max pid of all loaded procedures");
     }
     store.stop(false);
     if (!fs.delete(procWALDir, true)) {
