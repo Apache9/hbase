@@ -199,25 +199,43 @@ class AsyncNonMetaRegionLocator {
     if (oldLoc == null) {
       return true;
     }
-    if (oldLoc.getSeqNum() > loc.getSeqNum() ||
-      oldLoc.getServerName().equals(loc.getServerName())) {
-      if (LOG.isTraceEnabled()) {
-        LOG.trace("Will not add " + loc + " to cache because the old value " + oldLoc +
-          " is newer than us or has the same server name");
+    HRegionInfo region = loc.getRegionInfo();
+    HRegionInfo oldRegion = oldLoc.getRegionInfo();
+    // check whether the regions are the same, this usually happens when table is split/merged, or
+    // deleted and recreated again.
+    if (region.getEncodedName().equals(oldRegion.getEncodedName())) {
+      if (oldLoc.getSeqNum() > loc.getSeqNum() ||
+        oldLoc.getServerName().equals(loc.getServerName())) {
+        if (LOG.isTraceEnabled()) {
+          LOG.trace("Will not add " + loc + " to cache because the old value " + oldLoc +
+            " is newer than us or has the same server name");
+        }
+        return false;
       }
-      return false;
+      return loc == tableCache.cache.compute(startKey, (k, oldValue) -> {
+        if (oldValue == null || oldValue.getSeqNum() <= loc.getSeqNum()) {
+          return loc;
+        }
+        if (LOG.isTraceEnabled()) {
+          LOG.trace("Will not add " + loc + " to cache because the old value " + oldValue +
+            " is newer than us or has the same server name." +
+            " Maybe it is updated before we replace it");
+        }
+        return oldValue;
+      });
+    } else {
+      // the region is different, here we trust the one we fetched. This maybe wrong but finally
+      // the upper layer can detect this and trigger removal of the wrong locations
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("The newly fetch region " + region + " is different from the old one " + oldRegion
+            + " for row '" + Bytes.toStringBinary(startKey) + "',"
+            + " try replacing the old one...");
+      }
+      if (tableCache.cache.replace(startKey, oldLoc, loc)) {
+        return true;
+      }
     }
-    return loc == tableCache.cache.compute(startKey, (k, oldValue) -> {
-      if (oldValue == null || oldValue.getSeqNum() <= loc.getSeqNum()) {
-        return loc;
-      }
-      if (LOG.isTraceEnabled()) {
-        LOG.trace("Will not add " + loc + " to cache because the old value " + oldValue +
-          " is newer than us or has the same server name." +
-          " Maybe it is updated before we replace it");
-      }
-      return oldValue;
-    });
+    return false;
   }
 
   @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "UPM_UNCALLED_PRIVATE_METHOD",
