@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase.security.access;
 
 import static org.junit.Assert.assertEquals;
-
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -33,8 +32,8 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TableNameTestRule;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.TestTableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Connection;
@@ -105,7 +104,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
   private static RegionServerCoprocessorEnvironment RSCP_ENV;
   private RegionCoprocessorEnvironment RCP_ENV;
 
-  @Rule public TestTableName TEST_TABLE = new TestTableName();
+  @Rule public TableNameTestRule testTable = new TableNameTestRule();
 
   // default users
 
@@ -177,15 +176,15 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
   public void setUp() throws Exception {
     // Create the test table (owner added to the _acl_ table)
     Admin admin = TEST_UTIL.getAdmin();
-    HTableDescriptor htd = new HTableDescriptor(TEST_TABLE.getTableName());
+    HTableDescriptor htd = new HTableDescriptor(testTable.getTableName());
     HColumnDescriptor hcd = new HColumnDescriptor(TEST_FAMILY);
     hcd.setMaxVersions(100);
     htd.addFamily(hcd);
     htd.setOwner(USER_OWNER);
     admin.createTable(htd, new byte[][] { Bytes.toBytes("s") });
-    TEST_UTIL.waitUntilAllRegionsAssigned(TEST_TABLE.getTableName());
+    TEST_UTIL.waitUntilAllRegionsAssigned(testTable.getTableName());
 
-    HRegion region = TEST_UTIL.getHBaseCluster().getRegions(TEST_TABLE.getTableName()).get(0);
+    HRegion region = TEST_UTIL.getHBaseCluster().getRegions(testTable.getTableName()).get(0);
     RegionCoprocessorHost rcpHost = region.getCoprocessorHost();
     RCP_ENV = rcpHost.createEnvironment(ACCESS_CONTROLLER,
       Coprocessor.PRIORITY_HIGHEST, 1, TEST_UTIL.getConfiguration());
@@ -199,44 +198,44 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       Permission.Action.WRITE);
 
     grantOnTable(TEST_UTIL, USER_RW.getShortName(),
-      TEST_TABLE.getTableName(), TEST_FAMILY, null,
+      testTable.getTableName(), TEST_FAMILY, null,
       Permission.Action.READ,
       Permission.Action.WRITE);
 
     // USER_CREATE is USER_RW plus CREATE permissions
     grantOnTable(TEST_UTIL, USER_CREATE.getShortName(),
-      TEST_TABLE.getTableName(), null, null,
+      testTable.getTableName(), null, null,
       Permission.Action.CREATE,
       Permission.Action.READ,
       Permission.Action.WRITE);
 
     grantOnTable(TEST_UTIL, USER_RO.getShortName(),
-      TEST_TABLE.getTableName(), TEST_FAMILY, null,
+      testTable.getTableName(), TEST_FAMILY, null,
       Permission.Action.READ);
 
     grantOnTable(TEST_UTIL, USER_QUAL.getShortName(),
-      TEST_TABLE.getTableName(), TEST_FAMILY, TEST_Q1,
+      testTable.getTableName(), TEST_FAMILY, TEST_Q1,
       Permission.Action.READ,
       Permission.Action.WRITE);
 
     assertEquals(5, PermissionStorage
-        .getTablePermissions(TEST_UTIL.getConfiguration(), TEST_TABLE.getTableName()).size());
+        .getTablePermissions(TEST_UTIL.getConfiguration(), testTable.getTableName()).size());
   }
 
   @After
   public void tearDown() throws Exception {
     // Clean the _acl_ table
     try {
-      deleteTable(TEST_UTIL, TEST_TABLE.getTableName());
+      deleteTable(TEST_UTIL, testTable.getTableName());
     } catch (TableNotFoundException ex) {
       // Test deleted the table, no problem
-      LOG.info("Test deleted table " + TEST_TABLE.getTableName());
+      LOG.info("Test deleted table " + testTable.getTableName());
     }
     // Verify all table/namespace permissions are erased
     assertEquals(0, PermissionStorage
-        .getTablePermissions(TEST_UTIL.getConfiguration(), TEST_TABLE.getTableName()).size());
+        .getTablePermissions(TEST_UTIL.getConfiguration(), testTable.getTableName()).size());
     assertEquals(0, PermissionStorage.getNamespacePermissions(TEST_UTIL.getConfiguration(),
-      TEST_TABLE.getTableName().getNamespaceAsString()).size());
+      testTable.getTableName().getNamespaceAsString()).size());
   }
 
   @Test
@@ -278,7 +277,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkTableAdmin = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), null, null,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), null, null,
           Permission.Action.ADMIN);
         return null;
       }
@@ -290,7 +289,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkTableCreate = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), null, null,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), null, null,
           Permission.Action.CREATE);
         return null;
       }
@@ -302,7 +301,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkTableRead = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), null, null,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), null, null,
           Permission.Action.READ);
         return null;
       }
@@ -314,7 +313,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkTableReadWrite = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), null, null,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), null, null,
           Permission.Action.READ, Permission.Action.WRITE);
         return null;
       }
@@ -326,7 +325,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkColumnRead = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), TEST_FAMILY, null,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), TEST_FAMILY, null,
           Permission.Action.READ);
         return null;
       }
@@ -338,7 +337,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkColumnReadWrite = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), TEST_FAMILY, null,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), TEST_FAMILY, null,
           Permission.Action.READ, Permission.Action.WRITE);
         return null;
       }
@@ -350,7 +349,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkQualifierRead = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), TEST_FAMILY, TEST_Q1,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), TEST_FAMILY, TEST_Q1,
           Permission.Action.READ);
         return null;
       }
@@ -362,7 +361,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkQualifierReadWrite = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), TEST_FAMILY, TEST_Q1,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), TEST_FAMILY, TEST_Q1,
           Permission.Action.READ, Permission.Action.WRITE);
         return null;
       }
@@ -376,9 +375,9 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       public Void run() throws Exception {
         checkTablePerms(TEST_UTIL,
           new Permission[] {
-              Permission.newBuilder(TEST_TABLE.getTableName()).withFamily(TEST_FAMILY)
+              Permission.newBuilder(testTable.getTableName()).withFamily(TEST_FAMILY)
                   .withQualifier(TEST_Q1).withActions(Action.READ).build(),
-              Permission.newBuilder(TEST_TABLE.getTableName()).withFamily(TEST_FAMILY)
+              Permission.newBuilder(testTable.getTableName()).withFamily(TEST_FAMILY)
                   .withQualifier(TEST_Q2).withActions(Action.READ).build() });
         return null;
       }
@@ -392,10 +391,10 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       public Void run() throws Exception {
         checkTablePerms(TEST_UTIL,
           new Permission[] {
-              Permission.newBuilder(TEST_TABLE.getTableName()).withFamily(TEST_FAMILY)
+              Permission.newBuilder(testTable.getTableName()).withFamily(TEST_FAMILY)
                   .withQualifier(TEST_Q1)
                   .withActions(Permission.Action.READ, Permission.Action.WRITE).build(),
-              Permission.newBuilder(TEST_TABLE.getTableName()).withFamily(TEST_FAMILY)
+              Permission.newBuilder(testTable.getTableName()).withFamily(TEST_FAMILY)
                   .withQualifier(TEST_Q2)
                   .withActions(Permission.Action.READ, Permission.Action.WRITE).build() });
         return null;
@@ -420,7 +419,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     AccessTestAction checkTableRead = new AccessTestAction() {
       @Override
       public Void run() throws Exception {
-        checkTablePerms(TEST_UTIL, TEST_TABLE.getTableName(), TEST_FAMILY, null,
+        checkTablePerms(TEST_UTIL, testTable.getTableName(), TEST_FAMILY, null,
           Permission.Action.READ);
         return null;
       }
@@ -434,7 +433,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Void run() throws Exception {
         try (Connection conn = ConnectionFactory.createConnection(TEST_UTIL.getConfiguration());
-             Table t = conn.getTable(TEST_TABLE.getTableName())) {
+             Table t = conn.getTable(testTable.getTableName())) {
           t.get(new Get(TEST_ROW).addFamily(TEST_FAMILY));
         }
         return null;
@@ -445,7 +444,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
 
     // Grant read perms to the test user
 
-    grantOnTable(TEST_UTIL, tblUser.getShortName(), TEST_TABLE.getTableName(), TEST_FAMILY,
+    grantOnTable(TEST_UTIL, tblUser.getShortName(), testTable.getTableName(), TEST_FAMILY,
       null, Permission.Action.READ);
 
     // Now both the permission check and actual op will succeed
@@ -455,7 +454,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
 
     // Revoke read perms from the test user
 
-    revokeFromTable(TEST_UTIL, tblUser.getShortName(), TEST_TABLE.getTableName(), TEST_FAMILY,
+    revokeFromTable(TEST_UTIL, tblUser.getShortName(), testTable.getTableName(), TEST_FAMILY,
       null, Permission.Action.READ);
 
     // Now the permission check will indicate revocation but the actual op will still succeed
@@ -472,7 +471,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     verifyAllowed(new AccessTestAction() {
       @Override
       public Object run() throws Exception {
-        HTableDescriptor htd = new HTableDescriptor(TEST_TABLE.getTableName());
+        HTableDescriptor htd = new HTableDescriptor(testTable.getTableName());
         htd.addFamily(new HColumnDescriptor(TEST_FAMILY));
         ACCESS_CONTROLLER.preCreateTable(ObserverContextImpl.createAndPrepare(CP_ENV), htd,
           null);
@@ -484,11 +483,11 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     verifyAllowed(new AccessTestAction() {
       @Override
       public Object run() throws Exception {
-        HTableDescriptor htd = new HTableDescriptor(TEST_TABLE.getTableName());
+        HTableDescriptor htd = new HTableDescriptor(testTable.getTableName());
         htd.addFamily(new HColumnDescriptor(TEST_FAMILY));
         htd.addFamily(new HColumnDescriptor(TEST_FAMILY2));
         ACCESS_CONTROLLER.preModifyTable(ObserverContextImpl.createAndPrepare(CP_ENV),
-          TEST_TABLE.getTableName(), htd);
+          testTable.getTableName(), htd);
         return null;
       }
     }, SUPERUSER, USER_ADMIN, USER_RW, USER_RO, USER_OWNER, USER_CREATE, USER_QUAL, USER_NONE);
@@ -498,7 +497,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preDeleteTable(ObserverContextImpl.createAndPrepare(CP_ENV),
-          TEST_TABLE.getTableName());
+          testTable.getTableName());
         return null;
       }
     }, SUPERUSER, USER_ADMIN, USER_RW, USER_RO, USER_OWNER, USER_CREATE, USER_QUAL, USER_NONE);
@@ -508,7 +507,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preTruncateTable(ObserverContextImpl.createAndPrepare(CP_ENV),
-          TEST_TABLE.getTableName());
+          testTable.getTableName());
         return null;
       }
     }, SUPERUSER, USER_ADMIN, USER_RW, USER_RO, USER_OWNER, USER_CREATE, USER_QUAL, USER_NONE);
@@ -518,7 +517,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preEnableTable(ObserverContextImpl.createAndPrepare(CP_ENV),
-          TEST_TABLE.getTableName());
+          testTable.getTableName());
         return null;
       }
     }, SUPERUSER, USER_ADMIN, USER_RW, USER_RO, USER_OWNER, USER_CREATE, USER_QUAL, USER_NONE);
@@ -528,7 +527,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preDisableTable(ObserverContextImpl.createAndPrepare(CP_ENV),
-          TEST_TABLE.getTableName());
+          testTable.getTableName());
         return null;
       }
     }, SUPERUSER, USER_ADMIN, USER_RW, USER_RO, USER_OWNER, USER_CREATE, USER_QUAL, USER_NONE);
@@ -537,7 +536,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     verifyAllowed(new AccessTestAction() {
       @Override
       public Object run() throws Exception {
-        HRegionInfo region = new HRegionInfo(TEST_TABLE.getTableName());
+        HRegionInfo region = new HRegionInfo(testTable.getTableName());
         ServerName srcServer = ServerName.valueOf("1.1.1.1", 1, 0);
         ServerName destServer = ServerName.valueOf("2.2.2.2", 2, 0);
         ACCESS_CONTROLLER.preMove(ObserverContextImpl.createAndPrepare(CP_ENV), region,
@@ -550,7 +549,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     verifyAllowed(new AccessTestAction() {
       @Override
       public Object run() throws Exception {
-        HRegionInfo region = new HRegionInfo(TEST_TABLE.getTableName());
+        HRegionInfo region = new HRegionInfo(testTable.getTableName());
         ACCESS_CONTROLLER.preAssign(ObserverContextImpl.createAndPrepare(CP_ENV), region);
         return null;
       }
@@ -560,7 +559,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
     verifyAllowed(new AccessTestAction() {
       @Override
       public Object run() throws Exception {
-        HRegionInfo region = new HRegionInfo(TEST_TABLE.getTableName());
+        HRegionInfo region = new HRegionInfo(testTable.getTableName());
         ACCESS_CONTROLLER.preUnassign(ObserverContextImpl.createAndPrepare(CP_ENV), region,
           true);
         return null;
@@ -591,7 +590,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         SnapshotDescription snapshot = new SnapshotDescription("foo");
-        HTableDescriptor htd = new HTableDescriptor(TEST_TABLE.getTableName());
+        HTableDescriptor htd = new HTableDescriptor(testTable.getTableName());
         ACCESS_CONTROLLER.preSnapshot(ObserverContextImpl.createAndPrepare(CP_ENV),
           snapshot, htd);
         return null;
@@ -614,7 +613,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         SnapshotDescription snapshot = new SnapshotDescription("foo");
-        HTableDescriptor htd = new HTableDescriptor(TEST_TABLE.getTableName());
+        HTableDescriptor htd = new HTableDescriptor(testTable.getTableName());
         ACCESS_CONTROLLER.preCloneSnapshot(ObserverContextImpl.createAndPrepare(CP_ENV),
           snapshot, htd);
         return null;
@@ -626,7 +625,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         SnapshotDescription snapshot = new SnapshotDescription("foo");
-        HTableDescriptor htd = new HTableDescriptor(TEST_TABLE.getTableName());
+        HTableDescriptor htd = new HTableDescriptor(testTable.getTableName());
         ACCESS_CONTROLLER.preRestoreSnapshot(ObserverContextImpl.createAndPrepare(CP_ENV),
           snapshot, htd);
         return null;
@@ -649,7 +648,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         List<TableName> tableNamesList = Lists.newArrayList();
-        tableNamesList.add(TEST_TABLE.getTableName());
+        tableNamesList.add(testTable.getTableName());
         List<TableDescriptor> descriptors = Lists.newArrayList();
         ACCESS_CONTROLLER.preGetTableDescriptors(ObserverContextImpl.createAndPrepare(CP_ENV),
           tableNamesList, descriptors, ".+");
@@ -727,7 +726,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preSplitRegion(
           ObserverContextImpl.createAndPrepare(CP_ENV),
-          TEST_TABLE.getTableName(),
+          testTable.getTableName(),
           Bytes.toBytes("ss"));
         return null;
       }
@@ -748,7 +747,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preSetTableQuota(ObserverContextImpl.createAndPrepare(CP_ENV),
-          TEST_TABLE.getTableName(), null);
+          testTable.getTableName(), null);
         return null;
       }
     }, SUPERUSER, USER_ADMIN, USER_RW, USER_RO, USER_OWNER, USER_CREATE, USER_QUAL, USER_NONE);
@@ -936,7 +935,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         try(Connection connection = ConnectionFactory.createConnection(conf);
-            Table t = connection.getTable(TEST_TABLE.getTableName())) {
+            Table t = connection.getTable(testTable.getTableName())) {
           Put p;
           // with ro ACL
           p = new Put(TEST_ROW).addColumn(TEST_FAMILY, TEST_Q1, ZERO);
@@ -968,7 +967,7 @@ public class TestWithDisabledAuthorization extends SecureTestUtil {
         scan.setStopRow(Bytes.add(TEST_ROW, new byte[]{ 0 } ));
         scan.addFamily(TEST_FAMILY);
         Connection connection = ConnectionFactory.createConnection(conf);
-        Table t = connection.getTable(TEST_TABLE.getTableName());
+        Table t = connection.getTable(testTable.getTableName());
         try {
           ResultScanner scanner = t.getScanner(scan);
           Result result = null;
