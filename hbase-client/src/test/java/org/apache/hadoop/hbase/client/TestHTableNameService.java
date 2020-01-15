@@ -90,13 +90,13 @@ public class TestHTableNameService {
 
   @Test
   public void testFullUri() throws IOException {
-    HTable hTable = new HTable(conf, "hbase://hytst-staging98/test_table1", false);
+    HTable hTable = new HTable(conf, "hbase://tjwq02tst-staging/test_table1", false);
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
 
-    Assert.assertEquals("10.98.18.45,10.98.18.46,10.98.18.47",
+    Assert.assertEquals("10.38.162.228,10.38.162.36,10.38.166.11,10.38.166.12,10.38.166.20",
       hTable.getConfiguration().get("hbase.zookeeper.quorum"));
-    Assert.assertEquals("/hbase/hytst-staging98",
+    Assert.assertEquals("/hbase/tjwq02tst-staging",
       hTable.getConfiguration().get("zookeeper.znode.parent"));
     Assert.assertEquals(11000,
       hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
@@ -108,15 +108,15 @@ public class TestHTableNameService {
 
   @Test
   public void testFullUriWithPort() throws IOException {
-    HTable hTable = new HTable(conf, "hbase://hytst-staging98:9800/test_table1", false);
+    HTable hTable = new HTable(conf, "hbase://tjwq02tst-staging:11000/test_table1", false);
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
 
-    Assert.assertEquals("10.98.18.45,10.98.18.46,10.98.18.47",
+    Assert.assertEquals("10.38.162.228,10.38.162.36,10.38.166.11,10.38.166.12,10.38.166.20",
       hTable.getConfiguration().get("hbase.zookeeper.quorum"));
-    Assert.assertEquals("/hbase/hytst-staging98",
+    Assert.assertEquals("/hbase/tjwq02tst-staging",
       hTable.getConfiguration().get("zookeeper.znode.parent"));
-    Assert.assertEquals(9800,
+    Assert.assertEquals(11000,
       hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
 
     securityEnabled(hTable);
@@ -132,42 +132,6 @@ public class TestHTableNameService {
       Assert.fail();
     } catch (IllegalArgumentException e) {
     }
-  }
-
-  @Test
-  public void testFullUriWithoutCityName() throws IOException {
-    HTable hTable = new HTable(conf, "hbase://hytst-staging98:9800/test_table1", false);
-
-    Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
-
-    Assert.assertEquals("10.98.18.45,10.98.18.46,10.98.18.47",
-      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
-    Assert.assertEquals("/hbase/hytst-staging98",
-      hTable.getConfiguration().get("zookeeper.znode.parent"));
-    Assert.assertEquals(9800,
-      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
-
-    securityEnabled(hTable);
-
-    hTable.close();
-  }
-
-  @Test
-  public void testFullUriWithIndexName() throws IOException {
-    HTable hTable = new HTable(conf, "hbase://hytst-staging98:9800/test_table1", false);
-
-    Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
-
-    Assert.assertEquals("10.98.18.45,10.98.18.46,10.98.18.47",
-      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
-    Assert.assertEquals("/hbase/hytst-staging98",
-      hTable.getConfiguration().get("zookeeper.znode.parent"));
-    Assert.assertEquals(9800,
-      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
-
-    securityEnabled(hTable);
-
-    hTable.close();
   }
 
   @Test
