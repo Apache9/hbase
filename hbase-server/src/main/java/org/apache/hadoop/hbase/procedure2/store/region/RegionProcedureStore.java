@@ -363,7 +363,8 @@ public class RegionProcedureStore extends ProcedureStoreBase {
     if (!fs.delete(procWALDir, true)) {
       throw new IOException("Failed to delete the migrated proc wal directory " + procWALDir);
     }
-    LOG.info("Migration finished");
+    store.stop(true);
+    LOG.info("Migration of WALProcedureStore finished");
   }
 
   @Override
