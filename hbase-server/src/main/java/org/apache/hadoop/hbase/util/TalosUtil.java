@@ -207,8 +207,7 @@ public class TalosUtil {
    *  }
    *
    */
-  public static List<Message> constructJsonMessages(HLog.Entry entry, Set<String> properties) {
-    ArrayList<Cell> cells = entry.getEdit().getCells();
+  public static List<Message> constructJsonMessages(List<Cell> cells, Set<String> properties) {
     Map<String, JsonArray> row2kvsMap = new HashMap<>();
     cells.forEach(cell -> {
       if (cell.getRowArray() == null) {
