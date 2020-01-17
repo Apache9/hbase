@@ -144,7 +144,7 @@ public class ElasticSearchReplicationEndpoint extends TalosReplicationEndpoint {
       }
       Set<String> properties = esIndexPropertiesCache.get(tableName);
       if (properties != null && !properties.isEmpty()) {
-        List<Message> constructedMessages = TalosUtil.constructJsonMessages(entry, properties);
+        List<Message> constructedMessages = TalosUtil.constructJsonMessages(entry.getEdit().getCells(), properties);
         assembleMessage(messages, entry, constructedMessages);
       } else {
         LOG.error("constructTalosMessages no need replication table: " + tableName);
