@@ -120,6 +120,8 @@ class RegionFlusherAndCompactor implements Closeable {
     flushThread.start();
     compactExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder()
       .setNameFormat("Procedure-Region-Store-Compactor").setDaemon(true).build());
+    LOG.info("Constructor flushSize={}, flushPerChanges={}, flushIntervalMs={}, compactMin={}",
+      flushSize, flushPerChanges, flushIntervalMs, compactMin);
   }
 
   // inject our flush related configurations
@@ -135,6 +137,7 @@ class RegionFlusherAndCompactor implements Closeable {
   private void compact() {
     try {
       region.compact(true);
+      Iterables.getOnlyElement(region.getStores()).closeAndArchiveCompactedFiles();
     } catch (IOException e) {
       LOG.error("Failed to compact procedure store region", e);
     }
