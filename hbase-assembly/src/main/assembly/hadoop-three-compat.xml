@@ -34,10 +34,8 @@
       <includes>
         <!-- Keep this list sorted by name -->
         <include>org.apache.hbase:hbase-annotations</include>
-        <include>org.apache.hbase:hbase-backup</include>
         <include>org.apache.hbase:hbase-client</include>
         <include>org.apache.hbase:hbase-common</include>
-        <include>org.apache.hbase:hbase-endpoint</include>
         <include>org.apache.hbase:hbase-examples</include>
         <include>org.apache.hbase:hbase-external-blockcache</include>
         <include>org.apache.hbase:hbase-hadoop-compat</include>
@@ -117,27 +115,7 @@
       </binaries>
     </moduleSet>
     <!-- Include shaded clients in their own directory -->
-    <moduleSet>
-      <useAllReactorProjects>true</useAllReactorProjects>
-      <includes>
-        <include>org.apache.hbase:hbase-shaded-client</include>
-        <include>org.apache.hbase:hbase-shaded-mapreduce</include>
-        <include>org.apache.hbase:hbase-shaded-client-byo-hadoop</include>
-      </includes>
-      <binaries>
-        <outputDirectory>lib/shaded-clients</outputDirectory>
-        <unpack>false</unpack>
-        <dependencySets>
-          <dependencySet>
-            <includes>
-              <include>org.apache.hbase:hbase-shaded-client</include>
-              <include>org.apache.hbase:hbase-shaded-mapreduce</include>
-              <include>org.apache.hbase:hbase-shaded-client-byo-hadoop</include>
-            </includes>
-          </dependencySet>
-        </dependencySets>
-      </binaries>
-    </moduleSet>
+    <!-- we do not need shaded artifacts for mdh binaries -->
   </moduleSets>
   <!-- Include the generated LICENSE and NOTICE files -->
   <files>

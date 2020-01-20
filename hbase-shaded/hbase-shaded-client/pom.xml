@@ -79,6 +79,7 @@
                                     <exclude>com.yammer.metrics:*</exclude>
                                     <exclude>org.aspectj:*</exclude>
                                     <exclude>com.xiaomi.infra:scribe-log4j:jar:</exclude>
+                                    <exclude>com.xiaomi.infra:hadoop-security:jar:</exclude>
                                 </excludes>
                             </artifactSet>
                         </configuration>

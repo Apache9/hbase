@@ -41,7 +41,6 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.yetus.audience.InterfaceAudience;
 
-
 import org.apache.hadoop.hbase.wal.WAL;
 import org.apache.hadoop.hbase.util.TalosUtil;
 
@@ -49,7 +48,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import static org.apache.hadoop.hbase.HConstants.TALOS_UPDATE_ES_TABLE;
 

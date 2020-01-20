@@ -16,13 +16,6 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import com.xiaomi.infra.thirdparty.galaxy.talos.consumer.SimpleConsumer;
-import com.xiaomi.infra.thirdparty.galaxy.talos.producer.SimpleProducer;
-import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
-import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.MessageAndOffset;
-import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Topic;
-import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAttribute;
-
 import java.util.Random;
 import java.util.HashSet;
 import java.util.Set;
@@ -34,14 +27,12 @@ import java.util.ArrayList;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.wal.WAL;
-import org.apache.hadoop.hbase.wal.*;
-
-
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.replication.regionserver.MetricsSource;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.json.JSONObject;
+import org.apache.hadoop.hbase.wal.WALEdit;
+import org.apache.hadoop.hbase.wal.WALKeyImpl;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -49,8 +40,18 @@ import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
-@Category(SmallTests.class) public class TestElasticSearchReplicationEndpoint {
-    @ClassRule
+import com.xiaomi.infra.thirdparty.galaxy.talos.consumer.SimpleConsumer;
+import com.xiaomi.infra.thirdparty.galaxy.talos.producer.SimpleProducer;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.MessageAndOffset;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Topic;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAttribute;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonObject;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonParser;
+
+@Category(SmallTests.class)
+public class TestElasticSearchReplicationEndpoint {
+  @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
       HBaseClassTestRule.forClass(TestElasticSearchReplicationEndpoint.class);
   private static ElasticSearchReplicationEndpoint endpoint;
@@ -79,24 +80,6 @@ import org.mockito.Mockito;
     long now = System.currentTimeMillis();
     UUID clusterId = UUID.randomUUID();
     List<WAL.Entry> entries = new ArrayList<>();
-    //empty kv should be ignore
-    /*
-    for (int i = 0; i < 10; i++) {
-      KeyValue kv = new KeyValue();
-      WAL.Entry entry =
-          new WAL.Entry(new WALKeyImpl(encodedRegionName, TEST_TABLE, i, now, clusterId),
-              new WALEdit().add(kv));
-      entries.add(entry);
-    }
-
-    for (int i = 0; i < 10; i++) {
-      KeyValue kv = new KeyValue(new byte[10]);
-      WAL.Entry entry =
-          new WAL.Entry(new WALKeyImpl(encodedRegionName, TEST_TABLE, i, now, clusterId),
-              new WALEdit().add(kv));
-      entries.add(entry);
-    }
-*/
     putCount = deleteCount = 0;
     //test Put
     for (int i = 0; i < 10; i++) {
@@ -248,18 +231,16 @@ import org.mockito.Mockito;
     for (int i = 0; i < putCount; i++) {
       Message message = messageAndOffsets1.get(i).getMessage();
       String jsonStr = new String(message.getMessage());
-      JSONObject json = new JSONObject(jsonStr);
-      String value = json.getJSONArray("kv").getJSONObject(0).getString("v");
-      Assert.assertEquals(value, String.format("value_%d", i));
-      Assert.assertEquals("PUT", json.getJSONArray("kv").getJSONObject(0).getString("op"));
+      JsonObject json = new JsonParser().parse(jsonStr).getAsJsonObject();
+      Assert.assertEquals(String.format("value_%d", i), getKVValue(json, 0));
+      Assert.assertEquals("PUT", getKVOperation(json, 0));
     }
     for (int i = putCount; i < putCount + deleteCount; i++) {
       Message message = messageAndOffsets1.get(i).getMessage();
       String jsonStr = new String(message.getMessage());
-      JSONObject json = new JSONObject(jsonStr);
-      String value = json.getJSONArray("kv").getJSONObject(0).getString("v");
-      Assert.assertEquals(value, "");
-      Assert.assertEquals("PUT", json.getJSONArray("kv").getJSONObject(0).getString("op"));
+      JsonObject json = new JsonParser().parse(jsonStr).getAsJsonObject();
+      Assert.assertEquals("", getKVValue(json, 0));
+      Assert.assertEquals("PUT", getKVOperation(json, 0));
     }
 
     Assert.assertEquals("size of queue2 = 11", 11, dummyTalosQueue2.getQueue().size());
@@ -268,13 +249,13 @@ import org.mockito.Mockito;
     for (int i = 0; i < 11; i++) {
       Message message = messageAndOffsets2.get(i).getMessage();
       String jsonStr = new String(message.getMessage());
-      JSONObject json = new JSONObject(jsonStr);
-      String rowkey = json.getString("r");
-      Assert.assertEquals("DELETE", json.getJSONArray("kv").getJSONObject(0).getString("op"));
+      JsonObject json = new JsonParser().parse(jsonStr).getAsJsonObject();
+      String rowkey = getRowKey(json);
+      Assert.assertEquals("DELETE", getKVOperation(json, 0));
       if (rowkey.equals("row_11")) {
-        Assert.assertEquals(10, json.getJSONArray("kv").length());
+        Assert.assertEquals(10, json.getAsJsonArray("kv").size());
       } else {
-        Assert.assertEquals(1, json.getJSONArray("kv").length());
+        Assert.assertEquals(1, json.getAsJsonArray("kv").size());
       }
     }
 
@@ -284,11 +265,11 @@ import org.mockito.Mockito;
     for (int i = 0; i < 10; i++) {
       Message message = messageAndOffsets3.get(i).getMessage();
       String jsonStr = new String(message.getMessage());
-      JSONObject json = new JSONObject(jsonStr);
-      Assert.assertEquals(properties.size(), json.getJSONArray("kv").length());
+      JsonObject json = new JsonParser().parse(jsonStr).getAsJsonObject();
+      Assert.assertEquals(properties.size(), json.getAsJsonArray("kv").size());
       for (int j = 0; j < properties.size(); j++) {
-        Assert.assertEquals("PUT", json.getJSONArray("kv").getJSONObject(j).getString("op"));
-        Assert.assertEquals("", json.getJSONArray("kv").getJSONObject(j).getString("v"));
+        Assert.assertEquals("PUT", getKVOperation(json, j));
+        Assert.assertEquals("", getKVValue(json, j));
       }
     }
 
@@ -298,10 +279,21 @@ import org.mockito.Mockito;
     for (int i = 0; i < 100; i++) {
       Message message = messageAndOffsets4.get(i).getMessage();
       String jsonStr = new String(message.getMessage());
-      JSONObject json = new JSONObject(jsonStr);
-      Assert.assertEquals(MAX_STRFING_LEN - 20,
-          json.getJSONArray("kv").getJSONObject(0).getString("v").length());
+      JsonObject json = new JsonParser().parse(jsonStr).getAsJsonObject();
+      Assert.assertEquals(MAX_STRFING_LEN - 20, getKVValue(json, 0).length());
     }
     endpoint.stop();
+  }
+
+  private String getKVValue(JsonObject jsonObject, int i) {
+    return jsonObject.getAsJsonArray("kv").get(0).getAsJsonObject().get("v").getAsString();
+  }
+
+  private String getKVOperation(JsonObject jsonObject, int i) {
+    return jsonObject.getAsJsonArray("kv").get(0).getAsJsonObject().get("op").getAsString();
+  }
+
+  private String getRowKey(JsonObject jsonObject) {
+    return jsonObject.get("r").getAsString();
   }
 }
