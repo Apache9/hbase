@@ -102,13 +102,20 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
    */
   @Override
   public void prepare(int callTimeout, boolean reload) throws IOException {
-    // check table state if this is a retry
-    if (reload && !tableName.equals(TableName.META_TABLE_NAME) &&
-        getConnection().isTableDisabled(tableName)) {
-      throw new TableNotEnabledException(tableName.getNameAsString() + " is disabled.");
-    }
     this.location = getRegionLocation(tableName, row, false, callTimeout);
     setStub(getConnection().getClient(getLocation().getServerName()));
+  }
+
+  @Override
+  public void whenRegionNotServing() throws IOException {
+    if (!tableName.equals(TableName.META_TABLE_NAME)) {
+      // check whether the table has been disabled, notice that the check will introduce a request
+      // to meta, so here we only check for disabled for some specific exception types.
+      LOG.warn("RegionNotServing, check if table " + tableName + " is disabled");
+      if (getConnection().isTableDisabled(tableName)) {
+        throw new TableNotEnabledException(tableName.getNameAsString() + " is disabled.");
+      }
+    }
   }
 
   /**

@@ -32,6 +32,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.ipc.CallTimeoutException;
 import org.apache.hadoop.hbase.quotas.RpcThrottlingException;
@@ -140,6 +141,9 @@ public class RpcRetryingCaller<T> {
               + expectedSleep + ", tries=" + tries
               + ": " + callable.getExceptionMessageAdditionalDetail();
           throw new CallTimeoutException(msg, new RetriesExhaustedException(tries, exceptions));
+        }
+        if (t instanceof NotServingRegionException || t instanceof RegionOfflineException) {
+          callable.whenRegionNotServing();
         }
       }
       LOG.info("Sleep for next retry, tries=" + tries + ", retries=" + retries + ", sleepTime="

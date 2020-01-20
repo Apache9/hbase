@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
@@ -6768,6 +6769,44 @@ public class TestFromClientSide {
     @Override
     public ScanMetrics getScanMetrics() {
       return scanner.getScanMetrics();
+    }
+  }
+
+  @Test
+  public void testDisableTable() throws Exception {
+    TableName tableName = TableName.valueOf("testDisableTable");
+    HTable table = TEST_UTIL.createTable(tableName, FAMILY);
+    byte[] row = Bytes.toBytes("row");
+    table.get(new Get(row).addFamily(FAMILY));
+    TEST_UTIL.getHBaseAdmin().disableTable(tableName);
+    TEST_UTIL.waitFor(60000, () -> TEST_UTIL.getHBaseAdmin().isTableDisabled(tableName));
+    try {
+      table.get(new Get(row).addFamily(FAMILY));
+      fail("Should not come here");
+    } catch (Throwable e) {
+      LOG.error("Failed to get from table", e);
+      assertTrue(e instanceof TableNotEnabledException);
+    }
+  }
+
+  @Test
+  public void testDisableTableForScan() throws Exception {
+    TableName tableName = TableName.valueOf("testDisableTableForScan");
+    HTable table = TEST_UTIL.createTable(tableName, FAMILY);
+    TEST_UTIL.loadTable(table, FAMILY);
+    Scan scan = new Scan();
+    ResultScanner scanner = table.getScanner(scan);
+    Result next = scanner.next();
+    TEST_UTIL.getHBaseAdmin().disableTable(tableName);
+    TEST_UTIL.waitFor(60000, () -> TEST_UTIL.getHBaseAdmin().isTableDisabled(tableName));
+    try {
+      while (next != null) {
+        next = scanner.next();
+      }
+      fail("Should not come here");
+    } catch (Throwable e) {
+      LOG.error("Failed to scan table", e);
+      assertTrue(e instanceof TableNotEnabledException);
     }
   }
 }

@@ -39,6 +39,8 @@ public interface RetryingCallable<T> {
    */
   void prepare(int callTimeout, boolean reload) throws IOException;
 
+  void whenRegionNotServing() throws IOException;
+
   /**
    * Called when {@link #call()} throws an exception and we are going to retry; take action to make
    * it so we succeed on next call (clear caches, do relookup of locations, etc.).

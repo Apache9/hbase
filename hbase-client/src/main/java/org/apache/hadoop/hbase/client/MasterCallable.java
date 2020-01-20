@@ -53,6 +53,10 @@ abstract class MasterCallable<V> implements RetryingCallable<V>, Closeable {
   }
 
   @Override
+  public void whenRegionNotServing() throws IOException {
+  }
+
+  @Override
   public void close() throws IOException {
     // The above prepare could fail but this would still be called though masterAdmin is null
     if (this.master != null) {
