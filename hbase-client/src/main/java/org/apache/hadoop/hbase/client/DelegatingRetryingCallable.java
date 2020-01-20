@@ -31,6 +31,11 @@ public class DelegatingRetryingCallable<T, D extends RetryingCallable<T>>
   }
 
   @Override
+  public void whenRegionNotServing() throws IOException {
+    delegate.whenRegionNotServing();
+  }
+
+  @Override
   public void throwable(Throwable t, boolean retrying) {
     delegate.throwable(t, retrying);
   }
