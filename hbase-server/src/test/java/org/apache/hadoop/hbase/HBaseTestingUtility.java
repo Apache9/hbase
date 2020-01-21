@@ -154,6 +154,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.Log4jLoggerAdapter;
 
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 
 /**
@@ -491,7 +493,7 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
 
   /**
    * @return META table descriptor
-   * @deprecated since 2.0 version and will be removed in 3.0 version.
+   * @deprecated since 2.0 version and will be removed in 3.0 version. Currently for test only.
    *             use {@link #getMetaTableDescriptorBuilder()}
    */
   @Deprecated
@@ -501,7 +503,10 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
 
   /**
    * @return META table descriptor
+   * @deprecated Since 2.3.0. No one should be using this internal. Used in testing only.
    */
+  @Deprecated
+  @VisibleForTesting
   public TableDescriptorBuilder getMetaTableDescriptorBuilder() {
     try {
       return FSTableDescriptors.createMetaTableDescriptorBuilder(conf);

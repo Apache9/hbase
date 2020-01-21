@@ -987,16 +987,15 @@ public class HMaster extends HRegionServer implements MasterServices {
     RegionState rs = this.assignmentManager.getRegionStates().
         getRegionState(RegionInfoBuilder.FIRST_META_REGIONINFO);
     LOG.info("hbase:meta {}", rs);
-    if (rs.isOffline()) {
-      Optional<Procedure<MasterProcedureEnv>> optProc = procedureExecutor.getProcedures().stream()
-        .filter(p -> p instanceof InitMetaProcedure).findAny();
-      if (optProc.isPresent()) {
-        initMetaProc = (InitMetaProcedure) optProc.get();
-      } else {
+    if (rs != null && rs.isOffline()) {
+      Optional<InitMetaProcedure> optProc = procedureExecutor.getProcedures().stream()
+        .filter(p -> p instanceof InitMetaProcedure).map(o -> (InitMetaProcedure) o).findAny();
+      initMetaProc = optProc.orElseGet(() -> {
         // schedule an init meta procedure if meta has not been deployed yet
-        initMetaProc = new InitMetaProcedure();
-        procedureExecutor.submitProcedure(initMetaProc);
-      }
+        InitMetaProcedure temp = new InitMetaProcedure();
+        procedureExecutor.submitProcedure(temp);
+        return temp;
+      });
     }
     if (this.balancer instanceof FavoredNodesPromoter) {
       favoredNodesManager = new FavoredNodesManager(this);
