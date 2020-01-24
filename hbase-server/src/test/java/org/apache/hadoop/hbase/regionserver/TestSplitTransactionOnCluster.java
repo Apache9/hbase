@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -83,6 +83,7 @@ import org.apache.hadoop.hbase.master.assignment.RegionStateNode;
 import org.apache.hadoop.hbase.master.assignment.RegionStates;
 import org.apache.hadoop.hbase.procedure2.ProcedureTestingUtility;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
+import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.throttle.NoLimitThroughputController;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
@@ -362,10 +363,8 @@ public class TestSplitTransactionOnCluster {
     final TableName tableName = TableName.valueOf(name.getMethodName());
 
     // Create table then get the single region for our new table.
-    Table t = createTableAndWait(tableName, HConstants.CATALOG_FAMILY);
-    List<HRegion> regions = cluster.getRegions(tableName);
-    RegionInfo hri = getAndCheckSingleTableRegion(regions);
-
+    Table t = createTableAndWait(tableName, HConstants.CATALOG_FAMILY); List<HRegion> regions =
+      cluster.getRegions(tableName); RegionInfo hri = getAndCheckSingleTableRegion(regions);
     int tableRegionIndex = ensureTableRegionNotOnSameServerAsMeta(admin, hri);
 
     // Turn off balancer so it doesn't cut in and mess up our placements.
@@ -384,25 +383,25 @@ public class TestSplitTransactionOnCluster {
       // Get daughters
       List<HRegion> daughters = checkAndGetDaughters(tableName);
       // Now split one of the daughters.
-      regionCount = cluster.getRegions(hri.getTable()).size();
-      RegionInfo daughter = daughters.get(0).getRegionInfo();
+      HRegion daughterRegion = daughters.get(0);
+      RegionInfo daughter = daughterRegion.getRegionInfo();
       LOG.info("Daughter we are going to split: " + daughter);
-      // Compact first to ensure we have cleaned up references -- else the split
-      // will fail.
-      this.admin.compactRegion(daughter.getRegionName());
-      RetryCounter retrier = new RetryCounter(30, 1, TimeUnit.SECONDS);
-      while (CompactionState.NONE != admin.getCompactionStateForRegion(daughter.getRegionName())
-          && retrier.shouldRetry()) {
-        retrier.sleepUntilNextRetry();
+      // Compact first to ensure we have cleaned up references -- else the split will fail.
+      // May be a compaction going already so compact will return immediately; if so, wait until
+      // compaction completes.
+      daughterRegion.compact(true);
+      HStore store = daughterRegion.getStores().get(0);
+      CompactionProgress progress = store.getCompactionProgress();
+      if (progress != null) {
+        while (progress.getProgressPct() < 1) {
+          LOG.info("Waiting {}", progress);
+          Threads.sleep(1000);
+        }
       }
-      daughters = cluster.getRegions(tableName);
-      HRegion daughterRegion = null;
-      for (HRegion r : daughters) {
-        if (RegionInfo.COMPARATOR.compare(r.getRegionInfo(), daughter) == 0) {
-          daughterRegion = r;
-          // Archiving the compacted references file
-          r.getStores().get(0).closeAndArchiveCompactedFiles();
-          LOG.info("Found matching HRI: " + daughterRegion);
+      store.closeAndArchiveCompactedFiles();
+      for (int i = 0; i < 100; i++) {
+        if (!daughterRegion.hasReferences()) {
+          LOG.info("Break -- no references in {}", daughterRegion);
           break;
         }
       }
@@ -411,6 +410,7 @@ public class TestSplitTransactionOnCluster {
         if (!daughterRegion.hasReferences()) break;
         Threads.sleep(100);
       }
+      LOG.info("Finished {} references={}", daughterRegion, daughterRegion.hasReferences());
       assertFalse("Waiting for reference to be compacted", daughterRegion.hasReferences());
       LOG.info("Daughter hri before split (has been compacted): " + daughter);
       split(daughter, server, regionCount);
