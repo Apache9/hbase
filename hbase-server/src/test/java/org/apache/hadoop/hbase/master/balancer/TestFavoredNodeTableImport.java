@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,6 +21,7 @@ import static org.apache.hadoop.hbase.favored.FavoredNodeAssignmentHelper.FAVORE
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Set;
@@ -35,11 +36,13 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.favored.FavoredNodesManager;
+import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.junit.After;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -67,7 +70,6 @@ public class TestFavoredNodeTableImport {
 
   @After
   public void stopCluster() throws Exception {
-    UTIL.cleanupTestDir();
     UTIL.shutdownMiniCluster();
   }
 
@@ -82,13 +84,14 @@ public class TestFavoredNodeTableImport {
       Threads.sleep(1);
     }
     Admin admin = UTIL.getAdmin();
-    admin.setBalancerRunning(false, true);
+    admin.balancerSwitch(false, true);
 
     String tableName = "testFNImport";
     HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
     desc.addFamily(new HColumnDescriptor(HConstants.CATALOG_FAMILY));
     admin.createTable(desc, Bytes.toBytes("a"), Bytes.toBytes("z"), REGION_NUM);
     UTIL.waitTableAvailable(desc.getTableName());
+    admin.balancerSwitch(true, true);
 
     LOG.info("Shutting down cluster");
     UTIL.shutdownMiniHBaseCluster();
@@ -98,18 +101,26 @@ public class TestFavoredNodeTableImport {
     UTIL.getConfiguration().set(HConstants.HBASE_MASTER_LOADBALANCER_CLASS,
         FavoredStochasticBalancer.class.getName());
     UTIL.restartHBaseCluster(SLAVES);
-    while (!UTIL.getMiniHBaseCluster().getMaster().isInitialized()) {
+    HMaster master = UTIL.getMiniHBaseCluster().getMaster();
+    while (!master.isInitialized()) {
       Threads.sleep(1);
     }
-    admin = UTIL.getAdmin();
-
     UTIL.waitTableAvailable(desc.getTableName());
+    UTIL.waitUntilNoRegionsInTransition(10000);
+    assertTrue(master.isBalancerOn());
 
-    FavoredNodesManager fnm = UTIL.getHBaseCluster().getMaster().getFavoredNodesManager();
+    FavoredNodesManager fnm = master.getFavoredNodesManager();
+    assertNotNull(fnm);
 
+    admin = UTIL.getAdmin();
     List<HRegionInfo> regionsOfTable = admin.getTableRegions(TableName.valueOf(tableName));
     for (HRegionInfo rInfo : regionsOfTable) {
-      Set<ServerName> favNodes = Sets.newHashSet(fnm.getFavoredNodes(rInfo));
+      assertNotNull(rInfo);
+      assertNotNull(fnm);
+      List<ServerName> fns = fnm.getFavoredNodes(rInfo);
+      LOG.info("FNS {} {}", rInfo, fns);
+      assertNotNull(rInfo.toString(), fns);
+      Set<ServerName> favNodes = Sets.newHashSet(fns);
       assertNotNull(favNodes);
       assertEquals("Required no of favored nodes not found.", FAVORED_NODES_NUM, favNodes.size());
       for (ServerName fn : favNodes) {
