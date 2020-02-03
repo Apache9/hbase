@@ -48,7 +48,7 @@ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionServerCoprocessorHost;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.SecurityTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
-@Category({SecurityTests.class, LargeTests.class})
+@Category({SecurityTests.class, MediumTests.class})
 public class TestCellACLs extends SecureTestUtil {
 
   @ClassRule

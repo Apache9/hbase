@@ -39,8 +39,8 @@ import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotReferenceUtil;
 import org.apache.hadoop.hbase.snapshot.SnapshotTestingUtils.SnapshotMock;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -59,7 +59,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.SnapshotProtos;
 /**
  * Test that we correctly reload the cache, filter directories, etc.
  */
-@Category({MasterTests.class, MediumTests.class})
+@Category({MasterTests.class, LargeTests.class})
 public class TestSnapshotFileCache {
 
   @ClassRule
@@ -121,8 +121,8 @@ public class TestSnapshotFileCache {
 
   @Test
   public void testSnapshotTempDirReload() throws IOException {
-    SnapshotFileCache cache =
-        new SnapshotFileCache(fs, rootDir, PERIOD, 10000000, "test-snapshot-file-cache-refresh", new SnapshotFiles());
+    SnapshotFileCache cache = new SnapshotFileCache(fs, rootDir, PERIOD, 10000000,
+      "test-snapshot-file-cache-refresh", new SnapshotFiles());
 
     // Add a new non-tmp snapshot
     createAndTestSnapshotV1(cache, "snapshot0v1", false, false, false);

@@ -23,13 +23,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.AdditionalMatchers.aryEq;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.isNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.times;
@@ -70,8 +70,8 @@ import org.apache.hadoop.hbase.regionserver.StripeStoreFlusher;
 import org.apache.hadoop.hbase.regionserver.compactions.StripeCompactionPolicy.StripeInformationProvider;
 import org.apache.hadoop.hbase.regionserver.compactions.TestCompactor.StoreFileWritersCapture;
 import org.apache.hadoop.hbase.regionserver.throttle.NoLimitThroughputController;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ConcatenatedLists;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -89,7 +89,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
 @RunWith(Parameterized.class)
-@Category({RegionServerTests.class, SmallTests.class})
+@Category({RegionServerTests.class, MediumTests.class})
 public class TestStripeCompactionPolicy {
 
   @ClassRule
@@ -120,6 +120,7 @@ public class TestStripeCompactionPolicy {
 
   @Parameter
   public boolean usePrivateReaders;
+
   @Test
   public void testNoStripesFromFlush() throws Exception {
     Configuration conf = HBaseConfiguration.create();
@@ -139,7 +140,7 @@ public class TestStripeCompactionPolicy {
 
     KeyValue[] input = new KeyValue[] { KV_B, KV_C, KV_C, KV_D, KV_E };
     KeyValue[][] expected = new KeyValue[][] { new KeyValue[] { KV_B },
-        new KeyValue[] { KV_C, KV_C }, new KeyValue[] {  KV_D, KV_E } };
+      new KeyValue[] { KV_C, KV_C }, new KeyValue[] {  KV_D, KV_E } };
     verifyFlush(policy, si, input, expected, new byte[][] { OPEN_KEY, KEY_C, KEY_D, OPEN_KEY });
   }
 
@@ -169,14 +170,18 @@ public class TestStripeCompactionPolicy {
       @Override
       public StripeCompactionRequest selectCompaction(StripeInformationProvider si,
           List<HStoreFile> filesCompacting, boolean isOffpeak) throws IOException {
-        if (!filesCompacting.isEmpty()) return null;
+        if (!filesCompacting.isEmpty()) {
+          return null;
+        }
         return selectSingleStripeCompaction(si, false, false, isOffpeak);
       }
 
       @Override
       public boolean needsCompactions(
           StripeInformationProvider si, List<HStoreFile> filesCompacting) {
-        if (!filesCompacting.isEmpty()) return false;
+        if (!filesCompacting.isEmpty()) {
+          return false;
+        }
         return needsSingleStripeCompaction(si);
       }
     };
@@ -457,7 +462,7 @@ public class TestStripeCompactionPolicy {
     List<HStoreFile> compactFile = new ArrayList<>();
     Iterator<HStoreFile> iter = si.getStripes().get(0).listIterator(1);
     while (iter.hasNext()) {
-        compactFile.add(iter.next());
+      compactFile.add(iter.next());
     }
     verifyCompaction(policy, si, compactFile, false, 1, null, si.getStartRow(0), si.getEndRow(0),
       true);
@@ -557,9 +562,13 @@ public class TestStripeCompactionPolicy {
       @Override
       public boolean matches(List<byte[]> argument) {
         List<byte[]> other = argument;
-        if (other.size() != boundaries.size()) return false;
+        if (other.size() != boundaries.size()) {
+          return false;
+        }
         for (int i = 0; i < other.size(); ++i) {
-          if (!Bytes.equals(other.get(i), boundaries.get(i))) return false;
+          if (!Bytes.equals(other.get(i), boundaries.get(i))) {
+            return false;
+          }
         }
         return true;
       }
@@ -598,8 +607,8 @@ public class TestStripeCompactionPolicy {
   protected void verifyFlush(StripeCompactionPolicy policy, StripeInformationProvider si,
       KeyValue[] input, KeyValue[][] expected, byte[][] boundaries) throws IOException {
     StoreFileWritersCapture writers = new StoreFileWritersCapture();
-    StripeStoreFlusher.StripeFlushRequest req = policy.selectFlush(CellComparatorImpl.COMPARATOR, si,
-      input.length);
+    StripeStoreFlusher.StripeFlushRequest req =
+      policy.selectFlush(CellComparatorImpl.COMPARATOR, si, input.length);
     StripeMultiFileWriter mw = req.createWriter();
     mw.init(null, writers);
     for (KeyValue kv : input) {
@@ -819,7 +828,9 @@ public class TestStripeCompactionPolicy {
     @Override
     public boolean next(List<Cell> result, ScannerContext scannerContext)
         throws IOException {
-      if (kvs.isEmpty()) return false;
+      if (kvs.isEmpty()) {
+        return false;
+      }
       result.add(kvs.remove(0));
       return !kvs.isEmpty();
     }

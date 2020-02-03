@@ -36,7 +36,7 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotHFileCleaner;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.FSVisitor;
@@ -56,7 +56,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 /**
  * Test Case for HBASE-21387
  */
-@Category({ LargeTests.class })
+@Category({ MediumTests.class })
 public class TestSnapshotWhenChoreCleaning {
 
   @ClassRule

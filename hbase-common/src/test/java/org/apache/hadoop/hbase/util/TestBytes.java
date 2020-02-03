@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.util;
 
 import static org.junit.Assert.assertArrayEquals;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -34,14 +35,14 @@ import java.util.Random;
 import junit.framework.TestCase;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.io.WritableUtils;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 
-@Category({MiscTests.class, SmallTests.class})
+@Category({MiscTests.class, MediumTests.class})
 public class TestBytes extends TestCase {
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =

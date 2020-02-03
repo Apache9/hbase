@@ -29,8 +29,8 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.junit.After;
@@ -48,7 +48,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.Iterables;
 /**
  * Testcase for HBASE-20792.
  */
-@Category({ LargeTests.class, MasterTests.class })
+@Category({ MediumTests.class, MasterTests.class })
 public class TestRegionMoveAndAbandon {
   private static final Logger LOG = LoggerFactory.getLogger(TestRegionMoveAndAbandon.class);
 

@@ -25,7 +25,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.wal.WALProvider.AsyncWriter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -37,7 +37,7 @@ import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
 import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
 import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
 
-@Category({ RegionServerServices.class, MediumTests.class })
+@Category({ RegionServerServices.class, SmallTests.class })
 public class TestAsyncFSWALDurability extends WALDurabilityTestBase<CustomAsyncFSWAL> {
 
   @ClassRule
