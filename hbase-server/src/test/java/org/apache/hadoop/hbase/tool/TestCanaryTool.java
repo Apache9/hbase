@@ -50,7 +50,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 
-@Category({LargeTests.class})
+@Category({ LargeTests.class })
 public class TestCanaryTool {
 
   @ClassRule
