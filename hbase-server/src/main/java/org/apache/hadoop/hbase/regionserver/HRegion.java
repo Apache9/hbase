@@ -8290,11 +8290,13 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       default:
         break;
     }
-    OperationQuota operationQuota =
-        this.rsServices.getRegionServerRpcQuotaManager().checkQuota(this, ReadOperationType.GET);
     List<Cell> currentValues = get(mutation, store, deltas, null, tr);
-    operationQuota.addGetResult(currentValues);
-    operationQuota.close();
+    if (rsServices != null) {
+      OperationQuota operationQuota =
+          this.rsServices.getRegionServerRpcQuotaManager().checkQuota(this, ReadOperationType.GET);
+      operationQuota.addGetResult(currentValues);
+      operationQuota.close();
+    }
 
     // Iterate the input columns and update existing values if they were found, otherwise
     // add new column initialized to the delta amount
