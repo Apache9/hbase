@@ -361,10 +361,10 @@ public class TestChoreService {
       service.scheduleChore(chore);
 
       Thread.sleep(10 * period + delta);
-      assertEquals("10 periods have elapsed.", 11, chore.getCountOfChoreCalls());
+      assertTrue("At least 10 periods have elapsed.", chore.getCountOfChoreCalls() >= 11);
 
       Thread.sleep(10 * period + delta);
-      assertEquals("20 periods have elapsed.", 21, chore.getCountOfChoreCalls());
+      assertTrue("At least 20 periods have elapsed.", chore.getCountOfChoreCalls() >= 21);
     } finally {
       shutdownService(service);
     }
