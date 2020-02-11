@@ -290,14 +290,14 @@ public class TestZooKeeper {
   @Test
   public void testClusterKeyWithNameService() throws Exception {
     System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
-    ZKClusterKey key = ZKConfig.transformClusterKey("hbase://lgprc-xiaomi");
+    ZKClusterKey key = ZKConfig.transformClusterKey("hbase://zjyprc-xiaomi");
 
-    ZkClusterInfo info = new ZkClusterInfo("lgprc");
+    ZkClusterInfo info = new ZkClusterInfo("zjyprc");
     assertEquals(key.getQuorumString(), info.resolve());
     assertEquals(key.getClientPort(), info.getPort());
-    assertEquals(key.getZnodeParent(), "/hbase/lgprc-xiaomi");
+    assertEquals(key.getZnodeParent(), "/hbase/zjyprc-xiaomi");
     try {
-      ZKConfig.transformClusterKey("hbase://lgunkown-xiaomi");
+      ZKConfig.transformClusterKey("hbase://zjyunkown-xiaomi");
       assertTrue(false);
     } catch (IOException ex) {
       // OK
@@ -317,11 +317,11 @@ public class TestZooKeeper {
   public void testApplyClusterKeyToConfWithNameService() throws IOException {
     Configuration conf = HBaseConfiguration.create();
     conf.set("hadoop.security.authentication", "kerberos");
-    ZKUtil.applyClusterKeyToConf(conf, "hbase://lgprc-xiaomi");
-    ZkClusterInfo info = new ZkClusterInfo("lgprc");
+    ZKUtil.applyClusterKeyToConf(conf, "hbase://zjyprc-xiaomi");
+    ZkClusterInfo info = new ZkClusterInfo("zjyprc");
     assertEquals(conf.get(HConstants.ZOOKEEPER_QUORUM), info.resolve());
     assertEquals(conf.get(HConstants.ZOOKEEPER_CLIENT_PORT), Integer.toString(info.getPort()));
-    assertEquals(conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT), "/hbase/lgprc-xiaomi");
+    assertEquals(conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT), "/hbase/zjyprc-xiaomi");
   }
 }
 
