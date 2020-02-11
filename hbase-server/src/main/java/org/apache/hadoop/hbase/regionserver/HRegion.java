@@ -4347,8 +4347,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     // TODO, add check for value length also move this check to the client
     checkResources();
     startRegionOperation();
-    OperationQuota quota =
-        this.rsServices.getRegionServerRpcQuotaManager().checkQuota(this, ReadOperationType.GET);
+    OperationQuota quota = null;
+    if (rsServices != null && rsServices.getRegionServerRpcQuotaManager() != null) {
+      quota = rsServices.getRegionServerRpcQuotaManager().checkQuota(this, ReadOperationType.GET);
+    }
     try {
       Get get = new Get(row);
       checkFamily(family);
@@ -4385,8 +4387,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           throw new RuntimeException(
               "Result size of get in checkAndMutate must be 0 or 1, actual size:" + result.size());
         }
-        quota.addGetResult(result);
-        quota.close();
+        if (quota != null) {
+          quota.addGetResult(result);
+          quota.close();
+        }
         boolean valueIsNull = comparator.getValue() == null || comparator.getValue().length == 0;
         boolean rowIsNull = result.size() == 0 || result.get(0).getValueLength() == 0;
         boolean matches = false;
@@ -4439,11 +4443,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           }
           // All edits for the given row (across all column families) must happen atomically.
           if (mutation != null) {
-            rsServices.getRegionServerRpcQuotaManager().checkQuota(this, mutation);
+            if (rsServices != null && rsServices.getRegionServerRpcQuotaManager() != null) {
+              rsServices.getRegionServerRpcQuotaManager().checkQuota(this, mutation);
+            }
             doBatchMutate(mutation);
           } else {
-            rsServices.getRegionServerRpcQuotaManager().checkQuota(this,
-              rowMutations.getMutations());  
+            if (rsServices != null && rsServices.getRegionServerRpcQuotaManager() != null) {
+              rsServices.getRegionServerRpcQuotaManager().checkQuota(this,
+                rowMutations.getMutations());
+            }
             mutateRow(rowMutations);
           }
           this.checkAndMutateChecksPassed.increment();
@@ -8291,7 +8299,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         break;
     }
     List<Cell> currentValues = get(mutation, store, deltas, null, tr);
-    if (rsServices != null) {
+    if (rsServices != null && rsServices.getRegionServerRpcQuotaManager() != null) {
       OperationQuota operationQuota =
           this.rsServices.getRegionServerRpcQuotaManager().checkQuota(this, ReadOperationType.GET);
       operationQuota.addGetResult(currentValues);
@@ -9092,7 +9100,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   }
 
   private void updateReadRequestsByCapacityUnitPerSecond(long readSize) {
-    if (rsServices != null) {
+    if (rsServices != null && rsServices.getRegionServerRpcQuotaManager() != null) {
       long readCapacityUnit =
           rsServices.getRegionServerRpcQuotaManager().calculateReadCapacityUnit(readSize);
       readRequestsByCapacityUnitPerSecond.inc(readCapacityUnit);
@@ -9100,7 +9108,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   }
 
   private void updateWriteRequestsByCapacityUnitPerSecond(long writeSize) {
-    if (rsServices != null) {
+    if (rsServices != null && rsServices.getRegionServerRpcQuotaManager() != null) {
       long writeCapacityUnit =
           rsServices.getRegionServerRpcQuotaManager().calculateWriteCapacityUnit(writeSize);
       writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnit);
