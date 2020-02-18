@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.hadoop.hbase.Waiter.ExplainingPredicate;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
@@ -72,6 +74,7 @@ public class TestSplitMerge {
         return "Split has not finished yet";
       }
     });
+	  UTIL.waitUntilNoRegionsInTransition(TimeUnit.SECONDS.toMillis(30));
     HRegionInfo regionA = null;
     HRegionInfo regionB = null;
     for (HRegionInfo region : admin.getTableRegions(tableName)) {
