@@ -49,15 +49,10 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
-import org.apache.hadoop.hbase.MultiActionResultTooLarge;
-import org.apache.hadoop.hbase.RegionTooBusyException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.TooManyRegionScannersException;
-import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
@@ -876,15 +871,14 @@ public class HConnectionImplementation implements HConnection, Closeable {
     // the extra 9's on the end are necessary to allow "exact" matches
     // without knowing the precise region names.
     byte[] metaKey = HRegionInfo.createRegionName(tableName, row, HConstants.NINES, false);
-    Scan s = new Scan();
-    s.setReversed(true);
-    s.withStartRow(metaKey);
-    s.addFamily(HConstants.CATALOG_FAMILY);
-    s.setOneRowLimit();
-    for (int tries = 0;; tries++) {
+    byte[] metaStopKey = HRegionInfo.createRegionName(tableName, HConstants.EMPTY_START_ROW, "", false);
+    Scan s = new Scan().withStartRow(metaKey).withStopRow(metaStopKey, true)
+      .addFamily(HConstants.CATALOG_FAMILY).setReversed(true).setCaching(5)
+      .setReadType(Scan.ReadType.PREAD);
+    for (int tries = 0; ; tries++) {
       if (tries >= maxAttempts) {
         throw new NoServerForRegionException("Unable to find region for "
-            + Bytes.toStringBinary(row) + " after " + tries + " tries.", lastCause);
+                + Bytes.toStringBinary(row) + " after " + tries + " tries.", lastCause);
       }
 
       // This block guards against two threads trying to load the meta
@@ -914,55 +908,63 @@ public class HConnectionImplementation implements HConnection, Closeable {
         forceDeleteCachedLocation(tableName, row);
       }
       try {
-        Result regionInfoRow = null;
         s.resetMvccReadPoint();
         try (ReversedClientScanner rcs =
-            new ReversedClientScanner(conf, s, TableName.META_TABLE_NAME, this)) {
-          regionInfoRow = rcs.next();
-        }
-        if (regionInfoRow == null) {
-          throw new TableNotFoundException(tableName);
-        }
-        // convert the row result into the HRegionLocation we need!
-        HRegionInfo regionInfo = MetaScanner.getHRegionInfo(regionInfoRow);
-        if (regionInfo == null) {
-          throw new IOException("HRegionInfo was null or empty in " + TableName.META_TABLE_NAME
-              + ", row=" + regionInfoRow);
-        }
+                     new ReversedClientScanner(conf, s, TableName.META_TABLE_NAME, this)) {
+          boolean tableNotFound = true;
+          for (;;) {
+            Result regionInfoRow = rcs.next();
+            if (regionInfoRow == null) {
+              if (tableNotFound) {
+                throw new TableNotFoundException(tableName);
+              } else {
+                throw new IOException("Unable to find region for "
+                    + Bytes.toStringBinary(row) + " in " + tableName);
+              }
+            }
+            tableNotFound = false;
+            // convert the row result into the HRegionLocation we need!
+            HRegionInfo regionInfo = MetaScanner.getHRegionInfo(regionInfoRow);
+            if (regionInfo == null) {
+              throw new IOException("HRegionInfo was null or empty in " + TableName.META_TABLE_NAME
+                      + ", row=" + regionInfoRow);
+            }
+            // See HBASE-20182. It is possible that we locate to a split parent even after the
+            // children are online, so here we need to skip this region and go to the next one.
+            if (regionInfo.isSplitParent()) {
+              continue;
+            }
+            if (regionInfo.isOffline()) {
+              throw new RegionOfflineException("the region is offline, could"
+                  + " be caused by a disable table call: " + regionInfo.getRegionNameAsString());
+            }
+            // It is possible that the split children have not been online yet and we have skipped
+            // the parent in the above condition, so we may have already reached a region which does
+            // not contains us.
+            if (!regionInfo.containsRow(row)) {
+              throw new IOException(
+                "Unable to find region for " + Bytes.toStringBinary(row) + " in " + tableName);
+            }
+            ServerName serverName = HRegionInfo.getServerName(regionInfoRow);
+            if (serverName == null) {
+              throw new NoServerForRegionException("No server address listed " + "in "
+                      + TableName.META_TABLE_NAME + " for region " + regionInfo.getRegionNameAsString()
+                      + " containing row " + Bytes.toStringBinary(row));
+            }
 
-        // possible we got a region of a different table...
-        if (!regionInfo.getTable().equals(tableName)) {
-          throw new TableNotFoundException(
-              "Table '" + tableName + "' was not found, got: " + regionInfo.getTable() + ".");
-        }
-        if (regionInfo.isSplit()) {
-          throw new RegionOfflineException(
-              "the only available region for" + " the required row is a split parent,"
-                  + " the daughters should be online soon: " + regionInfo.getRegionNameAsString());
-        }
-        if (regionInfo.isOffline()) {
-          throw new RegionOfflineException("the region is offline, could"
-              + " be caused by a disable table call: " + regionInfo.getRegionNameAsString());
-        }
+            if (isDeadServer(serverName)) {
+              throw new RegionServerStoppedException(
+                      "hbase:meta says the region " + regionInfo.getRegionNameAsString()
+                              + " is managed by the server " + serverName + ", but it is dead.");
+            }
 
-        ServerName serverName = HRegionInfo.getServerName(regionInfoRow);
-        if (serverName == null) {
-          throw new NoServerForRegionException("No server address listed " + "in "
-              + TableName.META_TABLE_NAME + " for region " + regionInfo.getRegionNameAsString()
-              + " containing row " + Bytes.toStringBinary(row));
+            // Instantiate the location
+            location = new HRegionLocation(regionInfo, serverName,
+                    HRegionInfo.getSeqNumDuringOpen(regionInfoRow));
+            cacheLocation(tableName, null, location);
+            return location;
+          }
         }
-
-        if (isDeadServer(serverName)) {
-          throw new RegionServerStoppedException(
-              "hbase:meta says the region " + regionInfo.getRegionNameAsString()
-                  + " is managed by the server " + serverName + ", but it is dead.");
-        }
-
-        // Instantiate the location
-        location = new HRegionLocation(regionInfo, serverName,
-            HRegionInfo.getSeqNumDuringOpen(regionInfoRow));
-        cacheLocation(tableName, null, location);
-        return location;
       } catch (TableNotFoundException e) {
         // if we got this error, probably means the table just plain doesn't
         // exist. rethrow the error immediately. this should always be coming
@@ -977,9 +979,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
         }
         if (tries < maxAttempts - 1) {
           LOG.warn("locateRegionInMeta in " + TableName.META_TABLE_NAME + ", attempt=" + tries
-              + " of " + maxAttempts + " failed; retrying after sleep of "
-              + ConnectionUtils.getPauseTime(this.pause, tries),
-            e);
+                          + " of " + maxAttempts + " failed; retrying after sleep of "
+                          + ConnectionUtils.getPauseTime(this.pause, tries),
+                  e);
         } else {
           throw e;
         }
@@ -992,7 +994,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
         Thread.sleep(ConnectionUtils.getPauseTime(this.pause, tries));
       } catch (InterruptedException e) {
         throw new InterruptedIOException(
-            "Giving up trying to location region in " + "meta: thread is interrupted.");
+                "Giving up trying to location region in " + "meta: thread is interrupted.");
       }
     }
   }
