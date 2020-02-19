@@ -70,7 +70,7 @@ public class FDSRecordReader extends RecordReader<ImmutableBytesWritable, Result
       return 0;
     }
     int index = scanner.getFileListIterator().previousIndex();
-    return  (index == -1 ? 0 : index) / fileCount;
+    return  (index == -1 ? 0 : index) / (float)fileCount;
   }
 
   @Override

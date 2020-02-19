@@ -137,7 +137,7 @@ implements Writable, Comparable<TableSplit> {
    */
   public TableSplit(TableName tableName, Scan scan, byte[] startRow, byte[] endRow,
       final String location, final String encodedRegionName, long length) {
-    this(tableName == null ? new String() : tableName.getNameAsString(), tableName, scan, startRow, endRow,
+    this(tableName == null ? "" : tableName.getNameAsString(), tableName, scan, startRow, endRow,
         location, encodedRegionName, length);
   }
 

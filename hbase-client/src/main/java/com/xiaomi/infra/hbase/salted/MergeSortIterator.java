@@ -18,11 +18,12 @@
  */
 package com.xiaomi.infra.hbase.salted;
 
+import org.apache.yetus.audience.InterfaceAudience;
+
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
-import org.apache.yetus.audience.InterfaceAudience;
 
 /**
  * This iterator will do the merge sort. When each iterator is sorted from min to max.
@@ -83,10 +84,21 @@ public class MergeSortIterator<T> implements Iterator<T> {
       this.comparator = comparator;
     }
 
+    @Override
     public int compareTo(IterWrapper<T> other) {
       T my = this.getCurrent();
       T they = other.getCurrent();
       return comparator.compare(my, they);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return super.equals(obj);
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
     }
 
     public T getCurrent() {

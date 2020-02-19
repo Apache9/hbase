@@ -207,6 +207,8 @@ public class TalosUtil {
       if (properties.contains(column)) {
         jsonKvList.add(toJsonKVObject("PUT", column, ""));
       }
+    default:
+      //do nothing
     }
     return jsonKvList;
   }

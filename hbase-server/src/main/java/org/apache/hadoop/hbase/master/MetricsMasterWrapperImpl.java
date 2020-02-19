@@ -17,15 +17,6 @@
  */
 package org.apache.hadoop.hbase.master;
 
-import java.io.IOException;
-import java.util.AbstractMap.SimpleImmutableEntry;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.RegionMetrics;
@@ -34,16 +25,23 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.metrics.Interns;
+import org.apache.hadoop.hbase.quotas.QuotaObserverChore;
+import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.VersionInfo;
+import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.apache.hadoop.hbase.quotas.QuotaObserverChore;
-import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot;
-import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Impl for exposing HMaster Information through JMX
@@ -374,17 +372,21 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     }
 
     // Append cluster replication metric
-    for (String peerId : peerSizeOfLogQueue.keySet()) {
+    for (Map.Entry<String, Long> e : peerSizeOfLogQueue.entrySet()) {
+      String peerId = e.getKey();
+      Long peerSize = e.getValue();
       String clusterPeerPrefix = "Cluster_peer_" + peerId + "_metric_";
       builder.addCounter(Interns.info(clusterPeerPrefix + MetricsClusterSource.SIZE_OF_LOG_QUEUE,
-          MetricsClusterSource.SIZE_OF_LOG_QUEUE_DESC), peerSizeOfLogQueue.get(peerId)).addCounter(
+          MetricsClusterSource.SIZE_OF_LOG_QUEUE_DESC), peerSize).addCounter(
           Interns.info(clusterPeerPrefix + MetricsClusterSource.REPLICATION_LAG,
               MetricsClusterSource.REPLICATION_LAG_DESC), peerReplicationLag.get(peerId));
     }
 
-    for (TableName table : tableReadRequestPerSecond.keySet()) {
+    for (Map.Entry<TableName, Long> e : tableReadRequestPerSecond.entrySet()) {
+      TableName table = e.getKey();
+      Long requestPerSecond = e.getValue();
       String ns = table.getNamespaceAsString();
-      accumulateMap(nsReadRequestPerSecond, ns, tableReadRequestPerSecond.get(table));
+      accumulateMap(nsReadRequestPerSecond, ns, requestPerSecond);
       accumulateMap(nsWriteRequestPerSecond, ns, tableWriteRequestPerSecond.get(table));
       accumulateMap(nsGetRequestPerSecond, ns, tableGetRequestPerSecond.get(table));
       accumulateMap(nsScanRequestPerSecond, ns, tableScanRequestPerSecond.get(table));
