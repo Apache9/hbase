@@ -141,6 +141,15 @@ public final class HConstants {
       "hbase.master.balanced.max.diff.percent";
   public static final double DEFAULT_HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT = 0.01;
 
+  /**
+   * Config for galaxy group balancer
+   */
+  public static final String HBASE_GALAXY_GROUP_CLUSTER = "hbase.galaxy.group";
+  /**
+   * GalaxyGroupLoadBalancer internal balancer class
+   */
+  public static final String HBASE_GALAXY_GROUP_INTERNAL_LOADBALANCER_CLASS ="hbase.galaxy.group.internal.loadbalancer.class";
+
   /** Config for pluggable region normalizer */
   public static final String HBASE_MASTER_NORMALIZER_CLASS =
     "hbase.master.normalizer.class";
