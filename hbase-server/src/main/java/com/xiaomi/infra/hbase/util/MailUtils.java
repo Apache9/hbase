@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class MailUtils {
 	private static final Logger LOG = LoggerFactory.getLogger(MailUtils.class.getName());
 
-	private static final String MAIL_HOST = "mail.srv";
+	private static final String MAIL_HOST = "mail.b2c.srv";
 	private static final Properties PROPERTIES = System.getProperties();
 
 	static {
