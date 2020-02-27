@@ -366,8 +366,8 @@ public class BadRSDetector extends Chore {
       LOG.warn(message);
     }
     BadRsDetectorStats stats = statsBuilder.setDetails(message).setIsSuccess(success).build();
-	  MailUtils.sendMail(HConstants.MAIL_TO, "BadRSDetector for cluster " + stats.getClusterName(),
-			  stats.toString());
+	  MailUtils.sendMail(master.getConfiguration(), HConstants.MAIL_TO,
+			  "BadRSDetector for cluster " + stats.getClusterName(), stats.toString());
   }
 
 	@VisibleForTesting

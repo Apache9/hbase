@@ -2090,7 +2090,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if ((clusterName != null) && !"".equals(clusterName)) {
         String mailBody = "Cluster " + clusterName + " abort regionserver " + serverName + " "
             + "because of full queue";
-        MailUtils.sendMail(HConstants.MAIL_TO,
+        MailUtils.sendMail(conf, HConstants.MAIL_TO,
             "QueueFullDetector for cluster " + clusterName + " abort regionserver " + serverName,
             mailBody);
       }

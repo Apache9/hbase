@@ -111,7 +111,7 @@ import com.xiaomi.infra.hbase.util.MailUtils;
 			  "HealthChecker for cluster " + clusterName + " abort regionserver " + regionServer
 					  .getServerName().getHostAndPort();
 	  if ((clusterName != null) && !"".equals(clusterName)) { // exclude UT
-		  MailUtils.sendMail(HConstants.MAIL_TO, subject, errorMessage);
+		  MailUtils.sendMail(regionServer.getConfiguration() ,HConstants.MAIL_TO, subject, errorMessage);
 	  }
   }
 
