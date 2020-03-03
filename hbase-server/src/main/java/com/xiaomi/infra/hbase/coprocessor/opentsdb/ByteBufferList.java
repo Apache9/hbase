@@ -1,5 +1,7 @@
 package com.xiaomi.infra.hbase.coprocessor.opentsdb;
 
+import org.apache.yetus.audience.InterfaceAudience;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -8,6 +10,7 @@ import java.util.Arrays;
  *
  * @since 2.1
  */
+@InterfaceAudience.Private
 public class ByteBufferList {
 
   private static class BufferSegment {

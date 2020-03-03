@@ -3,6 +3,7 @@ package com.xiaomi.infra.hbase.coprocessor.opentsdb;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.yetus.audience.InterfaceAudience;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -12,6 +13,7 @@ import java.util.Arrays;
  * allows iterating over the datapoints in a column without creating objects for each
  * datapoint.
  */
+@InterfaceAudience.Private
 public class ColumnDatapointIterator implements Comparable<ColumnDatapointIterator> {
 
   /**

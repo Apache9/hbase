@@ -17,8 +17,6 @@
  */
 package com.xiaomi.infra.hbase.coprocessor;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -38,10 +36,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.Random;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -49,7 +45,7 @@ import static org.junit.Assert.assertTrue;
 
 @Category(LargeTests.class)
 public class TestOpenTSDBCompactRegionObserver {
-  private static final Log LOG = LogFactory.getLog(TestOpenTSDBCompactRegionObserver.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestOpenTSDBCompactRegionObserver.class);
 
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 

@@ -2,6 +2,7 @@ package com.xiaomi.infra.hbase.coprocessor.opentsdb;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.yetus.audience.InterfaceAudience;
 
 import java.util.Arrays;
 
@@ -9,6 +10,7 @@ import java.util.Arrays;
  *  Constants used in various places.
  *  Static Util Method for OpenTSDBCompaction.
  */
+@InterfaceAudience.Private
 public class OpenTSDBUtil {
   // our xiaomi opentsdb cluster use 4 bytes width
   public static short METRIC_WIDTH = 4;

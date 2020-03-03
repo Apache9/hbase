@@ -1,11 +1,12 @@
 package com.xiaomi.infra.hbase.coprocessor.opentsdb;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -18,8 +19,9 @@ import static com.xiaomi.infra.hbase.coprocessor.opentsdb.OpenTSDBUtil.USE_OTSDB
 /**
  * rewrite of opentsdb compaction
  */
+@InterfaceAudience.Private
 public class OpenTSDBCompaction {
-  private static final Log LOG = LogFactory.getLog(OpenTSDBCompaction.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OpenTSDBCompaction.class);
   private final List<Cell> row;
   private long compactedKVTimestamp;
   private List<Cell> skipCompactCells;

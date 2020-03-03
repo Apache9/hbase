@@ -19,8 +19,6 @@ package com.xiaomi.infra.hbase.coprocessor;
 
 import com.xiaomi.infra.hbase.coprocessor.opentsdb.OpenTSDBCompaction;
 import com.xiaomi.infra.hbase.coprocessor.opentsdb.OpenTSDBUtil;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -36,6 +34,9 @@ import org.apache.hadoop.hbase.regionserver.compactions.CompactionLifeCycleTrack
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,8 +49,9 @@ import static com.xiaomi.infra.hbase.coprocessor.opentsdb.OpenTSDBUtil.MAX_TIMES
  * Used for OpenTSDB data table compaction,
  * compact multi column/Cells into one column/Cell of one row.
  */
+@InterfaceAudience.Private
 public class OpenTSDBCompactRegionObserver implements RegionCoprocessor, RegionObserver {
-  private static final Log LOG = LogFactory.getLog(OpenTSDBCompactRegionObserver.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OpenTSDBCompactRegionObserver.class);
   private final static long ONE_HOUR_SECONDS = MAX_TIMESPAN;
   private final static String TSDB_TABLE_CF = "t";
 
