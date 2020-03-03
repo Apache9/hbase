@@ -208,10 +208,9 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
     comConf.setMinFilesToCompact(minThreshold);
   }
 
-  private boolean shouldPerformDeleteRatioCompaction(final Collection<StoreFile> filesToCompact) throws IOException{
-    boolean result = false;
-    if (!comConf.isDeleteRatioCompactionEnable()){
-      return result;
+  private boolean shouldPerformDeleteRatioCompaction(final Collection<StoreFile> filesToCompact) {
+    if (!comConf.isDeleteRatioCompactionEnable()) {
+      return false;
     }
 
     long totalKvCnt = 0;
@@ -219,29 +218,29 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
     long totalDeleteKvCnt = 0;
     long totalDeleteFamilyCnt = 0;
 
-    for(StoreFile storeFile: filesToCompact) {
-      StoreFile.Reader reader = storeFile.createReader();
-      if(reader.getKvCnt() == -1 || reader.getRowCnt() == -1 ||
-        reader.getDeleteKvCnt() == -1 ||reader.getDeleteFamilyCnt() == -1){
-        return result;
+    for (StoreFile storeFile : filesToCompact) {
+      StoreFile.Reader reader = storeFile.getReader();
+      if (reader == null || reader.getKvCnt() == -1 || reader.getRowCnt() == -1
+          || reader.getDeleteKvCnt() == -1 || reader.getDeleteFamilyCnt() == -1) {
+        return false;
       }
       totalKvCnt += reader.getKvCnt();
       totalRowCnt += reader.getRowCnt();
       totalDeleteKvCnt += reader.getDeleteKvCnt();
       totalDeleteFamilyCnt += reader.getDeleteFamilyCnt();
-      reader.close(false);
     }
-    if(totalRowCnt == 0 || totalKvCnt == 0){
-      return result;
+    if (totalRowCnt == 0 || totalKvCnt == 0) {
+      return false;
     }
-    double deleteRatio = totalDeleteFamilyCnt/(double)totalRowCnt + totalDeleteKvCnt/(double)totalKvCnt;
-    if(deleteRatio >= comConf.getDeleteRatioCompactionThreshold()) {
-      result = true;
-      if(LOG.isDebugEnabled()){
+    double deleteRatio =
+        totalDeleteFamilyCnt / (double) totalRowCnt + totalDeleteKvCnt / (double) totalKvCnt;
+    if (deleteRatio >= comConf.getDeleteRatioCompactionThreshold()) {
+      if (LOG.isDebugEnabled()) {
         LOG.debug("Major compaction triggered on store " + this + "; because delete ratio is "
-          + deleteRatio + " > threshold: "+comConf.getDeleteRatioCompactionThreshold());
+            + deleteRatio + " > threshold: " + comConf.getDeleteRatioCompactionThreshold());
       }
+      return true;
     }
-    return result;
+    return false;
   }
 }
