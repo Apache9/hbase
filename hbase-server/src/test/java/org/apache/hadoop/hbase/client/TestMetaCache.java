@@ -76,7 +76,7 @@ public class TestMetaCache {
   private static final byte[] QUALIFIER = Bytes.toBytes("qual");
   private HConnectionImplementation conn;
   private HRegionServer badRS;
-  private static final int TIMEOUT = 30;
+  private static final int TIMEOUT = 100;
 
   private static final List<Throwable> metaCacheClearingExceptions = new ArrayList<Throwable>() {{
     add(new RegionServerStoppedException(" "));
