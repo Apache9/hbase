@@ -230,14 +230,23 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
       totalDeleteFamilyCnt += reader.getDeleteFamilyCnt();
     }
     if (totalRowCnt == 0 || totalKvCnt == 0) {
-      return false;
+      if (totalDeleteFamilyCnt > 0 || totalDeleteKvCnt > 0) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Major compaction triggered on store; because totalDeleteFamilyCnt: "
+              + totalDeleteFamilyCnt + ", totalDeleteKvCnt: " + totalDeleteKvCnt + ", totalRowCnt: "
+              + totalRowCnt + ", totalKvCnt: " + totalKvCnt);
+        }
+        return true;
+      } else {
+        return false;
+      }
     }
     double deleteRatio =
         totalDeleteFamilyCnt / (double) totalRowCnt + totalDeleteKvCnt / (double) totalKvCnt;
     if (deleteRatio >= comConf.getDeleteRatioCompactionThreshold()) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Major compaction triggered on store " + this + "; because delete ratio is "
-            + deleteRatio + " > threshold: " + comConf.getDeleteRatioCompactionThreshold());
+        LOG.debug("Major compaction triggered on store; because delete ratio is " + deleteRatio
+            + " > threshold: " + comConf.getDeleteRatioCompactionThreshold());
       }
       return true;
     }
