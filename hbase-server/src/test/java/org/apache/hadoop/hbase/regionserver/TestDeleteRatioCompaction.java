@@ -71,8 +71,17 @@ public class TestDeleteRatioCompaction {
    */
   @Test
   public void testCompaction() throws Exception {
+    compaction("testCompaction", false);
+  }
+
+  @Test
+  public void testCompactionWithZeroRowCount() throws Exception {
+    compaction("testCompactionWithZeroRowCount", true);
+  }
+
+  private void compaction(String tableName, boolean onlyContainsDeleteKV) throws Exception {
     // Create table
-    TableName table = TableName.valueOf("testCompaction");
+    TableName table = TableName.valueOf(tableName);
     byte[] family = Bytes.toBytes("family");
     byte[][] families =
         { family, Bytes.add(family, Bytes.toBytes("2")), Bytes.add(family, Bytes.toBytes("3")) };
@@ -84,7 +93,9 @@ public class TestDeleteRatioCompaction {
       // load some data
       int rows = 100;
       int flushes = 8;
-      loadData(ht, families, rows, flushes);
+      if (!onlyContainsDeleteKV) {
+        loadData(ht, families, rows, flushes);
+      }
       deleteData(ht, families, rows / 2, flushes);
       // start a thread to read data
       final HTable hTable = ht;
