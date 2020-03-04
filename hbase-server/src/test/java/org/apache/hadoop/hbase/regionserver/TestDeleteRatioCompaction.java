@@ -75,8 +75,17 @@ public class TestDeleteRatioCompaction {
    */
   @Test
   public void testCompaction() throws Exception {
+    compaction("testCompaction", false);
+  }
+
+  @Test
+  public void testCompactionWithZeroRowCount() throws Exception {
+    compaction("testCompactionWithZeroRowCount", true);
+  }
+
+  public void compaction(String tableNameStr, boolean onlyContainsDeleteKV) throws Exception {
     // Create table
-    TableName tableName = TableName.valueOf("testCompaction");
+    TableName tableName = TableName.valueOf(tableNameStr);
     byte[] family = Bytes.toBytes("family");
     byte[][] families =
         { family, Bytes.add(family, Bytes.toBytes("2")), Bytes.add(family, Bytes.toBytes("3")) };
@@ -86,7 +95,9 @@ public class TestDeleteRatioCompaction {
       // load some data
       int rows = 100;
       int flushes = 8;
-      loadData(table, families, rows, flushes);
+      if (!onlyContainsDeleteKV) {
+        loadData(table, families, rows, flushes);
+      }
       deleteData(table, families, rows / 2, flushes);
       // start a thread to read data
       new Thread(() -> getData(table, families, rows, flushes)).start();
@@ -96,7 +107,7 @@ public class TestDeleteRatioCompaction {
       int countBefore = countStoreFilesInFamilies(regions, families);
       assertTrue(countBefore > 0);
       // compaction checker will run major compaction
-      TEST_UTIL.getHBaseAdmin().compactionSwitch(true, new ArrayList<>(0));
+      TEST_UTIL.getAdmin().compactionSwitch(true, new ArrayList<>(0));
       TEST_UTIL.waitFor(50000, () -> {
         int countAfter = countStoreFilesInFamilies(regions, families);
         return families.length == countAfter;
