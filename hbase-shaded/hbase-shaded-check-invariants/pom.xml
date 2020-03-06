@@ -55,8 +55,8 @@
     </dependency>
     <!-- parent pom defines these for children. :( :( :( -->
     <dependency>
-      <groupId>com.github.stephenc.findbugs</groupId>
-      <artifactId>findbugs-annotations</artifactId>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -118,8 +118,9 @@
                     <exclude>log4j:*</exclude>
                     <exclude>commons-logging:*</exclude>
                     <!-- annotations that never change -->
-                    <exclude>com.google.code.findbugs:*</exclude>
-                    <exclude>com.github.stephenc.findbugs:*</exclude>
+		    <exclude>com.google.code.findbugs:*</exclude>
+                    <exclude>com.github.stephenc.fingbugs:*</exclude>
+                    <exclude>com.github.spotbugs:*</exclude>
                     <!-- We leave HTrace as an unshaded dependnecy on purpose so that tracing within a JVM will work -->
                     <exclude>org.apache.htrace:*</exclude>
                     <!-- Our public API requires Hadoop at runtime to work -->

@@ -135,7 +135,7 @@ pipeline {
                         # (needs to match the archive bits below)
                         YETUS_ARGS+=("--build-url-artifacts=artifact/out")
                         # plugins to enable
-                        YETUS_ARGS+=("--plugins=all")
+                        YETUS_ARGS+=("--plugins=all,-findbugs")
                         # don't let these tests cause -1s because we aren't really paying that
                         # much attention to them
                         YETUS_ARGS+=("--tests-filter=ruby-lint,test4tests")

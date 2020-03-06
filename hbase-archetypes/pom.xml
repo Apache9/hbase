@@ -43,41 +43,7 @@
   </modules>
 
   <build>
-    <pluginManagement>
-      <plugins>
-        <!-- This entry overrides the excludeFileFilter element in the findbugs
-             configuration of the hbase/pom.xml file. This override specifies that
-             the excluded-filter-file is found TWO levels up from a grandchild project. -->
-        <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>findbugs-maven-plugin</artifactId>
-          <configuration>
-            <excludeFilterFile>${project.basedir}/../../dev-support/findbugs-exclude.xml</excludeFilterFile>
-            <findbugsXmlOutput>true</findbugsXmlOutput>
-            <xmlOutput>true</xmlOutput>
-            <effort>Max</effort>
-          </configuration>
-        </plugin>
-      </plugins>
-    </pluginManagement>
     <plugins>
-      <!-- Special configuration for findbugs just in the parent, emulating the setup in
-           hbase/pom.xml. Note that exclude-file-filter is found ONE level up from this project. -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>findbugs-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <inherited>false</inherited>
-            <goals>
-              <goal>findbugs</goal>
-            </goals>
-            <configuration>
-              <excludeFilterFile>${project.basedir}/../dev-support/findbugs-exclude.xml</excludeFilterFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
