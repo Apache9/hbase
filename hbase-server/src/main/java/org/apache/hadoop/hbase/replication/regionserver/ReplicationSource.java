@@ -574,7 +574,7 @@ public class ReplicationSource extends Thread
       FSUtils.getInstance(backingFs, conf).recoverFileLease(backingFs, filePath, conf, null);
     }
   }
-  
+
   /**
    * Read all the entries from the current log files and retain those
    * that need to be replicated. Else, process the end of the current file.
