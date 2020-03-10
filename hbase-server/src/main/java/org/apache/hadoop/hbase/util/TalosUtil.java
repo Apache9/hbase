@@ -86,7 +86,7 @@ public class TalosUtil {
   private static final String ESCAPE_COLON = "---";
   private static final String ESCAPE_DASH = "--";
   private static final String DASH = "-";
-  private static final int CHUNK_SIZE = 4194304; // 4MB
+  public static final int CHUNK_SIZE = 4194304; // 4MB
   public static final int HEADER_SIZE = Bytes.SIZEOF_LONG + 2 * Bytes.SIZEOF_INT;
   //in utf-8 code,　3b per chinese character
   private static final int MAX_STRFING_LEN = CHUNK_SIZE / 3;
@@ -360,8 +360,8 @@ public class TalosUtil {
   private static List<Message> constructMessagesFromBytes(long seqNum, byte[] messageBytes) {
     List<Message> messages = new ArrayList<>();
     byte [] seqNumBytes = Bytes.toBytes(seqNum);
-    int totalSlices = messageBytes.length / CHUNK_SIZE + 1;
-    for(int index = 0; index < totalSlices; index++){
+    int totalSlices = (messageBytes.length + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    for(int index = 0; index < totalSlices; index++) {
       int offset = index * CHUNK_SIZE;
       int length =
           (offset + CHUNK_SIZE) > messageBytes.length ? (messageBytes.length - offset) : CHUNK_SIZE;
