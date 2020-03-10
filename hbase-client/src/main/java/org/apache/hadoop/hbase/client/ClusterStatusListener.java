@@ -52,7 +52,7 @@ import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramChannel;
 import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramPacket;
 import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioDatagramChannel;
 
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos;
+import org.apache.hbase.shaded.protobuf.generated.ClusterStatusProtos;
 
 /**
  * A class that receives the cluster status, and provide it as a set of service to the client.
@@ -208,10 +208,9 @@ class ClusterStatusListener implements Closeable {
       try {
         Bootstrap b = new Bootstrap();
         b.group(group)
-            .channel(NioDatagramChannel.class)
-            .option(ChannelOption.SO_REUSEADDR, true)
-            .handler(new ClusterStatusHandler());
-
+          .channel(NioDatagramChannel.class)
+          .option(ChannelOption.SO_REUSEADDR, true)
+          .handler(new ClusterStatusHandler());
         channel = (DatagramChannel)b.bind(bindAddress, port).sync().channel();
       } catch (InterruptedException e) {
         close();
@@ -225,8 +224,10 @@ class ClusterStatusListener implements Closeable {
         ni = NetworkInterface.getByInetAddress(Addressing.getIpAddress());
       }
 
+      LOG.debug("Channel bindAddress={}, networkInterface={}, INA={}", bindAddress, ni, ina);
       channel.joinGroup(ina, ni, null, channel.newPromise());
     }
+
 
     @Override
     public void close() {
@@ -252,8 +253,7 @@ class ClusterStatusListener implements Closeable {
       }
 
       @Override
-      public boolean acceptInboundMessage(Object msg)
-          throws Exception {
+      public boolean acceptInboundMessage(Object msg) throws Exception {
         return super.acceptInboundMessage(msg);
       }
 
