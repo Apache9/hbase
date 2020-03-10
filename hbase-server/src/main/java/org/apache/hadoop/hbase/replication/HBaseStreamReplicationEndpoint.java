@@ -44,6 +44,7 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAndPartition;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicTalosResourceName;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -71,6 +72,7 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.CollectionUtils;
 import org.apache.hadoop.hbase.util.HBaseStreamUtil;
 import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
@@ -245,7 +247,11 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
         }
         throw new IOException(cause);
       }
-      messages.add(new Pair<>(entry.getKey(), constructJsonMessages(entry, tableStreamConfig)));
+      List<Message> entryMessages = constructJsonMessages(entry, tableStreamConfig);
+      // entryMessages will be empty if all cells of entry are filtered.
+      if (!CollectionUtils.isEmpty(entryMessages)) {
+        messages.add(new Pair<>(entry.getKey(), entryMessages));
+      }
     }
     return messages;
   }
@@ -390,7 +396,7 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
         .map(cell -> cellToJson(cell, tableStreamConfig))
         .filter(Objects::nonNull)
         .forEach(jsonObjs::add);
-    return HBaseStreamUtil.toMessage(jsonObjs);
+    return jsonObjs.size() == 0 ? Collections.emptyList() : HBaseStreamUtil.toMessage(jsonObjs);
   }
 
   private JsonObject cellToJson(Cell cell, TableStreamConfig tableStreamConfig) {
