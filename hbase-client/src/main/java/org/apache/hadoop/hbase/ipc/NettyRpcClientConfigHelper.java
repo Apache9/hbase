@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,18 +17,18 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
-
-import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
-import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
-
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
+import org.apache.hbase.thirdparty.io.netty.channel.Channel;
+import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
+import org.apache.hbase.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import org.apache.hbase.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
+import org.apache.hbase.thirdparty.io.netty.util.concurrent.DefaultThreadFactory;
 
 import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
@@ -46,7 +46,7 @@ import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.DefaultThreadFactory
  * @since 2.0.0
  */
 @InterfaceAudience.Public
-public class NettyRpcClientConfigHelper {
+public final class NettyRpcClientConfigHelper {
 
   public static final String EVENT_LOOP_CONFIG = "hbase.rpc.client.event-loop.config";
 
@@ -61,6 +61,11 @@ public class NettyRpcClientConfigHelper {
 
   private static final Map<String, Pair<EventLoopGroup, Class<? extends Channel>>>
     EVENT_LOOP_CONFIG_MAP = new HashMap<>();
+
+  /**
+   * Shutdown constructor.
+   */
+  private NettyRpcClientConfigHelper() {}
 
   /**
    * Set the EventLoopGroup and channel class for {@code AsyncRpcClient}.
@@ -115,5 +120,4 @@ public class NettyRpcClientConfigHelper {
     }
     return EVENT_LOOP_CONFIG_MAP.get(name);
   }
-
 }

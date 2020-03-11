@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,6 +17,25 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.CellScanner;
+import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.Server;
+import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.security.HBasePolicyProvider;
+import org.apache.hadoop.hbase.util.NettyEventLoopGroupConfig;
+import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.xiaomi.infra.thirdparty.io.netty.bootstrap.ServerBootstrap;
 import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
 import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelInitializer;
@@ -31,30 +50,10 @@ import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioServerSocketCh
 import com.xiaomi.infra.thirdparty.io.netty.handler.codec.FixedLengthFrameDecoder;
 import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.DefaultThreadFactory;
 import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.GlobalEventExecutor;
-
-import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.HBaseInterfaceAudience;
-import org.apache.hadoop.hbase.Server;
-import org.apache.yetus.audience.InterfaceAudience;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
-import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.apache.hadoop.hbase.security.HBasePolicyProvider;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingService;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.Descriptors.MethodDescriptor;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
-import org.apache.hadoop.hbase.util.NettyEventLoopGroupConfig;
-import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
 
 /**
  * An RPC server with Netty4 implementation.
@@ -62,8 +61,15 @@ import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
  */
 @InterfaceAudience.LimitedPrivate({HBaseInterfaceAudience.CONFIG})
 public class NettyRpcServer extends RpcServer {
-
   public static final Logger LOG = LoggerFactory.getLogger(NettyRpcServer.class);
+
+  /**
+   * Name of property to change netty rpc server eventloop thread count. Default is 0.
+   * Tests may set this down from unlimited.
+   */
+  public static final String HBASE_NETTY_EVENTLOOP_RPCSERVER_THREADCOUNT_KEY =
+    "hbase.netty.eventloop.rpcserver.thread.count";
+  private static final int EVENTLOOP_THREADCOUNT_DEFAULT = 0;
 
   private final InetSocketAddress bindAddress;
 
@@ -96,13 +102,17 @@ public class NettyRpcServer extends RpcServer {
       eventLoopGroup = config.group();
       channelClass = config.serverChannelClass();
     } else {
-      eventLoopGroup = new NioEventLoopGroup(0,
-          new DefaultThreadFactory("NettyRpcServer", true, Thread.MAX_PRIORITY));
+      int threadCount = server == null? EVENTLOOP_THREADCOUNT_DEFAULT:
+        server.getConfiguration().getInt(HBASE_NETTY_EVENTLOOP_RPCSERVER_THREADCOUNT_KEY,
+          EVENTLOOP_THREADCOUNT_DEFAULT);
+      eventLoopGroup = new NioEventLoopGroup(threadCount,
+        new DefaultThreadFactory("NettyRpcServer", true, Thread.MAX_PRIORITY));
       channelClass = NioServerSocketChannel.class;
     }
     ServerBootstrap bootstrap = new ServerBootstrap().group(eventLoopGroup).channel(channelClass)
         .childOption(ChannelOption.TCP_NODELAY, tcpNoDelay)
         .childOption(ChannelOption.SO_KEEPALIVE, tcpKeepAlive)
+        .childOption(ChannelOption.SO_REUSEADDR, true)
         .childHandler(new ChannelInitializer<Channel>() {
 
           @Override

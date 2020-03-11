@@ -17,6 +17,11 @@
  */
 package org.apache.hadoop.hbase.util;
 
+import java.util.concurrent.ThreadFactory;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.yetus.audience.InterfaceAudience;
+
 import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
 import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
 import com.xiaomi.infra.thirdparty.io.netty.channel.ServerChannel;
@@ -28,17 +33,11 @@ import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioServerSocketCh
 import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
 import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.DefaultThreadFactory;
 
-import java.util.concurrent.ThreadFactory;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.yetus.audience.InterfaceAudience;
-
 /**
  * Event loop group related config.
  */
 @InterfaceAudience.Private
 public class NettyEventLoopGroupConfig {
-
   private final EventLoopGroup group;
 
   private final Class<? extends ServerChannel> serverChannelClass;
