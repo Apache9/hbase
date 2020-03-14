@@ -30,6 +30,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.util.Pair;
 
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.DefaultThreadFactory;
+
 /**
  * Helper class for passing config to {@link NettyRpcClient}.
  * <p>
@@ -42,6 +49,13 @@ import org.apache.hadoop.hbase.util.Pair;
 public class NettyRpcClientConfigHelper {
 
   public static final String EVENT_LOOP_CONFIG = "hbase.rpc.client.event-loop.config";
+
+  /**
+   * Name of property to change netty rpc client eventloop thread count. Default is 0.
+   * Tests may set this down from unlimited.
+   */
+  public static final String HBASE_NETTY_EVENTLOOP_RPCCLIENT_THREADCOUNT_KEY =
+      "hbase.netty.eventloop.rpcclient.thread.count";
 
   private static final String CONFIG_NAME = "global-event-loop";
 
@@ -61,17 +75,40 @@ public class NettyRpcClientConfigHelper {
   }
 
   /**
-   * The {@code AsyncRpcClient} will create its own {@code NioEventLoopGroup}.
+   * The {@link NettyRpcClient} will create its own {@code NioEventLoopGroup}.
    */
   public static void createEventLoopPerClient(Configuration conf) {
     conf.set(EVENT_LOOP_CONFIG, "");
     EVENT_LOOP_CONFIG_MAP.clear();
   }
 
+  private static volatile Pair<EventLoopGroup, Class<? extends Channel>> DEFAULT_EVENT_LOOP;
+
+  private static Pair<EventLoopGroup, Class<? extends Channel>>
+    getDefaultEventLoopConfig(Configuration conf) {
+    Pair<EventLoopGroup, Class<? extends Channel>> eventLoop = DEFAULT_EVENT_LOOP;
+    if (eventLoop != null) {
+      return eventLoop;
+    }
+    synchronized (NettyRpcClientConfigHelper.class) {
+      eventLoop = DEFAULT_EVENT_LOOP;
+      if (eventLoop != null) {
+        return eventLoop;
+      }
+      int threadCount = conf.getInt(HBASE_NETTY_EVENTLOOP_RPCCLIENT_THREADCOUNT_KEY, 0);
+      eventLoop = new Pair<>(
+        new NioEventLoopGroup(threadCount,
+          new DefaultThreadFactory("RPCClient-NioEventLoopGroup", true, Thread.NORM_PRIORITY)),
+        NioSocketChannel.class);
+      DEFAULT_EVENT_LOOP = eventLoop;
+    }
+    return eventLoop;
+  }
+
   static Pair<EventLoopGroup, Class<? extends Channel>> getEventLoopConfig(Configuration conf) {
     String name = conf.get(EVENT_LOOP_CONFIG);
     if (name == null) {
-      return DefaultNettyEventLoopConfig.GROUP_AND_CHANNEL_CLASS;
+      return getDefaultEventLoopConfig(conf);
     }
     if (StringUtils.isBlank(name)) {
       return null;
