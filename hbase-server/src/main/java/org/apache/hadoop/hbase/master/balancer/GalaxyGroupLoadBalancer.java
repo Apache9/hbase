@@ -148,6 +148,7 @@ public class GalaxyGroupLoadBalancer implements LoadBalancer {
   @Override
   public List<RegionPlan> balanceCluster(TableName tableName,
       Map<ServerName, List<HRegionInfo>> clusterState) throws HBaseIOException {
+    LOG.debug("Start Generate Balance plan for table " + tableName);
     return balanceCluster(clusterState);
 
   }
@@ -210,9 +211,11 @@ public class GalaxyGroupLoadBalancer implements LoadBalancer {
         ServerName server = entry.getKey();
         List<HRegionInfo> regions = entry.getValue();
         if (groupInfo.getServers().contains(server)) {
+          List<HRegionInfo> regionInfos =
+              groupClusterState.computeIfAbsent(server, k -> new ArrayList<>());
           for (HRegionInfo region : regions) {
             if (!misplacedRegions.containsKey(region)) {
-              groupClusterState.computeIfAbsent(server, k -> new ArrayList<>()).add(region);
+              regionInfos.add(region);
             }
           }
         }

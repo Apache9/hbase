@@ -65,6 +65,7 @@ public class TestGalaxyGroupLoadBalancer {
       TableName.valueOf("table2") };
   private static int regionId = 0;
   private static final Random rand = new Random();
+  private static float slop = 0.1f;
 
   @BeforeClass
   public static void beforeAllTests() throws Exception {
@@ -72,7 +73,7 @@ public class TestGalaxyGroupLoadBalancer {
 
     tableDescs = constructTableDesc();
     Configuration conf = HBaseConfiguration.create();
-    conf.set("hbase.regions.slop", "0.1");
+    conf.setFloat("hbase.regions.slop", slop);
     conf.set("hbase.galaxy.group.internal.loadbalancer.class", SimpleLoadBalancer.class.getCanonicalName());
     conf.set("hbase.galaxy.group", "fds,emq");
     conf.set("hbase.galaxy.group.fds.servers", "server0:1000,server1:1000");
@@ -178,10 +179,12 @@ public class TestGalaxyGroupLoadBalancer {
       }
       if (maxRegions - minRegions < 2) {
         // less than 2 between max and min, can't balance
-        return;
+        continue;
       }
-      int min = numRegions / numServers;
-      int max = numRegions % numServers == 0 ? min : min + 1;
+
+      float average = (float)numRegions / numServers;
+      int min = (int) Math.floor(average * (1 - slop));
+      int max = (int) Math.ceil(average * (1 + slop));
 
       for (ServerAndLoad server : groupLoad) {
         assertTrue(server.getLoad() <= max);
@@ -293,6 +296,38 @@ public class TestGalaxyGroupLoadBalancer {
     ArrayListMultimap<String, ServerAndLoad> list = convertToGroupBasedMap(servers);
     List<RegionPlan> plans = loadBalancer.balanceCluster(servers);
     ArrayListMultimap<String, ServerAndLoad> balancedCluster = reconcile(list, plans);
+    assertClusterAsBalanced(balancedCluster);
+  }
+
+  // act as assignment, change server load
+  private void updateServers(Map<ServerName, List<HRegionInfo>> servers, List<RegionPlan> plans) {
+    plans.forEach(plan -> {
+      HRegionInfo regionInfo = plan.getRegionInfo();
+      servers.get(plan.getSource()).remove(regionInfo);
+      servers.get(plan.getDestination()).add(regionInfo);
+    });
+  }
+
+  /**
+   * Test the load balancing algorithm. add server to a group can achieve balance
+   */
+  @Test
+  public void testBalanceClusterWhenAddServer() throws Exception {
+    Map<ServerName, List<HRegionInfo>> servers = mockClusterServers();
+    ArrayListMultimap<String, ServerAndLoad> list = convertToGroupBasedMap(servers);
+    List<RegionPlan> plans = loadBalancer.balanceCluster(servers);
+    ArrayListMultimap<String, ServerAndLoad> balancedCluster = reconcile(list, plans);
+    assertClusterAsBalanced(balancedCluster);
+    updateServers(servers, plans);
+    // modify config to add server for fds group
+    Configuration conf = loadBalancer.getConf();
+    conf.set("hbase.galaxy.group.fds.servers",
+      "server0:1000,server1:1000,server4:1000,server5:1000");
+    loadBalancer.setConf(conf);
+    loadBalancer.initialize();
+    list = convertToGroupBasedMap(servers);
+    plans = loadBalancer.balanceCluster(servers);
+    balancedCluster = reconcile(list, plans);
     assertClusterAsBalanced(balancedCluster);
   }
 
