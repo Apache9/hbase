@@ -114,7 +114,7 @@ import org.apache.hadoop.hbase.master.cleaner.ReplicationMetaCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleanerChore;
-import org.apache.hadoop.hbase.master.cleaner.SnapshotForDeletedTableCleaner;
+import org.apache.hadoop.hbase.master.cleaner.SnapshotCleaner;
 import org.apache.hadoop.hbase.master.cleaner.SnapshotRestoreFileCleaner;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.master.handler.DeleteTableHandler;
@@ -520,7 +520,7 @@ MasterServices, Server {
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
   private SnapshotRestoreFileCleaner snapshotRestoreFileCleaner;
-  private SnapshotForDeletedTableCleaner snapshotForDeletedTableCleaner;
+  private SnapshotCleaner snapshotCleaner;
   private BadRSDetector badRSDetector;
 
   private MasterCoprocessorHost cpHost;
@@ -1527,12 +1527,8 @@ MasterServices, Server {
         getMasterFileSystem().getFileSystem(), archiveDir, cleanerPool);
     Threads.setDaemonThreadRunning(hfileCleaner.getThread(), n + ".archivedHFileCleaner");
 
-    if (snapshotBeforeDelete) {
-      this.snapshotForDeletedTableCleaner =
-          new SnapshotForDeletedTableCleaner(cleanerInterval, this, snapshotManager, conf);
-      Threads.setDaemonThreadRunning(snapshotForDeletedTableCleaner.getThread(),
-        n + ".snapshotForDeletedTableCleaner");
-    }
+    this.snapshotCleaner = new SnapshotCleaner(cleanerInterval, this, snapshotManager, conf);
+    Threads.setDaemonThreadRunning(snapshotCleaner.getThread(), n + ".snapshotCleaner");
 
     // Start the health checker
     if (this.healthCheckChore != null) {
@@ -1603,8 +1599,8 @@ MasterServices, Server {
     if (this.replicationZKNodeCleanerChore != null) this.replicationZKNodeCleanerChore.interrupt();
     if (this.hfileCleaner != null) this.hfileCleaner.interrupt();
     if (this.snapshotRestoreFileCleaner != null) this.snapshotRestoreFileCleaner.interrupt();
-    if (this.snapshotForDeletedTableCleaner != null) {
-      this.snapshotForDeletedTableCleaner.interrupt();
+    if (this.snapshotCleaner != null) {
+      this.snapshotCleaner.interrupt();
     }
     if (cleanerPool != null) {
       cleanerPool.shutdownNow();

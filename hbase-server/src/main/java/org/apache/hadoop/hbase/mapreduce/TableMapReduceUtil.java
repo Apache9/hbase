@@ -365,6 +365,32 @@ public class TableMapReduceUtil {
       addDependencyJars, tmpRestoreDir);
   }
 
+  /**
+   * Sets up the job for reading from a table snapshot. It bypasses hbase servers and read directly
+   * from snapshot files. This method will create a snapshot with TTL(ms), and user must make sure
+   * that the job can be finished before the snapshot is deleted.
+   * @param table The name of a table to read from.
+   * @param scan The scan instance with the columns, time range etc.
+   * @param mapper The mapper class to use.
+   * @param outputKeyClass The class of the output key.
+   * @param outputValueClass The class of the output value.
+   * @param job The current job to adjust. Make sure the passed job is carrying all necessary HBase
+   *          configuration.
+   * @param addDependencyJars upload HBase jars and jars for any of the configured job classes via
+   *          the distributed cache (tmpjars).
+   * @param ttl TTL of the snapshot, in milliseconds. 0 means forever.
+   * @return The snapshot name.
+   * @throws IOException When setting up the details fails.
+   */
+  public static String initTableSnapshotMapperJob(TableName table, Scan scan,
+      Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
+      Job job, boolean addDependencyJars, long ttl) throws IOException {
+    Configuration conf = job.getConfiguration();
+    Path tmpRestoreDir = getAndCheckTmpRestoreDir(conf);
+    return initTableSnapshotMapperJob(table, scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, tmpRestoreDir, ttl);
+  }
+
   public static String initTableSnapshotMapperJob(TableName table, Scan scan,
       Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
       Job job, boolean addDependencyJars, Path tmpRestoreDir) throws IOException {
@@ -375,6 +401,42 @@ public class TableMapReduceUtil {
     // Create a snapshot.
     try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {
       admin.snapshot(snapshotName, table);
+    }
+
+    // Initialize the snapshot mapper job.
+    initTableSnapshotMapperJob(snapshotName, scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, tmpRestoreDir);
+    return snapshotName;
+  }
+
+  /**
+   * Sets up the job for reading from a table snapshot. It bypasses hbase servers and read directly
+   * from snapshot files. This method will create a snapshot with TTL(ms), and user must make sure
+   * that the job can be finished before the snapshot is deleted.
+   * @param table The name of a table to read from.
+   * @param scan The scan instance with the columns, time range etc.
+   * @param mapper The mapper class to use.
+   * @param outputKeyClass The class of the output key.
+   * @param outputValueClass The class of the output value.
+   * @param job The current job to adjust. Make sure the passed job is carrying all necessary HBase
+   *          configuration.
+   * @param addDependencyJars upload HBase jars and jars for any of the configured job classes via
+   *          the distributed cache (tmpjars).
+   * @param tmpRestoreDir The directory to restore the snapshot.
+   * @param ttl TTL of the snapshot, in milliseconds. 0 means forever.
+   * @return The snapshot name.
+   * @throws IOException When setting up the details fails.
+   */
+  public static String initTableSnapshotMapperJob(TableName table, Scan scan,
+      Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
+      Job job, boolean addDependencyJars, Path tmpRestoreDir, long ttl) throws IOException {
+    // Generate a snapshot name, based on namespace, table name, local timestamp.
+    String snapshotName = String.format("SnapshotInputFormat-%s-%s-%d",
+      table.getNamespaceAsString(), table.getQualifierAsString(), System.currentTimeMillis());
+
+    // Create a snapshot.
+    try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {
+      admin.snapshot(snapshotName, table, ttl);
     }
 
     // Initialize the snapshot mapper job.

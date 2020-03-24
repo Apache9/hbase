@@ -902,12 +902,20 @@ module Hbase
       if args.empty?
          @admin.snapshot(snapshot_name.to_java_bytes, table.to_java_bytes)
       else
+         ttl = 0
+         skip_flush = false
          args.each do |arg|
             if arg[SKIP_FLUSH] == true
-              @admin.snapshot(snapshot_name.to_java_bytes, table.to_java_bytes, SnapshotDescription::Type::SKIPFLUSH)
-            else
-               @admin.snapshot(snapshot_name.to_java_bytes, table.to_java_bytes)
+              skip_flush = true
             end
+            if arg.has_key?(TTL)
+              ttl = arg.delete(TTL)
+            end
+         end
+         if skip_flush
+           @admin.snapshot(snapshot_name.to_java_bytes, table.to_java_bytes, SnapshotDescription::Type::SKIPFLUSH, ttl)
+         else
+           @admin.snapshot(snapshot_name.to_java_bytes, table.to_java_bytes, ttl)
          end
       end
     end

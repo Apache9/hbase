@@ -111,6 +111,16 @@ public final class SnapshotProtos {
      * <code>optional .UsersAndPermissions users_and_permissions = 7;</code>
      */
     org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.UsersAndPermissionsOrBuilder getUsersAndPermissionsOrBuilder();
+
+    // optional int64 ttl = 8 [default = 0];
+    /**
+     * <code>optional int64 ttl = 8 [default = 0];</code>
+     */
+    boolean hasTtl();
+    /**
+     * <code>optional int64 ttl = 8 [default = 0];</code>
+     */
+    long getTtl();
   }
   /**
    * Protobuf type {@code SnapshotDescription}
@@ -215,6 +225,11 @@ public final class SnapshotProtos {
                 usersAndPermissions_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000040;
+              break;
+            }
+            case 64: {
+              bitField0_ |= 0x00000080;
+              ttl_ = input.readInt64();
               break;
             }
           }
@@ -559,6 +574,22 @@ public final class SnapshotProtos {
       return usersAndPermissions_;
     }
 
+    // optional int64 ttl = 8 [default = 0];
+    public static final int TTL_FIELD_NUMBER = 8;
+    private long ttl_;
+    /**
+     * <code>optional int64 ttl = 8 [default = 0];</code>
+     */
+    public boolean hasTtl() {
+      return ((bitField0_ & 0x00000080) == 0x00000080);
+    }
+    /**
+     * <code>optional int64 ttl = 8 [default = 0];</code>
+     */
+    public long getTtl() {
+      return ttl_;
+    }
+
     private void initFields() {
       name_ = "";
       table_ = "";
@@ -567,6 +598,7 @@ public final class SnapshotProtos {
       version_ = 0;
       owner_ = "";
       usersAndPermissions_ = org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.UsersAndPermissions.getDefaultInstance();
+      ttl_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -611,6 +643,9 @@ public final class SnapshotProtos {
       if (((bitField0_ & 0x00000040) == 0x00000040)) {
         output.writeMessage(7, usersAndPermissions_);
       }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        output.writeInt64(8, ttl_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -647,6 +682,10 @@ public final class SnapshotProtos {
       if (((bitField0_ & 0x00000040) == 0x00000040)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(7, usersAndPermissions_);
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(8, ttl_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -706,6 +745,11 @@ public final class SnapshotProtos {
         result = result && getUsersAndPermissions()
             .equals(other.getUsersAndPermissions());
       }
+      result = result && (hasTtl() == other.hasTtl());
+      if (hasTtl()) {
+        result = result && (getTtl()
+            == other.getTtl());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -746,6 +790,10 @@ public final class SnapshotProtos {
       if (hasUsersAndPermissions()) {
         hash = (37 * hash) + USERS_AND_PERMISSIONS_FIELD_NUMBER;
         hash = (53 * hash) + getUsersAndPermissions().hashCode();
+      }
+      if (hasTtl()) {
+        hash = (37 * hash) + TTL_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getTtl());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -880,6 +928,8 @@ public final class SnapshotProtos {
           usersAndPermissionsBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000040);
+        ttl_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000080);
         return this;
       }
 
@@ -940,6 +990,10 @@ public final class SnapshotProtos {
         } else {
           result.usersAndPermissions_ = usersAndPermissionsBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000080) == 0x00000080)) {
+          to_bitField0_ |= 0x00000080;
+        }
+        result.ttl_ = ttl_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -982,6 +1036,9 @@ public final class SnapshotProtos {
         }
         if (other.hasUsersAndPermissions()) {
           mergeUsersAndPermissions(other.getUsersAndPermissions());
+        }
+        if (other.hasTtl()) {
+          setTtl(other.getTtl());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -1483,6 +1540,39 @@ public final class SnapshotProtos {
           usersAndPermissions_ = null;
         }
         return usersAndPermissionsBuilder_;
+      }
+
+      // optional int64 ttl = 8 [default = 0];
+      private long ttl_ ;
+      /**
+       * <code>optional int64 ttl = 8 [default = 0];</code>
+       */
+      public boolean hasTtl() {
+        return ((bitField0_ & 0x00000080) == 0x00000080);
+      }
+      /**
+       * <code>optional int64 ttl = 8 [default = 0];</code>
+       */
+      public long getTtl() {
+        return ttl_;
+      }
+      /**
+       * <code>optional int64 ttl = 8 [default = 0];</code>
+       */
+      public Builder setTtl(long value) {
+        bitField0_ |= 0x00000080;
+        ttl_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional int64 ttl = 8 [default = 0];</code>
+       */
+      public Builder clearTtl() {
+        bitField0_ = (bitField0_ & ~0x00000080);
+        ttl_ = 0L;
+        onChanged();
+        return this;
       }
 
       // @@protoc_insertion_point(builder_scope:SnapshotDescription)
@@ -6213,29 +6303,30 @@ public final class SnapshotProtos {
   static {
     java.lang.String[] descriptorData = {
       "\n\016Snapshot.proto\032\023AccessControl.proto\032\010F" +
-      "S.proto\032\013HBase.proto\"\201\002\n\023SnapshotDescrip" +
+      "S.proto\032\013HBase.proto\"\221\002\n\023SnapshotDescrip" +
       "tion\022\014\n\004name\030\001 \002(\t\022\r\n\005table\030\002 \001(\t\022\030\n\rcre" +
       "ation_time\030\003 \001(\003:\0010\022.\n\004type\030\004 \001(\0162\031.Snap" +
       "shotDescription.Type:\005FLUSH\022\017\n\007version\030\005" +
       " \001(\005\022\r\n\005owner\030\006 \001(\t\0223\n\025users_and_permiss" +
-      "ions\030\007 \001(\0132\024.UsersAndPermissions\".\n\004Type" +
-      "\022\014\n\010DISABLED\020\000\022\t\n\005FLUSH\020\001\022\r\n\tSKIPFLUSH\020\002" +
-      "\"\211\001\n\020SnapshotFileInfo\022$\n\004type\030\001 \002(\0162\026.Sn" +
-      "apshotFileInfo.Type\022\r\n\005hfile\030\003 \001(\t\022\022\n\nwa",
-      "l_server\030\004 \001(\t\022\020\n\010wal_name\030\005 \001(\t\"\032\n\004Type" +
-      "\022\t\n\005HFILE\020\001\022\007\n\003WAL\020\002\"\257\002\n\026SnapshotRegionM" +
-      "anifest\022\017\n\007version\030\001 \001(\005\022 \n\013region_info\030" +
-      "\002 \002(\0132\013.RegionInfo\0229\n\014family_files\030\003 \003(\013" +
-      "2#.SnapshotRegionManifest.FamilyFiles\032K\n" +
-      "\tStoreFile\022\014\n\004name\030\001 \002(\t\022\035\n\treference\030\002 " +
-      "\001(\0132\n.Reference\022\021\n\tfile_size\030\003 \001(\004\032Z\n\013Fa" +
-      "milyFiles\022\023\n\013family_name\030\001 \002(\014\0226\n\013store_" +
-      "files\030\002 \003(\0132!.SnapshotRegionManifest.Sto" +
-      "reFile\"m\n\024SnapshotDataManifest\022\"\n\014table_",
-      "schema\030\001 \002(\0132\014.TableSchema\0221\n\020region_man" +
-      "ifests\030\002 \003(\0132\027.SnapshotRegionManifestBD\n" +
-      "*org.apache.hadoop.hbase.protobuf.genera" +
-      "tedB\016SnapshotProtosH\001\210\001\001\240\001\001"
+      "ions\030\007 \001(\0132\024.UsersAndPermissions\022\016\n\003ttl\030" +
+      "\010 \001(\003:\0010\".\n\004Type\022\014\n\010DISABLED\020\000\022\t\n\005FLUSH\020" +
+      "\001\022\r\n\tSKIPFLUSH\020\002\"\211\001\n\020SnapshotFileInfo\022$\n" +
+      "\004type\030\001 \002(\0162\026.SnapshotFileInfo.Type\022\r\n\005h",
+      "file\030\003 \001(\t\022\022\n\nwal_server\030\004 \001(\t\022\020\n\010wal_na" +
+      "me\030\005 \001(\t\"\032\n\004Type\022\t\n\005HFILE\020\001\022\007\n\003WAL\020\002\"\257\002\n" +
+      "\026SnapshotRegionManifest\022\017\n\007version\030\001 \001(\005" +
+      "\022 \n\013region_info\030\002 \002(\0132\013.RegionInfo\0229\n\014fa" +
+      "mily_files\030\003 \003(\0132#.SnapshotRegionManifes" +
+      "t.FamilyFiles\032K\n\tStoreFile\022\014\n\004name\030\001 \002(\t" +
+      "\022\035\n\treference\030\002 \001(\0132\n.Reference\022\021\n\tfile_" +
+      "size\030\003 \001(\004\032Z\n\013FamilyFiles\022\023\n\013family_name" +
+      "\030\001 \002(\014\0226\n\013store_files\030\002 \003(\0132!.SnapshotRe" +
+      "gionManifest.StoreFile\"m\n\024SnapshotDataMa",
+      "nifest\022\"\n\014table_schema\030\001 \002(\0132\014.TableSche" +
+      "ma\0221\n\020region_manifests\030\002 \003(\0132\027.SnapshotR" +
+      "egionManifestBD\n*org.apache.hadoop.hbase" +
+      ".protobuf.generatedB\016SnapshotProtosH\001\210\001\001" +
+      "\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -6247,7 +6338,7 @@ public final class SnapshotProtos {
           internal_static_SnapshotDescription_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_SnapshotDescription_descriptor,
-              new java.lang.String[] { "Name", "Table", "CreationTime", "Type", "Version", "Owner", "UsersAndPermissions", });
+              new java.lang.String[] { "Name", "Table", "CreationTime", "Type", "Version", "Owner", "UsersAndPermissions", "Ttl", });
           internal_static_SnapshotFileInfo_descriptor =
             getDescriptor().getMessageTypes().get(1);
           internal_static_SnapshotFileInfo_fieldAccessorTable = new

@@ -470,6 +470,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <th>Snapshot Name</th>
         <th>Table</th>
         <th>Creation Time</th>
+        <th>TTL(ms; 0 means forever)</th>
     </tr>
     <%for SnapshotDescription snapshotDesc : snapshots%>
     <%java>
@@ -480,6 +481,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <td><a href="table.jsp?name=<% snapshotTable.getNameAsString() %>"><% snapshotTable.getNameAsString() %></a>
         </td>
         <td><% new Date(snapshotDesc.getCreationTime()) %></td>
+        <td><% snapshotDesc.getTtl() %></td>
     </tr>
     </%for>
     <p><% snapshots.size() %> snapshot(s) in set.</p>
