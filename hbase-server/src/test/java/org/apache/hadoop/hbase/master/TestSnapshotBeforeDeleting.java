@@ -34,7 +34,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.master.cleaner.SnapshotForDeletedTableCleaner;
+import org.apache.hadoop.hbase.master.cleaner.SnapshotCleaner;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
@@ -60,7 +60,7 @@ public class TestSnapshotBeforeDeleting {
     Configuration conf = TEST_UTIL.getConfiguration();
     conf.setBoolean(HConstants.SNAPSHOT_BEFORE_DELETE, true);
     conf.setInt("hbase.master.cleaner.interval", 1000);
-    conf.setLong(SnapshotForDeletedTableCleaner.SNAPSHOT_FOR_DELETED_TABLE_TTL_MS, 20000);
+    conf.setLong(SnapshotCleaner.SNAPSHOT_FOR_DELETED_TABLE_TTL_MS, 20000);
     TEST_UTIL.startMiniCluster(1);
 
   }

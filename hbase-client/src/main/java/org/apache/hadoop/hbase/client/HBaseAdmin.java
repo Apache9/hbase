@@ -2480,9 +2480,31 @@ public class HBaseAdmin implements Abortable, Closeable {
     snapshot(snapshotName, tableName, SnapshotDescription.Type.FLUSH);
   }
 
+  /**
+   * Take a snapshot for the given table.
+   * @param snapshotName name of the snapshot to be created
+   * @param tableName name of the table for which snapshot is created
+   * @param ttl TTL of the snapshot, in milliseconds
+   */
+  public void snapshot(final String snapshotName, final TableName tableName, long ttl)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(snapshotName, tableName, SnapshotDescription.Type.FLUSH, ttl);
+  }
+
   public void snapshot(final String snapshotName, final String tableName)
       throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(snapshotName, TableName.valueOf(tableName), SnapshotDescription.Type.FLUSH);
+  }
+
+  /**
+   * Take a snapshot for the given table.
+   * @param snapshotName name of the snapshot to be created
+   * @param tableName name of the table for which snapshot is created
+   * @param ttl TTL of the snapshot, in milliseconds
+   */
+  public void snapshot(final String snapshotName, final String tableName, long ttl)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(snapshotName, TableName.valueOf(tableName), SnapshotDescription.Type.FLUSH, ttl);
   }
 
   /**
@@ -2526,10 +2548,33 @@ public class HBaseAdmin implements Abortable, Closeable {
     snapshot(Bytes.toString(snapshotName), tableName, SnapshotDescription.Type.FLUSH);
   }
 
+  /**
+   * Take a snapshot for the given table.
+   * @param snapshotName name of the snapshot to be created
+   * @param tableName name of the table for which snapshot is created
+   * @param ttl TTL of the snapshot, in milliseconds
+   */
+  public void snapshot(final byte[] snapshotName, final TableName tableName, long ttl)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(Bytes.toString(snapshotName), tableName, SnapshotDescription.Type.FLUSH, ttl);
+  }
+
   public void snapshot(final byte[] snapshotName, final byte[] tableName)
       throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(Bytes.toString(snapshotName), TableName.valueOf(tableName),
       SnapshotDescription.Type.FLUSH);
+  }
+
+  /**
+   * Take a snapshot for the given table.
+   * @param snapshotName name of the snapshot to be created
+   * @param tableName name of the table for which snapshot is created
+   * @param ttl TTL of the snapshot, in milliseconds
+   */
+  public void snapshot(final byte[] snapshotName, final byte[] tableName, long ttl)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(Bytes.toString(snapshotName), TableName.valueOf(tableName),
+      SnapshotDescription.Type.FLUSH, ttl);
   }
 
   /**
@@ -2554,6 +2599,12 @@ public class HBaseAdmin implements Abortable, Closeable {
       throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(SnapshotDescription.newBuilder().setTable(tableName.getNameAsString())
         .setName(snapshotName).setType(type).build());
+  }
+
+  public void snapshot(String snapshotName, TableName tableName, SnapshotDescription.Type type,
+      long ttl) throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(SnapshotDescription.newBuilder().setTable(tableName.getNameAsString())
+        .setName(snapshotName).setType(type).setTtl(ttl).build());
   }
 
   public void snapshot(final String snapshotName, final String tableName,

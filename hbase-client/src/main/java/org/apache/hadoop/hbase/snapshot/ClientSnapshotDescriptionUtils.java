@@ -63,6 +63,7 @@ public class ClientSnapshotDescriptionUtils {
     }
     return "{ ss=" + ssd.getName() +
            " table=" + (ssd.hasTable()?TableName.valueOf(ssd.getTable()):"") +
-           " type=" + ssd.getType() + " }";
+           " type=" + ssd.getType() +
+            " ttl=" + ssd.getTtl() + " }";
   }
 }

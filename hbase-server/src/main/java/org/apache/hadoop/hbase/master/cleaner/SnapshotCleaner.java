@@ -32,14 +32,14 @@ import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 /**
- * Cleaner for snapshot of deleted table.
+ * Cleaner for snapshot.
  * <p>
  * We can not use CleanChore as we clean snapshot rather than file here.
  */
 @InterfaceAudience.Private
-public class SnapshotForDeletedTableCleaner extends Chore {
+public class SnapshotCleaner extends Chore {
 
-  private static final Log LOG = LogFactory.getLog(SnapshotForDeletedTableCleaner.class);
+  private static final Log LOG = LogFactory.getLog(SnapshotCleaner.class);
 
   public static final String SNAPSHOT_FOR_DELETED_TABLE_TTL_MS =
       "hbase.master.snapshot.for.delete.table.ttl.ms";
@@ -48,20 +48,25 @@ public class SnapshotForDeletedTableCleaner extends Chore {
   // ttl for snapshot of deleted table
   private final long snapshotForDeletedTableTtlMs;
 
-  public SnapshotForDeletedTableCleaner(int period, Stoppable stopper,
-      SnapshotManager snapshotManager, Configuration conf) {
-    super("SnapshotForDeletedTableCleaner", period, stopper);
+  public SnapshotCleaner(int period, Stoppable stopper, SnapshotManager snapshotManager,
+      Configuration conf) {
+    super("SnapshotCleaner", period, stopper);
     this.snapshotManager = snapshotManager;
     this.snapshotForDeletedTableTtlMs =
         conf.getLong(SNAPSHOT_FOR_DELETED_TABLE_TTL_MS, TimeUnit.DAYS.toMillis(7));
   }
 
-  private void cleanExpiredSnapshotForDeletedTable() throws IOException {
+  private void cleanExpiredSnapshot() throws IOException {
     long currentTime = EnvironmentEdgeManager.currentTimeMillis();
     for (SnapshotDescription snapshot : snapshotManager.getCompletedSnapshots()) {
-      if (SnapshotDescriptionUtils.isSnapshotForDeletedTable(snapshot) &&
-          currentTime - snapshot.getCreationTime() >= snapshotForDeletedTableTtlMs) {
+      long duration = currentTime - snapshot.getCreationTime();
+      if (SnapshotDescriptionUtils.isSnapshotForDeletedTable(snapshot)
+          && duration >= snapshotForDeletedTableTtlMs) {
         LOG.info("Delete expired snapshot " + snapshot.getName());
+        snapshotManager.deleteSnapshot(snapshot);
+      } else if (snapshot.getTtl() > 0 && duration >= snapshot.getTtl()) {
+        LOG.info("Delete expired snapshot: " + snapshot.getName() + ", createTime: "
+            + snapshot.getCreationTime() + ", ttl: " + snapshot.getTtl());
         snapshotManager.deleteSnapshot(snapshot);
       }
     }
@@ -70,9 +75,9 @@ public class SnapshotForDeletedTableCleaner extends Chore {
   @Override
   protected void chore() {
     try {
-      cleanExpiredSnapshotForDeletedTable();
+      cleanExpiredSnapshot();
     } catch (Exception e) {
-      LOG.warn("clean expired snapshot for deleted table failed", e);
+      LOG.warn("clean expired snapshot failed", e);
     }
   }
 

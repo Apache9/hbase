@@ -25,6 +25,8 @@ Take a snapshot of specified table. Examples:
 
   hbase> snapshot 'sourceTable', 'snapshotName'
   hbase> snapshot 'namespace:sourceTable', 'snapshotName', {SKIP_FLUSH => true}
+  hbase> # create a snapshot and set ttl(ms) to 3 days
+  hbase> snapshot 'namespace:sourceTable', 'snapshotName', {TTL => 259200000}
 EOF
       end
 
