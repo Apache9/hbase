@@ -298,6 +298,7 @@ public class TestTableSnapshotInputFormat extends TableSnapshotInputFormatTestBa
     }
 
     try {
+      util.getConfiguration().set("fs.permissions.umask-mode", "007");
       // create the job
       Job job = new Job(util.getConfiguration());
       Scan scan = new Scan(startRow, endRow); // limit the scan

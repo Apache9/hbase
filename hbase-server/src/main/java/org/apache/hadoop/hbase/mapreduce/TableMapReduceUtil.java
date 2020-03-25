@@ -43,6 +43,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
@@ -61,6 +62,7 @@ import org.apache.hadoop.hbase.mapreduce.salted.SaltedTableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.salted.SaltedTableMapReduceUtil;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription.Type;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.token.TokenUtil;
@@ -337,11 +339,21 @@ public class TableMapReduceUtil {
       Class<?> outputValueClass, Job job,
       boolean addDependencyJars, Path tmpRestoreDir)
   throws IOException {
+    checkUmask(job.getConfiguration());
     TableSnapshotInputFormat.setInput(job, snapshotName, tmpRestoreDir);
     initTableMapperJob(snapshotName, scan, mapper, outputKeyClass,
         outputValueClass, job, addDependencyJars, true, TableSnapshotInputFormat.class);
     addDependencyJars(job.getConfiguration(), MetricsRegistry.class, ByteBuf.class);
     resetCacheConfig(job.getConfiguration());
+  }
+
+  private static void checkUmask(Configuration conf) throws IOException {
+    String umask = conf.get("fs.permissions.umask-mode");
+    if (umask == null || !(umask.equals("007") || umask.equals("003") || umask.equals("002")
+        || umask.equals("006"))) {
+      throw new DoNotRetryIOException(
+          "Please set fs.permissions.umask-mode to 007, current umask: " + umask);
+    }
   }
 
   @VisibleForTesting
@@ -394,13 +406,14 @@ public class TableMapReduceUtil {
   public static String initTableSnapshotMapperJob(TableName table, Scan scan,
       Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
       Job job, boolean addDependencyJars, Path tmpRestoreDir) throws IOException {
+    checkUmask(job.getConfiguration());
     // Generate a snapshot name, based on namespace, table name, local timestamp.
     String snapshotName = String.format("SnapshotInputFormat-%s-%s-%d",
       table.getNamespaceAsString(), table.getQualifierAsString(), System.currentTimeMillis());
 
     // Create a snapshot.
     try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {
-      admin.snapshot(snapshotName, table);
+      admin.snapshot(snapshotName, table, Type.SKIPFLUSH);
     }
 
     // Initialize the snapshot mapper job.
@@ -430,13 +443,14 @@ public class TableMapReduceUtil {
   public static String initTableSnapshotMapperJob(TableName table, Scan scan,
       Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
       Job job, boolean addDependencyJars, Path tmpRestoreDir, long ttl) throws IOException {
+    checkUmask(job.getConfiguration());
     // Generate a snapshot name, based on namespace, table name, local timestamp.
     String snapshotName = String.format("SnapshotInputFormat-%s-%s-%d",
       table.getNamespaceAsString(), table.getQualifierAsString(), System.currentTimeMillis());
 
     // Create a snapshot.
     try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {
-      admin.snapshot(snapshotName, table, ttl);
+      admin.snapshot(snapshotName, table, Type.SKIPFLUSH, ttl);
     }
 
     // Initialize the snapshot mapper job.
@@ -483,8 +497,17 @@ public class TableMapReduceUtil {
 
   public static void cleanupTableSnapshotMapperJob(Job job, String snapshotName)
       throws IOException {
-    try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {
+    Configuration conf = job.getConfiguration();
+    try (HBaseAdmin admin = new HBaseAdmin(conf)) {
       admin.deleteSnapshot(snapshotName);
+      Path rootDir = new Path(conf.get(HConstants.HBASE_DIR));
+      FileSystem fs = rootDir.getFileSystem(conf);
+      String restoreDirPath = conf.get(TableSnapshotInputFormatImpl.RESTORE_DIR_KEY);
+      Path restoreDir = new Path(restoreDirPath);
+      if (fs.exists(restoreDir)) {
+        LOG.info("Delete restore dir " + restoreDirPath);
+        fs.delete(restoreDir, true);
+      }
     }
   }
 
@@ -561,6 +584,7 @@ public class TableMapReduceUtil {
                                                 RegionSplitter.SplitAlgorithm splitAlgo,
                                                 int numSplitsPerRegion)
           throws IOException {
+    checkUmask(job.getConfiguration());
     TableSnapshotInputFormat.setInput(job, snapshotName, tmpRestoreDir, splitAlgo,
             numSplitsPerRegion);
     initTableMapperJob(snapshotName, scan, mapper, outputKeyClass,
