@@ -81,7 +81,7 @@ public class TableSnapshotInputFormatImpl {
 
   private static final String SNAPSHOT_NAME_KEY = "hbase.TableSnapshotInputFormat.snapshot.name";
   // key for specifying the root dir of the restored snapshot
-  private static final String RESTORE_DIR_KEY = "hbase.TableSnapshotInputFormat.restore.dir";
+  public static final String RESTORE_DIR_KEY = "hbase.TableSnapshotInputFormat.restore.dir";
 
   /** See {@link #getBestLocations(Configuration, HDFSBlocksDistribution)} */
   private static final String LOCALITY_CUTOFF_MULTIPLIER = "hbase.tablesnapshotinputformat.locality.cutoff.multiplier";

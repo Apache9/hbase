@@ -68,6 +68,7 @@ public abstract class TableSnapshotInputFormatTestBase {
   private static void setupConf(Configuration conf) {
     // Enable snapshot
     conf.setBoolean(SnapshotManager.HBASE_SNAPSHOT_ENABLED, true);
+    conf.set("fs.permissions.umask-mode", "007");
   }
 
   protected abstract void testWithMockedMapReduce(HBaseTestingUtility util, String snapshotName,
