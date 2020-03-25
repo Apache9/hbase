@@ -136,21 +136,26 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
   public void init(Context context) throws IOException {
     super.init(context);
     ReplicationPeerConfig peerConfig = context.getPeerConfig();
+    try {
+      Configuration conf = HBaseConfiguration.create(ctx.getConfiguration());
+      this.maxRetriesMultiplier = conf.getInt("replication.source.maxretriesmultiplier", 10);
+      this.sleepForRetriesCount = conf.getLong("replication.source.sleepforretries", 1000);
+      this.batchSizeLimit = conf.getLong("talos.replication.batchsize.limit",20971520L);
 
-    Configuration conf = HBaseConfiguration.create(ctx.getConfiguration());
-    endpoint = peerConfig.getConfiguration().get(TALOS_ACCESS_ENDPOINT);
-    accessKey = peerConfig.getConfiguration().get(TALOS_ACCESS_KEY);
-    accessSecret = peerConfig.getConfiguration().get(TALOS_ACCESS_SECRET);
-    if (endpoint == null || accessKey == null || accessSecret == null) {
-      throw new IOException("endpoint, accessKey and accessSecret must be set to talos replication");
+      this.localConn = HConnectionManager.createConnection(ctx.getLocalConfiguration());
+      this.localAdmin = new HBaseAdmin(this.localConn);
+
+      endpoint = peerConfig.getConfiguration().get(TALOS_ACCESS_ENDPOINT);
+      accessKey = peerConfig.getConfiguration().get(TALOS_ACCESS_KEY);
+      accessSecret = peerConfig.getConfiguration().get(TALOS_ACCESS_SECRET);
+      if (endpoint == null || accessKey == null || accessSecret == null) {
+        // Don't throw exception, let replicationSource thread start
+        LOG.warn("endpoint, accessKey or accessSecret is null");
+      }
+      initialTalosConfigs();
+    } catch (Exception e) {
+      LOG.warn("Failed to init endpoint of peer {}", context.getPeerId(), e);
     }
-    initialTalosConfigs();
-    this.maxRetriesMultiplier = conf.getInt("replication.source.maxretriesmultiplier", 10);
-    this.sleepForRetriesCount = conf.getLong("replication.source.sleepforretries", 1000);
-    this.batchSizeLimit = conf.getLong("talos.replication.batchsize.limit",20971520L);
-
-    this.localConn = HConnectionManager.createConnection(ctx.getLocalConfiguration());
-    this.localAdmin = new HBaseAdmin(this.localConn);
   }
 
   private void initialTalosConfigs() {
@@ -168,7 +173,12 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
     String newEndpoint = peerConfig.getConfiguration().get(TALOS_ACCESS_ENDPOINT);
     String newAccessKey = peerConfig.getConfiguration().get(TALOS_ACCESS_KEY);
     String newAccessSecret = peerConfig.getConfiguration().get(TALOS_ACCESS_SECRET);
-    if (!endpoint.equals(newEndpoint) || !accessKey.equals(newAccessKey) || !accessSecret.equals(newAccessSecret)) {
+    if (newEndpoint == null || newAccessKey == null || newAccessSecret == null) {
+      throw new IllegalArgumentException(
+          "endpoint, accessKey and accessSecret must be set to talos replication");
+    }
+    if (!Objects.equals(endpoint, newEndpoint) || !Objects.equals(accessKey, newAccessKey)
+        || !Objects.equals(accessSecret, newAccessSecret)) {
       endpoint = newEndpoint;
       accessKey = newAccessKey;
       accessSecret = newAccessSecret;
@@ -205,6 +215,13 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
     while (this.isRunning()) {
       if (!isPeerEnabled()) {
         if (sleepForRetries("Replication is disabled", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        continue;
+      }
+      if (talosAdmin == null) {
+        LOG.warn("talosAdmin is null, please check talos config");
+        if (sleepForRetries("talosAdmin is null", sleepMultiplier)) {
           sleepMultiplier++;
         }
         continue;
@@ -309,8 +326,8 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
   }
 
   private void cleanTopicsAndProducers() {
-    this.topicCache.cleanUp();
-    this.tableProducersCache.cleanUp();
+    this.topicCache.invalidateAll();
+    this.tableProducersCache.invalidateAll();
   }
 
   private Topic loadTopicCache(TableName tableName) throws IOException, TException {
