@@ -1955,11 +1955,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
       if (cause instanceof RegionMovedException) {
         RegionMovedException rme = (RegionMovedException) cause;
-        if (LOG.isTraceEnabled()) {
-          LOG.trace(
-            "Region " + regionInfo.getRegionNameAsString() + " moved to " + rme.getHostname() + ":"
-                + rme.getPort() + " according to " + source.getHostnamePort());
-        }
+	      LOG.info(
+			      "Region " + regionInfo.getRegionNameAsString() + " moved to " + rme.getHostname() + ":"
+					      + rme.getPort() + " according to " + source.getHostnamePort());
         // We know that the region is not anymore on this region server, but we know
         // the new location.
         updateCachedLocation(regionInfo, source, rme.getServerName(), rme.getLocationSeqNum());
