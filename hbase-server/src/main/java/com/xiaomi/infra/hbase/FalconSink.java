@@ -19,13 +19,11 @@
 
 package com.xiaomi.infra.hbase;
 
-import com.xiaomi.infra.base.nameservice.ClusterInfo;
-import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
-
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.logging.Log;
@@ -43,11 +41,20 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
+import com.xiaomi.infra.base.nameservice.ClusterInfo;
+import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
+
 public class FalconSink implements Sink, Configurable {
   private static final Log LOG = LogFactory.getLog(FalconSink.class);
   private static final String DEFAULT_COLLECTOR_URI = "http://10.105.5.111:8000/canary/push_metric/";
   private static final int DEFAULT_REPLICATION_LAG_UPPER_IN_SECONDS = 10800;
   private static final int DEFAULT_REPLICATION_LAG_LOWER_IN_SECONDS = 10;
+
+  private static final String PUSH_REPLICATION_AVAIL_INTERVAL =
+      "hbase.canary.push.replication.availability.interval";
+  private static final int DEFAULT_PUSH_REPLICATION_AVAIL_INTERVAL = 600; // 10mins
+  private int pushRepAvailInterval = DEFAULT_PUSH_REPLICATION_AVAIL_INTERVAL;
+  private long lastPushedRepAvailTime = 0;
 
   private Configuration conf;
   private HttpClient client = new HttpClient();
@@ -132,11 +139,8 @@ public class FalconSink implements Sink, Configurable {
     replicationSlavesCount++;
     double avail = this.calcReplicationPeerAvailability(replicationLagInMilliseconds);
     replicationAvailSum += avail;
-    LOG.info(
-        "Peer id " + peerId + ":replication lag is " + replicationLagInMilliseconds + "ms;replication availability is "
-            + avail + "%");
-
-
+    LOG.info("Peer id " + peerId + ": replication lag is " + replicationLagInMilliseconds
+        + " ms; replication availability is " + avail + "%");
   }
 
   @Override
@@ -292,11 +296,16 @@ public class FalconSink implements Sink, Configurable {
     try {
       data.put(buildFalconMetric(clusterName, "cluster-master-availability",
           this.masterAvailability));
-      data.put(buildFalconMetric(clusterName, "cluster-replication-availability", replicationAvail));
       data.put(buildFalconMetric(clusterName, "cluster-availability", avail));
       data.put(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
       data.put(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
       data.put(buildFalconMetric(clusterName, "cluster-oldWals-files-count", oldWalsFilesCount));
+      long now = System.currentTimeMillis();
+      if ((now - lastPushedRepAvailTime) > (pushRepAvailInterval * 1000)) {
+        data.put(
+          buildFalconMetric(clusterName, "cluster-replication-availability", replicationAvail));
+        lastPushedRepAvailTime = now;
+      }
       if (tableMinAvailabilityPair.getFirst() != null && enablePushTableMinAvailability) {
         data.put(buildFalconMetric(clusterName, "cluster-table-min-availability",
             this.tableMinAvailabilityPair.getSecond()));
@@ -330,8 +339,10 @@ public class FalconSink implements Sink, Configurable {
         DEFAULT_REPLICATION_LAG_UPPER_IN_SECONDS);
     lowerRplicationLagInSeconds = conf.getInt("hbase.canary.replication.lag.lower.bound.in.seconds",
         DEFAULT_REPLICATION_LAG_LOWER_IN_SECONDS);
+    pushRepAvailInterval =
+        conf.getInt(PUSH_REPLICATION_AVAIL_INTERVAL, DEFAULT_PUSH_REPLICATION_AVAIL_INTERVAL);
     enablePushTableMinAvailability = conf.getBoolean(HConstants.CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE,
-        HConstants.CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE_DEFAULT);
+      HConstants.CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE_DEFAULT);
     enablePushRSMinAvailability = conf.getBoolean(HConstants.CANARY_PUSH_RS_MIN_AVAIL_ENABLE,
         HConstants.CANARY_PUSH_RS_MIN_AVAIL_ENABLE_DEFAULT);
   }
