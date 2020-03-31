@@ -880,7 +880,7 @@ public class RegionStates {
    * @param  regionName
    * @return HRegionInfo for the region
    */
-  protected HRegionInfo getRegionInfo(final byte [] regionName) {
+  public HRegionInfo getRegionInfo(final byte [] regionName) {
     String encodedName = HRegionInfo.encodeRegionName(regionName);
     RegionState regionState = getRegionState(encodedName);
     if (regionState != null) {
