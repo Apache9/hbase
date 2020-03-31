@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 import javax.management.ObjectName;
 
 import com.xiaomi.infra.hbase.master.chore.BadRSDetector;
+import com.xiaomi.infra.hbase.master.chore.BusyRegionDetector;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.SplitOrMergeTracker;
@@ -522,6 +523,7 @@ MasterServices, Server {
   private SnapshotRestoreFileCleaner snapshotRestoreFileCleaner;
   private SnapshotCleaner snapshotCleaner;
   private BadRSDetector badRSDetector;
+  private BusyRegionDetector busyRegionDetector;
 
   private MasterCoprocessorHost cpHost;
   private final ServerName serverName;
@@ -1577,6 +1579,17 @@ MasterServices, Server {
         LOG.error("Start BadRSDetector failed", e);
       }
     }
+    if (conf.getBoolean(BusyRegionDetector.BUSY_REGION_DETECTOR_ENABLE,
+        BusyRegionDetector.BUSY_REGION_DETECTOR_ENABLE_DEFAULT)) {
+      try {
+        int busyRegionDetectorPeriod = conf.getInt(BusyRegionDetector.BUSY_REGION_DETECTOR_PERIOD,
+            BusyRegionDetector.BUSY_REGION_DETECTOR_PERIOD_DEFAULT);
+        busyRegionDetector = new BusyRegionDetector(this, this, busyRegionDetectorPeriod);
+        Threads.setDaemonThreadRunning(busyRegionDetector.getThread(), "BusyRegionDetector");
+      } catch (Exception e) {
+        LOG.error("Start BusyRegionDetector failed", e);
+      }
+    }
   }
 
   /**
@@ -1666,6 +1679,9 @@ MasterServices, Server {
     }
     if (this.badRSDetector != null) {
       this.badRSDetector.interrupt();
+    }
+    if (this.busyRegionDetector != null) {
+      this.busyRegionDetector.interrupt();
     }
   }
 
