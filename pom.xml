@@ -90,6 +90,7 @@
     <module>hbase-backup</module>
     <module>hbase-zookeeper</module>
     <module>hbase-hbtop</module>
+    <module>hbase-asyncfs</module>
   </modules>
   <scm>
     <connection>scm:git:git://gitbox.apache.org/repos/asf/hbase.git</connection>
@@ -1224,6 +1225,14 @@
                     <bannedImport>org.htrace.**</bannedImport>
                   </bannedImports>
                 </restrictImports>
+                <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
+                  <includeTestCode>true</includeTestCode>
+                  <commentLineBufferSize>512</commentLineBufferSize>
+                  <reason>Use shaded protobuf</reason>
+                  <bannedImports>
+                    <bannedImport>com.google.protobuf.**</bannedImport>
+                  </bannedImports>
+                </restrictImports>
               </rules>
             </configuration>
           </execution>
@@ -1694,6 +1703,11 @@
         <artifactId>hbase-procedure</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-asyncfs</artifactId>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.hbase</groupId>

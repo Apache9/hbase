@@ -26,6 +26,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.tmpl.master.MasterStatusTmpl;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -88,9 +90,25 @@ public class MasterStatusServlet extends HttpServlet {
     boolean showFragmentation = conf.getBoolean(
         "hbase.master.ui.fragmentation.enabled", false);
     if (showFragmentation) {
-      return FSUtils.getTableFragmentation(master);
+      return getTableFragmentation(master);
     } else {
       return null;
     }
+  }
+
+  /**
+   * Runs through the HBase rootdir and checks how many stores for each table have more than one
+   * file in them. Checks -ROOT- and hbase:meta too. The total percentage across all tables is
+   * stored under the special key "-TOTAL-".
+   * @param master The master defining the HBase root and file system.
+   * @return A map for each table and its percentage (never null).
+   * @throws IOException When scanning the directory fails.
+   */
+  public static Map<String, Integer> getTableFragmentation(final HMaster master)
+    throws IOException {
+    Path path = FSUtils.getRootDir(master.getConfiguration());
+    // since HMaster.getFileSystem() is package private
+    FileSystem fs = path.getFileSystem(master.getConfiguration());
+    return FSUtils.getTableFragmentation(fs, path);
   }
 }

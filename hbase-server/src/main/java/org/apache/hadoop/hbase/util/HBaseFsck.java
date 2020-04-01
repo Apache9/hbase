@@ -56,7 +56,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -65,6 +64,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.Abortable;
@@ -1118,6 +1118,18 @@ public class HBaseFsck extends Configured implements Closeable {
   }
 
   /**
+   * Filter for HFileLinks (StoreFiles and HFiles not included).
+   * the filter itself does not consider if a link is file or not.
+   */
+  private static class HFileLinkFilter implements PathFilter {
+
+    @Override
+    public boolean accept(Path p) {
+      return HFileLink.isHFileLink(p);
+    }
+  }
+
+  /**
    * Scan all the store file names to find any lingering reference files,
    * which refer to some none-exiting files. If "fix" option is enabled,
    * any lingering reference file will be sidelined if found.
@@ -1185,7 +1197,7 @@ public class HBaseFsck extends Configured implements Closeable {
     FileSystem fs = hbaseRoot.getFileSystem(conf);
     LOG.info("Computing mapping of all link files");
     Map<String, Path> allFiles = FSUtils
-        .getTableStoreFilePathMap(fs, hbaseRoot, new FSUtils.HFileLinkFilter(), executor, errors);
+        .getTableStoreFilePathMap(fs, hbaseRoot, new HFileLinkFilter(), executor, errors);
     errors.print("");
 
     LOG.info("Validating mapping using HDFS state");

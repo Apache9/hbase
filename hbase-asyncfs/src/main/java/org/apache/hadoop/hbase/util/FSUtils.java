@@ -47,7 +47,6 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -69,10 +68,10 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
+import org.apache.hadoop.hbase.client.RegionReplicaUtil;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.io.HFileLink;
-import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hdfs.DFSClient;
@@ -760,48 +759,13 @@ public abstract class FSUtils extends CommonFSUtils {
    * @param blocksDistribution the hdfs blocks distribution
    * @param blockLocations an array containing block location
    */
-  static public void addToHDFSBlocksDistribution(
-      HDFSBlocksDistribution blocksDistribution, BlockLocation[] blockLocations)
-      throws IOException {
+  public static void addToHDFSBlocksDistribution(HDFSBlocksDistribution blocksDistribution,
+    BlockLocation[] blockLocations) throws IOException {
     for (BlockLocation bl : blockLocations) {
       String[] hosts = bl.getHosts();
       long len = bl.getLength();
       blocksDistribution.addHostsAndBlockWeight(hosts, len);
     }
-  }
-
-  // TODO move this method OUT of FSUtils. No dependencies to HMaster
-  /**
-   * Returns the total overall fragmentation percentage. Includes hbase:meta and
-   * -ROOT- as well.
-   *
-   * @param master  The master defining the HBase root and file system
-   * @return A map for each table and its percentage (never null)
-   * @throws IOException When scanning the directory fails
-   */
-  public static int getTotalTableFragmentation(final HMaster master)
-  throws IOException {
-    Map<String, Integer> map = getTableFragmentation(master);
-    return map.isEmpty() ? -1 :  map.get("-TOTAL-");
-  }
-
-  /**
-   * Runs through the HBase rootdir and checks how many stores for each table
-   * have more than one file in them. Checks -ROOT- and hbase:meta too. The total
-   * percentage across all tables is stored under the special key "-TOTAL-".
-   *
-   * @param master  The master defining the HBase root and file system.
-   * @return A map for each table and its percentage (never null).
-   *
-   * @throws IOException When scanning the directory fails.
-   */
-  public static Map<String, Integer> getTableFragmentation(
-    final HMaster master)
-  throws IOException {
-    Path path = getRootDir(master.getConfiguration());
-    // since HMaster.getFileSystem() is package private
-    FileSystem fs = path.getFileSystem(master.getConfiguration());
-    return getTableFragmentation(fs, path);
   }
 
   /**
@@ -1059,7 +1023,7 @@ public abstract class FSUtils extends CommonFSUtils {
 
   public static Path getRegionDirFromTableDir(Path tableDir, RegionInfo region) {
     return getRegionDirFromTableDir(tableDir,
-        ServerRegionReplicaUtil.getRegionInfoForFs(region).getEncodedName());
+      RegionReplicaUtil.getRegionInfoForDefaultReplica(region).getEncodedName());
   }
 
   public static Path getRegionDirFromTableDir(Path tableDir, String encodedRegionName) {
@@ -1116,57 +1080,6 @@ public abstract class FSUtils extends CommonFSUtils {
     return familyDirs;
   }
 
-  public static List<Path> getReferenceFilePaths(final FileSystem fs, final Path familyDir) throws IOException {
-    List<FileStatus> fds = listStatusWithStatusFilter(fs, familyDir, new ReferenceFileFilter(fs));
-    if (fds == null) {
-      return Collections.emptyList();
-    }
-    List<Path> referenceFiles = new ArrayList<>(fds.size());
-    for (FileStatus fdfs: fds) {
-      Path fdPath = fdfs.getPath();
-      referenceFiles.add(fdPath);
-    }
-    return referenceFiles;
-  }
-
-  /**
-   * Filter for HFiles that excludes reference files.
-   */
-  public static class HFileFilter extends AbstractFileStatusFilter {
-    final FileSystem fs;
-
-    public HFileFilter(FileSystem fs) {
-      this.fs = fs;
-    }
-
-    @Override
-    protected boolean accept(Path p, @CheckForNull Boolean isDir) {
-      if (!StoreFileInfo.isHFile(p) && !StoreFileInfo.isMobFile(p)) {
-        return false;
-      }
-
-      try {
-        return isFile(fs, isDir, p);
-      } catch (IOException ioe) {
-        // Maybe the file was moved or the fs was disconnected.
-        LOG.warn("Skipping file {} due to IOException", p, ioe);
-        return false;
-      }
-    }
-  }
-
-  /**
-   * Filter for HFileLinks (StoreFiles and HFiles not included).
-   * the filter itself does not consider if a link is file or not.
-   */
-  public static class HFileLinkFilter implements PathFilter {
-
-    @Override
-    public boolean accept(Path p) {
-      return HFileLink.isHFileLink(p);
-    }
-  }
-
   public static class ReferenceFileFilter extends AbstractFileStatusFilter {
 
     private final FileSystem fs;
@@ -1190,6 +1103,20 @@ public abstract class FSUtils extends CommonFSUtils {
         return false;
       }
     }
+  }
+
+  public static List<Path> getReferenceFilePaths(final FileSystem fs, final Path familyDir)
+    throws IOException {
+    List<FileStatus> fds = listStatusWithStatusFilter(fs, familyDir, new ReferenceFileFilter(fs));
+    if (fds == null) {
+      return Collections.emptyList();
+    }
+    List<Path> referenceFiles = new ArrayList<>(fds.size());
+    for (FileStatus fdfs : fds) {
+      Path fdPath = fdfs.getPath();
+      referenceFiles.add(fdPath);
+    }
+    return referenceFiles;
   }
 
   /**

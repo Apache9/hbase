@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.util.hbck;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,11 +31,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.hadoop.hbase.util.HbckErrorReporter;
-import org.apache.yetus.audience.InterfaceAudience;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -45,10 +41,15 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.CorruptHFileException;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.mob.MobUtils;
+import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
+import org.apache.hadoop.hbase.util.AbstractFileStatusFilter;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.FSUtils.FamilyDirFilter;
-import org.apache.hadoop.hbase.util.FSUtils.HFileFilter;
 import org.apache.hadoop.hbase.util.FSUtils.RegionDirFilter;
+import org.apache.hadoop.hbase.util.HbckErrorReporter;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class marches through all of the region's hfiles and verifies that
@@ -151,6 +152,32 @@ public class HFileCorruptionChecker {
     Path corruptFamilyDir = new Path(corruptRegionDir, cfDir.getName());
     Path corruptHfile = new Path(corruptFamilyDir, hFile.getName());
     return corruptHfile;
+  }
+
+  /**
+   * Filter for HFiles that excludes reference files.
+   */
+  private static class HFileFilter extends AbstractFileStatusFilter {
+    final FileSystem fs;
+
+    public HFileFilter(FileSystem fs) {
+      this.fs = fs;
+    }
+
+    @Override
+    protected boolean accept(Path p, @CheckForNull Boolean isDir) {
+      if (!StoreFileInfo.isHFile(p) && !StoreFileInfo.isMobFile(p)) {
+        return false;
+      }
+
+      try {
+        return isFile(fs, isDir, p);
+      } catch (IOException ioe) {
+        // Maybe the file was moved or the fs was disconnected.
+        LOG.warn("Skipping file {} due to IOException", p, ioe);
+        return false;
+      }
+    }
   }
 
   /**

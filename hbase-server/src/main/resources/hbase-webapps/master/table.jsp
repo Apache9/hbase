@@ -52,6 +52,7 @@
   import="org.apache.hadoop.hbase.client.Table"
   import="org.apache.hadoop.hbase.http.InfoServer"
   import="org.apache.hadoop.hbase.master.HMaster"
+  import="org.apache.hadoop.hbase.master.MasterStatusServlet"
   import="org.apache.hadoop.hbase.master.RegionState"
   import="org.apache.hadoop.hbase.master.assignment.RegionStates"
   import="org.apache.hadoop.hbase.master.webapp.MetaBrowser"
@@ -61,7 +62,6 @@
 <%@ page import="org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot" %>
 <%@ page import="org.apache.hadoop.hbase.quotas.ThrottleSettings" %>
 <%@ page import="org.apache.hadoop.hbase.util.Bytes" %>
-<%@ page import="org.apache.hadoop.hbase.util.FSUtils" %>
 <%@ page import="org.apache.hadoop.hbase.zookeeper.MetaTableLocator" %>
 <%@ page import="org.apache.hadoop.util.StringUtils" %>
 <%@ page import="org.apache.hbase.thirdparty.com.google.protobuf.ByteString" %>
@@ -115,7 +115,7 @@
                         HConstants.DEFAULT_META_REPLICA_NUM);
   Map<String, Integer> frags = null;
   if (showFragmentation) {
-      frags = FSUtils.getTableFragmentation(master);
+      frags = MasterStatusServlet.getTableFragmentation(master);
   }
   boolean quotasEnabled = conf.getBoolean("hbase.quota.enabled", false);
   String action = request.getParameter("action");
