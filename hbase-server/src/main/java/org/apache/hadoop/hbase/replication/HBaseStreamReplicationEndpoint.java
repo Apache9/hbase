@@ -21,7 +21,9 @@ package org.apache.hadoop.hbase.replication;
 
 import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.THROTTLE_REJECT_ERROR;
 import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.TOPIC_NOT_EXIST;
-import static org.apache.hadoop.hbase.HConstants.*;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -45,11 +47,14 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicTalosResourceName;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
@@ -70,11 +75,9 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
-import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CollectionUtils;
 import org.apache.hadoop.hbase.util.HBaseStreamUtil;
-import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -227,8 +230,8 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
         continue;
       }
       try {
-        // group HLog. one entry, one pair
-        List<Pair<HLogKey, List<Message>>> messages = groupHLog(entries);
+        // group HLog. table => encodedRegionName => messages
+        Map<TableName, Map<byte[], List<Message>>> messages = groupHLog(entries);
         // send
         sendMessagesToTalos(messages);
         ctx.getMetrics().setAgeOfLastShippedOp(entries.get(entries.size() - 1).getKey().getWriteTime());
@@ -250,8 +253,8 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
     return false;
   }
 
-  private List<Pair<HLogKey, List<Message>>> groupHLog(List<HLog.Entry> entries) throws IOException {
-    List<Pair<HLogKey, List<Message>>> messages = new ArrayList<>();
+  private Map<TableName, Map<byte[], List<Message>>> groupHLog(List<HLog.Entry> entries) throws IOException {
+    Map<TableName, Map<byte[], List<Message>>> messages = new HashMap<>();
     for (HLog.Entry entry : entries) {
       TableName tablename = entry.getKey().getTablename();
       TableStreamConfig tableStreamConfig;
@@ -267,42 +270,44 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
       List<Message> entryMessages = constructJsonMessages(entry, tableStreamConfig);
       // entryMessages will be empty if all cells of entry are filtered.
       if (!CollectionUtils.isEmpty(entryMessages)) {
-        messages.add(new Pair<>(entry.getKey(), entryMessages));
+        messages.computeIfAbsent(tablename, t -> new TreeMap<>(Bytes.BYTES_COMPARATOR))
+            .computeIfAbsent(entry.getKey().getEncodedRegionName(), e -> new ArrayList<>())
+            .addAll(entryMessages);
       }
     }
     return messages;
   }
 
-  private void sendMessagesToTalos(List<Pair<HLogKey, List<Message>>> messages) throws IOException, TException {
-    TableName tableName;
-    for (Pair<HLogKey, List<Message>> messageEntry : messages) {
-      tableName = messageEntry.getFirst().getTablename();
-      byte[] encodedRegionName = messageEntry.getFirst().getEncodedRegionName();
+  private void sendMessagesToTalos(Map<TableName, Map<byte[], List<Message>>> messages)
+      throws IOException, TException {
+    for (Map.Entry<TableName, Map<byte[], List<Message>>> tableEntry : messages.entrySet()) {
+      TableName tableName = tableEntry.getKey();
       try {
-        SimpleProducer producer = getProducer(tableName, encodedRegionName);
-        batchSendMessages(producer, messageEntry.getSecond());
+        for (Map.Entry<byte[], List<Message>> regionAndMessages : tableEntry.getValue().entrySet()) {
+          SimpleProducer producer = getProducer(tableName, regionAndMessages.getKey());
+          batchSendMessages(producer, regionAndMessages.getValue());
+        }
       } catch (TException | IOException e) {
         if (e instanceof GalaxyTalosException && ((GalaxyTalosException) e).getErrorCode() == TOPIC_NOT_EXIST) {
           if (this.ctx.getPeerConfig().needToReplicate(tableName)) {
             throw e;
           } else {
-            LOG.warn("This table {} is not in the replication peer {} anymore, we can skip its entries", tableName,
-                this.ctx.getPeerId());
+            LOG.warn("This table {} is not in the replication peer {} anymore, we can skip its entries",
+                tableName, this.ctx.getPeerId());
           }
         } else {
           throw e;
         }
       }
-      LOG.debug("send message to talos, table: {}, message size: {}", tableName, messageEntry.getSecond().size());
     }
   }
 
-  private SimpleProducer getProducer(TableName tableName, byte[] rowkey) throws IOException, TException {
+  private SimpleProducer getProducer(TableName tableName, byte[] encodeRegionName) throws IOException, TException {
     try {
       Topic topic = topicCache.get(tableName);
       TalosProducers talosProducers = tableProducersCache.get(tableName);
       talosProducers.update(topic);
-      return talosProducers.get(rowkey);
+      return talosProducers.get(encodeRegionName);
     } catch (ExecutionException e) {
       Throwable cause = e.getCause();
       if (cause instanceof IOException) {
@@ -469,7 +474,7 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
     }
 
     SimpleProducer get(byte[] rowkey) {
-      return producers[Bytes.hashCode(rowkey) % producers.length];
+      return producers[(Bytes.hashCode(rowkey) & Integer.MAX_VALUE) % producers.length];
     }
   }
 
