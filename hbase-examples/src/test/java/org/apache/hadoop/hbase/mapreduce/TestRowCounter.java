@@ -58,6 +58,7 @@ public class TestRowCounter {
   public static void beforeClass() throws Exception {
     CONF = UTIL.getConfiguration();
     CONF.set(MRJobConfig.MR_AM_STAGING_DIR, UTIL.getDataTestDir("staging").toString());
+    CONF.set("fs.permissions.umask-mode", "007");
 
     UTIL.startMiniZKCluster();
     UTIL.startMiniMapReduceCluster();

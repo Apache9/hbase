@@ -269,7 +269,7 @@ public class TestQuotaManager {
 
   @Test
   public void testCalculateReadCapacityUnitNum() {
-    assertEquals(0, quotaManager.calculateReadCapacityUnitNum(0));
+    assertEquals(1, quotaManager.calculateReadCapacityUnitNum(0));
 
     assertEquals(1, quotaManager.calculateReadCapacityUnitNum(1));
     assertEquals(1, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() / 4));

@@ -350,7 +350,7 @@ public class TableMapReduceUtil {
   private static void checkUmask(Configuration conf) throws IOException {
     String umask = conf.get("fs.permissions.umask-mode");
     if (umask == null || !(umask.equals("007") || umask.equals("003") || umask.equals("002")
-        || umask.equals("006"))) {
+        || umask.equals("006") || umask.equals("000"))) {
       throw new DoNotRetryIOException(
           "Please set fs.permissions.umask-mode to 007, current umask: " + umask);
     }
