@@ -19,6 +19,8 @@
 package org.apache.hadoop.hbase.mapreduce;
 
 import com.google.common.collect.Lists;
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
+import com.xiaomi.keycenter.common.iface.DataProtectionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.ServerName;
@@ -221,6 +223,14 @@ public class TableSnapshotInputFormatImpl {
       HTableDescriptor htd = split.htd;
       HRegionInfo hri = this.split.getRegionInfo();
       FileSystem fs = FSUtils.getCurrentFileSystem(conf);
+
+      try {
+        if (conf.get(HConstants.CRYPTO_KEYCENTER_KEY) != null) {
+          KeyCenterKeyProvider.loadCacheFromKeyCenter(conf);
+        }
+      } catch (DataProtectionException e) {
+        throw new IOException(e);
+      }
 
       // directory where snapshot was restored
       if (scan == null) {
