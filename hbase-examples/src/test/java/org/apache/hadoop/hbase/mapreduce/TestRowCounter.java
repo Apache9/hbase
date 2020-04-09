@@ -18,7 +18,6 @@
 
 package org.apache.hadoop.hbase.mapreduce;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
@@ -77,12 +76,13 @@ public class TestRowCounter {
     UTIL.shutdownMiniCluster();
   }
 
-  private void loadData() throws IOException {
+  private void loadData() throws Exception {
     for (int i = 0; i < MAX_ROWS; i++) {
       Put put = new Put(Bytes.add(ROW, Bytes.toBytes(i)));
       put.add(FAMILY, QUALIFLY, Bytes.toBytes(i));
       TABLE.put(put);
     }
+    UTIL.getHBaseAdmin().flush(TABLE_NAME.getNameAsString());
   }
 
   @Test
