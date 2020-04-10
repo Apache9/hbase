@@ -101,6 +101,8 @@ public class NamespaceLoad {
   private long scanCountPerSecond;
   private long scanRowsPerSecond;
 
+  private long approximateRowCount;
+
   public NamespaceLoad(final String name) {
     this.name = name;
     this.tables = 0;
@@ -132,6 +134,7 @@ public class NamespaceLoad {
     this.userWriteRequestsPerSecond = 0;
     this.userReadRequestsByCapacityUnitPerSecond = 0;
     this.userWriteRequestsByCapacityUnitPerSecond = 0;
+    this.approximateRowCount = 0;
   }
 
   public void updateNamespaceLoad(final TableLoad tableLoad) {
@@ -167,6 +170,7 @@ public class NamespaceLoad {
         tableLoad.getUserReadRequestsByCapacityUnitPerSecond();
     this.userWriteRequestsByCapacityUnitPerSecond +=
         tableLoad.getUserWriteRequestsByCapacityUnitPerSecond();
+    this.approximateRowCount += tableLoad.getApproximateRowCount();
   }
 
   public String getName() {
@@ -289,6 +293,10 @@ public class NamespaceLoad {
     return userWriteRequestsByCapacityUnitPerSecond;
   }
 
+  public long getApproximateRowCount() {
+    return approximateRowCount;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "Namespace name:", name);
@@ -341,6 +349,7 @@ public class NamespaceLoad {
         .appendKeyValue(sb, "throttledWriteRequestsCount", this.throttledWriteRequestsCount);
     sb = Strings.appendKeyValue(sb, "scanCountPerSecond", Long.valueOf(this.scanCountPerSecond));
     sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", Long.valueOf(this.scanRowsPerSecond));
+    sb = Strings.appendKeyValue(sb, "approximateRowCount", Long.valueOf(this.approximateRowCount));
     return sb.toString();
   }
 }
