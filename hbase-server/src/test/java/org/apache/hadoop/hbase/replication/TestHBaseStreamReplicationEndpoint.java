@@ -5,18 +5,23 @@ import static org.apache.hadoop.hbase.HConstants.*;
 import java.io.IOException;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.replication.HBaseStreamReplicationEndpoint.TableStreamConfig;
 import org.apache.hadoop.hbase.replication.regionserver.MetricsSource;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
 @Category(SmallTests.class)
 public class TestHBaseStreamReplicationEndpoint {
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestHBaseStreamReplicationEndpoint.class);
 
   HBaseStreamReplicationEndpoint endpoint;
 
