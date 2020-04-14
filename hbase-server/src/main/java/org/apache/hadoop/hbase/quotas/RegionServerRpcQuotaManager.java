@@ -268,7 +268,7 @@ public class RegionServerRpcQuotaManager {
   }
 
   public long calculateReadCapacityUnit(final long size) {
-    return (long) Math.ceil(size * 1.0 / this.readCapacityUnit);
+    return Math.max(1, (long) Math.ceil(size * 1.0 / this.readCapacityUnit));
   }
 
   private UserGroupInformation getRequestUser() throws IOException {
