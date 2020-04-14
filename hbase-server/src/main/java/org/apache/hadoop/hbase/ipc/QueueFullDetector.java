@@ -19,8 +19,6 @@
 package org.apache.hadoop.hbase.ipc;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ScheduledChore;
@@ -29,50 +27,6 @@ import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-@InterfaceAudience.Private
-class QueueCounter {
-  private final AtomicBoolean queueFull;
-  private final LongAdder incomeRequestCount;
-  private final LongAdder rejectedRequestCount;
-  private final String name;
-
-  public QueueCounter(String name) {
-    this.name = name;
-    this.queueFull = new AtomicBoolean(false);
-    this.incomeRequestCount = new LongAdder();
-    this.rejectedRequestCount = new LongAdder();
-  }
-
-  public void setQueueFull(boolean full) {
-    queueFull.set(full);
-  }
-
-  public boolean getQueueFull() {
-    return queueFull.get();
-  }
-
-  public void incIncomeRequestCount() {
-    incomeRequestCount.add(1L);
-  }
-
-  public long getIncomeRequestCount() {
-    return incomeRequestCount.sum();
-  }
-
-  public void incRejectedRequestCount() {
-    rejectedRequestCount.add(1L);
-  }
-
-  public long getRejectedRequestCount() {
-    return rejectedRequestCount.sum();
-  }
-
-  @Override
-  public String toString() {
-    return name + ".QueueCounter";
-  }
-}
 
 @InterfaceAudience.Private
 public class QueueFullDetector extends ScheduledChore {
