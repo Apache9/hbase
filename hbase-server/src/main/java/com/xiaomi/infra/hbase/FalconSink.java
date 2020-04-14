@@ -20,6 +20,7 @@
 package com.xiaomi.infra.hbase;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,6 +44,7 @@ import org.codehaus.jettison.json.JSONObject;
 
 import com.xiaomi.infra.base.nameservice.ClusterInfo;
 import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
+import com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils;
 
 public class FalconSink implements Sink, Configurable {
   private static final Log LOG = LogFactory.getLog(FalconSink.class);
@@ -77,6 +79,9 @@ public class FalconSink implements Sink, Configurable {
   private Pair<TableName, Double> tableMinAvailabilityPair = new Pair<>();
   private Pair<ServerName, Double> regionServerMinAvailabilityPair = new Pair<>();
 
+  private String clusterName;
+  private Map<String, Long> lastReplicationLags = new HashMap<>();
+
   private FalconSink() {
   }
 
@@ -88,6 +93,7 @@ public class FalconSink implements Sink, Configurable {
   public void publishReadFailure(HRegionInfo region, Throwable e) {
     failedReadCounter.incrementAndGet();
     totalReadCounter.incrementAndGet();
+    CanaryPerfCounterUtils.addFailCounter(clusterName, "read", region.getTable());
     LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
   }
 
@@ -95,6 +101,7 @@ public class FalconSink implements Sink, Configurable {
   public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Throwable e) {
     failedReadCounter.incrementAndGet();
     totalReadCounter.incrementAndGet();
+    CanaryPerfCounterUtils.addFailCounter(clusterName, "read", region.getTable());
     LOG.error(String.format("read from region %s column family %s failed",
       region.getRegionNameAsString(), column.getNameAsString()), e);
   }
@@ -102,6 +109,7 @@ public class FalconSink implements Sink, Configurable {
   @Override
   public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
     totalReadCounter.incrementAndGet();
+    CanaryPerfCounterUtils.addCounter(clusterName, "read", region.getTable(), msTime);
     if (msTime > 500) {
       LOG.info(String.format("read from region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
@@ -112,6 +120,7 @@ public class FalconSink implements Sink, Configurable {
   public void publishWriteFailure(HRegionInfo region, Throwable e) {
     failedWriteCounter.incrementAndGet();
     totalWriteCounter.incrementAndGet();
+    CanaryPerfCounterUtils.addFailCounter(clusterName, "write", region.getTable());
     LOG.error(String.format("write to region %s failed", region.getRegionNameAsString()), e);
   }
 
@@ -120,6 +129,7 @@ public class FalconSink implements Sink, Configurable {
       Throwable e) {
     failedWriteCounter.incrementAndGet();
     totalWriteCounter.incrementAndGet();
+    CanaryPerfCounterUtils.addFailCounter(clusterName, "write", region.getTable());
     LOG.error(String.format("write to region %s column family %s failed",
       region.getRegionNameAsString(), column.getNameAsString()), e);
   }
@@ -128,6 +138,7 @@ public class FalconSink implements Sink, Configurable {
   public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column,
       long msTime) {
     totalWriteCounter.incrementAndGet();
+    CanaryPerfCounterUtils.addCounter(clusterName, "write", region.getTable(), msTime);
     if (msTime > 500) {
       LOG.info(String.format("write to region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
@@ -139,6 +150,7 @@ public class FalconSink implements Sink, Configurable {
     replicationSlavesCount++;
     double avail = this.calcReplicationPeerAvailability(replicationLagInMilliseconds);
     replicationAvailSum += avail;
+    lastReplicationLags.put(peerId, replicationLagInMilliseconds);
     LOG.info("Peer id " + peerId + ": replication lag is " + replicationLagInMilliseconds
         + " ms; replication availability is " + avail + "%");
   }
@@ -206,7 +218,6 @@ public class FalconSink implements Sink, Configurable {
     if (totalReadCounter.get() == 0L && totalWriteCounter.get() == 0L) {
       return;
     }
-    String clusterName = conf.get("hbase.cluster.name", "unknown");
     String sniffCountStr = "failedReadCount=" + failedReadCounter.get() + ", totalReadCount="
             + totalReadCounter.get() + ", failedWriteCounter=" + failedWriteCounter.get()
             + ", totalWriterCount=" + totalWriteCounter.get();
@@ -230,6 +241,7 @@ public class FalconSink implements Sink, Configurable {
       pushToFalcon(clusterName, availability, readAvailability, writeAvailability,
           replicationAvailability);
     }
+    lastReplicationLags.clear();
   }
 
   private JSONObject buildCanaryMetric(String clusterName, String key, double value) throws JSONException {
@@ -265,7 +277,7 @@ public class FalconSink implements Sink, Configurable {
     }
   }
 
-  private JSONObject buildFalconMetric(String clusterName, String key, double value, Map<String, String> customTags) throws Exception {
+  private <V> JSONObject buildFalconMetric(String clusterName, String key, V value, Map<String, String> customTags) throws Exception {
     JSONObject metric = new JSONObject();
     metric.put("endpoint", "hbase-canary");
     metric.put("metric", key);
@@ -285,7 +297,7 @@ public class FalconSink implements Sink, Configurable {
   }
 
   private JSONObject buildFalconMetric(String clusterName, String key, double value) throws Exception {
-    return buildFalconMetric(clusterName, key, value, new HashMap<>());
+    return buildFalconMetric(clusterName, key, value, Collections.emptyMap());
   }
 
   private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail,
@@ -306,6 +318,10 @@ public class FalconSink implements Sink, Configurable {
           buildFalconMetric(clusterName, "cluster-replication-availability", replicationAvail));
         lastPushedRepAvailTime = now;
       }
+      for (Map.Entry<String, Long> e : lastReplicationLags.entrySet()) {
+        data.put(buildFalconMetric(clusterName, "cluster-replication-lag", e.getValue(),
+            Collections.singletonMap("peerId", e.getKey())));
+      }
       if (tableMinAvailabilityPair.getFirst() != null && enablePushTableMinAvailability) {
         data.put(buildFalconMetric(clusterName, "cluster-table-min-availability",
             this.tableMinAvailabilityPair.getSecond()));
@@ -321,7 +337,7 @@ public class FalconSink implements Sink, Configurable {
     try {
       client.executeMethod(post);
     } catch (IOException e) {
-      LOG.info("Push metrics to falcon failed", e);
+      LOG.warn("Push metrics to falcon failed", e);
     }
   }
 
@@ -333,6 +349,7 @@ public class FalconSink implements Sink, Configurable {
   @Override
   public void setConf(Configuration conf) {
     this.conf = conf;
+    clusterName = conf.get("hbase.cluster.name", "unknown");
     this.ignoreFushToNet = conf.getBoolean("hbase.canary.sink.falcon.ignore.push.to.net", false);
     LOG.info("falcon sink ignore push to net : " + this.ignoreFushToNet);
     upperRplicationLagInSeconds = conf.getInt("hbase.canary.replication.lag.upper.bound.in.seconds",
