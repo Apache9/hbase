@@ -699,8 +699,8 @@ public class HFileBlock implements Cacheable {
       }
       long end = System.currentTimeMillis();
       if (end - begin > RpcServer.SLOW_IO_LOG_THRESHOLD_MS) {
-        HFile.LOG.info("readAtOffset pread cost:" + (end - begin) + " ms, affect call: " +
-            RpcServer.getCurrentCall());
+        HFile.LOG.info("readAtOffset pread cost: " + (end - begin) + " ms, size: " + necessaryLen
+            + ", readSize: " + ret + ", affect call: " + RpcServer.getCurrentCall());
       }
       position += ret;
       bufOffset += ret;
@@ -1383,9 +1383,8 @@ public class HFileBlock implements Cacheable {
           
           long end = System.currentTimeMillis();
           if (end - begin > RpcServer.SLOW_IO_LOG_THRESHOLD_MS) {
-            HFile.LOG.info(
-                "readAtOffset read cost:" + (end - begin) + " ms, seek cost:" + (middle - begin) +
-                    " ms, affect call: " + rpcCall);
+            HFile.LOG.info("readAtOffset read cost: " + (end - begin) + " ms, seek cost: "
+                + (middle - begin) + " ms, size: " + size + ", affect call: " + rpcCall);
           }
         } finally {
           streamLock.unlock();
