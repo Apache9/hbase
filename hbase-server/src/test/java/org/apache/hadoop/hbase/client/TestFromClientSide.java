@@ -5340,80 +5340,80 @@ public class TestFromClientSide {
           startBlockMiss = cache.getStats().getMissCount();
           i = -1;
         }
-
-        // insert data
-        Put put = new Put(ROW);
-        put.addColumn(FAMILY, QUALIFIER, data);
-        table.put(put);
-        assertTrue(Bytes.equals(table.get(new Get(ROW)).value(), data));
-
-        // data was in memstore so don't expect any changes
-        assertEquals(startBlockCount, cache.getBlockCount());
-        assertEquals(startBlockHits, cache.getStats().getHitCount());
-        assertEquals(startBlockMiss, cache.getStats().getMissCount());
-
-        // flush the data
-        LOG.debug("Flushing cache");
-        region.flush(true);
-
-        // expect two more blocks in cache - DATA and ROOT_INDEX
-        // , no change in hits/misses
-        long expectedBlockCount = startBlockCount + 2;
-        long expectedBlockHits = startBlockHits;
-        long expectedBlockMiss = startBlockMiss;
-        assertEquals(expectedBlockCount, cache.getBlockCount());
-        assertEquals(expectedBlockHits, cache.getStats().getHitCount());
-        assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
-        // read the data and expect same blocks, one new hit, no misses
-        assertTrue(Bytes.equals(table.get(new Get(ROW)).value(), data));
-        assertEquals(expectedBlockCount, cache.getBlockCount());
-        assertEquals(++expectedBlockHits, cache.getStats().getHitCount());
-        assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
-        // insert a second column, read the row, no new blocks, one new hit
-        byte[] QUALIFIER2 = Bytes.add(QUALIFIER, QUALIFIER);
-        byte[] data2 = Bytes.add(data, data);
-        put = new Put(ROW);
-        put.addColumn(FAMILY, QUALIFIER2, data2);
-        table.put(put);
-        Result r = table.get(new Get(ROW));
-        assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER), data));
-        assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER2), data2));
-        assertEquals(expectedBlockCount, cache.getBlockCount());
-        assertEquals(++expectedBlockHits, cache.getStats().getHitCount());
-        assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
-        // flush, one new block
-        System.out.println("Flushing cache");
-        region.flush(true);
-
-        // + 1 for Index Block, +1 for data block
-        expectedBlockCount += 2;
-        assertEquals(expectedBlockCount, cache.getBlockCount());
-        assertEquals(expectedBlockHits, cache.getStats().getHitCount());
-        assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
-        // compact, net minus two blocks, two hits, no misses
-        System.out.println("Compacting");
-        assertEquals(2, store.getStorefilesCount());
-        store.triggerMajorCompaction();
-        region.compact(true);
-        store.closeAndArchiveCompactedFiles();
-        waitForStoreFileCount(store, 1, 10000); // wait 10 seconds max
-        assertEquals(1, store.getStorefilesCount());
-        // evicted two data blocks and two index blocks and compaction does not cache new blocks
-        expectedBlockCount = 0;
-        assertEquals(expectedBlockCount, cache.getBlockCount());
-        expectedBlockHits += 2;
-        assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
-        assertEquals(expectedBlockHits, cache.getStats().getHitCount());
-        // read the row, this should be a cache miss because we don't cache data
-        // blocks on compaction
-        r = table.get(new Get(ROW));
-        assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER), data));
-        assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER2), data2));
-        expectedBlockCount += 1; // cached one data block
-        assertEquals(expectedBlockCount, cache.getBlockCount());
-        assertEquals(expectedBlockHits, cache.getStats().getHitCount());
-        assertEquals(++expectedBlockMiss, cache.getStats().getMissCount());
       }
+
+      // insert data
+      Put put = new Put(ROW);
+      put.addColumn(FAMILY, QUALIFIER, data);
+      table.put(put);
+      assertTrue(Bytes.equals(table.get(new Get(ROW)).value(), data));
+
+      // data was in memstore so don't expect any changes
+      assertEquals(startBlockCount, cache.getBlockCount());
+      assertEquals(startBlockHits, cache.getStats().getHitCount());
+      assertEquals(startBlockMiss, cache.getStats().getMissCount());
+
+      // flush the data
+      LOG.debug("Flushing cache");
+      region.flush(true);
+
+      // expect two more blocks in cache - DATA and ROOT_INDEX
+      // , no change in hits/misses
+      long expectedBlockCount = startBlockCount + 2;
+      long expectedBlockHits = startBlockHits;
+      long expectedBlockMiss = startBlockMiss;
+      assertEquals(expectedBlockCount, cache.getBlockCount());
+      assertEquals(expectedBlockHits, cache.getStats().getHitCount());
+      assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
+      // read the data and expect same blocks, one new hit, no misses
+      assertTrue(Bytes.equals(table.get(new Get(ROW)).value(), data));
+      assertEquals(expectedBlockCount, cache.getBlockCount());
+      assertEquals(++expectedBlockHits, cache.getStats().getHitCount());
+      assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
+      // insert a second column, read the row, no new blocks, one new hit
+      byte[] QUALIFIER2 = Bytes.add(QUALIFIER, QUALIFIER);
+      byte[] data2 = Bytes.add(data, data);
+      put = new Put(ROW);
+      put.addColumn(FAMILY, QUALIFIER2, data2);
+      table.put(put);
+      Result r = table.get(new Get(ROW));
+      assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER), data));
+      assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER2), data2));
+      assertEquals(expectedBlockCount, cache.getBlockCount());
+      assertEquals(++expectedBlockHits, cache.getStats().getHitCount());
+      assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
+      // flush, one new block
+      System.out.println("Flushing cache");
+      region.flush(true);
+
+      // + 1 for Index Block, +1 for data block
+      expectedBlockCount += 2;
+      assertEquals(expectedBlockCount, cache.getBlockCount());
+      assertEquals(expectedBlockHits, cache.getStats().getHitCount());
+      assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
+      // compact, net minus two blocks, two hits, no misses
+      System.out.println("Compacting");
+      assertEquals(2, store.getStorefilesCount());
+      store.triggerMajorCompaction();
+      region.compact(true);
+      store.closeAndArchiveCompactedFiles();
+      waitForStoreFileCount(store, 1, 10000); // wait 10 seconds max
+      assertEquals(1, store.getStorefilesCount());
+      // evicted two data blocks and two index blocks and compaction does not cache new blocks
+      expectedBlockCount = 0;
+      assertEquals(expectedBlockCount, cache.getBlockCount());
+      expectedBlockHits += 2;
+      assertEquals(expectedBlockMiss, cache.getStats().getMissCount());
+      assertEquals(expectedBlockHits, cache.getStats().getHitCount());
+      // read the row, this should be a cache miss because we don't cache data
+      // blocks on compaction
+      r = table.get(new Get(ROW));
+      assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER), data));
+      assertTrue(Bytes.equals(r.getValue(FAMILY, QUALIFIER2), data2));
+      expectedBlockCount += 1; // cached one data block
+      assertEquals(expectedBlockCount, cache.getBlockCount());
+      assertEquals(expectedBlockHits, cache.getStats().getHitCount());
+      assertEquals(++expectedBlockMiss, cache.getStats().getMissCount());
     }
   }
 

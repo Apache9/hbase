@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.regionserver.wal.AbstractFSWAL;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
+import org.apache.hadoop.hbase.regionserver.wal.WALClosedException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.ipc.RemoteException;
@@ -180,9 +181,15 @@ public abstract class AbstractWALRoller<T extends Abortable> extends HasThread
           WAL wal = entry.getKey();
           // reset the flag in front to avoid missing roll request before we return from rollWriter.
           walNeedsRoll.put(wal, Boolean.FALSE);
-          // Force the roll if the logroll.period is elapsed or if a roll was requested.
-          // The returned value is an array of actual region names.
-          byte[][] regionsToFlush = wal.rollWriter(periodic || entry.getValue().booleanValue());
+          byte[][] regionsToFlush = null;
+          try {
+            // Force the roll if the logroll.period is elapsed or if a roll was requested.
+            // The returned value is an array of actual region names.
+            regionsToFlush = wal.rollWriter(periodic || entry.getValue().booleanValue());
+          } catch (WALClosedException e) {
+            LOG.warn("WAL has been closed. Skipping rolling of writer and just remove it", e);
+            iter.remove();
+          }
           if (regionsToFlush != null) {
             for (byte[] r : regionsToFlush) {
               scheduleFlush(Bytes.toString(r));
