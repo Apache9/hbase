@@ -448,6 +448,7 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
       case DeleteColumn:
         cellJson = HBaseStreamUtil.cellToJson(cell, null);
         break;
+      default:
     }
     return cellJson;
   }

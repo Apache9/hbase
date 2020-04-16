@@ -13,10 +13,10 @@ import java.util.Arrays;
 @InterfaceAudience.Private
 public class OpenTSDBUtil {
   // our xiaomi opentsdb cluster use 4 bytes width
-  public static short METRIC_WIDTH = 4;
+  public static final short METRIC_WIDTH = 4;
 
   // our opentsdb set default false.
-  public static boolean USE_OTSDB_TIMESTAMP = false;
+  public static final boolean USE_OTSDB_TIMESTAMP = false;
 
   /**
    * Number of LSBs in time_deltas reserved for flags.
