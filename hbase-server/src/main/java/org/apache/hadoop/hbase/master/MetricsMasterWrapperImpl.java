@@ -233,7 +233,9 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
       long readRequestPerSecond, long writeRequestPerSecond, long getRequestPerSecond,
       long scanRequestPerSecond, long scanRowsCountPerSecond, long readRequestByCapacityUnit,
       long writeRequestByCapacityUnit, long readCellCountPerSecond, long readRawCellCountPerSecond,
-      long memStoreSizeMB, long storeFileSizeMB, long regionCount, long approximateRowCount) {
+      long memStoreSizeMB, long storeFileSizeMB, long regionCount, long approximateRowCount,
+      long userReadRequestPerSecond, long userWriteRequestPerSecond,
+      long userReadRequestByCapacityUnit, long userWriteRequestByCapacityUnit) {
     return builder
         .addCounter(Interns.info(prefix + MetricsClusterSource.READ_REQUEST_PER_SECOND,
           MetricsClusterSource.READ_REQUEST_PER_SECOND_DESC), readRequestPerSecond)
@@ -264,7 +266,19 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
         .addCounter(Interns.info(prefix + MetricsClusterSource.REGION_COUNT,
             MetricsClusterSource.REGION_COUNT_DESC), regionCount)
         .addCounter(Interns.info(prefix + MetricsClusterSource.APPROXIMATE_ROW_COUNT,
-            MetricsClusterSource.APPROXIMATE_ROW_COUNT_DESC), approximateRowCount);
+          MetricsClusterSource.APPROXIMATE_ROW_COUNT_DESC), approximateRowCount)
+        .addCounter(Interns.info(prefix + MetricsClusterSource.USER_READ_REQUEST_PER_SECOND,
+          MetricsClusterSource.USER_READ_REQUEST_PER_SECOND_DESC), userReadRequestPerSecond)
+        .addCounter(Interns.info(prefix + MetricsClusterSource.USER_WRITE_REQUEST_PER_SECOND,
+          MetricsClusterSource.USER_WRITE_REQUEST_PER_SECOND_DESC), userWriteRequestPerSecond)
+        .addCounter(
+          Interns.info(prefix + MetricsClusterSource.USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+            MetricsClusterSource.USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+          userReadRequestByCapacityUnit)
+        .addCounter(
+          Interns.info(prefix + MetricsClusterSource.USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+            MetricsClusterSource.USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+          userWriteRequestByCapacityUnit);
   }
 
   /**
@@ -289,6 +303,10 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     long globalRegionCount = 0;
     long globalTableCount = 0;
     long globalApproximateRowCount = 0;
+    long globalUserReadRequestPerSecond = 0;
+    long globalUserWriteRequestPerSecond = 0;
+    long globalUserReadRequestByCapacityUnit = 0;
+    long globalUserWriteRequestByCapacityUnit = 0;
 
     // Table metrics
     Map<TableName, Long> tableReadRequestPerSecond = new HashMap<>();
@@ -304,6 +322,10 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     Map<TableName, Long> tableStoreFileSizeMB = new HashMap<>();
     Map<TableName, Long> tableRegionCount = new HashMap<>();
     Map<TableName, Long> tableApproximateRowCount = new HashMap<>();
+    Map<TableName, Long> tableUserReadRequestPerSecond = new HashMap<>();
+    Map<TableName, Long> tableUserWriteRequestPerSecond = new HashMap<>();
+    Map<TableName, Long> tableUserReadRequestByCapacityUnit = new HashMap<>();
+    Map<TableName, Long> tableUserWriteRequestByCapacityUnit = new HashMap<>();
 
     // Namespace metrics
     Map<String, Long> nsReadRequestPerSecond = new HashMap<>();
@@ -320,6 +342,10 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     Map<String, Long> nsTableCount = new HashMap<>();
     Map<String, Long> nsRegionCount = new HashMap<>();
     Map<String, Long> nsApproximateRowCount = new HashMap<>();
+    Map<String, Long> nsUserReadRequestPerSecond = new HashMap<>();
+    Map<String, Long> nsUserWriteRequestPerSecond = new HashMap<>();
+    Map<String, Long> nsUserReadRequestByCapacityUnit = new HashMap<>();
+    Map<String, Long> nsUserWriteRequestByCapacityUnit = new HashMap<>();
 
     // Replication metrics
     Map<String, Long> peerSizeOfLogQueue = new HashMap<>();
@@ -355,6 +381,10 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
         accumulateMap(tableStoreFileSizeMB, table, regionMetrics.getStoreFileSize().getLongValue());
         accumulateMap(tableRegionCount, table, 1L);
         accumulateMap(tableApproximateRowCount, table, regionMetrics.getApproximateRowCount());
+        accumulateMap(tableUserReadRequestPerSecond, table, regionMetrics.getUserReadRequestsPerSecond());
+        accumulateMap(tableUserWriteRequestPerSecond, table, regionMetrics.getUserWriteRequestsPerSecond());
+        accumulateMap(tableUserReadRequestByCapacityUnit, table, regionMetrics.getUserReadRequestsByCapacityUnitPerSecond());
+        accumulateMap(tableUserWriteRequestByCapacityUnit, table, regionMetrics.getUserWriteRequestsByCapacityUnitPerSecond());
       }
 
       // Append server replication metric
@@ -400,6 +430,10 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
       accumulateMap(nsRegionCount, ns, tableRegionCount.get(table));
       accumulateMap(nsTableCount, ns, 1L);
       accumulateMap(nsApproximateRowCount, ns, tableApproximateRowCount.get(table));
+      accumulateMap(nsUserReadRequestPerSecond, ns, tableUserReadRequestPerSecond.get(table));
+      accumulateMap(nsUserWriteRequestPerSecond, ns, tableUserWriteRequestPerSecond.get(table));
+      accumulateMap(nsUserReadRequestByCapacityUnit, ns, tableUserReadRequestByCapacityUnit.get(table));
+      accumulateMap(nsUserWriteRequestByCapacityUnit, ns, tableUserWriteRequestByCapacityUnit.get(table));
     }
 
     globalReadRequestPerSecond += sumUpMap(nsReadRequestPerSecond);
@@ -416,6 +450,10 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
     globalRegionCount += sumUpMap(nsRegionCount);
     globalTableCount += sumUpMap(nsTableCount);
     globalApproximateRowCount += sumUpMap(nsApproximateRowCount);
+    globalUserReadRequestPerSecond += sumUpMap(nsUserReadRequestPerSecond);
+    globalUserWriteRequestPerSecond += sumUpMap(nsUserWriteRequestPerSecond);
+    globalUserReadRequestByCapacityUnit += sumUpMap(nsUserReadRequestByCapacityUnit);
+    globalUserWriteRequestByCapacityUnit += sumUpMap(nsUserWriteRequestByCapacityUnit);
     long globalNamespaceCount = nsTableCount.size();
 
     // Append cluster metrics
@@ -434,7 +472,11 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
             globalMemStoreSizeMB,
             globalStoreFileSizeMB,
             globalRegionCount,
-            globalApproximateRowCount);
+            globalApproximateRowCount,
+            globalUserReadRequestPerSecond,
+            globalUserWriteRequestPerSecond,
+            globalUserReadRequestByCapacityUnit,
+            globalUserWriteRequestByCapacityUnit);
     builder.addCounter(Interns.info(clusterPrefix + MetricsClusterSource.TABLE_COUNT,
         MetricsClusterSource.TABLE_COUNT_DESC), globalTableCount);
     builder.addCounter(Interns.info(clusterPrefix + MetricsClusterSource.NAMESPACE_COUNT,
@@ -458,7 +500,11 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
               tableMemStoreSizeMB.getOrDefault(table, 0L),
               tableStoreFileSizeMB.getOrDefault(table, 0L),
               tableRegionCount.getOrDefault(table, 0L),
-              tableApproximateRowCount.getOrDefault(table, 0L));
+              tableApproximateRowCount.getOrDefault(table, 0L),
+              tableUserReadRequestPerSecond.getOrDefault(table, 0L),
+              tableUserWriteRequestPerSecond.getOrDefault(table, 0L),
+              tableUserReadRequestByCapacityUnit.getOrDefault(table, 0L),
+              tableUserWriteRequestByCapacityUnit.getOrDefault(table, 0L));
     }
 
     // Append namespace metrics
@@ -478,7 +524,11 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
               nsMemStoreSizeMB.getOrDefault(ns, 0L),
               nsStoreFileSizeMB.getOrDefault(ns, 0L),
               nsRegionCount.getOrDefault(ns, 0L),
-              nsApproximateRowCount.getOrDefault(ns, 0L));
+              nsApproximateRowCount.getOrDefault(ns, 0L),
+              nsUserReadRequestPerSecond.getOrDefault(ns, 0L),
+              nsUserWriteRequestPerSecond.getOrDefault(ns, 0L),
+              nsUserReadRequestByCapacityUnit.getOrDefault(ns, 0L),
+              nsUserWriteRequestByCapacityUnit.getOrDefault(ns, 0L));
       builder.addCounter(Interns.info(namespacePrefix + MetricsClusterSource.TABLE_COUNT,
           MetricsClusterSource.TABLE_COUNT_DESC), nsTableCount.getOrDefault(ns, 0L));
     }

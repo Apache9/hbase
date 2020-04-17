@@ -83,6 +83,12 @@ public final class RegionMetricsBuilder {
         .setUncompressedStoreFileSize(
           new Size(regionLoadPB.getStoreUncompressedSizeMB(),Size.Unit.MEGABYTE))
         .setApproximateRowCount(regionLoadPB.getApproximateRowCount())
+        .setUserReadRequestCount(regionLoadPB.getUserReadRequestsPerSecond())
+        .setUserWriteRequestCount(regionLoadPB.getUserWriteRequestsPerSecond())
+        .setUserReadRequestsByCapacityUnitPerSecond(
+          regionLoadPB.getUserReadRequestsByCapacityUnitPerSecond())
+        .setUserWriteRequestsByCapacityUnitPerSecond(
+          regionLoadPB.getUserWriteRequestsByCapacityUnitPerSecond())
         .build();
   }
 
@@ -128,6 +134,12 @@ public final class RegionMetricsBuilder {
         .setStoreUncompressedSizeMB(
           (int) regionMetrics.getUncompressedStoreFileSize().get(Size.Unit.MEGABYTE))
         .setApproximateRowCount(regionMetrics.getApproximateRowCount())
+        .setUserReadRequestsPerSecond(regionMetrics.getUserReadRequestsPerSecond())
+        .setUserWriteRequestsPerSecond(regionMetrics.getUserWriteRequestsPerSecond())
+        .setUserReadRequestsByCapacityUnitPerSecond(
+          regionMetrics.getUserReadRequestsByCapacityUnitPerSecond())
+        .setUserWriteRequestsByCapacityUnitPerSecond(
+          regionMetrics.getUserWriteRequestsByCapacityUnitPerSecond())
         .build();
   }
 
@@ -166,6 +178,10 @@ public final class RegionMetricsBuilder {
   private float dataLocality;
   private long lastMajorCompactionTimestamp;
   private long approximateRowCount;
+  private long userReadRequestsPerSecond;
+  private long userWriteRequestsPerSecond;
+  private long userReadRequestsByCapacityUnitPerSecond;
+  private long userWriteRequestsByCapacityUnitPerSecond;
   private RegionMetricsBuilder(byte[] name) {
     this.name = name;
   }
@@ -302,6 +318,26 @@ public final class RegionMetricsBuilder {
     return this;
   }
 
+  public RegionMetricsBuilder setUserReadRequestCount(long value) {
+    this.userReadRequestsPerSecond = value;
+    return this;
+  }
+
+  public RegionMetricsBuilder setUserWriteRequestCount(long value) {
+    this.userWriteRequestsPerSecond = value;
+    return this;
+  }
+
+  public RegionMetricsBuilder setUserReadRequestsByCapacityUnitPerSecond(long value) {
+    this.userReadRequestsByCapacityUnitPerSecond = value;
+    return this;
+  }
+
+  public RegionMetricsBuilder setUserWriteRequestsByCapacityUnitPerSecond(long value) {
+    this.userWriteRequestsByCapacityUnitPerSecond = value;
+    return this;
+  }
+
   public RegionMetrics build() {
     return new RegionMetricsImpl(name,
         storeCount,
@@ -333,7 +369,11 @@ public final class RegionMetricsBuilder {
         storeSequenceIds,
         dataLocality,
         lastMajorCompactionTimestamp,
-        approximateRowCount);
+        approximateRowCount,
+        userReadRequestsPerSecond,
+        userWriteRequestsPerSecond,
+        userReadRequestsByCapacityUnitPerSecond,
+        userWriteRequestsByCapacityUnitPerSecond);
   }
 
   private static class RegionMetricsImpl implements RegionMetrics {
@@ -368,6 +408,10 @@ public final class RegionMetricsBuilder {
     private final float dataLocality;
     private final long lastMajorCompactionTimestamp;
     private final long approximateRowCount;
+    private final long userReadRequestsPerSecond;
+    private final long userWriteRequestsPerSecond;
+    private final long userReadRequestsByCapacityUnitPerSecond;
+    private final long userWriteRequestsByCapacityUnitPerSecond;
     RegionMetricsImpl(byte[] name,
         int storeCount,
         int storeFileCount,
@@ -398,7 +442,11 @@ public final class RegionMetricsBuilder {
         Map<byte[], Long> storeSequenceIds,
         float dataLocality,
         long lastMajorCompactionTimestamp,
-        long approximateRowCount) {
+        long approximateRowCount,
+        long userReadRequestsPerSecond,
+        long userWriteRequestsPerSecond,
+        long userReadRequestsByCapacityUnitPerSecond,
+        long userWriteRequestsByCapacityUnitPerSecond) {
       this.name = Preconditions.checkNotNull(name);
       this.storeCount = storeCount;
       this.storeFileCount = storeFileCount;
@@ -430,6 +478,10 @@ public final class RegionMetricsBuilder {
       this.dataLocality = dataLocality;
       this.lastMajorCompactionTimestamp = lastMajorCompactionTimestamp;
       this.approximateRowCount = approximateRowCount;
+      this.userReadRequestsPerSecond = userReadRequestsPerSecond;
+      this.userWriteRequestsPerSecond = userWriteRequestsPerSecond;
+      this.userReadRequestsByCapacityUnitPerSecond = userReadRequestsByCapacityUnitPerSecond;
+      this.userWriteRequestsByCapacityUnitPerSecond = userWriteRequestsByCapacityUnitPerSecond;
     }
 
     @Override
@@ -588,6 +640,26 @@ public final class RegionMetricsBuilder {
     }
 
     @Override
+    public long getUserReadRequestsPerSecond() {
+      return userReadRequestsPerSecond;
+    }
+
+    @Override
+    public long getUserWriteRequestsPerSecond() {
+      return userWriteRequestsPerSecond;
+    }
+
+    @Override
+    public long getUserReadRequestsByCapacityUnitPerSecond() {
+      return userReadRequestsByCapacityUnitPerSecond;
+    }
+
+    @Override
+    public long getUserWriteRequestsByCapacityUnitPerSecond() {
+      return userWriteRequestsByCapacityUnitPerSecond;
+    }
+
+    @Override
     public String toString() {
       StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "storeCount",
           this.getStoreCount());
@@ -651,6 +723,13 @@ public final class RegionMetricsBuilder {
       Strings.appendKeyValue(sb, "readCellCountPerSecond", this.getReadCellCountPerSecond());
       Strings.appendKeyValue(sb, "readRawCellCountPerSecond", this.getReadRawCellCountPerSecond());
       Strings.appendKeyValue(sb, "approximateRowCount", this.getApproximateRowCount());
+      Strings.appendKeyValue(sb, "userReadRequestsPerSecond", this.getUserReadRequestsPerSecond());
+      Strings.appendKeyValue(sb, "userWriteRequestsPerSecond",
+        this.getUserWriteRequestsPerSecond());
+      Strings.appendKeyValue(sb, "userReadRequestsByCapacityUnitPerSecond",
+        this.getUserReadRequestsByCapacityUnitPerSecond());
+      Strings.appendKeyValue(sb, "userWriteRequestsByCapacityUnitPerSecond",
+        this.getUserWriteRequestsByCapacityUnitPerSecond());
       return sb.toString();
     }
   }

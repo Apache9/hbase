@@ -171,6 +171,11 @@ message RegionLoad {
   optional uint64 read_cell_count_per_second = 87;
   optional uint64 read_raw_cell_count_perSecond = 88;
   optional uint64 approximate_row_count = 89;
+
+  optional uint64 user_read_requests_per_second = 90;
+  optional uint64 user_write_requests_per_second = 91;
+  optional uint64 user_read_requests_by_capacity_unit_per_second = 92;
+  optional uint64 user_write_requests_by_capacity_unit_per_second = 93;
 }
 
 /* Server-level protobufs */

@@ -346,6 +346,24 @@ public class MetricsTableSourceImpl implements MetricsTableSource {
         mrb.addGauge(Interns.info(tableNamePrefix + MetricsRegionServerSource.NUM_REFERENCE_FILES,
             MetricsRegionServerSource.NUM_REFERENCE_FILES_DESC),
             tableWrapperAgg.getNumReferenceFiles(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.USER_READ_REQUEST_PER_SECOND,
+            MetricsTableSource.USER_READ_REQUEST_PER_SECOND_DESC),
+          tableWrapperAgg.getUserReadRequestsPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.USER_WRITE_REQUEST_PER_SECOND,
+            MetricsTableSource.USER_WRITE_REQUEST_PER_SECOND_DESC),
+          tableWrapperAgg.getUserWriteRequestsPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(
+            tableNamePrefix + MetricsTableSource.USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+            MetricsTableSource.USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+          tableWrapperAgg.getUserReadRequestsByCapacityUnitPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(
+            tableNamePrefix + MetricsTableSource.USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+            MetricsTableSource.USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+          tableWrapperAgg.getUserWriteRequestsByCapacityUnitPerSecond(tableName.getNameAsString()));
       }
     }
   }

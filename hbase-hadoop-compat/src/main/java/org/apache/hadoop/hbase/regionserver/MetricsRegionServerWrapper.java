@@ -552,6 +552,14 @@ public interface MetricsRegionServerWrapper {
 
   long getWriteRequestsByCapacityUnitPerSecond();
 
+  long getUserReadRequestsPerSecond();
+
+  long getUserWriteRequestsPerSecond();
+
+  long getUserReadRequestsByCapacityUnitPerSecond();
+
+  long getUserWriteRequestsByCapacityUnitPerSecond();
+
   long getReadCellCountPerSecond();
 
   long getReadRawCellCountPerSecond();

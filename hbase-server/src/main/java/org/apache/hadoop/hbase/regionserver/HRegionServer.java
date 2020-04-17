@@ -1739,7 +1739,11 @@ public class HRegionServer extends HasThread implements
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setDataLocality(dataLocality)
       .setLastMajorCompactionTs(r.getOldestHfileTs(true))
-      .setApproximateRowCount(approximateRowCount);
+      .setApproximateRowCount(approximateRowCount)
+      .setUserReadRequestsPerSecond(r.getUserReadRequestsPerSecond())
+      .setUserWriteRequestsPerSecond(r.getUserWriteRequestsPerSecond())
+      .setUserReadRequestsByCapacityUnitPerSecond(r.getUserReadRequestsByCapacityUnitPerSecond())
+      .setUserWriteRequestsByCapacityUnitPerSecond(r.getUserWriteRequestsByCapacityUnitPerSecond());
     r.setCompleteSequenceId(regionLoadBldr);
 
     return regionLoadBldr.build();

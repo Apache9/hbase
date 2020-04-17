@@ -151,6 +151,26 @@ public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrappe
   }
 
   @Override
+  public long getUserReadRequestsPerSecond() {
+    return 0;
+  }
+
+  @Override
+  public long getUserWriteRequestsPerSecond() {
+    return 0;
+  }
+
+  @Override
+  public long getUserReadRequestsByCapacityUnitPerSecond() {
+    return 0;
+  }
+
+  @Override
+  public long getUserWriteRequestsByCapacityUnitPerSecond() {
+    return 0;
+  }
+
+  @Override
   public long getReadCellCountPerSecond() {
     return 8;
   }

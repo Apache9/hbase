@@ -59,6 +59,15 @@ public interface MetricsClusterSource extends BaseSource {
   String READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Read bytes per second, unit: 1KB";
   String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND = "writeRequestsByCapacityUnitPerSecond";
   String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Write bytes per second, unit: 1KB";
+  String USER_READ_REQUEST_PER_SECOND = "userReadRequestsPerSecond";
+  String USER_READ_REQUEST_PER_SECOND_DESC = "Number of user read requests per second";
+  String USER_WRITE_REQUEST_PER_SECOND = "userWriteRequestsPerSecond";
+  String USER_WRITE_REQUEST_PER_SECOND_DESC = "Number of user write requests per second";
+  String USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND = "userReadRequestsByCapacityUnitPerSecond";
+  String USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "User read bytes per second";
+  String USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND =
+      "userWriteRequestsByCapacityUnitPerSecond";
+  String USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "User write bytes per second";
   String READ_CELLS_PER_SECOND = "readCellCountPerSecond";
   String READ_CELLS_PER_SECOND_DESC = "Number of read cells per second";
   String READ_RAW_CELLS_PER_SECOND = "readRawCellCountPerSecond";

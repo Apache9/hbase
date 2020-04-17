@@ -161,6 +161,7 @@ import org.apache.hadoop.hbase.regionserver.throttle.ThroughputController;
 import org.apache.hadoop.hbase.regionserver.wal.WALUtil;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationObserver;
+import org.apache.hadoop.hbase.security.SecurityConstants;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
@@ -184,6 +185,7 @@ import org.apache.hadoop.hbase.wal.WALKey;
 import org.apache.hadoop.hbase.wal.WALKeyImpl;
 import org.apache.hadoop.hbase.wal.WALSplitUtil;
 import org.apache.hadoop.hbase.wal.WALSplitUtil.MutationReplay;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.htrace.core.TraceScope;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -337,6 +339,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   final MetricsRate readCellCountPerSecond = new MetricsRate();
   final MetricsRate readRawCellCountPerSecond = new MetricsRate();
 
+  final MetricsRate userReadRequestsPerSecond = new MetricsRate();
+  final MetricsRate userWriteRequestsPerSecond = new MetricsRate();
+  final MetricsRate userReadRequestsByCapacityUnitPerSecond = new MetricsRate();
+  final MetricsRate userWriteRequestsByCapacityUnitPerSecond = new MetricsRate();
+
   // Number of requests blocked by memstore size.
   private final LongAdder blockedRequestsCount = new LongAdder();
 
@@ -359,6 +366,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
   private Path regionDir;
   private FileSystem walFS;
+
+  private final String rsKerberos;
 
   // set to true if the region is restored from snapshot
   private boolean isRestoredRegion = false;
@@ -888,6 +897,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     this.maxCellSize = conf.getLong(HBASE_MAX_CELL_SIZE_KEY, DEFAULT_MAX_CELL_SIZE);
     this.miniBatchSize = conf.getInt(HBASE_REGIONSERVER_MINIBATCH_SIZE,
         DEFAULT_HBASE_REGIONSERVER_MINIBATCH_SIZE);
+    rsKerberos = conf.get(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL, "")
+        .replace("/hadoop@XIAOMI.HADOOP", "");
   }
 
   void setHTableSpecificConf() {
@@ -1426,9 +1437,34 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     return (long) readCellCountPerSecond.getPreviousIntervalValue();
   }
 
+  @Override
   public long getReadRawCellCountPerSecond() {
     readRawCellCountPerSecond.intervalHeartBeat();
     return (long) readRawCellCountPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getUserReadRequestsPerSecond() {
+    userReadRequestsPerSecond.intervalHeartBeat();
+    return (long) userReadRequestsPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getUserWriteRequestsPerSecond() {
+    userWriteRequestsPerSecond.intervalHeartBeat();
+    return (long) userWriteRequestsPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getUserReadRequestsByCapacityUnitPerSecond() {
+    userReadRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) userReadRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getUserWriteRequestsByCapacityUnitPerSecond() {
+    userWriteRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) userWriteRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
   }
 
   @Override
@@ -4205,6 +4241,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         if (!initialized) {
           this.writeRequestsCount.add(batchOp.size());
           this.writeRequestsPerSecond.inc(batchOp.size());
+          if (isUserRequest()) {
+            this.userWriteRequestsPerSecond.inc(batchOp.size());
+          }
           for (int i = 0; i < batchOp.size(); i++) {
             Mutation mutation = batchOp.getMutation(i);
             updateWriteRequestsByCapacityUnitPerSecond(QuotaUtil.calculateMutationSize(mutation));
@@ -6817,6 +6856,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       if (!outResults.isEmpty()) {
         readRequestsCount.increment();
         readRequestsPerSecond.inc();
+        if (isUserRequest()) {
+          userReadRequestsPerSecond.inc();
+        }
         readCellCountPerSecond.inc(outResults.size() - initialCells);
         readRawCellCountPerSecond.inc(scannerContext.getReadRawCells());
         updateReadRequestsByCapacityUnitPerSecond(QuotaUtil.calculateCellSize(tmpList));
@@ -8141,6 +8183,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       updateWriteRequestsByCapacityUnitPerSecond(
         memstoreAccounting.getMemStoreSize().getDataSize());
       this.writeRequestsPerSecond.inc();
+      if (isUserRequest()) {
+        this.userWriteRequestsPerSecond.inc();
+      }
       requestFlushIfNeeded();
       closeRegionOperation(op);
       if (this.metricsRegion != null) {
@@ -9117,6 +9162,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       long readCapacityUnit =
           rsServices.getRegionServerRpcQuotaManager().calculateReadCapacityUnit(readSize);
       readRequestsByCapacityUnitPerSecond.inc(readCapacityUnit);
+      if (isUserRequest()) {
+        userReadRequestsByCapacityUnitPerSecond.inc(readCapacityUnit);
+      }
     }
   }
 
@@ -9125,6 +9173,32 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       long writeCapacityUnit =
           rsServices.getRegionServerRpcQuotaManager().calculateWriteCapacityUnit(writeSize);
       writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnit);
+      if (isUserRequest()) {
+        userWriteRequestsByCapacityUnitPerSecond.inc(writeCapacityUnit);
+      }
     }
+  }
+
+  private boolean isUserRequest() {
+    try {
+      String userName = getRequestUser().getShortUserName();
+      if (userName.equals(rsKerberos)) {
+        return false;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed check if request is called by user", e);
+    }
+    return true;
+  }
+
+  private UserGroupInformation getRequestUser() throws IOException {
+    Optional<User> user = RpcServer.getRequestUser();
+    UserGroupInformation ugi;
+    if (user.isPresent()) {
+      ugi = user.get().getUGI();
+    } else {
+      ugi = User.getCurrent().getUGI();
+    }
+    return ugi;
   }
 }

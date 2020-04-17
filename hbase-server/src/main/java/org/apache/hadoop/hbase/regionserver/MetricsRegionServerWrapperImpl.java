@@ -91,6 +91,10 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
   private volatile long scanRowsCountPerSecond = 0;
   private volatile long readRequestsByCapacityUnitPerSecond = 0;
   private volatile long writeRequestsByCapacityUnitPerSecond = 0;
+  private volatile long userReadRequestsPerSecond = 0;
+  private volatile long userWriteRequestsPerSecond = 0;
+  private volatile long userReadRequestsByCapacityUnitPerSecond = 0;
+  private volatile long userWriteRequestsByCapacityUnitPerSecond = 0;
   private volatile long readCellCountPerSecond = 0;
   private volatile long readRawCellCountPerSecond = 0;
   private volatile long filteredReadRequestsCount = 0;
@@ -689,6 +693,10 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
         long tempScanRowsCountPerSecond = 0;
         long tempReadRequestsByCapacityUnitPerSecond = 0;
         long tempWriteRequestsByCapacityUnitPerSecond = 0;
+        long tempUserReadRequestsPerSecond = 0;
+        long tempUserWriteRequestsPerSecond = 0;
+        long tempUserReadRequestsByCapacityUnitPerSecond = 0;
+        long tempUserWriteRequestsByCapacityUnitPerSecond = 0;
         long tempReadCellCountPerSecond = 0;
         long tempReadRawCellCountPerSecond = 0;
         long tempCheckAndMutateChecksFailed = 0;
@@ -761,6 +769,12 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
           tempScanRowsCountPerSecond += r.getScanRowsCountPerSecond();
           tempReadRequestsByCapacityUnitPerSecond += r.getReadRequestsByCapacityUnitPerSecond();
           tempWriteRequestsByCapacityUnitPerSecond += r.getWriteRequestsByCapacityUnitPerSecond();
+          tempUserReadRequestsPerSecond += r.getUserReadRequestsPerSecond();
+          tempUserWriteRequestsPerSecond += r.getUserWriteRequestsPerSecond();
+          tempUserReadRequestsByCapacityUnitPerSecond +=
+              r.getUserReadRequestsByCapacityUnitPerSecond();
+          tempUserWriteRequestsByCapacityUnitPerSecond +=
+              r.getUserWriteRequestsByCapacityUnitPerSecond(); 
           tempReadCellCountPerSecond += r.getReadCellCountPerSecond();
           tempReadRawCellCountPerSecond += r.getReadRawCellCountPerSecond();
           tempFilteredReadRequestsCount += r.getFilteredReadRequestsCount();
@@ -1105,6 +1119,26 @@ class MetricsRegionServerWrapperImpl implements MetricsRegionServerWrapper {
   @Override
   public long getWriteRequestsByCapacityUnitPerSecond() {
     return this.writeRequestsByCapacityUnitPerSecond;
+  }
+
+  @Override
+  public long getUserReadRequestsPerSecond() {
+    return userReadRequestsPerSecond;
+  }
+
+  @Override
+  public long getUserWriteRequestsPerSecond() {
+    return userWriteRequestsPerSecond;
+  }
+
+  @Override
+  public long getUserReadRequestsByCapacityUnitPerSecond() {
+    return userReadRequestsByCapacityUnitPerSecond;
+  }
+
+  @Override
+  public long getUserWriteRequestsByCapacityUnitPerSecond() {
+    return userWriteRequestsByCapacityUnitPerSecond;
   }
 
   @Override

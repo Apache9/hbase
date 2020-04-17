@@ -174,4 +174,12 @@ public interface RegionMetrics {
   long getReadRawCellCountPerSecond();
 
   long getApproximateRowCount();
+
+  long getUserReadRequestsPerSecond();
+
+  long getUserWriteRequestsPerSecond();
+
+  long getUserReadRequestsByCapacityUnitPerSecond();
+
+  long getUserWriteRequestsByCapacityUnitPerSecond();
 }

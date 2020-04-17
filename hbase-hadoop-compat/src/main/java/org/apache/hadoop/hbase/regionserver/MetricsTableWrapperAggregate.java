@@ -79,6 +79,14 @@ public interface MetricsTableWrapperAggregate {
 
   long getReadRawCellCountPerSecond(String table);
 
+  long getUserReadRequestsPerSecond(String table);
+
+  long getUserWriteRequestsPerSecond(String table);
+
+  long getUserReadRequestsByCapacityUnitPerSecond(String table);
+
+  long getUserWriteRequestsByCapacityUnitPerSecond(String table);
+
   /**
    * Get the average region size for this table
    */

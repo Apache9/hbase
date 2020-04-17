@@ -361,6 +361,18 @@ public class MetricsRegionServerSourceImpl
               .addCounter(Interns.info(WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
                       WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
                       rsWrap.getWriteRequestsByCapacityUnitPerSecond())
+              .addCounter(Interns.info(USER_READ_REQUEST_PER_SECOND,
+                       USER_READ_REQUEST_PER_SECOND_DESC),
+                       rsWrap.getUserReadRequestsPerSecond())
+              .addCounter(Interns.info(USER_WRITE_REQUEST_PER_SECOND,
+                       USER_WRITE_REQUEST_PER_SECOND_DESC),
+                       rsWrap.getUserWriteRequestsPerSecond())
+              .addCounter(Interns.info(USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+                       USER_READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+                       rsWrap.getUserReadRequestsByCapacityUnitPerSecond())
+              .addCounter(Interns.info(USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+                       USER_WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+                       rsWrap.getUserWriteRequestsByCapacityUnitPerSecond())
               .addCounter(Interns.info(READ_CELLS_PER_SECOND,
                       READ_CELLS_PER_SECOND_DESC),
                       rsWrap.getReadCellCountPerSecond())

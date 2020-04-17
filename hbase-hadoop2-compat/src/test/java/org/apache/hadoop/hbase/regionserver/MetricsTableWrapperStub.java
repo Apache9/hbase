@@ -106,6 +106,26 @@ public class MetricsTableWrapperStub implements MetricsTableWrapperAggregate {
     return 0;
   }
 
+  @Override
+  public long getUserReadRequestsPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getUserWriteRequestsPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getUserReadRequestsByCapacityUnitPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getUserWriteRequestsByCapacityUnitPerSecond(String table) {
+    return 0;
+  }
+
   public String getTableName() {
     return tableName;
   }

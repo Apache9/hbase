@@ -398,6 +398,26 @@ public class RegionLoad implements RegionMetrics {
     return metrics.getApproximateRowCount();
   }
 
+  @Override
+  public long getUserReadRequestsPerSecond() {
+    return metrics.getUserReadRequestsPerSecond();
+  }
+
+  @Override
+  public long getUserWriteRequestsPerSecond() {
+    return metrics.getUserWriteRequestsPerSecond();
+  }
+
+  @Override
+  public long getUserReadRequestsByCapacityUnitPerSecond() {
+    return metrics.getUserReadRequestsByCapacityUnitPerSecond();
+  }
+
+  @Override
+  public long getUserWriteRequestsByCapacityUnitPerSecond() {
+    return metrics.getUserWriteRequestsByCapacityUnitPerSecond();
+  }
+
   /**
    * @return the timestamp of the oldest hfile for any store of this region.
    * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0

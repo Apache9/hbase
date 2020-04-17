@@ -97,6 +97,12 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
           mt.writeRequestsByCapacityUnitPerSecond += r.getWriteRequestsByCapacityUnitPerSecond();
           mt.readCellCountPerSecond = r.getReadCellCountPerSecond();
           mt.readRawCellCountPerSecond += r.getReadRawCellCountPerSecond();
+          mt.userReadRequestsPerSecond += r.getUserReadRequestsPerSecond();
+          mt.userWriteRequestsPerSecond += r.getUserWriteRequestsPerSecond();
+          mt.userReadRequestsByCapacityUnitPerSecond +=
+              r.getUserReadRequestsByCapacityUnitPerSecond();
+          mt.userWriteRequestsByCapacityUnitPerSecond +=
+              r.getUserWriteRequestsByCapacityUnitPerSecond();
         }
       }
 
@@ -280,6 +286,42 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
   }
 
   @Override
+  public long getUserReadRequestsPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    }
+    return metricsTable.userReadRequestsPerSecond;
+  }
+
+  @Override
+  public long getUserWriteRequestsPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    }
+    return metricsTable.userWriteRequestsPerSecond;
+  }
+
+  @Override
+  public long getUserReadRequestsByCapacityUnitPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    }
+    return metricsTable.userReadRequestsByCapacityUnitPerSecond;
+  }
+
+  @Override
+  public long getUserWriteRequestsByCapacityUnitPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    }
+    return metricsTable.userWriteRequestsByCapacityUnitPerSecond;
+  }
+
+  @Override
   public long getNumStores(String table) {
     MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
     if (metricsTable == null) {
@@ -385,5 +427,9 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
     long writeRequestsByCapacityUnitPerSecond;
     long readCellCountPerSecond;
     long readRawCellCountPerSecond;
+    long userReadRequestsPerSecond;
+    long userWriteRequestsPerSecond;
+    long userReadRequestsByCapacityUnitPerSecond;
+    long userWriteRequestsByCapacityUnitPerSecond;
   }
 }
