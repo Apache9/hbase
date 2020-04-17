@@ -142,6 +142,9 @@ public class TestRegionMetrics {
       RegionMetrics fromSM = serverMetrics.getRegionMetrics().get(fromRM.getRegionName());
       Class clazz = RegionMetrics.class;
       for (Method method : clazz.getMethods()) {
+        if (method.getName().contains("PerSecond")) {
+          continue;
+        }
         // check numeric values only
         if (method.getReturnType().equals(Size.class)
           || method.getReturnType().equals(int.class)
