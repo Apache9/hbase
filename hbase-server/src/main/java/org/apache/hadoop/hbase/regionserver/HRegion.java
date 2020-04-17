@@ -6853,18 +6853,16 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       boolean moreValues = nextInternal(tmpList, scannerContext);
       outResults.addAll(tmpList);
 
-      if (!outResults.isEmpty()) {
-        readRequestsCount.increment();
-        readRequestsPerSecond.inc();
-        if (isUserRequest()) {
-          userReadRequestsPerSecond.inc();
-        }
-        readCellCountPerSecond.inc(outResults.size() - initialCells);
-        readRawCellCountPerSecond.inc(scannerContext.getReadRawCells());
-        updateReadRequestsByCapacityUnitPerSecond(QuotaUtil.calculateCellSize(tmpList));
-        if (!scan.isGetScan()) {
-          scanRowsCountPerSecond.inc();
-        }
+      readRequestsCount.increment();
+      readRequestsPerSecond.inc();
+      if (isUserRequest()) {
+        userReadRequestsPerSecond.inc();
+      }
+      readCellCountPerSecond.inc(outResults.size() - initialCells);
+      readRawCellCountPerSecond.inc(scannerContext.getReadRawCells());
+      updateReadRequestsByCapacityUnitPerSecond(QuotaUtil.calculateCellSize(tmpList));
+      if (!scan.isGetScan()) {
+        scanRowsCountPerSecond.inc();
       }
 
       // If the size limit was reached it means a partial Result is being returned. Returning a
