@@ -16,13 +16,16 @@ package org.apache.hadoop.hbase.master.balancer;
 
 import com.xiaomi.miliao.common.ConcurrentHashSet;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.MasterServices;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +38,11 @@ public class GalaxyGroupInfoManager {
   private final List<GalaxyGroupInfo> galaxyGroupInfoList; // for galaxy group, fds/emq/sds/talos
   private MasterServices masterServices;
   private static final String SEPARATOR = ",";
+  private boolean isolateMeta = false;
+
+  public void setIsolateMeta(boolean isolateMeta) {
+    this.isolateMeta = isolateMeta;
+  }
 
   public void setMasterServices(MasterServices masterServices) {
     this.masterServices = masterServices;
@@ -133,6 +141,12 @@ public class GalaxyGroupInfoManager {
   void refreshGroupInfo() {
     LOG.info("now start refresh groupInfo");
     List<ServerName> onlineServers = masterServices.getServerManager().getOnlineServersList();
+    if (isolateMeta) {
+      ServerName metaServer = getMetaRegionServer();
+      LOG.debug("filter meta server " + metaServer);
+      onlineServers = onlineServers.stream().filter(serverName -> !serverName.equals(metaServer))
+          .collect(Collectors.toList());
+    }
     getAllGroupInfo().forEach(groupInfo -> {
       groupInfo.clearServer();
     });
@@ -152,4 +166,15 @@ public class GalaxyGroupInfoManager {
     LOG.info("finish refresh groupInfo");
     getAllGroupInfo().forEach(groupInfo->LOG.info("Finished refresh: "+ groupInfo));
   }
+  
+  private ServerName getMetaRegionServer() {
+    for (Map.Entry<HRegionInfo, ServerName> entry : this.masterServices.getAssignmentManager()
+        .getRegionStates().getRegionAssignments().entrySet()) {
+      if (entry.getKey().isMetaRegion()) {
+        return entry.getValue();
+      }
+    }
+    return null;
+  }
+
 }

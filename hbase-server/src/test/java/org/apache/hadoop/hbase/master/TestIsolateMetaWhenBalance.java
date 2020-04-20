@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.master.balancer.GalaxyGroupLoadBalancer;
 import org.apache.hadoop.hbase.master.balancer.SimpleLoadBalancer;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -51,12 +52,15 @@ public class TestIsolateMetaWhenBalance {
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    TEST_UTIL.getConfiguration()
-        .set(HConstants.HBASE_MASTER_LOADBALANCER_CLASS, SimpleLoadBalancer.class.getName());
+    TEST_UTIL.getConfiguration().set(HConstants.HBASE_MASTER_LOADBALANCER_CLASS,
+      GalaxyGroupLoadBalancer.class.getName());
+    TEST_UTIL.getConfiguration().set(HConstants.HBASE_GALAXY_GROUP_INTERNAL_LOADBALANCER_CLASS,
+      SimpleLoadBalancer.class.getName());
     TEST_UTIL.getConfiguration().setBoolean(HConstants.HBASE_MASTER_LOADBALANCE_BYTABLE, true);
     TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_BALANCER_PERIOD, 3600000);
     TEST_UTIL.getConfiguration()
         .setBoolean(HConstants.HBASE_MASTER_ISOLATE_META_WHEN_BALANCE, true);
+    TEST_UTIL.getConfiguration().setFloat("hbase.regions.slop", 0.01f);
     TEST_UTIL.startMiniCluster(5);
   }
 
@@ -76,8 +80,11 @@ public class TestIsolateMetaWhenBalance {
     createTable(tableName);
     TEST_UTIL.getHBaseAdmin().balancer();
     assertMetaIsolated();
-    assertTrue(
-        TEST_UTIL.getMiniHBaseCluster().getMaster().isClusterBalancedExcludeMetaRegionServer());
+    /**run once more, for MisplacedRegions select target region randomly, not balanced
+     * @see GalaxyGroupLoadBalancer#selectDestServer(HRegionInfo)
+     */
+    TEST_UTIL.getHBaseAdmin().balancer();
+    assertTrue(isClusterBalancedExcludeMetaRegionServer());
     assertFalse(TEST_UTIL.getHBaseAdmin().balancer());
     TEST_UTIL.deleteTable(tableName);
   }
@@ -90,9 +97,12 @@ public class TestIsolateMetaWhenBalance {
     TEST_UTIL.getMiniHBaseCluster().waitOnRegionServer(0);
 
     waitForRunBalancer();
+    /**run once more, for MisplacedRegions select target region randomly, not balanced
+     * @see GalaxyGroupLoadBalancer#selectDestServer(HRegionInfo)
+     */
+    waitForRunBalancer();
     assertMetaIsolated();
-    assertTrue(
-        TEST_UTIL.getMiniHBaseCluster().getMaster().isClusterBalancedExcludeMetaRegionServer());
+    assertTrue(isClusterBalancedExcludeMetaRegionServer());
     assertFalse(TEST_UTIL.getHBaseAdmin().balancer());
     TEST_UTIL.deleteTable(tableName);
   }
@@ -103,11 +113,14 @@ public class TestIsolateMetaWhenBalance {
     createTable(tableName);
     TEST_UTIL.getHBaseAdmin().balancer();
     assertMetaIsolated();
-    assertTrue(
-        TEST_UTIL.getMiniHBaseCluster().getMaster().isClusterBalancedExcludeMetaRegionServer());
+    /**run once more, for MisplacedRegions select target region randomly, not balanced
+     * @see GalaxyGroupLoadBalancer#selectDestServer(HRegionInfo)
+     */
+    TEST_UTIL.getHBaseAdmin().balancer();
+    assertTrue(isClusterBalancedExcludeMetaRegionServer());
     assertFalse(TEST_UTIL.getHBaseAdmin().balancer());
 
-    ServerName metaRegionServer = TEST_UTIL.getMiniHBaseCluster().getMaster().getMetaRegionServer();
+    ServerName metaRegionServer = getMetaRegionServer();
     ServerName targetServer = null;
     for (JVMClusterUtil.RegionServerThread regionServerThread : TEST_UTIL.getMiniHBaseCluster()
         .getRegionServerThreads()) {
@@ -136,8 +149,7 @@ public class TestIsolateMetaWhenBalance {
 
     waitForRunBalancer();
     assertMetaIsolated();
-    assertTrue(
-        TEST_UTIL.getMiniHBaseCluster().getMaster().isClusterBalancedExcludeMetaRegionServer());
+    assertTrue(isClusterBalancedExcludeMetaRegionServer());
     assertFalse(TEST_UTIL.getHBaseAdmin().balancer());
     TEST_UTIL.deleteTable(tableName);
   }
@@ -154,8 +166,51 @@ public class TestIsolateMetaWhenBalance {
   private void assertMetaIsolated() {
     RegionStates regionStates =
         TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStates();
-    ServerName metaRegionServer = TEST_UTIL.getMiniHBaseCluster().getMaster().getMetaRegionServer();
+    ServerName metaRegionServer = getMetaRegionServer();
     assertEquals("Should only serve meta region", 1,
         regionStates.getServerRegions(metaRegionServer).size());
   }
+
+  private ServerName getMetaRegionServer() {
+    for (Map.Entry<HRegionInfo, ServerName> entry : TEST_UTIL.getMiniHBaseCluster().getMaster()
+        .getAssignmentManager().getRegionStates().getRegionAssignments().entrySet()) {
+      if (entry.getKey().isMetaRegion()) {
+        return entry.getValue();
+      }
+    }
+    return null;
+  }
+
+  private boolean isClusterBalancedExcludeMetaRegionServer() {
+    // Find the regionserver which serve meta
+    ServerName metaRegionServer = getMetaRegionServer();
+    LOG.info("Found meta on regionserver " + metaRegionServer);
+    if (metaRegionServer == null) {
+      return false;
+    }
+    RegionStates regionStates =
+        TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStates();
+    // Serve other regions, return false
+    if (regionStates.getServerRegions(metaRegionServer).size() > 1) {
+      LOG.info("There are more than one regions on meta regionserver " + metaRegionServer);
+      return false;
+    }
+    int minRegionsNum = Integer.MAX_VALUE;
+    int maxRegionsNum = 0;
+    for (ServerName serverName : TEST_UTIL.getMiniHBaseCluster().getMaster().getServerManager()
+        .getOnlineServersList()) {
+      if (!serverName.equals(metaRegionServer)) {
+        int regionsNum = regionStates.getServerRegions(serverName).size();
+        minRegionsNum = Math.min(regionsNum, minRegionsNum);
+        maxRegionsNum = Math.max(regionsNum, maxRegionsNum);
+      }
+    }
+    double maxDiffPercent = TEST_UTIL.getConfiguration().getDouble(HConstants.HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT,
+            HConstants.DEFAULT_HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT);
+    int maxDiff = Math.max(2, (int) (maxRegionsNum * maxDiffPercent));
+    LOG.info("Cluster status exclude meta regionserver: maxRegionsNum=" + maxRegionsNum +
+            ", minRegionsNum=" + minRegionsNum + ", maxDiff=" + maxDiff);
+    return Math.abs(maxRegionsNum - minRegionsNum) <= maxDiff;
+  }
+
 }

@@ -146,4 +146,9 @@ public interface LoadBalancer extends Configurable, Stoppable {
    * @param regionInfo
    */
   void regionOffline(HRegionInfo regionInfo);
+
+  /**
+   * Only GalaxyGroupLoadBalancer use
+   */
+  void setIsolateMeta(boolean isolateMeta);
 }

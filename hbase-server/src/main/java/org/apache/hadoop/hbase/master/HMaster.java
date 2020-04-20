@@ -1979,11 +1979,6 @@ MasterServices, Server {
         return false;
       }
 
-      if (isolateMetaWhenBalance && isClusterBalancedExcludeMetaRegionServer()) {
-        LOG.info("Not running balancer because isolateMetaWhenBalance=" + isolateMetaWhenBalance +
-            " and cluster is balanced exclude meta regionserver");
-        return false;
-      }
 
       if (this.cpHost != null) {
         try {
@@ -2005,6 +2000,7 @@ MasterServices, Server {
       this.balancer.setClusterStatus(getClusterStatus());
       this.balancer.setClusterLoad(this.assignmentManager.getRegionStates().getAssignmentsByTable(
           true));
+      this.balancer.setIsolateMeta(isolateMetaWhenBalance);
       for (Entry<TableName, Map<ServerName, List<HRegionInfo>>> e : assignmentsByTable
           .entrySet()) {
         List<RegionPlan> partialPlans = this.balancer.balanceCluster(e.getKey(), e.getValue());
@@ -2014,12 +2010,6 @@ MasterServices, Server {
 
       balancerRan = plans != null && !plans.isEmpty();
       int rpCount = executeBlancePlans(plans);
-
-      // All balance plans executed, which means the cluster is balanced now.
-      // So we can isolate meta easily.
-      if (rpCount == plans.size() && isolateMetaWhenBalance) {
-        isolateMetaWhenClusterBalanced();
-      }
 
       if (this.cpHost != null) {
         try {
@@ -4462,80 +4452,6 @@ MasterServices, Server {
         break;
     }
     return null;
-  }
-
-  @VisibleForTesting
-  ServerName getMetaRegionServer() {
-    for (Entry<HRegionInfo, ServerName> entry : this.assignmentManager.getRegionStates()
-        .getRegionAssignments().entrySet()) {
-      if (entry.getKey().isMetaRegion()) {
-        return entry.getValue();
-      }
-    }
-    return null;
-  }
-
-  @VisibleForTesting
-  boolean isClusterBalancedExcludeMetaRegionServer() {
-    // Find the regionserver which serve meta
-    ServerName metaRegionServer = getMetaRegionServer();
-    LOG.info("Found meta on regionserver " + metaRegionServer);
-    if (metaRegionServer == null) {
-      return false;
-    }
-    RegionStates regionStates = this.assignmentManager.getRegionStates();
-    // Serve other regions, return false
-    if (regionStates.getServerRegions(metaRegionServer).size() > 1) {
-      LOG.info("There are more than one regions on meta regionserver " + metaRegionServer);
-      return false;
-    }
-    int minRegionsNum = Integer.MAX_VALUE;
-    int maxRegionsNum = 0;
-    for (ServerName serverName : this.serverManager.getOnlineServersList()) {
-      if (!serverName.equals(metaRegionServer)) {
-        int regionsNum = regionStates.getServerRegions(serverName).size();
-        minRegionsNum = Math.min(regionsNum, minRegionsNum);
-        maxRegionsNum = Math.max(regionsNum, maxRegionsNum);
-      }
-    }
-    double maxDiffPercent = conf.getDouble(HConstants.HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT,
-        HConstants.DEFAULT_HBASE_MASTER_BALANCED_MAX_DIFF_PERCENT);
-    int maxDiff = Math.max(2, (int) (maxRegionsNum * maxDiffPercent));
-    LOG.info("Cluster status exclude meta regionserver: maxRegionsNum=" + maxRegionsNum +
-        ", minRegionsNum=" + minRegionsNum + ", maxDiff=" + maxDiff);
-    return Math.abs(maxRegionsNum - minRegionsNum) <= maxDiff;
-  }
-
-  private void isolateMetaWhenClusterBalanced() throws HBaseIOException {
-    LOG.info("Start to isolate meta");
-    // Find the regionserver which serve meta
-    ServerName metaRegionServer = getMetaRegionServer();
-    LOG.info("Found meta on regionserver " + metaRegionServer);
-    if (metaRegionServer != null) {
-      // Move the regions on meta regionserver out
-      List<HRegionInfo> regionInfos =
-          this.assignmentManager.getRegionStates().getServerRegions(metaRegionServer).stream()
-              .filter(ri -> !ri.isMetaRegion()).collect(Collectors.toList());
-      final ServerName tmpMetaRegionServer = metaRegionServer;
-      List<ServerName> targetServers = this.serverManager.getOnlineServersList().stream()
-          .filter(sn -> !sn.equals(tmpMetaRegionServer)).collect(Collectors.toList());
-      Map<ServerName, List<HRegionInfo>> assignmentsMap =
-          balancer.roundRobinAssignment(regionInfos, targetServers);
-      List<RegionPlan> plans = new ArrayList<>();
-      if (assignmentsMap != null) {
-        for (Entry<ServerName, List<HRegionInfo>> entry : assignmentsMap.entrySet()) {
-          for (HRegionInfo regionInfo : entry.getValue()) {
-            RegionPlan plan = new RegionPlan(regionInfo, metaRegionServer, entry.getKey());
-            LOG.info("Generate a new region plan " + plan + " for region " +
-                regionInfo.getEncodedName() + " which is on meta regionserver " + metaRegionServer);
-            plans.add(plan);
-          }
-        }
-      }
-      LOG.info("Done. Calculated " + plans.size() + " region plans for isolate meta");
-      int rpCount = executeBlancePlans(plans);
-      LOG.info("Executed " + rpCount + " region plans for isolate meta");
-    }
   }
 
   @VisibleForTesting

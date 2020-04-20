@@ -808,4 +808,8 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     LOG.info("Load Balancer stop requested: "+why);
     stopped = true;
   }
+
+  @Override
+  public void setIsolateMeta(boolean isolateMeta) {
+  }
 }

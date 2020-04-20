@@ -123,6 +123,11 @@ public class GalaxyGroupLoadBalancer implements LoadBalancer {
   }
 
   @Override
+  public void setIsolateMeta(boolean isolateMeta) {
+    this.galaxyGroupInfoManager.setIsolateMeta(isolateMeta);
+  }
+
+  @Override
   public void setConf(Configuration conf) {
     this.config = conf;
     this.galaxyGroupInfoManager = new GalaxyGroupInfoManager(config);
