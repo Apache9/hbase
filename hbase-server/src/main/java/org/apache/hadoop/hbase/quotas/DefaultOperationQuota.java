@@ -191,7 +191,8 @@ public class DefaultOperationQuota implements OperationQuota {
   }
 
   private long calculateReadCapacityUnitDiff(final long actualSize, final long estimateSize) {
-    return calculateReadCapacityUnit(actualSize) - calculateReadCapacityUnit(estimateSize);
+    long actualCU = actualSize <= 0 ? 1 : calculateReadCapacityUnit(actualSize);
+    return actualCU - calculateReadCapacityUnit(estimateSize);
   }
 
   private long getEstimateOperationSize(ReadOperationType operationType) {
