@@ -287,6 +287,10 @@ public class MetricsMasterWrapperImpl implements MetricsMasterWrapper {
    */
   @Override
   public void addClusterMetrics(MetricsRecordBuilder builder) {
+    if (!master.isActiveMaster()) {
+      return;
+    }
+
     Map<ServerName, ServerMetrics> serverMetricsMap = this.getRegionServerMetrics();
 
     long globalReadRequestPerSecond = 0;
