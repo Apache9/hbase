@@ -101,7 +101,7 @@ public class TestBusyRegionDetector {
         new BusyRegionDetector(master, master, (int) TimeUnit.MINUTES.toMillis(3));
     Map.Entry<HRegionInfo, ServerName> regionLocation = table.getRegionLocations().firstEntry();
     RegionBusyInfo busyInfo = new RegionBusyInfo(regionLocation.getKey().getRegionName());
-    busyInfo.updateAndIncreaseTimes(mock(RegionLoad.class));
+    busyInfo.updateAndIncreaseTimes(mock(RegionLoad.class), mock(ServerName.class));
     detector.splitRegions(Collections.singletonList(busyInfo));
     PairOfSameType<HRegionInfo> daughters = null;
     long now = System.currentTimeMillis();
@@ -218,7 +218,7 @@ public class TestBusyRegionDetector {
     when(regionLoad.getReadRequestsPerSecond()).thenReturn(read);
     when(regionLoad.getWriteRequestsPerSecond()).thenReturn(write);
     for (int i = 0; i < busyTimes; i++) {
-      info.updateAndIncreaseTimes(regionLoad);
+      info.updateAndIncreaseTimes(regionLoad, mock(ServerName.class));
     }
     return info;
   }

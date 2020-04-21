@@ -51,6 +51,7 @@ import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.xiaomi.infra.base.nameservice.ClusterInfo;
 import com.xiaomi.infra.base.nameservice.ZkClusterInfo;
+import com.xiaomi.infra.hbase.falcon.DetectorFalconPusher;
 import com.xiaomi.infra.hbase.falcon.FalconConstant;
 import com.xiaomi.infra.hbase.falcon.FalconDataPoint;
 import com.xiaomi.infra.hbase.falcon.FalconLatestRequest;
@@ -73,6 +74,8 @@ public class BadRSDetector extends Chore {
 	private double badRsLoadPerCoreThreshold;
 	private int continuousCount = 0;
 
+	private DetectorFalconPusher detectorFalconPusher;
+
 	/**
 	 * This chore is to detect very high load regionservers and restart them, which are seen as one
 	 * of many causes of availability problems.
@@ -88,6 +91,7 @@ public class BadRSDetector extends Chore {
 	  badRsLoadPerCoreThreshold = master.getConfiguration()
         .getDouble(HConstants.BAD_REGIONSERVER_LOAD_PER_CORE_THRESHOLD,
             HConstants.DEFAULT_BAD_REGIONSERVER_LOAD_PER_CORE_THRESHOLD);
+	  detectorFalconPusher = DetectorFalconPusher.getInstance(master.getConfiguration(), "high-load");
   }
 
 	@Override
@@ -152,17 +156,20 @@ public class BadRSDetector extends Chore {
 			return;
 		}
 
+		Set<String> hostAndPortsToRestart =
+				vacatedServerMap.keySet().stream().map(ServerName::getHostAndPort)
+						.collect(Collectors.toSet());
+		detectorFalconPusher.trigger(hostAndPortsToRestart);
+
 		Set<HRegionInfo> failVacatedRegions =
 				vacateRegionServers(vacatedServerMap, vacatedDestinations);
-    if (!failVacatedRegions.isEmpty()) {
-	    String errorMessage = "Failed to vacate region(s) " + toString(failVacatedRegions);
-      logAndSendMail(statsBuilder, false, errorMessage);
-      return;
-    }
+		if (!failVacatedRegions.isEmpty()) {
+			String errorMessage = "Failed to vacate region(s) " + toString(failVacatedRegions);
+			logAndSendMail(statsBuilder, false, errorMessage);
+			detectorFalconPusher.resume(hostAndPortsToRestart);
+			return;
+		}
 
-    Set<String> hostAndPortsToRestart =
-        vacatedServerMap.keySet().stream().map(ServerName::getHostAndPort)
-            .collect(Collectors.toSet());
     if (restartRegionServers(hostAndPortsToRestart)) {
 	    ++continuousCount;
 	    List<ServerName> recoverDestinations =
@@ -217,6 +224,7 @@ public class BadRSDetector extends Chore {
 	    stopRegionServer(hostAndPort);
     }
 
+		Set<ServerName> restartedServerNames = null;
 	  while (EnvironmentEdgeManager.currentTimeMillis() - startTime < maxExecutionTime) {
 		  try {
 			  LOG.info("Wait 10s to restart the stopped regionservers {}", toString(hostAndPorts));
@@ -227,14 +235,21 @@ public class BadRSDetector extends Chore {
 		  }
 
 		  Collection<ServerName> allServerNames = master.getServerManager().getOnlineServersList();
-		  Set<ServerName> restartedServerNames = allServerNames.stream()
+		  restartedServerNames = allServerNames.stream()
 				  .filter(serverName -> hostAndPorts.contains(serverName.getHostAndPort()))
 				  .filter(serverName -> serverName.getStartcode() > startTime).collect(Collectors.toSet());
 		  if (restartedServerNames.size() == hostAndPorts.size()) {
-			  LOG.info("Success to restart the stopped regionservers {}", toString(hostAndPorts));
-			  return true;
+			  break;
 		  }
 	  }
+	  if (restartedServerNames != null) {
+			detectorFalconPusher.resume(restartedServerNames.stream().map(ServerName::getHostAndPort)
+					.collect(Collectors.toList()));
+			if (restartedServerNames.size() == hostAndPorts.size()) {
+				LOG.info("Success to restart the stopped regionservers {}", toString(hostAndPorts));
+				return true;
+			}
+		}
 	  LOG.error("Timeout when waiting for the regionserver(s) {} to restart",
 			  toString(hostAndPorts));
 	  return false;

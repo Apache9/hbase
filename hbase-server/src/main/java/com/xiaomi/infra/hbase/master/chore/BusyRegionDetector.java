@@ -20,11 +20,14 @@
 package com.xiaomi.infra.hbase.master.chore;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.hbase.falcon.DetectorFalconPusher;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerLoad;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -93,6 +96,8 @@ public class BusyRegionDetector extends Chore {
    */
   private Map<byte[], RegionBusyInfo> consecutiveBusyRegions = new TreeMap<>(Bytes.BYTES_COMPARATOR);
 
+  private DetectorFalconPusher falconPusher;
+
   public BusyRegionDetector(HMaster master, Stoppable stopper, int period) throws IOException {
     super("BusyRegionDetector", period, stopper);
 
@@ -109,6 +114,8 @@ public class BusyRegionDetector extends Chore {
         BUSY_REGION_DETECTOR_MAX_SPLIT_REGION_NUMBER_DEFAULT);
     this.master = master;
     connection = HConnectionManager.getConnection(conf);
+
+    falconPusher = DetectorFalconPusher.getInstance(conf, "hot-region");
   }
 
   @Override
@@ -144,7 +151,7 @@ public class BusyRegionDetector extends Chore {
         currentBusyRegions.add(regionName);
         RegionBusyInfo regionBusyInfo =
             consecutiveBusyRegions.computeIfAbsent(regionName, RegionBusyInfo::new);
-        regionBusyInfo.updateAndIncreaseTimes(regionLoad);
+        regionBusyInfo.updateAndIncreaseTimes(regionLoad, serverName);
         if (regionBusyInfo.consecutiveBusyTimes >= maxConsecutiveBusyTimes) {
           busyRegions.add(regionBusyInfo);
         }
@@ -167,6 +174,9 @@ public class BusyRegionDetector extends Chore {
   }
 
   private void processBusyRegions(List<RegionBusyInfo> busyRegions) {
+    Set<String> serverNames = busyRegions.stream().map(r -> r.serverName.getHostAndPort())
+        .collect(Collectors.toSet());
+    falconPusher.trigger(serverNames);
     // split all passed regions
     List<HRegionInfo> processingRegions = splitRegions(busyRegions);
     // wait for meta info of all split regions updates to complete
@@ -191,6 +201,7 @@ public class BusyRegionDetector extends Chore {
     });
     // major compact all daughters when they're open
     waitForRegionsOpenOrTimeout(regionsInTransition).forEach(this::majorCompact);
+    falconPusher.resume(serverNames);
   }
 
   @VisibleForTesting
@@ -360,13 +371,15 @@ public class BusyRegionDetector extends Chore {
     private byte[] regionName;
     private int consecutiveBusyTimes;
     private RegionLoad regionLoad;
+    private ServerName serverName;
 
     public RegionBusyInfo(byte[] regionName) {
       this.regionName = regionName;
     }
 
-    void updateAndIncreaseTimes(RegionLoad regionLoad) {
+    void updateAndIncreaseTimes(RegionLoad regionLoad, ServerName serverName) {
       this.regionLoad = regionLoad;
+      this.serverName = serverName;
       ++ consecutiveBusyTimes;
     }
 

@@ -293,6 +293,7 @@ import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
 import com.google.protobuf.TextFormat;
 import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
+import com.xiaomi.infra.hbase.falcon.DetectorFalconPusher;
 import com.xiaomi.infra.hbase.util.MailUtils;
 
 /**
@@ -1966,6 +1967,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     private List<QueueCounter> queueCounters;
     private int continuousQueueFullCount;
     private int continuousQueueFullCountThreshold;
+    private DetectorFalconPusher detectorFalconPusher;
 
     public QueueFullDetector(HRegionServer server, Configuration conf) {
       super("QueueFullDetector", conf.getInt("hbase.regionserver.queuefull.detector.sparseperiod",
@@ -1996,13 +1998,15 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       LOG.info("QueueFullDetector is started, denseCheckNum=" + denseCheckNum + ", densePeriod="
           + densePeriod + ", sampleThreshold=" + sampleThreshold + ", rejectThreshold="
           + rejectThreshold);
+
+      detectorFalconPusher = DetectorFalconPusher.getInstance(conf, "queue-full");
     }
 
-    private void checkQueueFull(QueueCounter queueCounter) {
+    private boolean checkQueueFull(QueueCounter queueCounter) {
       boolean queueFull = queueCounter.getQueueFull();
       if (!queueFull) {
         continuousQueueFullCount = 0;
-        return;
+        return false;
       }
       ++continuousQueueFullCount;
       // Found "queue full" events, start dense detecting
@@ -2022,7 +2026,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         if (isStopping() || isStopped()) {
           LOG.info("Exit queue full dense checking for " + queueCounter
               + ", because region server is stopping or stopped!");
-          return;
+          return false;
         }
         if (queueCounter.getQueueFull()) {
           queueFullNum++;
@@ -2031,7 +2035,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         if (notHit > maxNotHit) {
           LOG.info("Exit queue full dense checking for " + queueCounter + ", queueFullNum= "
               + queueFullNum + ", notHit=" + notHit + ", maxNotHit=" + maxNotHit);
-          return;
+          return false;
         }
       }
 
@@ -2058,11 +2062,13 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if (shouldExit) {
         ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
         queueFullDetected = true;
+        detectorFalconPusher.trigger(serverName.getHostAndPort());
         moveOutRegions(" queue full");
         sendEmailWhenAbort();
         abort("Detected queue full and canot come back to normal state in a long duration");
+        return true;
       }
-
+      return false;
     }
 
     private boolean isUnrecoverable(int queueFullNum, long newRequestCount,
@@ -2099,7 +2105,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     @Override
     protected void chore() {
       for (QueueCounter queueCounter : queueCounters) {
-        checkQueueFull(queueCounter);
+        if (!checkQueueFull(queueCounter)) {
+          detectorFalconPusher.resume(serverName.getHostAndPort());
+        }
       }
     }
   }
