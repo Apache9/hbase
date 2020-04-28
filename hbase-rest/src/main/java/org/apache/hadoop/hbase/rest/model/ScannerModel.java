@@ -117,6 +117,7 @@ public class ScannerModel implements ProtobufMessageHandler, Serializable {
   private int caching = -1;
   private List<String> labels = new ArrayList<>();
   private boolean cacheBlocks = true;
+  private int limit = -1;
 
   /**
    * Implement lazily-instantiated singleton as per recipe
@@ -541,6 +542,9 @@ public class ScannerModel implements ProtobufMessageHandler, Serializable {
     if (maxVersions > 0) {
       model.setMaxVersions(maxVersions);
     }
+    if (scan.getLimit() > 0) {
+      model.setLimit(scan.getLimit());
+    }
     Filter filter = scan.getFilter();
     if (filter != null) {
       model.setFilter(stringifyFilter(filter));
@@ -686,6 +690,14 @@ public class ScannerModel implements ProtobufMessageHandler, Serializable {
   }
 
   /**
+   * @return the limit specification
+   */
+  @XmlAttribute
+  public int getLimit() {
+    return limit;
+  }
+
+  /**
    * @return true if HFile blocks should be cached on the servers for this scan, false otherwise
    */
   @XmlAttribute
@@ -768,6 +780,13 @@ public class ScannerModel implements ProtobufMessageHandler, Serializable {
   }
 
   /**
+   * @param limit the number of rows can fetch of each scanner at lifetime
+   */
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  /**
    * @param maxVersions maximum number of versions to return
    */
   public void setMaxVersions(int maxVersions) {
@@ -817,6 +836,9 @@ public class ScannerModel implements ProtobufMessageHandler, Serializable {
     if (caching > 0) {
       builder.setCaching(caching);
     }
+    if (limit > 0){
+      builder.setLimit(limit);
+    }
     builder.setMaxVersions(maxVersions);
     if (filter != null) {
       builder.setFilter(filter);
@@ -848,6 +870,9 @@ public class ScannerModel implements ProtobufMessageHandler, Serializable {
     }
     if (builder.hasCaching()) {
       caching = builder.getCaching();
+    }
+    if (builder.hasLimit()) {
+      limit = builder.getLimit();
     }
     if (builder.hasStartTime()) {
       startTime = builder.getStartTime();

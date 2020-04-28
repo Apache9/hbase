@@ -67,8 +67,13 @@ public class ScannerResultGenerator extends ResultGenerator {
   }
 
   public ScannerResultGenerator(final String tableName, final RowSpec rowspec,
-      final Filter filter, final int caching, final boolean cacheBlocks)
-      throws IllegalArgumentException, IOException {
+    final Filter filter, final int caching, final boolean cacheBlocks)
+    throws IllegalArgumentException, IOException {
+    this(tableName, rowspec, filter, caching, cacheBlocks, -1);
+  }
+
+  public ScannerResultGenerator(final String tableName, final RowSpec rowspec,
+    final Filter filter, final int caching ,final boolean cacheBlocks, int limit) throws IOException {
     Table table = RESTServlet.getInstance().getTable(tableName);
     try {
       Scan scan;
@@ -97,6 +102,9 @@ public class ScannerResultGenerator extends ResultGenerator {
       }
       if (caching > 0 ) {
         scan.setCaching(caching);
+      }
+      if (limit > 0) {
+        scan.setLimit(limit);
       }
       scan.setCacheBlocks(cacheBlocks);
       if (rowspec.hasLabels()) {
