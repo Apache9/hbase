@@ -434,11 +434,16 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
         stripExcludes(regionServers);
 
         // Remove decommissioned RS
-        Set<ServerName> decommissionedRS = new HashSet<>(admin.listDecommissionedRegionServers());
-        if (CollectionUtils.isNotEmpty(decommissionedRS)) {
-          regionServers.removeIf(decommissionedRS::contains);
-          LOG.debug("Excluded RegionServers from unloading regions to because they " +
-            "are marked as decommissioned. Servers: {}", decommissionedRS);
+        try {
+          Set<ServerName> decommissionedRS = new HashSet<>(admin.listDecommissionedRegionServers());
+          if (CollectionUtils.isNotEmpty(decommissionedRS)) {
+            regionServers.removeIf(decommissionedRS::contains);
+            LOG.debug("Excluded RegionServers from unloading regions to because they "
+                + "are marked as decommissioned. Servers: {}",
+              decommissionedRS);
+          }
+        } catch (Throwable e) {
+          LOG.warn("Failed list decommissioned RegionServers", e);
         }
 
         stripMaster(regionServers);
