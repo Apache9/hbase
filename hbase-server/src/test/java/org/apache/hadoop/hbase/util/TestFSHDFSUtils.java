@@ -69,7 +69,7 @@ public class TestFSHDFSUtils {
     // Fail four times and pass on the fifth.
     Mockito.when(dfs.recoverLease(FILE)).
       thenReturn(false).thenReturn(false).thenReturn(false).thenReturn(false).thenReturn(true);
-    FSUtils.recoverFileLease(dfs, FILE, HTU.getConfiguration(), reporter);
+    RecoverLeaseFSUtils.recoverFileLease(dfs, FILE, HTU.getConfiguration(), reporter);
     Mockito.verify(dfs, Mockito.times(5)).recoverLease(FILE);
     // Make sure we waited at least hbase.lease.recovery.dfs.timeout * 3 (the first two
     // invocations will happen pretty fast... the we fall into the longer wait loop).
@@ -93,7 +93,7 @@ public class TestFSHDFSUtils {
     Mockito.when(dfs.recoverLease(FILE)).
       thenReturn(false).thenReturn(false).thenReturn(true);
     Mockito.when(dfs.isFileClosed(FILE)).thenReturn(true);
-    FSUtils.recoverFileLease(dfs, FILE, HTU.getConfiguration(), reporter);
+    RecoverLeaseFSUtils.recoverFileLease(dfs, FILE, HTU.getConfiguration(), reporter);
     Mockito.verify(dfs, Mockito.times(2)).recoverLease(FILE);
     Mockito.verify(dfs, Mockito.times(1)).isFileClosed(FILE);
   }
