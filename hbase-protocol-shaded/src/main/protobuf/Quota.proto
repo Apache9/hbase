@@ -37,6 +37,7 @@ message TimedQuota {
   optional uint64 soft_limit  = 2;
   optional float share = 3;
   optional QuotaScope scope  = 4 [default = MACHINE];
+  optional bool soft = 5 [default = true];
 }
 
 enum ThrottleType {

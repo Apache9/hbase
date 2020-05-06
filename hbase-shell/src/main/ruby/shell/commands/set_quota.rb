@@ -73,6 +73,7 @@ For example:
     hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => WRITE_CAPACITY_UNIT, USER => 'u1', LIMIT => 'NONE'
 
     hbase> set_quota TYPE => THROTTLE, USER => 'u1', TABLE => 't2', LIMIT => '5K/min'
+    hbase> set_quota TYPE => THROTTLE, USER => 'u1', TABLE => 't2', LIMIT => '500CU/min', SCOPE => CLUSTER, SOFT => false
     hbase> set_quota TYPE => THROTTLE, USER => 'u1', NAMESPACE => 'ns2', LIMIT => NONE
 
     hbase> set_quota TYPE => THROTTLE, NAMESPACE => 'ns1', LIMIT => '10req/sec'

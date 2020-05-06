@@ -54,6 +54,7 @@ public abstract class RateLimiter {
   private TimeUnit timeUnit = TimeUnit.SECONDS;
   private long limit = Long.MAX_VALUE; // The max value available resource units can be refilled to.
   private long avail = Long.MAX_VALUE; // Currently available resource units
+  private boolean soft = true;
 
   /**
    * Refill the available units w.r.t the elapsed time.
@@ -71,13 +72,17 @@ public abstract class RateLimiter {
    */
   abstract long getWaitInterval(long limit, long available, long amount);
 
+  @VisibleForTesting
+  public synchronized void set(final long limit, final TimeUnit timeUnit) {
+    set(limit, timeUnit, false);
+  }
 
   /**
    * Set the RateLimiter max available resources and refill period.
    * @param limit The max value available resource units can be refilled to.
    * @param timeUnit Timeunit factor for translating to ms.
    */
-  public synchronized void set(final long limit, final TimeUnit timeUnit) {
+  public synchronized void set(final long limit, final TimeUnit timeUnit, final boolean soft) {
     switch (timeUnit) {
     case MILLISECONDS:
       tunit = 1;
@@ -104,6 +109,7 @@ public abstract class RateLimiter {
     }
     this.limit = limit;
     this.avail = limit;
+    this.soft = soft;
   }
 
   @Override
@@ -240,4 +246,8 @@ public abstract class RateLimiter {
 
   @VisibleForTesting
   public abstract long getNextRefillTime();
+
+  public boolean isSoft() {
+    return soft;
+  }
 }

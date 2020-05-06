@@ -256,6 +256,23 @@ public class QuotaSettingsFactory {
   }
 
   /**
+   * Throttle the specified user on the specified table.
+   * @param userName the user to throttle
+   * @param tableName the table to throttle
+   * @param type the type of throttling
+   * @param limit the allowed number of request/data per timeUnit
+   * @param timeUnit the limit time unit
+   * @param scope the scope of throttling
+   * @param soft if the limit is a soft limit             
+   * @return the quota settings
+   */
+  public static QuotaSettings throttleUser(final String userName, final TableName tableName,
+      final ThrottleType type, final long limit, final TimeUnit timeUnit, QuotaScope scope,
+      boolean soft) {
+    return throttle(userName, tableName, null, null, type, limit, timeUnit, scope, soft);
+  }
+
+  /**
    * Throttle the specified user on the specified namespace.
    *
    * @param userName the user to throttle
@@ -501,6 +518,19 @@ public class QuotaSettingsFactory {
     }
     if (timeUnit != null) {
       builder.setTimedQuota(ProtobufUtil.toTimedQuota(limit, timeUnit, scope));
+    }
+    return new ThrottleSettings(userName, tableName, namespace, regionServer, builder.build());
+  }
+
+  private static QuotaSettings throttle(final String userName, final TableName tableName,
+      final String namespace, final String regionServer, final ThrottleType type, final long limit,
+      final TimeUnit timeUnit, QuotaScope scope, boolean soft) {
+    QuotaProtos.ThrottleRequest.Builder builder = QuotaProtos.ThrottleRequest.newBuilder();
+    if (type != null) {
+      builder.setType(ProtobufUtil.toProtoThrottleType(type));
+    }
+    if (timeUnit != null) {
+      builder.setTimedQuota(ProtobufUtil.toTimedQuota(limit, timeUnit, scope, soft));
     }
     return new ThrottleSettings(userName, tableName, namespace, regionServer, builder.build());
   }

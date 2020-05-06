@@ -656,6 +656,64 @@ public class TestQuotaThrottle {
   }
 
   @Test
+  public void testExceedThrottleQuotaWithHardLimit() throws Exception {
+    final Admin admin = TEST_UTIL.getAdmin();
+    final String userName = User.getCurrent().getShortName();
+    // write limit is a hard limit
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
+      ThrottleType.WRITE_NUMBER, 10, TimeUnit.MINUTES, QuotaScope.CLUSTER, false));
+    // read limit is a soft limit
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
+      ThrottleType.READ_NUMBER, 5, TimeUnit.MINUTES, QuotaScope.CLUSTER));
+    triggerUserCacheRefresh(TEST_UTIL, false, TABLE_NAMES[0]);
+    // set region server limit
+    admin.setQuota(QuotaSettingsFactory.throttleRegionServer(
+      QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY, ThrottleType.WRITE_NUMBER, 20, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleRegionServer(
+      QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY, ThrottleType.READ_NUMBER, 10, TimeUnit.SECONDS));
+    triggerRegionServerCacheRefresh(TEST_UTIL, false);
+    // enable exceed throttle quota
+    admin.exceedThrottleQuotaSwitch(true);
+    triggerExceedThrottleQuotaCacheRefresh(TEST_UTIL, true);
+
+    waitMinuteQuota();
+    // table write limit is a hard limit
+    assertEquals(10, doPuts(15, FAMILY, QUALIFIER, tables[0]));
+    // table read limit is a soft limit, so exceed to rs limit
+    assertEquals(10, doGets(15, tables[0]));
+
+    // set region server limiter is lower than table limiter
+    admin.setQuota(QuotaSettingsFactory.throttleRegionServer(
+      QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY, ThrottleType.WRITE_NUMBER, 2, TimeUnit.SECONDS));
+    triggerRegionServerCacheRefresh(TEST_UTIL, false);
+    // throttled by region server write limiter
+    waitMinuteQuota();
+    assertEquals(2, doPuts(15, FAMILY, QUALIFIER, tables[0]));
+    admin.setQuota(QuotaSettingsFactory.throttleRegionServer(
+      QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY, ThrottleType.WRITE_NUMBER, 20, TimeUnit.SECONDS));
+    triggerRegionServerCacheRefresh(TEST_UTIL, false);
+
+    // disable exceed throttle quota
+    admin.exceedThrottleQuotaSwitch(false);
+    triggerExceedThrottleQuotaCacheRefresh(TEST_UTIL, false);
+    waitMinuteQuota();
+    // throttled by table limit
+    assertEquals(10, doPuts(15, FAMILY, QUALIFIER, tables[0]));
+    assertEquals(5, doGets(15, tables[0]));
+
+    admin.setQuota(
+      QuotaSettingsFactory.unthrottleRegionServer(QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY));
+    triggerRegionServerCacheRefresh(TEST_UTIL, true);
+    waitMinuteQuota();
+    // throttled by table limit
+    assertEquals(10, doPuts(15, FAMILY, QUALIFIER, tables[0]));
+    assertEquals(5, doGets(15, tables[0]));
+    // unthrottle table
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName, TABLE_NAMES[0]));
+    triggerUserCacheRefresh(TEST_UTIL, true, TABLE_NAMES[0]);
+  }
+
+  @Test
   public void testTableAppend() throws Exception {
     final Admin admin = TEST_UTIL.getAdmin();
     assertEquals(20, doAppends(20, 1, FAMILY, QUALIFIER, tables[0]));

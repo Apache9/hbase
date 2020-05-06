@@ -2564,6 +2564,22 @@ public final class ProtobufUtil {
   }
 
   /**
+   * Build a protocol buffer TimedQuota
+   * @param limit the allowed number of request/data per timeUnit
+   * @param timeUnit the limit time unit
+   * @param scope the quota scope
+   * @param soft if the quota is a soft or hard limit, soft means user can exceed quota limit if rs
+   *          limit is enough
+   * @return the protocol buffer TimedQuota
+   */
+  public static QuotaProtos.TimedQuota toTimedQuota(final long limit, final TimeUnit timeUnit,
+      final QuotaScope scope, final boolean soft) {
+    return QuotaProtos.TimedQuota.newBuilder().setSoftLimit(limit)
+        .setTimeUnit(toProtoTimeUnit(timeUnit)).setScope(toProtoQuotaScope(scope)).setSoft(soft)
+        .build();
+  }
+
+  /**
    * Builds a protocol buffer SpaceQuota.
    *
    * @param limit The maximum space usage for the quota in bytes.

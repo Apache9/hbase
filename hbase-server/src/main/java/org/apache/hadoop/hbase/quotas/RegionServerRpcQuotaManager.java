@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.quotas;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Mutation;
@@ -127,7 +128,8 @@ public class RegionServerRpcQuotaManager {
    * @param region the region where the operation will be executed
    * @return the OperationQuota
    */
-  private OperationQuota getQuota(final UserGroupInformation ugi, final Region region) {
+  private OperationQuota getQuota(final UserGroupInformation ugi, final Region region,
+      Predicate<QuotaLimiter> predicate) {
     TableName table = region.getTableDescriptor().getTableName();
     if (isQuotaEnabled() && !table.isSystemTable() && isRpcThrottleEnabled()) {
       UserQuotaState userQuotaState = quotaCache.getUserQuotaState(ugi);
@@ -146,7 +148,8 @@ public class RegionServerRpcQuotaManager {
         QuotaLimiter rsLimiter = quotaCache
             .getRegionServerQuotaLimiter(QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY);
         useNoop &= tableLimiter.isBypass() && nsLimiter.isBypass() && rsLimiter.isBypass();
-        boolean exceedThrottleQuotaEnabled = quotaCache.isExceedThrottleQuotaEnabled();
+        boolean exceedThrottleQuotaEnabled =
+            quotaCache.isExceedThrottleQuotaEnabled() && predicate.test(userLimiter);
         if (LOG.isTraceEnabled()) {
           LOG.trace(
             "get quota for ugi={} table={} userLimiter={} tableLimiter={} nsLimiter={} "
@@ -226,7 +229,7 @@ public class RegionServerRpcQuotaManager {
   private OperationQuota checkReadQuota(final Region region, final int numReads, final int numScans)
       throws IOException, RpcThrottlingException {
     UserGroupInformation ugi = getRequestUser();
-    OperationQuota quota = getQuota(ugi, region);
+    OperationQuota quota = getQuota(ugi, region, QuotaLimiter::isSoftReadLimiter);
     try {
       quota.checkReadQuota(numReads, numScans);
     } catch (RpcThrottlingException e) {
@@ -250,7 +253,7 @@ public class RegionServerRpcQuotaManager {
   private void checkWriteQuota(final Region region, final int numWrites,
       final long writeSize) throws IOException, RpcThrottlingException {
     UserGroupInformation ugi = getRequestUser();
-    OperationQuota quota = getQuota(ugi, region);
+    OperationQuota quota = getQuota(ugi, region, QuotaLimiter::isSoftWriteLimiter);
     try {
       quota.checkWriteQuota(numWrites, writeSize);
     } catch (RpcThrottlingException e) {

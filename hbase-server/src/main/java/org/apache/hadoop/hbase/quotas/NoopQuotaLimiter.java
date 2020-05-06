@@ -100,4 +100,14 @@ class NoopQuotaLimiter implements QuotaLimiter {
   public long getAverageOperationSize(ReadOperationType operationType) {
     return 0;
   }
+
+  @Override
+  public boolean isSoftReadLimiter() {
+    return true;
+  }
+
+  @Override
+  public boolean isSoftWriteLimiter() {
+    return true;
+  }
 }

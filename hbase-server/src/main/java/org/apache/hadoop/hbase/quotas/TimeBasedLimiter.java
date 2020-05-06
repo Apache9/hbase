@@ -146,7 +146,8 @@ public class TimeBasedLimiter implements QuotaLimiter {
   }
 
   private static void setFromTimedQuota(final RateLimiter limiter, final TimedQuota timedQuota) {
-    limiter.set(timedQuota.getSoftLimit(), ProtobufUtil.toTimeUnit(timedQuota.getTimeUnit()));
+    limiter.set(timedQuota.getSoftLimit(), ProtobufUtil.toTimeUnit(timedQuota.getTimeUnit()),
+      timedQuota.getSoft());
   }
 
   @Override
@@ -311,5 +312,18 @@ public class TimeBasedLimiter implements QuotaLimiter {
   @Override
   public long getAverageOperationSize(ReadOperationType operationType) {
     return avgOperationSize.getAvgOperationSize(operationType);
+  }
+
+  @Override
+  public boolean isSoftReadLimiter() {
+    return readCapacityUnitLimiter.isSoft() && readReqsLimiter.isSoft() && readSizeLimiter.isSoft()
+        && reqCapacityUnitLimiter.isSoft() && reqsLimiter.isSoft() && reqSizeLimiter.isSoft();
+  }
+
+  @Override
+  public boolean isSoftWriteLimiter() {
+    return writeCapacityUnitLimiter.isSoft() && writeReqsLimiter.isSoft()
+        && writeSizeLimiter.isSoft() && reqCapacityUnitLimiter.isSoft() && reqsLimiter.isSoft()
+        && reqSizeLimiter.isSoft();
   }
 }

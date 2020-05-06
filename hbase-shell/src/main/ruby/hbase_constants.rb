@@ -80,6 +80,7 @@ module HBaseConstants
   USER = 'USER'.freeze
   TABLE = 'TABLE'.freeze
   NAMESPACE = 'NAMESPACE'.freeze
+  SOFT = 'SOFT'.freeze
   TYPE = 'TYPE'.freeze
   NONE = 'NONE'.freeze
   VALUE = 'VALUE'.freeze

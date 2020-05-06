@@ -299,6 +299,30 @@ module Hbase
       output = capture_stdout { command(:list_quotas) }
       assert(output.include?('0 row(s)'))
     end
+
+    define_test 'can set and remove hard limit quota' do
+      command(:set_quota, TYPE => THROTTLE, USER => 'u', TABLE => @test_name, LIMIT => '50req/sec', SCOPE => CLUSTER)
+      output = capture_stdout { command(:list_quotas) }
+      assert(output.include?('LIMIT => 50req/sec'))
+      assert(output.include?('SCOPE => CLUSTER'))
+
+      command(:set_quota, TYPE => THROTTLE, USER => 'u', TABLE => @test_name, LIMIT => '100req/sec', SCOPE => CLUSTER, SOFT => true)
+      output = capture_stdout { command(:list_quotas) }
+      assert(output.include?('LIMIT => 100req/sec'))
+      assert(output.include?('SCOPE => CLUSTER'))
+      assert(output.include?('SOFT => true'))
+
+      command(:set_quota, TYPE => THROTTLE, USER => 'u', TABLE => @test_name, LIMIT => '200req/sec', SCOPE => CLUSTER, SOFT => false )
+      output = capture_stdout { command(:list_quotas) }
+      assert(output.include?('1 row(s)'))
+      assert(output.include?('LIMIT => 200req/sec'))
+      assert(output.include?('SCOPE => CLUSTER'))
+      assert(output.include?('SOFT => false'))
+
+      command(:set_quota, TYPE => THROTTLE, USER => 'u', TABLE => @test_name, LIMIT => NONE)
+      output = capture_stdout { command(:list_quotas) }
+      assert(output.include?('0 row(s)'))
+    end
   end
   # rubocop:enable Metrics/ClassLength
 end

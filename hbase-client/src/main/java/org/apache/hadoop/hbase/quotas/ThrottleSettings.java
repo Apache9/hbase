@@ -67,6 +67,10 @@ public class ThrottleSettings extends QuotaSettings {
         : null;
   }
 
+  public boolean isSoft() {
+    return proto.hasTimedQuota() ? proto.getTimedQuota().getSoft() : true;
+  }
+
   @Override
   public QuotaType getQuotaType() {
     return QuotaType.THROTTLE;
@@ -115,6 +119,9 @@ public class ThrottleSettings extends QuotaSettings {
       if (timedQuota.hasScope()) {
         builder.append(", SCOPE => ");
         builder.append(timedQuota.getScope().toString());
+      }
+      if (timedQuota.hasSoft()) {
+        builder.append(", SOFT => ").append(timedQuota.getSoft());
       }
     } else {
       builder.append(", LIMIT => NONE");

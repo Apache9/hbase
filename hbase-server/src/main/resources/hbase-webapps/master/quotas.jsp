@@ -192,6 +192,7 @@
       <th>Type</th>
       <th>TimeUnit</th>
       <th>Scope</th>
+      <th>Soft</th>
     </tr>
     <% for (ThrottleSettings throttle : userThrottles) { %>
     <tr>
@@ -202,6 +203,7 @@
       <td><%= throttle.getThrottleType() %></td>
       <td><%= throttle.getTimeUnit() %></td>
       <td><%= throttle.getQuotaScope() %></td>
+      <td><%= throttle.isSoft() %></td>
     </tr>
     <% } %>
   </table>

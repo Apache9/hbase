@@ -80,8 +80,14 @@ module Hbase
         user = args.delete(USER)
         if args.key?(TABLE)
           table = TableName.valueOf(args.delete(TABLE))
-          raise(ArgumentError, 'Unexpected arguments: ' + args.inspect) unless args.empty?
-          settings = QuotaSettingsFactory.throttleUser(user, table, type, limit, time_unit, scope)
+          if args.key?(SOFT)
+            soft = args.delete(SOFT)
+            raise(ArgumentError, 'Unexpected arguments: ' + args.inspect) unless args.empty?
+            settings = QuotaSettingsFactory.throttleUser(user, table, type, limit, time_unit, scope, soft)
+          else
+            raise(ArgumentError, 'Unexpected arguments: ' + args.inspect) unless args.empty?
+            settings = QuotaSettingsFactory.throttleUser(user, table, type, limit, time_unit, scope)
+          end
         elsif args.key?(NAMESPACE)
           namespace = args.delete(NAMESPACE)
           raise(ArgumentError, 'Unexpected arguments: ' + args.inspect) unless args.empty?

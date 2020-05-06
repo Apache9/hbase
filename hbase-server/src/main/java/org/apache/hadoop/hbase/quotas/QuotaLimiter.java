@@ -90,4 +90,10 @@ public interface QuotaLimiter {
   void addOperationCountAndSize(ReadOperationType operationType, long count, long size);
 
   long getAverageOperationSize(ReadOperationType operationType);
+
+  /** @return True if limiters of read all are soft, otherwise false */
+  boolean isSoftReadLimiter();
+
+  /** @return True if limiters of write all are soft, otherwise false */
+  boolean isSoftWriteLimiter();
 }
