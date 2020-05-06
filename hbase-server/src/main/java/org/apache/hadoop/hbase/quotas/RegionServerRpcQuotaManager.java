@@ -160,7 +160,7 @@ public class RegionServerRpcQuotaManager {
         if (!useNoop) {
           if (exceedThrottleQuotaEnabled) {
             return new ExceedOperationQuota(this.rsServices.getConfiguration(), rsLimiter,
-                userLimiter, tableLimiter, nsLimiter);
+                userLimiter);
           } else {
             return new DefaultOperationQuota(this.rsServices.getConfiguration(), userLimiter,
                 tableLimiter, nsLimiter, rsLimiter);

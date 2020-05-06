@@ -599,9 +599,10 @@ public class TestQuotaThrottle {
   @Test
   public void testExceedThrottleQuota() throws Exception {
     final Admin admin = TEST_UTIL.getAdmin();
-    admin.setQuota(QuotaSettingsFactory.throttleTable(TABLE_NAMES[0], ThrottleType.WRITE_NUMBER, 5,
+    final String userName = User.getCurrent().getShortName();
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0], ThrottleType.WRITE_NUMBER, 5,
       TimeUnit.MINUTES));
-    triggerTableCacheRefresh(TEST_UTIL, false, TABLE_NAMES[0]);
+    triggerUserCacheRefresh(TEST_UTIL, false, TABLE_NAMES[0]);
     admin.setQuota(QuotaSettingsFactory.throttleRegionServer(
       QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY, ThrottleType.WRITE_NUMBER, 20, TimeUnit.SECONDS));
     admin.setQuota(QuotaSettingsFactory.throttleRegionServer(
@@ -624,7 +625,7 @@ public class TestQuotaThrottle {
     triggerRegionServerCacheRefresh(TEST_UTIL, false);
     // throttled by region server limiter
     waitMinuteQuota();
-    assertEquals(2, doPuts(10, FAMILY, QUALIFIER, tables[0]));
+    assertEquals(5, doPuts(10, FAMILY, QUALIFIER, tables[0]));
     admin.setQuota(QuotaSettingsFactory.throttleRegionServer(
       QuotaTableUtil.QUOTA_REGION_SERVER_ROW_KEY, ThrottleType.WRITE_NUMBER, 20, TimeUnit.SECONDS));
     triggerRegionServerCacheRefresh(TEST_UTIL, false);
@@ -651,7 +652,7 @@ public class TestQuotaThrottle {
     admin.exceedThrottleQuotaSwitch(false);
     triggerExceedThrottleQuotaCacheRefresh(TEST_UTIL, false);
     // unthrottle table
-    admin.setQuota(QuotaSettingsFactory.unthrottleTable(TABLE_NAMES[0]));
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName, TABLE_NAMES[0]));
     triggerTableCacheRefresh(TEST_UTIL, true, TABLE_NAMES[0]);
   }
 
