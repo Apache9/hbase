@@ -78,7 +78,7 @@ public class TalosUtil {
   private static final String ESCAPE_DASH = "--";
   private static final String DASH = "-";
   public static final int CHUNK_SIZE = 4194304; // 4MB
-  //in utf-8 code,　3b per chinese character
+  //in utf-8 code, 3b per chinese character
   private static final int MAX_STRFING_LEN = CHUNK_SIZE / 3;
 
 
@@ -196,7 +196,7 @@ public class TalosUtil {
   /**
    *  Message is filled with bytes of josnString, E.g.
    *  {
-   * 　　 "r":"row1",
+   *     "r":"row1",
    *     "kv": [
    *         {
    *             "op": "PUT",
@@ -245,7 +245,7 @@ public class TalosUtil {
         for (JsonElement jsonKvObject : jsonKvList) {
           int jsonKvSize = getJsonKvSize((JsonObject) jsonKvObject);
           if (jsonKvSize > MAX_STRFING_LEN) {
-            LOG.error("Discard jsonObject　in constructJsonMessages due oversize :" + jsonKvObject
+            LOG.error("Discard jsonObject in constructJsonMessages due oversize :" + jsonKvObject
                 .toString());
             continue;
           }

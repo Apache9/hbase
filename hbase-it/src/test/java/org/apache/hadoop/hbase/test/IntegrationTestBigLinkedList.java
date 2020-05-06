@@ -108,7 +108,7 @@ import com.google.common.collect.Sets;
  * lost at scale. This test suite is called continuous ingest. This test runs
  * many ingest clients that continually create linked lists containing 25
  * million nodes. At some point the clients are stopped and a map reduce job is
- * run to ensure no linked list has a hole. A hole indicates data was lost.··
+ * run to ensure no linked list has a hole. A hole indicates data was lost.
  *
  * The nodes in the linked list are random. This causes each linked list to
  * spread across the table. Therefore if one part of a table loses data, then it
@@ -119,9 +119,9 @@ import com.google.common.collect.Sets;
  * Below is rough sketch of how data is written. For specific details look at
  * the Generator code.
  *
- * 1 Write out 1 million nodes· 2 Flush the client· 3 Write out 1 million that
- * reference previous million· 4 If this is the 25th set of 1 million nodes,
- * then update 1st set of million to point to last· 5 goto 1
+ * 1 Write out 1 million nodes. 2 Flush the client. 3 Write out 1 million that
+ * reference previous million. 4 If this is the 25th set of 1 million nodes,
+ * then update 1st set of million to point to last. 5 goto 1
  *
  * The key is that nodes only reference flushed nodes. Therefore a node should
  * never reference a missing node, even if the ingest client is killed at any
@@ -129,12 +129,12 @@ import com.google.common.collect.Sets;
  *
  * When running this test suite w/ Accumulo there is a script running in
  * parallel called the Aggitator that randomly and continuously kills server
- * processes.·· The outcome was that many data loss bugs were found in Accumulo
- * by doing this.· This test suite can also help find bugs that impact uptime
- * and stability when· run for days or weeks.··
+ * processes. The outcome was that many data loss bugs were found in Accumulo
+ * by doing this. This test suite can also help find bugs that impact uptime
+ * and stability when. run for days or weeks.
  *
- * This test suite consists the following· - a few Java programs· - a little
- * helper script to run the java programs - a maven script to build it.··
+ * This test suite consists the following. - a few Java programs. - a little
+ * helper script to run the java programs - a maven script to build it.
  *
  * When generating data, its best to have each map task generate a multiple of
  * 25 million. The reason for this is that circular linked list are generated
@@ -145,14 +145,14 @@ import com.google.common.collect.Sets;
  *
  * Below is a description of the Java programs
  *
- * Generator - A map only job that generates data. As stated previously,·
+ * Generator - A map only job that generates data. As stated previously,
  * its best to generate data in multiples of 25M.
  *
  * Verify - A map reduce job that looks for holes. Look at the counts after running. REFERENCED and
- * UNREFERENCED are· ok, any UNDEFINED counts are bad. Do not run at the· same
+ * UNREFERENCED are ok, any UNDEFINED counts are bad. Do not run at the same
  * time as the Generator.
  *
- * Walker - A standalone program that start following a linked list· and emits timing info.··
+ * Walker - A standalone program that start following a linked list and emits timing info
  *
  * Print - A standalone program that prints nodes in the linked list
  *
@@ -1136,7 +1136,7 @@ public class IntegrationTestBigLinkedList extends IntegrationTestBase {
     System.err.println(" Walker     " +
       "Standalong program that starts following a linked list & emits timing info.");
     System.err.println(" Print      Standalone program that prints nodes in the linked list.");
-    System.err.println(" Delete     Standalone program that deletes a·single node.");
+    System.err.println(" Delete     Standalone program that deletes a single node.");
     System.err.println(" Loop       Program to Loop through Generator and Verify steps");
     System.err.println(" Clean      Program to clean all left over detritus.");
     System.err.flush();

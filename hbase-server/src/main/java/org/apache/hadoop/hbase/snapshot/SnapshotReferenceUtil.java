@@ -109,7 +109,7 @@ public final class SnapshotReferenceUtil {
     visitLogFiles(fs, snapshotDir, visitor);
   }
 
-  /**©
+  /**
    * Iterate over the snapshot store files
    *
    * @param conf The current {@link Configuration} instance.

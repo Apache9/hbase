@@ -154,7 +154,7 @@ import org.mockito.Mockito;
       if (i % 2 == 0) {
         sb.append("a");
       } else {
-        sb.append("我");
+        sb.append("w");
       }
     }
     for (int i = 0; i < 100; i++) {
@@ -176,7 +176,7 @@ import org.mockito.Mockito;
       if (i % 2 == 0) {
         sb2.append("a");
       } else {
-        sb2.append("我");
+        sb2.append("w");
       }
     }
     for (int i = 0; i < 10; i++) {

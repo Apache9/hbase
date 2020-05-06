@@ -156,19 +156,19 @@ public class ElasticSearchReplicationEndpoint extends TalosReplicationEndpoint {
   /** in HTableDescriptor
    *  key = "es_config"
    *  value = "
-   　　{
-   　　　　"properties": [
-   　　　　　　{
-   　　　　　　　　"column": "A:c1",
-   　　　　　　　　"type": "keyword"
-   　　　　　　},
-   　　　　　　{
-   　　　　　　　　"column": "A:c2",
-   　　　　　　　　"type": "text",
-   　　　　　　　　"analyzer": "standard"
-  　　　　　　 }
-   　　　　]
-   　　}"　　
+      {
+        "properties": [
+          {
+            "column": "A:c1",
+            "type": "keyword"
+          },
+          {
+            "column": "A:c2",
+            "type": "text",
+            "analyzer": "standard"
+          }
+        ]
+      }"
    *
    */
   private void getEsIndexProperties(TableName tableName) throws IOException{

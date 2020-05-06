@@ -37,7 +37,6 @@ import org.junit.experimental.categories.Category;
 public class TestMemoryBoundedLogMessageBuffer {
 
   private static final long TEN_KB = 10 * 1024;
-  private static final String JP_TEXT = "こんにちは";
   
   @Test
   public void testBuffer() {
@@ -59,18 +58,6 @@ public class TestMemoryBoundedLogMessageBuffer {
         dump.contains("hello 1" + eol));
     assertTrue("The late log messages should be retained",
         dump.contains("hello 999" + eol));
-  }
-
-  @Test
-  public void testNonAsciiEncoding() {
-    MemoryBoundedLogMessageBuffer buf =
-      new MemoryBoundedLogMessageBuffer(TEN_KB);
-
-    buf.add(JP_TEXT);
-    StringWriter sw = new StringWriter();
-    buf.dumpTo(new PrintWriter(sw));
-    String dump = sw.toString();
-    assertTrue(dump.contains(JP_TEXT));
   }
 
 }

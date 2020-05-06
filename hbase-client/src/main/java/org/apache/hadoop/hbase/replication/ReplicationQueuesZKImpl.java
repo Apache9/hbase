@@ -45,7 +45,7 @@ import org.apache.zookeeper.KeeperException;
  * This class provides an implementation of the ReplicationQueues interface using Zookeeper. The
  * base znode that this class works at is the myQueuesZnode. The myQueuesZnode contains a list of
  * all outstanding HLog files on this region server that need to be replicated. The myQueuesZnode is
- * the regionserver name (a concatenation of the region server’s hostname, client port and start
+ * the regionserver name (a concatenation of the region server's hostname, client port and start
  * code). For example:
  *
  * /hbase/replication/rs/hostname.example.org,6020,1234
