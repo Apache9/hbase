@@ -29,9 +29,11 @@ import java.util.StringJoiner;
 
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@InterfaceAudience.Private
 public final class CanaryPerfCounterUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(CanaryPerfCounterUtils.class);
