@@ -21,7 +21,45 @@ package org.apache.hadoop.hbase.replication;
 
 import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.THROTTLE_REJECT_ERROR;
 import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.TOPIC_NOT_EXIST;
-import static org.apache.hadoop.hbase.HConstants.*;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.HBaseStreamUtil;
+import org.apache.hadoop.hbase.wal.WAL;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -43,39 +81,7 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Topic;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAndPartition;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicTalosResourceName;
 import com.xiaomi.infra.thirdparty.libthrift091.TException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.HBaseStreamUtil;
-import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.wal.WAL;
-import org.apache.hadoop.hbase.wal.WALKey;
-import org.apache.yetus.audience.InterfaceAudience;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.CollectionUtils;
 
 /**
  * A {@link BaseReplicationEndpoint} for replication endpoints whose target is Talos.
@@ -138,21 +144,26 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
   public void init(Context context) throws IOException {
     super.init(context);
     ReplicationPeerConfig peerConfig = context.getPeerConfig();
+    try {
+      Configuration conf = HBaseConfiguration.create(ctx.getConfiguration());
+      this.maxRetriesMultiplier = conf.getInt("replication.source.maxretriesmultiplier", 10);
+      this.sleepForRetriesCount = conf.getLong("replication.source.sleepforretries", 1000);
+      this.batchSizeLimit = conf.getLong("talos.replication.batchsize.limit",20971520L);
 
-    Configuration conf = HBaseConfiguration.create(ctx.getConfiguration());
-    endpoint = peerConfig.getConfiguration().get(TALOS_ACCESS_ENDPOINT);
-    accessKey = peerConfig.getConfiguration().get(TALOS_ACCESS_KEY);
-    accessSecret = peerConfig.getConfiguration().get(TALOS_ACCESS_SECRET);
-    if (endpoint == null || accessKey == null || accessSecret == null) {
-      throw new IOException("endpoint, accessKey and accessSecret must be set to talos replication");
+      this.localConn = ConnectionFactory.createConnection(ctx.getLocalConfiguration());
+      this.localAdmin = localConn.getAdmin();
+
+      endpoint = peerConfig.getConfiguration().get(TALOS_ACCESS_ENDPOINT);
+      accessKey = peerConfig.getConfiguration().get(TALOS_ACCESS_KEY);
+      accessSecret = peerConfig.getConfiguration().get(TALOS_ACCESS_SECRET);
+      if (endpoint == null || accessKey == null || accessSecret == null) {
+        // Don't throw exception, let replicationSource thread start
+        LOG.warn("endpoint, accessKey or accessSecret is null");
+      }
+      initialTalosConfigs();
+    } catch (Exception e) {
+      LOG.warn("Failed to init endpoint of peer {}", context.getPeerId(), e);
     }
-    initialTalosConfigs();
-    this.maxRetriesMultiplier = conf.getInt("replication.source.maxretriesmultiplier", 10);
-    this.sleepForRetriesCount = conf.getLong("replication.source.sleepforretries", 1000);
-    this.batchSizeLimit = conf.getLong("talos.replication.batchsize.limit",20971520L);
-
-    this.localConn = ConnectionFactory.createConnection(ctx.getLocalConfiguration());
-    this.localAdmin = localConn.getAdmin();
   }
 
   private void initialTalosConfigs() {
@@ -170,7 +181,12 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
     String newEndpoint = peerConfig.getConfiguration().get(TALOS_ACCESS_ENDPOINT);
     String newAccessKey = peerConfig.getConfiguration().get(TALOS_ACCESS_KEY);
     String newAccessSecret = peerConfig.getConfiguration().get(TALOS_ACCESS_SECRET);
-    if (!endpoint.equals(newEndpoint) || !accessKey.equals(newAccessKey) || !accessSecret.equals(newAccessSecret)) {
+    if (newEndpoint == null || newAccessKey == null || newAccessSecret == null) {
+      throw new IllegalArgumentException(
+        "endpoint, accessKey and accessSecret must be set to talos replication");
+    }
+    if (!Objects.equals(endpoint, newEndpoint) || !Objects.equals(accessKey, newAccessKey)
+      || !Objects.equals(accessSecret, newAccessSecret)) {
       endpoint = newEndpoint;
       accessKey = newAccessKey;
       accessSecret = newAccessSecret;
@@ -228,9 +244,16 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
         }
         continue;
       }
+      if (talosAdmin == null) {
+        LOG.warn("talosAdmin is null, please check talos config");
+        if (sleepForRetries("talosAdmin is null", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        continue;
+      }
       try {
-        // group HLog. one entry, one pair
-        List<Pair<WALKey, List<Message>>> messages = groupHLog(entries);
+        // group HLog. table => encodedRegionName => messages
+        Map<TableName, Map<byte[], List<Message>>> messages = groupHLog(entries);
         // send
         sendMessagesToTalos(messages);
         ctx.getMetrics().setAgeOfLastShippedOp(entries.get(entries.size() - 1).getKey().getWriteTime(),
@@ -263,8 +286,8 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
     stopAsync();
   }
 
-  private List<Pair<WALKey, List<Message>>> groupHLog(List<WAL.Entry> entries) throws IOException {
-    List<Pair<WALKey, List<Message>>> messages = new ArrayList<>();
+  private Map<TableName, Map<byte[], List<Message>>> groupHLog(List<WAL.Entry> entries) throws IOException {
+    Map<TableName, Map<byte[], List<Message>>> messages = new HashMap<>();
     for (WAL.Entry entry : entries) {
       TableName tablename = entry.getKey().getTableName();
       TableStreamConfig tableStreamConfig;
@@ -279,43 +302,45 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
       }
       List<Message> entryMessages = constructJsonMessages(entry, tableStreamConfig);
       // entryMessages will be empty if all cells of entry are filtered.
-      if (entryMessages != null && !entryMessages.isEmpty()) {
-        messages.add(new Pair<>(entry.getKey(), entryMessages));
+      if (CollectionUtils.isNotEmpty(entryMessages)) {
+        messages.computeIfAbsent(tablename, t -> new TreeMap<>(Bytes.BYTES_COMPARATOR))
+          .computeIfAbsent(entry.getKey().getEncodedRegionName(), e -> new ArrayList<>())
+          .addAll(entryMessages);
       }
     }
     return messages;
   }
 
-  private void sendMessagesToTalos(List<Pair<WALKey, List<Message>>> messages) throws IOException, TException {
-    TableName tableName;
-    for (Pair<WALKey, List<Message>> messageEntry : messages) {
-      tableName = messageEntry.getFirst().getTableName();
-      byte[] encodedRegionName = messageEntry.getFirst().getEncodedRegionName();
+  private void sendMessagesToTalos(Map<TableName, Map<byte[], List<Message>>> messages)
+    throws IOException, TException {
+    for (Map.Entry<TableName, Map<byte[], List<Message>>> tableEntry : messages.entrySet()) {
+      TableName tableName = tableEntry.getKey();
       try {
-        SimpleProducer producer = getProducer(tableName, encodedRegionName);
-        batchSendMessages(producer, messageEntry.getSecond());
+        for (Map.Entry<byte[], List<Message>> regionAndMessages : tableEntry.getValue().entrySet()) {
+          SimpleProducer producer = getProducer(tableName, regionAndMessages.getKey());
+          batchSendMessages(producer, regionAndMessages.getValue());
+        }
       } catch (TException | IOException e) {
         if (e instanceof GalaxyTalosException && ((GalaxyTalosException) e).getErrorCode() == TOPIC_NOT_EXIST) {
           if (this.ctx.getPeerConfig().needToReplicate(tableName)) {
             throw e;
           } else {
-            LOG.warn("This table {} is not in the replication peer {} anymore, we can skip its entries", tableName,
-                this.ctx.getPeerId());
+            LOG.warn("This table {} is not in the replication peer {} anymore, we can skip its entries",
+              tableName, this.ctx.getPeerId());
           }
         } else {
           throw e;
         }
       }
-      LOG.debug("send message to talos, table: {}, message size: {}", tableName, messageEntry.getSecond().size());
     }
   }
 
-  private SimpleProducer getProducer(TableName tableName, byte[] rowkey) throws IOException, TException {
+  private SimpleProducer getProducer(TableName tableName, byte[] encodeRegionName) throws IOException, TException {
     try {
       Topic topic = topicCache.get(tableName);
       TalosProducers talosProducers = tableProducersCache.get(tableName);
       talosProducers.update(topic);
-      return talosProducers.get(rowkey);
+      return talosProducers.get(encodeRegionName);
     } catch (ExecutionException e) {
       Throwable cause = e.getCause();
       if (cause instanceof IOException) {
@@ -339,8 +364,8 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
   }
 
   private void cleanTopicsAndProducers() {
-    this.topicCache.cleanUp();
-    this.tableProducersCache.cleanUp();
+    this.topicCache.invalidateAll();
+    this.tableProducersCache.invalidateAll();
   }
 
   private Topic loadTopicCache(TableName tableName) throws IOException, TException {
@@ -482,8 +507,8 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
       this.producers = newProducers;
     }
 
-    SimpleProducer get(byte[] rowkey) {
-      return producers[Bytes.hashCode(rowkey) % producers.length];
+    SimpleProducer get(byte[] hashkey) {
+      return producers[(Bytes.hashCode(hashkey) & Integer.MAX_VALUE) % producers.length];
     }
   }
 
