@@ -221,6 +221,7 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.xiaomi.infra.hbase.master.chore.BusyRegionDetector;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
@@ -392,6 +393,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   private ClusterStatusChore clusterStatusChore;
   private ClusterStatusPublisher clusterStatusPublisherChore = null;
   private SnapshotCleanerChore snapshotCleanerChore = null;
+  private BusyRegionDetector busyRegionDetector;
 
   private HbckChore hbckChore;
   CatalogJanitor catalogJanitorChore;
@@ -1439,6 +1441,19 @@ public class HMaster extends HRegionServer implements MasterServices {
         LOG.trace("Snapshot Cleaner Chore is disabled. Not starting up the chore..");
       }
     }
+
+    if (conf.getBoolean(BusyRegionDetector.BUSY_REGION_DETECTOR_ENABLE,
+      BusyRegionDetector.BUSY_REGION_DETECTOR_ENABLE_DEFAULT)) {
+      try {
+        int busyRegionDetectorPeriod = conf.getInt(BusyRegionDetector.BUSY_REGION_DETECTOR_PERIOD,
+          BusyRegionDetector.BUSY_REGION_DETECTOR_PERIOD_DEFAULT);
+        busyRegionDetector = new BusyRegionDetector(this, this, busyRegionDetectorPeriod);
+        getChoreService().scheduleChore(busyRegionDetector);
+      } catch (Exception e) {
+        LOG.error("Start BusyRegionDetector failed", e);
+      }
+    }
+
     serviceStarted = true;
     if (LOG.isTraceEnabled()) {
       LOG.trace("Started service threads");
@@ -1598,6 +1613,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       choreService.cancelChore(this.hbckChore);
       choreService.cancelChore(this.regionsRecoveryChore);
       choreService.cancelChore(this.snapshotCleanerChore);
+      choreService.cancelChore(this.busyRegionDetector);
     }
   }
 
