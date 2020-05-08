@@ -94,6 +94,10 @@ public class ReplicationSink {
   private SourceFSConfigurationProvider provider;
   private WALEntrySinkFilter walEntrySinkFilter;
 
+  public static final String REPLICATION_SINK_BATCH_LIMIT = "hbase.replication.sink.batch.limit";
+  public static final int DEFAULT_REPLICATION_SINK_BATCH_LIMIT = 1000;
+  private final int batchLimit;
+
   /**
    * Create a sink for replication
    * @param conf conf object
@@ -116,6 +120,8 @@ public class ReplicationSink {
       throw new IllegalArgumentException(
           "Configured source fs configuration provider class " + className + " throws error.", e);
     }
+    this.batchLimit =
+        this.conf.getInt(REPLICATION_SINK_BATCH_LIMIT, DEFAULT_REPLICATION_SINK_BATCH_LIMIT);
   }
 
   private WALEntrySinkFilter setupWALEntrySinkFilter() throws IOException {
@@ -422,9 +428,9 @@ public class ReplicationSink {
     try (Table table = connection.getTable(tableName)) {
       for (List<Row> rows : allRows) {
         if (table instanceof SaltedHTable) {
-          ((SaltedHTable)table).getRawTable().batch(rows, null);
+          batchWithLimit(((SaltedHTable)table).getRawTable(), rows);
         } else {
-          table.batch(rows, null);
+          batchWithLimit(table, rows);
         }
       }
     } catch (RetriesExhaustedWithDetailsException rewde) {
@@ -441,6 +447,14 @@ public class ReplicationSink {
       throw re;
     } catch (InterruptedException ix) {
       throw (InterruptedIOException) new InterruptedIOException().initCause(ix);
+    }
+  }
+
+  private void batchWithLimit(Table table, List<Row> rows)
+      throws IOException, InterruptedException {
+    int count = rows.size();
+    for (int i = 0; i * batchLimit < count; i++) {
+      table.batch(rows.subList(i * batchLimit, Math.min(count, (i + 1) * batchLimit)), null);
     }
   }
 
