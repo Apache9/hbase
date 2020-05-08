@@ -70,6 +70,8 @@ import org.apache.hadoop.hbase.TagType;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.conf.ConfigurationManager;
+import org.apache.hadoop.hbase.conf.PropagatingConfigurationObserver;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.crypto.Cipher;
 import org.apache.hadoop.hbase.io.crypto.Encryption;
@@ -125,7 +127,7 @@ import org.apache.hadoop.util.StringUtils;
  * not be called directly but by an HRegion manager.
  */
 @InterfaceAudience.Private
-public class HStore implements Store {
+public class HStore implements Store, PropagatingConfigurationObserver {
   public static final String COMPACTCHECKER_INTERVAL_MULTIPLIER_KEY =
       "hbase.server.compactchecker.interval.multiplier";
   public static final String BLOCKING_STOREFILES_KEY = "hbase.hstore.blockingStoreFiles";
@@ -139,7 +141,7 @@ public class HStore implements Store {
   private final HRegion region;
   private final HColumnDescriptor family;
   private final HRegionFileSystem fs;
-  private final Configuration conf;
+  private volatile Configuration conf;
   private final CacheConfig cacheConf;
   private long lastCompactSize = 0;
   volatile boolean forceMajor = false;
@@ -182,7 +184,8 @@ public class HStore implements Store {
   final StoreEngine<?, ?, ?, ?> storeEngine;
 
   private static final AtomicBoolean offPeakCompactionTracker = new AtomicBoolean();
-  private final OffPeakHours offPeakHours;
+  // TODO: should be shared by regionserver
+  private volatile OffPeakHours offPeakHours;
 
   private static final int DEFAULT_FLUSH_RETRIES_NUMBER = 10;
   private int flushRetriesNumber;
@@ -2249,5 +2252,25 @@ public class HStore implements Store {
   @Override
   public OffPeakHours getOffPeakHours() {
     return this.offPeakHours;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void onConfigurationChange(Configuration conf) {
+    this.storeEngine.compactionPolicy.setConf(conf);
+    this.offPeakHours = OffPeakHours.getInstance(conf);
+    LOG.info(offPeakHours);
+  }
+
+  @Override
+  public void registerChildren(ConfigurationManager manager) {
+    // No children to register
+  }
+
+  @Override
+  public void deregisterChildren(ConfigurationManager manager) {
+    // No children to deregister
   }
 }

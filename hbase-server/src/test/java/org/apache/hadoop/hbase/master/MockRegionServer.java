@@ -79,6 +79,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateConfigurationRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateConfigurationResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
@@ -608,6 +610,14 @@ ClientProtos.ClientService.BlockingInterface, RegionServerServices {
     // TODO Auto-generated method stub
     return null;
   }
+
+  @Override
+  public UpdateConfigurationResponse updateConfiguration(
+      RpcController controller, UpdateConfigurationRequest request)
+      throws ServiceException {
+    return null;
+  }
+
 
   @Override
   public HeapMemoryManager getHeapMemoryManager() {

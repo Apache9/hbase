@@ -1240,5 +1240,17 @@ module Hbase
       end
     end
 
+    #----------------------------------------------------------------------------------------------
+    # Updates the configuration of one regionserver.
+    def update_config(serverName)
+      @admin.updateConfiguration(ServerName.valueOf(serverName))
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Updates the configuration of all the regionservers.
+    def update_all_config
+      @admin.updateConfiguration
+    end
+
   end
 end

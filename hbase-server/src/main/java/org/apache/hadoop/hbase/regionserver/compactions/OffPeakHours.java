@@ -58,7 +58,6 @@ public abstract class OffPeakHours {
     if (startHour == endHour) {
       return DISABLED;
     }
-
     return new OffPeakHoursImpl(startHour, endHour);
   }
 
@@ -100,6 +99,11 @@ public abstract class OffPeakHours {
         return startHour <= targetHour && targetHour < endHour;
       }
       return targetHour < endHour || startHour <= targetHour;
+    }
+
+    @Override
+    public String toString() {
+      return "OffPeakHours(startHour=" + startHour + ",endHour=" + endHour + ")";
     }
   }
 }

@@ -237,6 +237,12 @@ message CompactionEnableResponse {
   optional bool enable = 1;
 }
 
+message UpdateConfigurationRequest {
+}
+
+message UpdateConfigurationResponse {
+}
+
 message GetRegionLoadRequest {
   optional TableName table_name = 1;
 }
@@ -293,6 +299,9 @@ service AdminService {
 
   rpc SwitchCompaction(CompactionEnableRequest)
     returns(CompactionEnableResponse);
+
+  rpc UpdateConfiguration (UpdateConfigurationRequest)
+    returns (UpdateConfigurationResponse);
 
   rpc GetRegionLoad(GetRegionLoadRequest)
     returns(GetRegionLoadResponse);

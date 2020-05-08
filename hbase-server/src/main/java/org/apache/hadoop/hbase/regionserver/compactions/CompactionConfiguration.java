@@ -26,6 +26,8 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.StoreConfigInformation;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * Compaction configuration for a particular instance of HStore.
  * Takes into account both global settings and ones set on the column family/store.
@@ -153,14 +155,16 @@ public class CompactionConfiguration {
   /**
    * @return lower bound below which compaction is selected without ratio test
    */
-  long getMinCompactSize() {
+  @VisibleForTesting
+  public long getMinCompactSize() {
     return minCompactSize;
   }
 
   /**
    * @return upper bound on file size to be included in minor compactions
    */
-  long getMaxCompactSize() {
+  @VisibleForTesting
+  public long getMaxCompactSize() {
     return maxCompactSize;
   }
 
@@ -182,28 +186,32 @@ public class CompactionConfiguration {
   /**
    * @return upper bound on number of files to be included in minor compactions
    */
-  int getMaxFilesToCompact() {
+  @VisibleForTesting
+  public int getMaxFilesToCompact() {
     return maxFilesToCompact;
   }
 
   /**
    * @return Ratio used for compaction
    */
-  double getCompactionRatio() {
+  @VisibleForTesting
+  public double getCompactionRatio() {
     return compactionRatio;
   }
 
   /**
    * @return Off peak Ratio used for compaction
    */
-  double getCompactionRatioOffPeak() {
+  @VisibleForTesting
+  public double getCompactionRatioOffPeak() {
     return offPeekCompactionRatio;
   }
 
   /**
    * @return ThrottlePoint used for classifying small and large compactions
    */
-  long getThrottlePoint() {
+  @VisibleForTesting
+  public long getThrottlePoint() {
     return throttlePoint;
   }
 
@@ -211,7 +219,8 @@ public class CompactionConfiguration {
    * @return Major compaction period from compaction.
    *   Major compactions are selected periodically according to this parameter plus jitter
    */
-  long getMajorCompactionPeriod() {
+  @VisibleForTesting
+  public long getMajorCompactionPeriod() {
     return majorCompactionPeriod;
   }
 
@@ -219,7 +228,8 @@ public class CompactionConfiguration {
    * @return Major the jitter fraction, the fraction within which the major compaction
    *    period is randomly chosen from the majorCompactionPeriod in each store.
    */
-  float getMajorCompactionJitter() {
+  @VisibleForTesting
+  public float getMajorCompactionJitter() {
     return majorCompactionJitter;
   }
 

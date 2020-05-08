@@ -38,6 +38,9 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.conf.ConfigurationManager;
+import org.apache.hadoop.hbase.conf.ConfigurationObserver;
+import org.apache.hadoop.hbase.conf.PropagatingConfigurationObserver;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
@@ -53,22 +56,34 @@ import com.google.common.base.Preconditions;
  * Compact region on request and then run split if appropriate
  */
 @InterfaceAudience.Private
-public class CompactSplitThread implements CompactionRequestor {
+public class CompactSplitThread implements CompactionRequestor, PropagatingConfigurationObserver {
   static final Log LOG = LogFactory.getLog(CompactSplitThread.class);
 
   public static final String REGION_SERVER_REGION_SPLIT_LIMIT =
       "hbase.regionserver.regionSplitLimit";
   public static final int DEFAULT_REGION_SERVER_REGION_SPLIT_LIMIT= 1000;
-  
+  // Configuration key for the large compaction threads.
+  public final static String LARGE_COMPACTION_THREADS = "hbase.regionserver.thread.compaction.large";
+  public final static int LARGE_COMPACTION_THREADS_DEFAULT = 1;
+
+  // Configuration key for the small compaction threads.
+  public final static String SMALL_COMPACTION_THREADS =
+          "hbase.regionserver.thread.compaction.small";
+  public final static int SMALL_COMPACTION_THREADS_DEFAULT = 1;
+
+  // Configuration key for split threads
+  public final static String SPLIT_THREADS = "hbase.regionserver.thread.split";
+  public final static int SPLIT_THREADS_DEFAULT = 1;
+
   private final HRegionServer server;
   private final Configuration conf;
 
-  private final ThreadPoolExecutor largeCompactions;
-  private final ThreadPoolExecutor smallCompactions;
-  private final ThreadPoolExecutor splits;
+  private volatile ThreadPoolExecutor largeCompactions;
+  private volatile ThreadPoolExecutor smallCompactions;
+  private volatile ThreadPoolExecutor splits;
   private final ThreadPoolExecutor mergePool;
 
-  private final CompactionThroughputController compactionThroughputController;
+  private volatile CompactionThroughputController compactionThroughputController;
 
   /**
    * Splitting should not take place if the total number of regions exceed this.
@@ -86,11 +101,11 @@ public class CompactSplitThread implements CompactionRequestor {
         DEFAULT_REGION_SERVER_REGION_SPLIT_LIMIT);
 
     int largeThreads = Math.max(1, conf.getInt(
-        "hbase.regionserver.thread.compaction.large", 1));
+            LARGE_COMPACTION_THREADS, LARGE_COMPACTION_THREADS_DEFAULT));
     int smallThreads = conf.getInt(
-        "hbase.regionserver.thread.compaction.small", 1);
+        SMALL_COMPACTION_THREADS, SMALL_COMPACTION_THREADS_DEFAULT);
 
-    int splitThreads = conf.getInt("hbase.regionserver.thread.split", 1);
+    int splitThreads = conf.getInt(SPLIT_THREADS, SPLIT_THREADS_DEFAULT);
 
     // if we have throttle threads, make sure the user also specified size
     Preconditions.checkArgument(largeThreads > 0 && smallThreads > 0);
@@ -153,6 +168,81 @@ public class CompactSplitThread implements CompactionRequestor {
         + smallCompactions.getQueue().size() + ")"
         + ", split_queue=" + splits.getQueue().size()
         + ", merge_queue=" + mergePool.getQueue().size();
+  }
+
+  @Override
+  public void registerChildren(ConfigurationManager manager) {
+    // No children to register.
+  }
+
+  @Override
+  public void deregisterChildren(ConfigurationManager manager) {
+    // No children to register
+  }
+
+  @Override
+  public void onConfigurationChange(Configuration newConf) {
+    // Check if number of large / small compaction threads has changed, and then
+    // adjust the core pool size of the thread pools, by using the
+    // setCorePoolSize() method. According to the javadocs, it is safe to
+    // change the core pool size on-the-fly. We need to reset the maximum
+    // pool size, as well.
+    int largeThreads = Math.max(1, newConf.getInt(
+            LARGE_COMPACTION_THREADS,
+            LARGE_COMPACTION_THREADS_DEFAULT));
+    if (this.largeCompactions.getCorePoolSize() != largeThreads) {
+      LOG.info("Changing the value of " + LARGE_COMPACTION_THREADS +
+              " from " + this.largeCompactions.getCorePoolSize() + " to " +
+              largeThreads);
+      if(this.largeCompactions.getCorePoolSize() < largeThreads) {
+        this.largeCompactions.setMaximumPoolSize(largeThreads);
+        this.largeCompactions.setCorePoolSize(largeThreads);
+      } else {
+        this.largeCompactions.setCorePoolSize(largeThreads);
+        this.largeCompactions.setMaximumPoolSize(largeThreads);
+      }
+    }
+
+    int smallThreads = Math.max(1, newConf.getInt(SMALL_COMPACTION_THREADS,
+            SMALL_COMPACTION_THREADS_DEFAULT));
+    if (this.smallCompactions.getCorePoolSize() != smallThreads) {
+      LOG.info("Changing the value of " + SMALL_COMPACTION_THREADS +
+              " from " + this.smallCompactions.getCorePoolSize() + " to " +
+              smallThreads);
+      if(this.smallCompactions.getCorePoolSize() < smallThreads) {
+        this.smallCompactions.setMaximumPoolSize(smallThreads);
+        this.smallCompactions.setCorePoolSize(smallThreads);
+      } else {
+        this.smallCompactions.setCorePoolSize(smallThreads);
+        this.smallCompactions.setMaximumPoolSize(smallThreads);
+      }
+    }
+
+    int splitThreads = Math.max(1, newConf.getInt(SPLIT_THREADS,
+            SPLIT_THREADS_DEFAULT));
+    if (this.splits.getCorePoolSize() != splitThreads) {
+      LOG.info("Changing the value of " + SPLIT_THREADS +
+              " from " + this.splits.getCorePoolSize() + " to " +
+              splitThreads);
+      if(this.splits.getCorePoolSize() < splitThreads) {
+        this.splits.setMaximumPoolSize(splitThreads);
+        this.splits.setCorePoolSize(splitThreads);
+      } else {
+        this.splits.setCorePoolSize(splitThreads);
+        this.splits.setMaximumPoolSize(splitThreads);
+      }
+    }
+
+    CompactionThroughputController old = this.compactionThroughputController;
+    if (old != null) {
+      old.stop("configuration change");
+    }
+    this.compactionThroughputController =
+            CompactionThroughputControllerFactory.create(server, newConf);
+
+    // We change this atomically here instead of reloading the config in order that upstream
+    // would be the only one with the flexibility to reload the config.
+    this.conf.reloadConfiguration();
   }
   
   public String dumpQueue() {
@@ -568,4 +658,15 @@ public class CompactSplitThread implements CompactionRequestor {
     return compactionThroughputController;
   }
 
+  @VisibleForTesting
+  public Configuration getConfiguration() {
+    return conf;
+  }
+  protected int getSmallCompactionThreadNum() {
+    return this.smallCompactions.getCorePoolSize();
+  }
+
+  protected int getLargeCompactionThreadNum() {
+    return this.largeCompactions.getCorePoolSize();
+  }
 }

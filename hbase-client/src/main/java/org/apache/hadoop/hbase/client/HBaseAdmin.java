@@ -3964,8 +3964,39 @@ public class HBaseAdmin implements Abortable, Closeable {
           }
         });
     return response.getRegionQuotaList().stream()
-        .map(regionQuota -> new RegionQuotaSettings(
-            Bytes.toString(regionQuota.getRegion().toByteArray()), regionQuota.getThrottle()))
-        .collect(Collectors.toList());
+            .map(regionQuota -> new RegionQuotaSettings(
+                    Bytes.toString(regionQuota.getRegion().toByteArray()), regionQuota.getThrottle()))
+            .collect(Collectors.toList());
+  }
+
+  /**
+   * Update the configuration and trigger an online config change
+   * on the regionserver.
+   *
+   * @param sn : The server whose config needs to be updated.
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void updateConfiguration(ServerName sn) throws IOException {
+    AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
+    try {
+      admin.updateConfiguration(null,
+              AdminProtos.UpdateConfigurationRequest.getDefaultInstance());
+    } catch (ServiceException se) {
+      throw ProtobufUtil.getRemoteException(se);
+    }
+  }
+
+  /**
+   * Update the configuration and trigger an online config change
+   * on all the regionservers.
+   *
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void updateConfiguration() throws IOException {
+    Collection<ServerName> servers =
+            getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME)).getServers();
+    for (ServerName sn : servers) {
+      updateConfiguration(sn);
+    }
   }
 }

@@ -108,6 +108,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.exceptions.FailedSanityCheckException;
 import org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException;
@@ -174,6 +175,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateConfigurationRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateConfigurationResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
@@ -670,6 +673,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private volatile boolean enableCompact = true;
 
   private String clusterName;
+
+  private final ConfigurationManager configurationManager;
   
   /**
    * Starts a HRegionServer at the default location
@@ -803,6 +808,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     closedScanners = CacheBuilder.newBuilder()
         .expireAfterAccess(scannerLeaseTimeoutPeriod, TimeUnit.MILLISECONDS).build();
     clusterName = conf.get(HConstants.CLUSTER_NAME, "");
+    this.configurationManager = new ConfigurationManager();
   }
 
   public static String getHostname(Configuration conf) throws UnknownHostException {
@@ -1050,6 +1056,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         this.isa.getAddress(), 0));
     jvmThreadMonitor = new JvmThreadMonitor(conf);
     jvmThreadMonitor.start();
+    registerConfigurationObservers();
+  }
+
+  private void registerConfigurationObservers() {
+    // Registering the compactSplitThread object with the ConfigurationManager.
+    configurationManager.registerObserver(this.compactSplitThread);
   }
 
   public String getClusterName() {
@@ -2874,6 +2886,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public void addToOnlineRegions(HRegion region) {
     this.onlineRegions.put(region.getRegionInfo().getEncodedName(), region);
+    configurationManager.registerObserver(region);
+
     LOG.info("onlineRegions add region : " + region.getRegionInfo().getEncodedName() + "for table "
         + region.getRegionInfo().getTable());
   }
@@ -6238,5 +6252,36 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       }
     }
     return false;
+  }
+
+  @Override
+  public UpdateConfigurationResponse updateConfiguration(
+          RpcController controller, UpdateConfigurationRequest request)
+          throws ServiceException {
+    try {
+      updateConfiguration();
+    } catch (Exception e) {
+      throw new ServiceException(e);
+    }
+    return UpdateConfigurationResponse.getDefaultInstance();
+  }
+
+  /**
+   * Reload the configuration from disk.
+   */
+
+  private void updateConfiguration() {
+    LOG.info("Reloading the configuration from disk.");
+    // Reload the configuration from disk.
+    conf.reloadConfiguration();
+    configurationManager.notifyAllObservers(conf);
+  }
+
+  /**
+   * @return : Returns the ConfigurationManager object for testing purposes.
+   */
+  @VisibleForTesting
+  ConfigurationManager getConfigurationManager() {
+    return configurationManager;
   }
 }
