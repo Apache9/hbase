@@ -51,6 +51,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -185,6 +186,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     // make a copy, just to be sure we're not overriding someone else's config
     super(HBaseConfiguration.create(conf));
     conf = getConf();
+    ensureUMask(conf);
     // disable blockcache for tool invocation, see HBASE-10500
     conf.setFloat(HConstants.HFILE_BLOCK_CACHE_SIZE_KEY, 0);
     userProvider = UserProvider.instantiate(conf);
@@ -1256,8 +1258,15 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
 
   }
 
+  private static void ensureUMask(Configuration conf) {
+    conf.setBoolean(HConstants.ENABLE_DATA_FILE_UMASK, true);
+    conf.set(HConstants.DATA_FILE_UMASK_KEY, "000");
+    conf.set(CommonConfigurationKeys.FS_PERMISSIONS_UMASK_KEY, "000");
+  }
+
   public static void main(String[] args) throws Exception {
     Configuration conf = HBaseConfiguration.create();
+    ensureUMask(conf);
     int ret = ToolRunner.run(conf, new LoadIncrementalHFiles(conf), args);
     System.exit(ret);
   }
