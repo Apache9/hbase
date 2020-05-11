@@ -75,7 +75,6 @@ public class HBaseStreamCopyTableToTalosReducer extends TableReducer<ImmutableBy
   @Override
   protected void reduce(ImmutableBytesWritable key, Iterable<Mutation> values, Context context)
       throws IOException, InterruptedException {
-    byte[] rowkey = key.get();
     for (Mutation mutation : values) {
       CellScanner cellScanner = mutation.cellScanner();
       while (cellScanner.advance()) {
@@ -84,17 +83,22 @@ public class HBaseStreamCopyTableToTalosReducer extends TableReducer<ImmutableBy
         JsonArray array = new JsonArray();
         array.add(jsonObject);
         List<Message> messages = HBaseStreamUtil.toMessage(array);
-        try {
-          producers[Bytes.hashCode(rowkey) % producers.length].putMessageList(messages);
-        } catch (TException e) {
-          LOG.error("Talos producer putMessageList exceptionally", e);
-          throw new IOException(e);
-        }
+        productMessages(cell, messages);
       }
     }
   }
 
-  private JsonObject cellToJson(Cell cell) {
+  protected void productMessages(Cell cell, List<Message> messages) throws IOException {
+    byte[] rowkey = CellUtil.copyRow(cell);
+    try {
+      producers[Bytes.hashCode(rowkey) % producers.length].putMessageList(messages);
+    } catch (TException e) {
+      LOG.error("Talos producer putMessageList exceptionally", e);
+      throw new IOException(e);
+    }
+  }
+
+  JsonObject cellToJson(Cell cell) {
     String valueInBase64 = null;
     if (!"KEYS_ONLY".equals(fieldsControl)) {
       valueInBase64 = HBaseStreamUtil.toBase64String(CellUtil.cloneValue(cell));

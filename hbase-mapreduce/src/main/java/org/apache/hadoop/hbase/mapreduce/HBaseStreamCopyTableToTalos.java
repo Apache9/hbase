@@ -68,6 +68,9 @@ public class HBaseStreamCopyTableToTalos extends Configured implements Tool {
 
   String fieldsControl;
 
+  // just for unit test
+  String utOutputFile = null;
+
   private final static String JOB_NAME_CONF_KEY = "mapreduce.job.name";
 
   public HBaseStreamCopyTableToTalos(Configuration conf) {
@@ -79,8 +82,20 @@ public class HBaseStreamCopyTableToTalos extends Configured implements Tool {
     TableMapReduceUtil.initTableMapperJob(tableName, scan, mapper, ImmutableBytesWritable.class, Mutation.class, job);
   }
 
-  private void initCopyTableReducerJob(Job job) throws IOException {
+  private void initCopyTableReducerJob(Job job) {
     Configuration conf = job.getConfiguration();
+    if (utOutputFile != null) {
+      job.setNumReduceTasks(1);
+      job.setMapOutputKeyClass(ImmutableBytesWritable.class);
+      job.setMapOutputValueClass(Put.class);
+      job.setOutputKeyClass(ImmutableBytesWritable.class);
+      job.setOutputValueClass(Writable.class);
+      job.setReducerClass(DummyHBaseStreamCopyTableReducer.class);
+      job.setOutputFormatClass(NullOutputFormat.class);
+      conf.set(DummyHBaseStreamCopyTableReducer.HBASE_STREAM_COPY_TO_TALOS_UT_OUTPUT_FILE,
+          utOutputFile);
+      return;
+    }
     conf.setStrings(TALOS_ENDPOINT, endpoint);
     conf.setStrings(TALOS_ACCESSKEY, accessKey);
     conf.setStrings(TALOS_ACCESSSECRET, accessSecret);
@@ -253,6 +268,12 @@ public class HBaseStreamCopyTableToTalos extends Configured implements Tool {
         final String fieldscontrolArgKey = "--fieldscontrol=";
         if (cmd.startsWith(fieldscontrolArgKey)) {
           fieldsControl = cmd.substring(fieldscontrolArgKey.length());
+          continue;
+        }
+
+        final String utArgKey = "--utoutput=";
+        if (cmd.startsWith(utArgKey)) {
+          utOutputFile = cmd.substring(utArgKey.length());
           continue;
         }
 

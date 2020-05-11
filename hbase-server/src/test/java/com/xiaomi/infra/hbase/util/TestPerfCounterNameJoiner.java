@@ -20,8 +20,10 @@ package com.xiaomi.infra.hbase.util;
 
 import static org.junit.Assert.assertEquals;
 
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -29,6 +31,10 @@ import com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils.PerfCounterNameJoiner;
 
 @Category(SmallTests.class)
 public class TestPerfCounterNameJoiner {
+
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestPerfCounterNameJoiner.class);
 
   @Test
   public void testPerfCounterNameJoiner() {

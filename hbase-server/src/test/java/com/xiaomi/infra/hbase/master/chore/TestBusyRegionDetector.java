@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HRegionLocation;
@@ -53,6 +54,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -60,6 +62,10 @@ import org.slf4j.LoggerFactory;
 
 @Category(MediumTests.class)
 public class TestBusyRegionDetector {
+
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestBusyRegionDetector.class);
 
   private static final Logger LOG = LoggerFactory.getLogger(TestBusyRegionDetector.class);
 
