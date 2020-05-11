@@ -17,7 +17,14 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,6 +64,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 
@@ -520,18 +529,113 @@ public class TestPerTableCFReplication {
       putAndWaitWithFamily(row2, f3Name, htab1C, htab2C, htab3C);
       deleteAndWaitWithFamily(row2, f3Name, htab1C, htab2C, htab3C);
     } finally {
+      replicationAdmin.removePeer("2");
+      replicationAdmin.removePeer("3");
+      utility1.deleteTableIfAny(tabA.getTableName());
+      utility1.deleteTableIfAny(tabB.getTableName());
+      utility1.deleteTableIfAny(tabC.getTableName());
+      utility2.deleteTableIfAny(tabA.getTableName());
+      utility2.deleteTableIfAny(tabB.getTableName());
+      utility2.deleteTableIfAny(tabC.getTableName());
+      utility3.deleteTableIfAny(tabA.getTableName());
+      utility3.deleteTableIfAny(tabB.getTableName());
+      utility3.deleteTableIfAny(tabC.getTableName());
       connection1.close();
       connection2.close();
       connection3.close();
     }
   }
 
+  @Test
+  public void testExcludeTableCFsWithEmptyList() throws Exception {
+    Connection connection1 = ConnectionFactory.createConnection(conf1);
+    Connection connection2 = ConnectionFactory.createConnection(conf2);
+    Admin admin1 = connection1.getAdmin();
+    Admin admin2 = connection2.getAdmin();
+    try {
+      admin1.createTable(tabB);
+      admin2.createTable(tabB);
+      admin1.createTable(tabC);
+      admin2.createTable(tabC);
+
+      Table htab1B = connection1.getTable(tabBName);
+      Table htab2B = connection2.getTable(tabBName);
+
+      Table htab1C = connection1.getTable(tabCName);
+      Table htab2C = connection2.getTable(tabCName);
+
+      // A. add cluster2 as peers to cluster1
+      ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
+      rpc2.setClusterKey(utility2.getClusterKey());
+      rpc2.setReplicateAllUserTables(true);
+      // exclude tableC and tableB:f1,f3
+      Map<TableName, List<String>> tableCFs = new HashMap<>();
+      tableCFs.put(tabCName, new ArrayList<>());
+      rpc2.setExcludeTableCFsMap(tableCFs);
+      admin1.addReplicationPeer("2", rpc2);
+
+      // A1. tableC cannot replicate to cluster2
+      putAndWaitWithFamily(row1, f1Name, htab1C);
+      ensureRowNotReplicated(row1, f1Name, htab2C);
+      deleteAndWaitWithFamily(row1, f1Name, htab1C);
+
+      putAndWaitWithFamily(row1, f2Name, htab1C);
+      ensureRowNotReplicated(row1, f2Name, htab2C);
+      deleteAndWaitWithFamily(row1, f2Name, htab1C);
+
+      putAndWaitWithFamily(row1, f3Name, htab1C);
+      ensureRowNotReplicated(row1, f3Name, htab2C);
+      deleteAndWaitWithFamily(row1, f3Name, htab1C);
+
+      // A2. tableB can not replicate to cluster2
+      tableCFs.put(tabBName, Lists.newArrayList("f1", "f3"));
+      admin1.updateReplicationPeerConfig("2", rpc2);
+
+      putAndWaitWithFamily(row1, f1Name, htab1B);
+      ensureRowNotReplicated(row1, f1Name, htab2B);
+      deleteAndWaitWithFamily(row1, f1Name, htab1B);
+
+      putAndWaitWithFamily(row1, f2Name, htab1B);
+      ensureRowReplicated(row1, f2Name, htab2B);
+      deleteAndWaitWithFamily(row1, f2Name, htab1B);
+
+      putAndWaitWithFamily(row1, f3Name, htab1B);
+      ensureRowNotReplicated(row1, f3Name, htab2B);
+      deleteAndWaitWithFamily(row1, f3Name, htab1B);
+    } finally {
+      admin1.removeReplicationPeer("2");
+      utility1.deleteTableIfAny(tabB.getTableName());
+      utility1.deleteTableIfAny(tabC.getTableName());
+      utility2.deleteTableIfAny(tabB.getTableName());
+      utility2.deleteTableIfAny(tabC.getTableName());
+      connection1.close();
+      connection2.close();
+    }
+  }
+
   private void ensureRowNotReplicated(byte[] row, byte[] fam, Table... tables) throws IOException {
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+    }
     Get get = new Get(row);
     get.addFamily(fam);
     for (Table table : tables) {
       Result res = table.get(get);
       assertEquals(0, res.size());
+    }
+  }
+
+  private void ensureRowReplicated(byte[] row, byte[] fam, Table... tables) throws IOException {
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+    }
+    Get get = new Get(row);
+    get.addFamily(fam);
+    for (Table table : tables) {
+      Result res = table.get(get);
+      assertNotEquals(0, res.size());
     }
   }
 
