@@ -1,0 +1,36 @@
+image: cr.d.xiaomi.net/hbase/ubuntu-openjdk1.8-maven3.5:latest
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  KUBERNETES_CPU_REQUEST: 10
+  KUBERNETES_CPU_LIMIT: 10
+  KUBERNETES_MEMORY_REQUEST: 10Gi
+
+cache:
+  paths:
+   - .m2/repository/
+
+stages:
+  - build
+  - test
+
+build:
+  stage: build
+  script:
+    - mvn -DskipTests clean install && mvn -DskipTests package assembly:single
+  only:
+    refs:
+     - 0.98.11-mdh2
+     - branch-2-mdh3
+     - merge_requests
+
+test:
+  stage: test
+  timeout: 2 hours
+  script:
+    - mvn test -PrunDevTests
+  only:
+    refs:
+     - 0.98.11-mdh2
+     - branch-2-mdh3
+     - merge_requests
