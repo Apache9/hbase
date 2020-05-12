@@ -996,7 +996,8 @@ public class TableMapReduceUtil {
       com.google.common.collect.Lists.class,
       org.apache.htrace.Trace.class,
       org.cliffc.high_scale_lib.Counter.class,
-      com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf.class); // mapred over snapshots
+      com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf.class,
+      com.xiaomi.keycenter.common.iface.DataProtectionException.class); // mapred over snapshots
   }
 
   /**
