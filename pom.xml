@@ -2346,13 +2346,13 @@
     </site>
     <repository>
       <id>central</id>
-      <name>artifactory-releases</name>
-      <url>http://artifactory.d.xiaomi.net:80/artifactory/artifactory-releases</url>
+      <name>maven-release-virtual</name>
+      <url>https://pkgs.d.xiaomi.net/artifactory/maven-release-virtual</url>
     </repository>
     <snapshotRepository>
       <id>snapshots</id>
-      <name>artifactory-snapshots</name>
-      <url>http://artifactory.d.xiaomi.net:80/artifactory/artifactory-snapshots</url>
+      <name>maven-snapshot-virtual</name>
+      <url>https://pkgs.d.xiaomi.net/artifactory/maven-snapshot-virtual</url>
     </snapshotRepository>
   </distributionManagement>
 </project>
