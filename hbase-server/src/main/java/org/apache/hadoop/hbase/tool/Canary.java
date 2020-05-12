@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.BindException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -39,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -221,40 +221,57 @@ public final class Canary implements Tool {
     private final ServerName server;
     private final Sink sink;
     private final Canary canary;
+    private final boolean checkAllCF;
 
-    RegionTask(Configuration conf, AsyncTable<?> table, HTableDescriptor tableDesc,
-        HRegionInfo region, ServerName server, Sink sink, Canary canary) {
+    RegionTask(AsyncTable<?> table, HTableDescriptor tableDesc, HRegionInfo region,
+        ServerName server, Sink sink, Canary canary, boolean checkAllCF) {
       this.table = table;
       this.tableDesc = tableDesc;
       this.region = region;
       this.server = server;
       this.sink = sink;
       this.canary = canary;
+      this.checkAllCF = checkAllCF;
+    }
+
+    private HColumnDescriptor randomPickOneColumnFamily() {
+      HColumnDescriptor[] cfs = tableDesc.getColumnFamilies();
+      int size = cfs.length;
+      return cfs[ThreadLocalRandom.current().nextInt(size)];
+    }
+
+    private CompletableFuture<List<Result>> readColumnFamily(HColumnDescriptor cf) {
+      StopWatch watch = new StopWatch();
+      watch.start();
+      return table.scanAll(
+          new Scan().withStartRow(randomKey(region.getStartKey(), region.getEndKey()))
+              .withStopRow(region.getEndKey()).addFamily(cf.getName()).setRaw(true)
+              .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit())
+          .whenComplete((r, e) -> {
+            canary.caclTotalRequest(server, tableDesc.getTableName());
+            if (e != null) {
+              handleReadException(e, cf);
+            } else {
+              watch.stop();
+              sink.publishReadTiming(region, cf, watch.getTime());
+            }
+          });
     }
 
     /**
      * check read for normal user tables
+     *
      * @return
      */
     private CompletableFuture<Void> read() {
       List<CompletableFuture<?>> futures = new ArrayList<>();
-      tableDesc.getFamilies().forEach(column -> {
-        StopWatch watch = new StopWatch();
-        watch.start();
-        futures.add(table
-            .scanAll(new Scan().withStartRow(randomKey(region.getStartKey(), region.getEndKey()))
-                .withStopRow(region.getEndKey()).addFamily(column.getName()).setRaw(true)
-                .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit())
-            .whenComplete((r, e) -> {
-              canary.caclTotalRequest(server, tableDesc.getTableName());
-              if (e != null) {
-                handleReadException(e, column);
-              } else {
-                watch.stop();
-                sink.publishReadTiming(region, column, watch.getTime());
-              }
-            }));
-      });
+      if (checkAllCF) {
+        tableDesc.getFamilies().forEach(cf -> {
+          futures.add(readColumnFamily(cf));
+        });
+      } else {
+        futures.add(readColumnFamily(randomPickOneColumnFamily()));
+      }
       return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]));
     }
 
@@ -319,6 +336,9 @@ public final class Canary implements Tool {
     }
   }
 
+  private static final String CHECK_ALL_COLUMN_FAMILY = "hbase.canary.check.all.column.family";
+  private boolean checkAllCF = true;
+
   private static final String EXCLUDE_NAMESPACE = "hbase.canary.exclude.namespace";
   private String excludeNamespaceConfig;
   private Set<String> excludeNamespaces = new HashSet<>();
@@ -359,7 +379,6 @@ public final class Canary implements Tool {
     this.failuresByTable = new ConcurrentHashMap<>();
     this.totalRequestByServer = new ConcurrentHashMap<>();
     this.totalRequestByTable = new ConcurrentHashMap<>();
-
   }
 
   @Override
@@ -532,6 +551,8 @@ public final class Canary implements Tool {
     for (String namespace : excludeNamespaceConfig.split(",")) {
       excludeNamespaces.add(namespace);
     }
+    checkAllCF = conf.getBoolean(CHECK_ALL_COLUMN_FAMILY, true);
+
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
     // lets the canary monitor the cluster
@@ -682,8 +703,8 @@ public final class Canary implements Tool {
     AsyncTable<?> table = asyncConn.getTable(tableDesc.getTableName());
     tasks = MetaScanner.findAndCacheAllTableRegions(conf, conn, tableDesc.getTableName(), asyncConn)
         .entrySet().stream().map(
-            entry -> new RegionTask(conf, table, tableDesc, entry.getKey(), entry.getValue(), sink,
-                this)).collect(Collectors.toList());
+            entry -> new RegionTask(table, tableDesc, entry.getKey(), entry.getValue(), sink, this,
+                checkAllCF)).collect(Collectors.toList());
     cachedTasks.put(tableDesc.getNameAsString(), tasks);
     LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount=" +
         tasks.size());
