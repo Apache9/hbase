@@ -30,10 +30,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -326,7 +328,8 @@ public final class Canary implements Tool {
   }
 
   private static final String EXCLUDE_NAMESPACE = "hbase.canary.exclude.namespace";
-  private String excludeNamespace;
+  private String excludeNamespaceConfig;
+  private Set<String> excludeNamespaces = new HashSet<>();
 
   public static final String CANARY = "canary";
   public static final String CANARY_CONF = "canary_conf";
@@ -542,7 +545,10 @@ public final class Canary implements Tool {
     lastCheckTime = System.currentTimeMillis();
     rootdir = FSUtils.getRootDir(conf);
     fs = rootdir.getFileSystem(conf);
-    excludeNamespace = conf.get(EXCLUDE_NAMESPACE, "");
+    excludeNamespaceConfig = conf.get(EXCLUDE_NAMESPACE, "");
+    for (String namespace : excludeNamespaceConfig.split(",")) {
+      excludeNamespaces.add(namespace);
+    }
     sink.setConnection(conn);
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
@@ -698,7 +704,7 @@ public final class Canary implements Tool {
    * Loops over regions that owns this table, and output some information abouts the state.
    */
   private List<RegionTask> sniff(TableDescriptor tableDesc) throws Exception {
-    if (tableDesc.getTableName().getNamespaceAsString().equals(excludeNamespace)) {
+    if (excludeNamespaces.contains(tableDesc.getTableName().getNamespaceAsString())) {
       return new ArrayList<>();
     }
     List<RegionTask> tasks = cachedTasks.get(tableDesc.getTableName().getNameAsString());
