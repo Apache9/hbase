@@ -21,8 +21,9 @@ package com.xiaomi.infra.hbase.util;
 
 import static com.xiaomi.common.perfcounter.PerfCounter.count;
 import static com.xiaomi.miliao.counter.MultiCounter.FAIL_SUFFIX;
-import static com.xiaomi.miliao.counter.MultiCounter.PATH_SEPARATOR_STRING;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
@@ -42,6 +43,17 @@ public final class CanaryPerfCounterUtils {
 
   public static final String PERFCOUNT_NAME_TAG_DELIMITER = ",";
 
+  public static String HOSTNAME;
+
+  static {
+    try {
+      HOSTNAME = InetAddress.getLocalHost().getHostName();
+    } catch (UnknownHostException e) {
+      LOG.error("Failed to get hostname.", e);
+      HOSTNAME = "localhost";
+    }
+  }
+
   public static void addCounter(String cluster, String method, TableName tableName, long time) {
     count(constructClusterPerfcountName(cluster, method).getName(), 1, time);
     count(constructTablePerfcountName(cluster, method, tableName).getName(), 1, time);
@@ -53,13 +65,12 @@ public final class CanaryPerfCounterUtils {
   }
 
   private static PerfCounterNameJoiner constructClusterPerfcountName(String cluster, String method) {
-    return new PerfCounterNameJoiner(HBASE_CANARY_PREFIX + method).appendCluster(cluster);
+    return new PerfCounterNameJoiner().method(method).cluster(cluster).host();
   }
 
   private static PerfCounterNameJoiner constructTablePerfcountName(String cluster, String method,
       TableName tableName) {
-    return new PerfCounterNameJoiner(HBASE_CANARY_PREFIX + method)
-        .appendCluster(cluster).appendTable(tableName);
+    return new PerfCounterNameJoiner().method(method).cluster(cluster).table(tableName).host();
   }
 
   private static String parseClusterName(String cluster) {
@@ -75,21 +86,25 @@ public final class CanaryPerfCounterUtils {
 
   static class PerfCounterNameJoiner {
 
-    private String prefix;
-    private List<Pair<String, String>> tags;
+    private String method;
+    private List<Pair<String, String>> tags = new ArrayList<>();
     private boolean failed;
 
-    PerfCounterNameJoiner(String prefix) {
-      this.prefix = prefix;
-      tags = new ArrayList<>();
+    public PerfCounterNameJoiner method(String method) {
+      this.method = method;
+      return this;
     }
 
-    public PerfCounterNameJoiner appendCluster(String cluster) {
+    public PerfCounterNameJoiner cluster(String cluster) {
       return append("cluster", parseClusterName(cluster));
     }
 
-    public PerfCounterNameJoiner appendTable(TableName tableName) {
+    public PerfCounterNameJoiner table(TableName tableName) {
       return append("table", tableName.getNameAsString());
+    }
+
+    public PerfCounterNameJoiner host() {
+      return append("host", HOSTNAME);
     }
 
     public PerfCounterNameJoiner append(String key, String val) {
@@ -103,7 +118,8 @@ public final class CanaryPerfCounterUtils {
     }
 
     public String getName() {
-      prefix = (failed ? prefix + FAIL_SUFFIX : prefix) + PATH_SEPARATOR_STRING;
+      String prefix = HBASE_CANARY_PREFIX + (failed ? method + FAIL_SUFFIX : method)
+          + PERFCOUNT_NAME_TAG_DELIMITER;
       StringJoiner joiner = new StringJoiner(PERFCOUNT_NAME_TAG_DELIMITER, prefix, "");
       tags.forEach(kv -> joiner.add(kv.getFirst() + "=" + kv.getSecond()));
       return joiner.toString();

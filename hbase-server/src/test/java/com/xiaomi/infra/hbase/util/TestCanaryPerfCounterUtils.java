@@ -18,6 +18,7 @@
  */
 package com.xiaomi.infra.hbase.util;
 
+import static com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils.HOSTNAME;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.hadoop.hbase.TableName;
@@ -28,23 +29,22 @@ import org.junit.experimental.categories.Category;
 import com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils.PerfCounterNameJoiner;
 
 @Category(SmallTests.class)
-public class TestPerfCounterNameJoiner {
+public class TestCanaryPerfCounterUtils {
 
   @Test
   public void testPerfCounterNameJoiner() {
-    String name = new PerfCounterNameJoiner(CanaryPerfCounterUtils.HBASE_CANARY_PREFIX + "read")
-        .appendCluster("cluster").appendTable(TableName.valueOf("table"))
-        .getName();
-    assertEquals("hbase-canary-read/cluster=cluster,table=table", name);
+    String name = new PerfCounterNameJoiner().method("read").cluster("cluster")
+        .table(TableName.valueOf("table")).getName();
+    assertEquals("hbase-canary-read,cluster=cluster,table=table", name);
 
-    name = new PerfCounterNameJoiner(CanaryPerfCounterUtils.HBASE_CANARY_PREFIX + "read")
-        .appendCluster("cluster").appendTable(TableName.valueOf("table")).failed().getName();
-    assertEquals("hbase-canary-read_fail/cluster=cluster,table=table", name);
+    name = new PerfCounterNameJoiner().method("read").cluster("cluster")
+        .table(TableName.valueOf("table")).host().getName();
+    assertEquals("hbase-canary-read,cluster=cluster,table=table,host=" + HOSTNAME, name);
 
-    name = new PerfCounterNameJoiner(CanaryPerfCounterUtils.HBASE_CANARY_PREFIX + "read")
-        .appendCluster("hbase://cluster/").appendTable(TableName.valueOf("ns:table"))
+    name = new PerfCounterNameJoiner().method("read").cluster("hbase://cluster/")
+        .table(TableName.valueOf("ns:table"))
         .getName();
-    assertEquals("hbase-canary-read/cluster=cluster,table=ns:table", name);
+    assertEquals("hbase-canary-read,cluster=cluster,table=ns:table", name);
   }
 
 }
