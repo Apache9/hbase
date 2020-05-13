@@ -67,7 +67,7 @@ import com.xiaomi.infra.hbase.util.MailUtils;
 	  }
 	  boolean isHealthy = healthCheckerList.stream().allMatch(healthChecker -> {
 		  HealthReport healthReport = healthChecker.checkHealth();
-		  LOG.info("Health status  " + healthReport.getHealthReport());
+		  LOG.info("Health status " + healthReport.getStatus() + ": " + healthReport.getHealthReport());
 		  return HealthCheckerExitStatus.SUCCESS == healthChecker.checkHealth().getStatus();
 	  });
     if (!isHealthy) {

@@ -63,41 +63,56 @@ public final class DirectHealthChecker implements HealthChecker {
 		HealthReport writeHealthReport = checkWriteHealth();
 		if ((readHealthReport.getStatus() == HealthCheckerExitStatus.SUCCESS) && (
 				writeHealthReport.getStatus() == HealthCheckerExitStatus.SUCCESS)) {
-			logger.info("DirectHealthChecker success");
-			return new HealthReport(HealthCheckerExitStatus.SUCCESS, "DirectHealthChecker success");
+			return new HealthReport(HealthCheckerExitStatus.SUCCESS,
+					readHealthReport.getReport() + "," + writeHealthReport.getReport());
 		} else {
 			logger.warn(readHealthReport.getReport());
 			logger.warn(writeHealthReport.getReport());
-			return new HealthReport(HealthCheckerExitStatus.FAILED, "DirectHealthChecker failure");
+			return new HealthReport(HealthCheckerExitStatus.FAILED,
+					readHealthReport.getReport() + "," + writeHealthReport.getReport());
 		}
 	}
 
 	private HealthReport checkReadHealth() {
 		List<HRegion> readRegions = selectReadRegions();
 		int successCount = 0;
-
+		int failureCount = 0;
+    int failureThreshold = (int)(readRegions.size() * (1 - successRate));
 		for (HRegion region : readRegions) {
 			CompletableFuture<Boolean> successFuture =
 					CompletableFuture.supplyAsync(() -> checkGet(region), executorService);
 			if (completeWithin(successFuture, actionTimeout)) {
 				++successCount;
+			} else {
+				++failureCount;
+			}
+			if (failureCount > failureThreshold) {
+				break;
 			}
 		}
-		return newHealthReport("read", successCount, readRegions.size() * successRate);
+		return newHealthReport("read", successCount + failureCount, failureCount, failureThreshold);
 	}
 
 	private HealthReport checkWriteHealth() {
 		List<HRegion> writeRegions = selectWriteRegions();
 		int successCount = 0;
+		int failureCount = 0;
+		int failureThreshold = (int)(writeRegions.size() * (1 - successRate));
 		for (HRegion region : writeRegions) {
 			CompletableFuture<Boolean> successFuture =
 					CompletableFuture.supplyAsync(() -> checkWrite(region), executorService);
 			if (completeWithin(successFuture, actionTimeout)) {
 				++successCount;
+			} else {
+				++failureCount;
+			}
+			if (failureCount > failureThreshold) {
+				// failure for sure, fail fast
+				break;
 			}
 		}
 
-		return newHealthReport("write", successCount, writeRegions.size() * successRate);
+		return newHealthReport("write", successCount + failureCount, failureCount, failureThreshold);
 	}
 
 	@VisibleForTesting
@@ -205,20 +220,21 @@ public final class DirectHealthChecker implements HealthChecker {
 				|| e instanceof NotServingRegionException;
 	}
 
-	private HealthReport newHealthReport(String checkType, int successCount,
-			double successThreshold) {
-		HealthCheckerExitStatus status = getStatus(successCount, successThreshold);
-		String report = createReport(checkType, successCount, successThreshold);
+	private HealthReport newHealthReport(String checkType, int total, int failureCount,
+			int failureThreshold) {
+		HealthCheckerExitStatus status = getStatus(failureCount, failureThreshold);
+		String report = createReport(checkType, total, failureCount, failureThreshold);
 		return new HealthReport(status, report);
 	}
 
-	private String createReport(String checkType, int successCount, double successThreshold) {
-		return "DirectHealthChecker " + checkType + " successCount " + successCount
-				+ ", successThreshold " + successThreshold;
+	private String createReport(String checkType, int total, int failureCount,
+			int failureThreshold) {
+		return "DirectHealthChecker " + checkType + " total=" + total + ",failureCount=" + failureCount
+				+ ",failureThreshold=" + failureThreshold;
 	}
 
-	private HealthCheckerExitStatus getStatus(int successCount, double successThreshold) {
-		return successCount >= successThreshold ?
+	private HealthCheckerExitStatus getStatus(int failureCount, int failureCountThreshold) {
+		return failureCount <= failureCountThreshold ?
 				HealthCheckerExitStatus.SUCCESS :
 				HealthCheckerExitStatus.FAILED;
 	}
