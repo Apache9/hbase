@@ -29,7 +29,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
@@ -59,6 +61,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.hbase.master.chore.BusyRegionDetector.RegionBusyInfo;
 
 @Category(MediumTests.class)
 public class TestBusyRegionDetector {
@@ -94,17 +98,16 @@ public class TestBusyRegionDetector {
     master = UTIL.getMiniHBaseCluster().getMaster();
   }
 
-  @Before
-  public void setup() throws Exception {
-    table = UTIL.createMultiRegionTable(TABLE_NAME, FAMILY_C, 20);
-    putData(table, FAMILY_C, QUALIFIER);
-  }
-
   @AfterClass
   public static void shutdownCluster() throws Exception {
     admin.close();
     connection.close();
     UTIL.shutdownMiniCluster();
+  }
+
+  @Before
+  public void setup() throws Exception {
+    table = UTIL.createMultiRegionTable(TABLE_NAME, FAMILY_C, 20);
   }
 
   @After
@@ -116,15 +119,15 @@ public class TestBusyRegionDetector {
 
   @Test(timeout = 50000)
   public void testSplitRegion() throws IOException, InterruptedException {
+    putData(table, FAMILY_C, QUALIFIER);
     BusyRegionDetector detector =
       new BusyRegionDetector(master, master, (int) TimeUnit.MINUTES.toMillis(3));
     HRegionLocation regionLocation = table.getRegionLocator().getAllRegionLocations().get(0);
     BusyRegionDetector.RegionBusyInfo
       busyInfo = new BusyRegionDetector.RegionBusyInfo(regionLocation.getRegion().getRegionName());
-    busyInfo.updateAndIncreaseTimes(mock(RegionMetrics.class), mock(ServerName.class));
+    busyInfo.updateAndIncreaseTimes(mock(RegionMetrics.class));
     detector.splitRegions(Collections.singletonList(busyInfo));
     PairOfSameType<RegionInfo> daughters = null;
-    long now = System.currentTimeMillis();
     while (daughters == null) {
       daughters = detector.tryToGetDaughters(regionLocation.getRegion().getRegionName());
       if (daughters == null) {
@@ -216,19 +219,19 @@ public class TestBusyRegionDetector {
       info1 = buildRegionBusyInfo(toBytes("region1"), 1, 50000L, 50000L);
     BusyRegionDetector.RegionBusyInfo
       info2 = buildRegionBusyInfo(toBytes("region2"), 1, 50000L, 50000L);
-    assertTrue(info1.compareTo(info2) == 0);
+    assertTrue(RegionBusyInfo.BUSY_COMPARATOR.compare(info1, info2) == 0);
 
     info1 = buildRegionBusyInfo(toBytes("region1"), 2, 50000L, 50000L);
     info2 = buildRegionBusyInfo(toBytes("region2"), 1, 50000L, 50000L);
-    assertTrue(info1.compareTo(info2) < 0);
+    assertTrue(RegionBusyInfo.BUSY_COMPARATOR.compare(info1, info2) > 0);
 
     info1 = buildRegionBusyInfo(toBytes("region1"), 2, 100000L, 50000L);
     info2 = buildRegionBusyInfo(toBytes("region2"), 2, 50000L, 50000L);
-    assertTrue(info1.compareTo(info2) < 0);
+    assertTrue(RegionBusyInfo.BUSY_COMPARATOR.compare(info1, info2) > 0);
 
     info1 = buildRegionBusyInfo(toBytes("region1"), 2, 50000L, 100000L);
     info2 = buildRegionBusyInfo(toBytes("region2"), 2, 50000L, 50000L);
-    assertTrue(info1.compareTo(info2) < 0);
+    assertTrue(RegionBusyInfo.BUSY_COMPARATOR.compare(info1, info2) > 0);
   }
 
   private BusyRegionDetector.RegionBusyInfo buildRegionBusyInfo(byte[] regionName, int busyTimes, long read, long write) {
@@ -237,19 +240,21 @@ public class TestBusyRegionDetector {
     when(regionMetrics.getReadRequestsPerSecond()).thenReturn(read);
     when(regionMetrics.getWriteRequestsPerSecond()).thenReturn(write);
     for (int i = 0; i < busyTimes; i++) {
-      info.updateAndIncreaseTimes(regionMetrics, mock(ServerName.class));
+      info.updateAndIncreaseTimes(regionMetrics);
     }
     return info;
   }
 
   private void putData(Table table, byte[] family, byte[] qualifier) throws IOException {
+    long start = System.currentTimeMillis();
     for (char c = 'a'; c <= 'z'; c++) {
+      List<Put> puts = new ArrayList<>();
       for (int i = 0; i < 10000; i++) {
-        Put put = new Put(toBytes("" + c + i));
-        put.addColumn(family, qualifier, toBytes(i));
-        table.put(put);
+        puts.add(new Put(toBytes("" + c + i)).addColumn(family, qualifier, toBytes(i)));
       }
+      table.put(puts);
     }
+    LOG.info("putData cost {} ms", System.currentTimeMillis() - start);
   }
 
 }

@@ -12,6 +12,7 @@ cache:
 
 stages:
   - build
+  - findbugs
   - runDevTests
   - runAllTests
 
@@ -23,6 +24,15 @@ build:
     refs:
      - branch-2-mdh3
      - merge_requests
+
+findbugs:
+  stage: findbugs
+  script:
+    - mvn findbugs:check
+  only:
+    refs:
+      - branch-2-mdh3
+      - merge_requests
 
 runDevTests:
   stage: runDevTests

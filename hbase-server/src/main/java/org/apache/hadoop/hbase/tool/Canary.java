@@ -769,7 +769,7 @@ public final class Canary implements Tool {
     Pair<TableName, Double> tableMinAvailabilityPair = new Pair<>();
     totalRequestByTable.forEach((table, totalCount) -> {
       if (totalCount != 0) {
-        double tableFailures = failuresByTable.get(table) != null ? failuresByTable.get(table) : 0;
+        int tableFailures = failuresByTable.get(table) != null ? failuresByTable.get(table) : 0;
         double tableAvailability = (totalCount - tableFailures) * 100.0 / totalCount;
         if (tableMinAvailabilityPair.getFirst() == null
             || tableAvailability < tableMinAvailabilityPair.getSecond()) {
@@ -787,7 +787,7 @@ public final class Canary implements Tool {
     Pair<ServerName, Double> regionServerMinAvailabilityPair = new Pair<>();
     totalRequestByServer.forEach((server, totalCount) -> {
       if (totalCount != 0) {
-        double serverFailures =
+        int serverFailures =
             failuresByServer.get(server) != null ? failuresByServer.get(server) : 0;
         double serverAvailability = (totalCount - serverFailures) * 100.0 / totalCount;
         if (regionServerMinAvailabilityPair.getFirst() == null

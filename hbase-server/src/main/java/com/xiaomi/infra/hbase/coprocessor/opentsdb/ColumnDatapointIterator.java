@@ -7,6 +7,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * OpenTSDBUtil implementation detail for {@link net.opentsdb.core.CompactionQueue}.  This
@@ -14,7 +15,18 @@ import java.util.Arrays;
  * datapoint.
  */
 @InterfaceAudience.Private
-public class ColumnDatapointIterator implements Comparable<ColumnDatapointIterator> {
+public class ColumnDatapointIterator {
+
+  // order in ascending order by timestamp, descending order by row timestamp (so we find the
+  // entry we are going to keep first, and don't have to copy over it)
+  public static final Comparator<ColumnDatapointIterator> COMPARATOR = (o1, o2) -> {
+    int c = o1.current_timestamp_offset - o2.current_timestamp_offset;
+    if (c == 0) {
+      // note inverse order of comparison!
+      c = Long.signum(o2.column_timestamp - o1.column_timestamp);
+    }
+    return c;
+  };
 
   /**
    * @return true if this column needs one or more fixups applied.
@@ -172,18 +184,6 @@ public class ColumnDatapointIterator implements Comparable<ColumnDatapointIterat
     current_timestamp_offset = OpenTSDBUtil.getOffsetFromQualifier(qualifier, qualifier_offset);
     current_val_length = OpenTSDBUtil.getValueLengthFromQualifier(qualifier, qualifier_offset);
     return true;
-  }
-
-  // order in ascending order by timestamp, descending order by row timestamp (so we find the
-  // entry we are going to keep first, and don't have to copy over it)
-  @Override
-  public int compareTo(ColumnDatapointIterator o) {
-    int c = current_timestamp_offset - o.current_timestamp_offset;
-    if (c == 0) {
-      // note inverse order of comparison!
-      c = Long.signum(o.column_timestamp - column_timestamp);
-    }
-    return c;
   }
 
   public double getCellValueAsDouble() {

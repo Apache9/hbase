@@ -133,7 +133,7 @@ public class MetricsTableSourceImpl implements MetricsTableSource {
   }
 
   @Override
-  public synchronized void registerMetrics() {
+  public void registerMetrics() {
     flushTimeHisto = registry.newTimeHistogram(tableNamePrefix + FLUSH_TIME, FLUSH_TIME_DESC);
     flushMemstoreSizeHisto =
         registry.newSizeHistogram(tableNamePrefix + FLUSH_MEMSTORE_SIZE, FLUSH_MEMSTORE_SIZE_DESC);

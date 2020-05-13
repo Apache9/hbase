@@ -22,6 +22,7 @@ package com.xiaomi.infra.hbase.master.chore;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +39,6 @@ import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.RegionMetrics;
 import org.apache.hadoop.hbase.ScheduledChore;
 import org.apache.hadoop.hbase.ServerMetrics;
-import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.RegionInfo;
@@ -145,7 +145,7 @@ public class BusyRegionDetector extends ScheduledChore {
         currentBusyRegions.add(regionName);
         RegionBusyInfo regionBusyInfo =
           consecutiveBusyRegions.computeIfAbsent(regionName, RegionBusyInfo::new);
-        regionBusyInfo.updateAndIncreaseTimes(regionMetrics, serverName);
+        regionBusyInfo.updateAndIncreaseTimes(regionMetrics);
         if (regionBusyInfo.consecutiveBusyTimes >= maxConsecutiveBusyTimes) {
           busyRegions.add(regionBusyInfo);
         }
@@ -163,7 +163,7 @@ public class BusyRegionDetector extends ScheduledChore {
    * @return
    */
   private List<RegionBusyInfo> pickBusiestRegions(List<RegionBusyInfo> busyRegions) {
-    Collections.sort(busyRegions);
+    Collections.sort(busyRegions, RegionBusyInfo.BUSY_COMPARATOR.reversed());
     return busyRegions.subList(0, Math.min(maxNumPerChore, busyRegions.size()));
   }
 
@@ -351,28 +351,13 @@ public class BusyRegionDetector extends ScheduledChore {
     return false;
   }
 
-  static class RegionBusyInfo implements Comparable<RegionBusyInfo> {
-    private byte[] regionName;
-    private int consecutiveBusyTimes;
-    private RegionMetrics regionMetrics;
-    private ServerName serverName;
+  static class RegionBusyInfo {
 
-    public RegionBusyInfo(byte[] regionName) {
-      this.regionName = regionName;
-    }
-
-    void updateAndIncreaseTimes(RegionMetrics regionMetrics, ServerName serverName) {
-      this.regionMetrics = regionMetrics;
-      this.serverName = serverName;
-      ++ consecutiveBusyTimes;
-    }
-
-    @Override
-    public int compareTo(RegionBusyInfo o) {
+    static Comparator<RegionBusyInfo> BUSY_COMPARATOR = (o1, o2) -> {
       int[] results = new int[] {
-        - Integer.compare(consecutiveBusyTimes, o.consecutiveBusyTimes),
-        - Long.compare(regionMetrics.getReadRequestsPerSecond(), o.regionMetrics.getReadRequestsPerSecond()),
-        - Long.compare(regionMetrics.getWriteRequestsPerSecond(), o.regionMetrics.getWriteRequestsPerSecond())
+          Integer.compare(o1.consecutiveBusyTimes, o2.consecutiveBusyTimes),
+          Long.compare(o1.regionMetrics.getReadRequestsPerSecond(), o2.regionMetrics.getReadRequestsPerSecond()),
+          Long.compare(o1.regionMetrics.getWriteRequestsPerSecond(), o2.regionMetrics.getWriteRequestsPerSecond())
       };
       for (int r : results) {
         if (r != 0) {
@@ -380,6 +365,19 @@ public class BusyRegionDetector extends ScheduledChore {
         }
       }
       return 0;
+    };
+
+    private byte[] regionName;
+    private int consecutiveBusyTimes;
+    private RegionMetrics regionMetrics;
+
+    public RegionBusyInfo(byte[] regionName) {
+      this.regionName = regionName;
+    }
+
+    void updateAndIncreaseTimes(RegionMetrics regionMetrics) {
+      this.regionMetrics = regionMetrics;
+      ++ consecutiveBusyTimes;
     }
   }
 }

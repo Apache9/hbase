@@ -40,7 +40,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -408,7 +407,6 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
         throw e;
       }
     }
-    LOG.debug("load TalosStreamConfig, table: {}, fieldsControl: {}", tableName, streamConfig.getFieldsControl());
     return streamConfig;
   }
 
@@ -481,12 +479,9 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
   class TalosProducers {
     Topic topic;
     SimpleProducer[] producers;
-    AtomicInteger index;
 
     public TalosProducers(Topic topic) {
-      this.topic = topic;
       producers = new SimpleProducer[0];
-      index = new AtomicInteger(0);
       update(topic);
     }
 

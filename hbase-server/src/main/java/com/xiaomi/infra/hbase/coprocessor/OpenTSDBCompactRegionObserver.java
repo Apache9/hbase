@@ -73,7 +73,7 @@ public class OpenTSDBCompactRegionObserver implements RegionCoprocessor, RegionO
     return new OpenTSDBCompactScanner(scanner, store, hourWindow);
   }
 
-  class OpenTSDBCompactScanner implements InternalScanner {
+  static class OpenTSDBCompactScanner implements InternalScanner {
     // is StoreScanner
     private InternalScanner scanner;
     // in seconds

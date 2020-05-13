@@ -68,7 +68,7 @@ public class OpenTSDBCompaction {
     compactedKVTimestamp = Long.MIN_VALUE;
     // go through all the columns
     // ignore process annotations, and histograms
-    heap = new PriorityQueue<ColumnDatapointIterator>(nkvs);
+    heap = new PriorityQueue<>(nkvs, ColumnDatapointIterator.COMPARATOR);
     int tot_values = buildHeapProcessAnnotations();
 
     // if there are no datapoints or only one that needs no fixup, we are done

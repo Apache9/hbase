@@ -47,10 +47,6 @@ public class MetricsTableAggregateSourceImpl extends BaseSourceImpl
     super(metricsName, metricsDescription, metricsContext, metricsJmxContext);
   }
 
-  private void register(MetricsTableSource source) {
-    source.registerMetrics();
-  }
-
   @Override
   public void deleteTableSource(String table) {
     try {
@@ -72,9 +68,9 @@ public class MetricsTableAggregateSourceImpl extends BaseSourceImpl
     if (source != null) {
       return source;
     }
-    MetricsTableSource newSource = CompatibilitySingletonFactory
-      .getInstance(MetricsRegionServerSourceFactory.class).createTable(table, wrapper);
     return tableSources.computeIfAbsent(table, k -> {
+      MetricsTableSource newSource = CompatibilitySingletonFactory
+          .getInstance(MetricsRegionServerSourceFactory.class).createTable(table, wrapper);
       // register the new metrics now
       newSource.registerMetrics();
       return newSource;
