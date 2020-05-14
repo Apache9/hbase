@@ -19,6 +19,7 @@
 
 include Java
 java_import java.util.Arrays
+java_import org.apache.hadoop.hbase.ServerName
 java_import org.apache.hadoop.hbase.TableName
 java_import org.apache.hadoop.hbase.client.HConnectionManager
 java_import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos::SnapshotDescription
