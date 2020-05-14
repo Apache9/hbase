@@ -12,7 +12,8 @@ cache:
 
 stages:
   - build
-  - test
+  - runDevTests
+  - runAllTests
 
 build:
   stage: build
@@ -20,17 +21,25 @@ build:
     - mvn -DskipTests clean install && mvn -DskipTests package assembly:single
   only:
     refs:
-     - 0.98.11-mdh2
      - branch-2-mdh3
      - merge_requests
 
-test:
-  stage: test
+runDevTests:
+  stage: runDevTests
   timeout: 2 hours
   script:
-    - mvn test -PrunDevTests
+    - mvn test -PrunDevTests -Dtest.exclude.pattern=**/snapshot.TestExportSnapshotWithTemporaryDirectory.java,**/snapshot.TestExportSnapshotNoCluster.java,**/snapshot.TestSecureExportSnapshotRetry.java,**/snapshot.TestMobSecureExportSnapshotRetry.java,**/snapshot.TestExportSnapshotRetry.java,org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java
   only:
     refs:
-     - 0.98.11-mdh2
+     - branch-2-mdh3
+     - merge_requests
+
+runAllTests:
+  stage: runAllTests
+  timeout: 4 hours
+  script:
+    - mvn test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java -fn
+  only:
+    refs:
      - branch-2-mdh3
      - merge_requests
