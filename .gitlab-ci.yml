@@ -28,7 +28,7 @@ runDevTests:
   stage: runDevTests
   timeout: 2 hours
   script:
-    - mvn test -PrunDevTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,**/TestRateLimiter.java,**/TestQuotaCache.java,**/TestSnapshotFromMaster.java,**/TestZKLessAMOnCluster.java,**/TestBadRSDetector.java
+    - mvn test -PrunDevTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java,**/TestRateLimiter.java,**/TestQuotaCache.java,**/TestSnapshotFromMaster.java,**/TestZKLessAMOnCluster.java,**/TestBadRSDetector.java
   only:
     refs:
      - 0.98.11-mdh2
@@ -38,8 +38,7 @@ runAllTests:
   stage: runAllTests
   timeout: 2 hours
   script:
-    - mvn test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java -fn
+    - mvn test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java -fn
   only:
     refs:
      - 0.98.11-mdh2
-     - merge_requests
