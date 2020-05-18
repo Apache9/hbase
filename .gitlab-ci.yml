@@ -12,6 +12,7 @@ cache:
 
 stages:
   - build
+  - buildWithHadoop3
   - findbugs
   - runDevTests
   - runAllTests
@@ -20,6 +21,15 @@ build:
   stage: build
   script:
     - mvn -DskipTests clean install && mvn -DskipTests package assembly:single
+  only:
+    refs:
+     - branch-2-mdh3
+     - merge_requests
+
+buildWithHadoop3:
+  stage: buildWithHadoop3
+  script:
+    - mvn clean install -DskipTests -Dhadoop.profile=3.0 && mvn package assembly:single -DskipTests -Dhadoop.profile=3.0
   only:
     refs:
      - branch-2-mdh3
