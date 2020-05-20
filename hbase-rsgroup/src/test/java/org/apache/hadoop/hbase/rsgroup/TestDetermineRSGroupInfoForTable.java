@@ -99,10 +99,10 @@ public class TestDetermineRSGroupInfoForTable {
     HRegionServer rs = UTIL.getHBaseCluster().getRegionServer(0);
     rsGroupAdminClient.addRSGroup(GROUP_NAME);
     rsGroupAdminClient.moveServers(
-        Collections.singleton(rs.getServerName().getAddress()), GROUP_NAME);
+      Collections.singleton(rs.getServerName().getAddress()), GROUP_NAME);
     admin.createNamespace(NamespaceDescriptor.create(NAMESPACE_NAME)
-        .addConfiguration(RSGroupInfo.NAMESPACE_DESC_PROP_GROUP, GROUP_NAME)
-        .build());
+      .addConfiguration(RSGroupInfo.NAMESPACE_DESC_PROP_GROUP, GROUP_NAME)
+      .build());
     admin.createNamespace(NamespaceDescriptor.create(OTHER_NAMESPACE_NAME).build());
   }
 
@@ -142,6 +142,7 @@ public class TestDetermineRSGroupInfoForTable {
 
     RSGroupInfo group = rsGroupInfoManager.determineRSGroupInfoForTable(TABLE_NAME);
     assertEquals(group.getName(), GROUP_NAME);
+    // reset script to avoid affecting other tests
     ((RSGroupInfoManagerImpl) rsGroupInfoManager).script = oldScript;
   }
 
