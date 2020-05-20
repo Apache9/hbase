@@ -482,6 +482,9 @@ public class TestFSUtils {
     // Set short retry timeouts so this test runs faster
     conf.setInt(DFSConfigKeys.DFS_CLIENT_RETRY_WINDOW_BASE, 0);
     conf.setBoolean("dfs.datanode.transferTo.allowed", false);
+    // The default port may conflict with the port of gitlab environment while running UTs
+    // so unset the property here to select free port randomly
+    conf.unset(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
     // Get the metrics.  Should be empty.
     DFSHedgedReadMetrics metrics = FSUtils.getDFSHedgedReadMetrics(conf);
