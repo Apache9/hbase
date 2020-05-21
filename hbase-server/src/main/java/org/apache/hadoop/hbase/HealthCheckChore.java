@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.util.StringUtils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.hbase.falcon.DetectorFalconPusher;
 import com.xiaomi.infra.hbase.regionserver.chore.DirectHealthChecker;
 import com.xiaomi.infra.hbase.util.MailUtils;
 
@@ -44,6 +45,7 @@ import com.xiaomi.infra.hbase.util.MailUtils;
   private final long windowWidth;
   private int numTimesUnhealthy = 0;
   private long startWindow;
+  private DetectorFalconPusher detectorFalconPusher;
 
 	public HealthCheckChore(int sleepTime, Stoppable stopper, Configuration conf) {
 		super("HealthCheckerChore", sleepTime, stopper);
@@ -58,6 +60,8 @@ import com.xiaomi.infra.hbase.util.MailUtils;
 		this.threshold = conf.getInt(HConstants.HEALTH_FAILURE_THRESHOLD,
       HConstants.DEFAULT_HEALTH_FAILURE_THRESHOLD);
     this.windowWidth = (long)this.threshold * (long)sleepTime;
+
+    detectorFalconPusher = DetectorFalconPusher.getInstance(conf, "health-check");
   }
 
   @Override
@@ -77,6 +81,9 @@ import com.xiaomi.infra.hbase.util.MailUtils;
 			      + ", so STOP!");
 	      String errorMessage =
 			      "The  node reported unhealthy " + threshold + " number of times consecutively.";
+				if (stopper instanceof Server) {
+					detectorFalconPusher.trigger(((Server) stopper).getServerName().getHostAndPort());
+				}
 	      if (stopper instanceof HRegionServer) {
 		      HRegionServer server = (HRegionServer) stopper;
 		      processBeforeStopForRegionServer(server, errorMessage);
@@ -85,7 +92,11 @@ import com.xiaomi.infra.hbase.util.MailUtils;
 		      this.stopper.stop(errorMessage);
 	      }
       }
-    }
+    } else {
+    	if (stopper instanceof Server) {
+				detectorFalconPusher.resume(((Server) stopper).getServerName().getHostAndPort());
+			}
+		}
   }
 
   @VisibleForTesting
