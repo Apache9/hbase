@@ -18,17 +18,23 @@
 
 package org.apache.hadoop.hbase.mapreduce;
 
+import static org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormatImpl.SNAPSHOT_INPUTFORMAT_ROW_LIMIT_PER_INPUTSPLIT;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.snapshot.SnapshotTestingUtils;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Result;
@@ -36,6 +42,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormat.TableSnapshotRegionSplit;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.JobConf;
@@ -276,6 +283,60 @@ public class TestTableSnapshotInputFormat extends TableSnapshotInputFormatTestBa
     // validate all rows are seen
     rowTracker.validate();
   }
+
+
+  @Test
+  public void testScanLimit() throws Exception {
+    setupCluster();
+    final TableName tableName = TableName.valueOf("testScanLimit");
+    final String snapshotName = tableName + "Snapshot";
+    HTable table = null;
+    try {
+      UTIL.getConfiguration().setInt(SNAPSHOT_INPUTFORMAT_ROW_LIMIT_PER_INPUTSPLIT, 10);
+      if (UTIL.getHBaseAdmin().tableExists(tableName)) {
+        UTIL.deleteTable(tableName);
+      }
+
+      UTIL.createTable(tableName.getName(), FAMILIES, new byte[][] { bbb, yyy });
+
+      HBaseAdmin admin = UTIL.getHBaseAdmin();
+
+      int regionNum = admin.getTableRegions(tableName).size();
+      // put some stuff in the table
+      table = new HTable(UTIL.getConfiguration(), tableName);
+      UTIL.loadTable(table, FAMILIES);
+
+      Path rootDir = FSUtils.getRootDir(UTIL.getConfiguration());
+      FileSystem fs = rootDir.getFileSystem(UTIL.getConfiguration());
+
+      SnapshotTestingUtils.createSnapshotAndValidate(admin, tableName, Arrays.asList(FAMILIES),
+        null, snapshotName, rootDir, fs, true);
+
+      Job job = new Job(UTIL.getConfiguration());
+      Path tmpTableDir = UTIL.getDataTestDirOnTestFS(snapshotName);
+      Scan scan = new Scan();
+
+      job.setJarByClass(UTIL.getClass());
+      TableMapReduceUtil.addDependencyJars(job.getConfiguration(),
+        TestTableSnapshotInputFormat.class);
+
+      TableMapReduceUtil.initTableSnapshotMapperJob(snapshotName, scan,
+        RowCounter.RowCounterMapper.class, NullWritable.class, NullWritable.class, job, true,
+        tmpTableDir);
+      Assert.assertTrue(job.waitForCompletion(true));
+      Assert.assertEquals(10 * regionNum,
+        job.getCounters().findCounter(RowCounter.RowCounterMapper.Counters.ROWS).getValue());
+    } finally {
+      if (table != null) {
+        table.close();
+      }
+      UTIL.getConfiguration().unset(SNAPSHOT_INPUTFORMAT_ROW_LIMIT_PER_INPUTSPLIT);
+      UTIL.getHBaseAdmin().deleteSnapshot(snapshotName);
+      UTIL.deleteTable(tableName);
+      tearDownCluster();
+    }
+  }
+
 
   @Override
   protected void testWithMapReduceImpl(HBaseTestingUtility util, TableName tableName,

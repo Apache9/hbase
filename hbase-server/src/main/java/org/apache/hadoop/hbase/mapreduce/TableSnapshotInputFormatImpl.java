@@ -101,6 +101,12 @@ public class TableSnapshotInputFormatImpl {
   public static final String NUM_SPLITS_PER_REGION = "hbase.mapreduce.splits.per.region";
 
   /**
+   * In some scenario, scan limited rows on each InputSplit for sampling data extraction
+   */
+  public static final String SNAPSHOT_INPUTFORMAT_ROW_LIMIT_PER_INPUTSPLIT =
+      "hbase.TableSnapshotInputFormat.row.limit.per.inputsplit";
+
+  /**
    * Implementation class for InputSplit logic common between mapred and mapreduce.
    */
   public static class InputSplit implements Writable {
@@ -212,6 +218,8 @@ public class TableSnapshotInputFormatImpl {
     private Result result = null;
     private ImmutableBytesWritable row = null;
     private ClientSideRegionScanner scanner;
+    private int numOfCompleteRows = 0;
+    private int rowLimitPerSplit;
 
     public ClientSideRegionScanner getScanner() {
       return scanner;
@@ -220,6 +228,7 @@ public class TableSnapshotInputFormatImpl {
     public void initialize(InputSplit split, Configuration conf) throws IOException {
       this.scan = TableMapReduceUtil.convertStringToScan(split.scan);
       this.split = split;
+      this.rowLimitPerSplit = conf.getInt(SNAPSHOT_INPUTFORMAT_ROW_LIMIT_PER_INPUTSPLIT, 0);
       HTableDescriptor htd = split.htd;
       HRegionInfo hri = this.split.getRegionInfo();
       FileSystem fs = FSUtils.getCurrentFileSystem(conf);
@@ -256,6 +265,9 @@ public class TableSnapshotInputFormatImpl {
         return false;
       }
 
+      if (rowLimitPerSplit > 0 && ++this.numOfCompleteRows > rowLimitPerSplit) {
+        return false;
+      }
       if (this.row == null) {
         this.row = new ImmutableBytesWritable();
       }
@@ -415,10 +427,11 @@ public class TableSnapshotInputFormatImpl {
     return splits;
   }
 
-  public static RegionSplitter.SplitAlgorithm getSplitAlgo(Configuration conf) throws IOException{
+  public static RegionSplitter.SplitAlgorithm getSplitAlgo(Configuration conf) throws IOException {
     String splitAlgoClassName = conf.get(SPLIT_ALGO);
-    if (splitAlgoClassName == null)
+    if (splitAlgoClassName == null) {
       return null;
+    }
     try {
       return ((Class<? extends RegionSplitter.SplitAlgorithm>)
           Class.forName(splitAlgoClassName)).newInstance();
@@ -511,9 +524,9 @@ public class TableSnapshotInputFormatImpl {
    * Configures the job to use TableSnapshotInputFormat to read from a snapshot.
    * @param conf the job to configure
    * @param snapshotName the name of the snapshot to read from
-   * @param restoreDir a temporary directory to restore the snapshot into. Current user should
-   * have write permissions to this directory, and this should not be a subdirectory of rootdir.
-   * After the job is finished, restoreDir can be deleted.
+   * @param restoreDir a temporary directory to restore the snapshot into. Current user should have
+   *          write permissions to this directory, and this should not be a subdirectory of rootdir.
+   *          After the job is finished, restoreDir can be deleted.
    * @param numSplitsPerRegion how many input splits to generate per one region
    * @param splitAlgo SplitAlgorithm to be used when generating InputSplits
    * @throws IOException if an error occurs
