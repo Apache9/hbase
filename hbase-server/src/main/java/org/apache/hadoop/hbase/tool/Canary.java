@@ -31,6 +31,8 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -370,7 +372,7 @@ public final class Canary implements Tool {
   private long timeout;
   private int maxConcurrency;
   private int maxRecordFailures;
-  private List<RegionTask> tasks;
+  private List<RegionTask> tasks = new ArrayList<>();
   private final ConcurrentMap<String, List<RegionTask>> cachedTasks = new ConcurrentHashMap<>();
   private FileSystem fs;
   private Path rootdir;
@@ -381,6 +383,9 @@ public final class Canary implements Tool {
   private ConcurrentMap<ServerName, Integer> totalRequestByServer;
   private ConcurrentMap<TableName, Integer> totalRequestByTable;
   private InfoServer infoServer;
+  private int maxTaskCount;
+  private int minTaskCount;
+
 
   public Canary(Sink sink) {
     this.sink = sink;
@@ -421,11 +426,56 @@ public final class Canary implements Tool {
 
   private long lastCheckTime;
 
+  /**
+   * If tasks count larger than "hbase.canary.task.count.max", we will randomly trim tasks for each
+   * table, according to the raito of the table region count in whole tasks region count. If tasks
+   * count less than "hbase.canary.task.count.min", we will repeat fill tasks
+   * @param taskList
+   * @return taskList after normalized
+   */
+  private List<RegionTask> normalizeTaskCount(List<RegionTask> taskList) {
+    if (taskList.size() > maxTaskCount) {
+      List<RegionTask> limitedCountTasks = new ArrayList();
+      double ratio = 1.0 * maxTaskCount / taskList.size();
+      Map<TableName, List<RegionTask>> table2RegionTaskMap = new HashMap();
+      taskList.forEach(task -> table2RegionTaskMap
+          .computeIfAbsent(task.region.getTable(), k -> new ArrayList<>()).add(task));
+
+      table2RegionTaskMap.values().forEach(regionTasks -> {
+        int count = (int) (ratio * regionTasks.size());
+        //at least one region task for each table
+        count = count > 0 ? count : 1;
+        Collections.shuffle(regionTasks);
+        limitedCountTasks.addAll(regionTasks.subList(0, count));
+      });
+      return limitedCountTasks;
+    } else if (taskList.size() < minTaskCount && taskList.size() > 0) {
+      List<RegionTask> expandTaskList = new ArrayList<>();
+      while (expandTaskList.size() < minTaskCount) {
+        expandTaskList.addAll(taskList);
+      }
+      return expandTaskList;
+    }
+    return taskList;
+  }
+
   private void runOnce(List<String> tables) throws InterruptedException {
     long startTime = EnvironmentEdgeManager.currentTimeMillis();
 
     try {
-      tasks = getSniffTasks(tables);
+      List<RegionTask> userTableTasks = new ArrayList<>();
+      List<RegionTask> canaryTableTasks = new ArrayList<>();
+      for (RegionTask regionTask : getSniffTasks(tables)) {
+        if(regionTask.region.getTable().getNameAsString().equals(HConstants.CANARY_TABLE_NAME)){
+          canaryTableTasks.add(regionTask);
+        }else{
+          userTableTasks.add(regionTask);
+        }
+      }
+      tasks.clear();
+      tasks.addAll(normalizeTaskCount(userTableTasks));
+      tasks.addAll(normalizeTaskCount(canaryTableTasks));
+      Collections.shuffle(tasks);
     } catch (Exception e) {
       LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
     }
@@ -568,6 +618,11 @@ public final class Canary implements Tool {
       excludeTables.add(table);
     }
     checkAllCF = conf.getBoolean(CHECK_ALL_COLUMN_FAMILY, true);
+    maxTaskCount = conf.getInt("hbase.canary.task.count.max", 10000);
+    maxTaskCount = maxTaskCount > 0 ? maxTaskCount : 10000;
+    minTaskCount = conf.getInt("hbase.canary.task.count.min", 1000);
+    minTaskCount = minTaskCount > 0 ? minTaskCount : 1000;
+
 
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
