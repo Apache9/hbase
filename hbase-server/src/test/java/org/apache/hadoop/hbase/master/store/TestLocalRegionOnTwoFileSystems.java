@@ -22,6 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,12 +50,12 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.regionserver.MemStoreLAB;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
+import org.apache.hadoop.hbase.regionserver.wal.AbstractFSWAL;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.HFileArchiveUtil;
-import org.apache.hadoop.hbase.util.Threads;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -93,7 +94,7 @@ public class TestLocalRegionOnTwoFileSystems {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    WAL_UTIL.startMiniCluster(3);
+    WAL_UTIL.startMiniDFSCluster(3);
     Configuration conf = HFILE_UTIL.getConfiguration();
     conf.setBoolean(MemStoreLAB.USEMSLAB_KEY, false);
     Path rootDir = HFILE_UTIL.getDataTestDir();
@@ -155,9 +156,7 @@ public class TestLocalRegionOnTwoFileSystems {
         .update(r -> r.put(new Put(Bytes.toBytes(index)).addColumn(CF, CQ, Bytes.toBytes(index))));
       region.flush(true);
     }
-    region.requestRollAll();
-    region.waitUntilWalRollFinished();
-    byte [] bytes = Bytes.toBytes(compactMinMinusOne);
+    byte[] bytes = Bytes.toBytes(compactMinMinusOne);
     region.update(r -> r.put(new Put(bytes).addColumn(CF, CQ, bytes)));
     region.flusherAndCompactor.requestFlush();
 
@@ -183,18 +182,25 @@ public class TestLocalRegionOnTwoFileSystems {
     Path walArchiveDir = new Path(CommonFSUtils.getWALRootDir(HFILE_UTIL.getConfiguration()),
       HConstants.HREGION_OLDLOGDIR_NAME);
     LOG.info("wal archive dir {}", walArchiveDir);
-    region.requestRollAll();
-    region.waitUntilWalRollFinished();
+    AbstractFSWAL<?> wal = (AbstractFSWAL<?>) region.region.getWAL();
+    Path currentWALFile = wal.getCurrentFileName();
+    for (;;) {
+      region.requestRollAll();
+      region.waitUntilWalRollFinished();
+      Path newWALFile = wal.getCurrentFileName();
+      // make sure we actually rolled the wal
+      if (!newWALFile.equals(currentWALFile)) {
+        break;
+      }
+    }
     HFILE_UTIL.waitFor(15000, () -> {
       try {
         FileStatus[] fses = WAL_UTIL.getTestFileSystem().listStatus(walArchiveDir);
-        if (fses != null) {
+        if (fses != null && fses.length > 0) {
           LOG.info("wal archive dir content {}",
-            Arrays.stream(fses).map(f -> f.getPath().toString()).
-            collect(Collectors.joining(",")));
+            Arrays.stream(fses).map(f -> f.getPath().toString()).collect(Collectors.joining(",")));
         } else {
           LOG.info("none found");
-          Threads.sleep(100);
         }
         return fses != null && fses.length >= 1;
       } catch (FileNotFoundException e) {
