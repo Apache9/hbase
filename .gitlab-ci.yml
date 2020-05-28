@@ -16,11 +16,18 @@ stages:
   - findbugs
   - runDevTests
   - runAllTests
+  - release
 
 build:
   stage: build
   script:
     - mvn -DskipTests clean install && mvn -DskipTests package assembly:single
+    - cd $CI_PROJECT_DIR
+    - tag=$(grep -e '^  <version>' pom.xml | awk -F'[><]' '{print $3}')
+    - mv ${CI_PROJECT_DIR}/hbase-assembly/target/hbase-${tag}.tar.gz hbase
+  artifacts:
+    paths:
+      - hbase
   only:
     refs:
      - branch-2-mdh3
@@ -30,6 +37,11 @@ buildWithHadoop3:
   stage: buildWithHadoop3
   script:
     - mvn clean install -DskipTests -Dhadoop.profile=3.0 && mvn package assembly:single -DskipTests -Dhadoop.profile=3.0
+    - tag=$(grep -e '^  <version>' pom.xml | awk -F'[><]' '{print $3}')
+    - mv ${CI_PROJECT_DIR}/hbase-assembly/target/hbase-${tag}.tar.gz hbase-hadoop3
+  artifacts:
+    paths:
+      - hbase-hadoop3
   only:
     refs:
      - branch-2-mdh3
@@ -62,3 +74,41 @@ runAllTests:
   only:
     refs:
      - branch-2-mdh3
+
+release:
+  stage: release
+  image:
+    name: cr.d.xiaomi.net/containercloud/kaniko-executor-xiaomi:release
+    entrypoint: [""]
+  script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\"}"
+    - cd $CI_PROJECT_DIR
+    - tag=$(grep -e '^  <version>' pom.xml | awk -F'[><]' '{print $3}')
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - |
+      /kaniko/executor \
+        --context $CI_PROJECT_DIR \
+        --dockerfile $CI_PROJECT_DIR/dev-support/docker-mdh/Dockerfile \
+        --destination $CI_REGISTRY/hbase/hbase:$tag \
+        --validate-image
+    - |
+      /kaniko/executor \
+        --context $CI_PROJECT_DIR \
+        --dockerfile $CI_PROJECT_DIR/dev-support/docker-mdh/Dockerfile \
+        --destination $CI_REGISTRY/hbase/hbase:latest \
+        --validate-image
+    - |
+      /kaniko/executor \
+        --context $CI_PROJECT_DIR \
+        --dockerfile $CI_PROJECT_DIR/dev-support/docker-mdh/Dockerfile-Hadoop3 \
+        --destination $CI_REGISTRY/hbase/hbase-hadoop3:$tag \
+        --validate-image
+    - |
+      /kaniko/executor \
+        --context $CI_PROJECT_DIR \
+        --dockerfile $CI_PROJECT_DIR/dev-support/docker-mdh/Dockerfile-Hadoop3\
+        --destination $CI_REGISTRY/hbase/hbase-hadoop3:latest \
+        --validate-image
+  only:
+    refs:
+      - branch-2-mdh3
