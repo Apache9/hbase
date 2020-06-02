@@ -63,6 +63,7 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.executor.EventHandler;
@@ -4267,6 +4268,9 @@ public class AssignmentManager extends ZooKeeperListener {
         } else {
           throw new IOException("RegionStateListener is not ready when split");
         }
+        if (!server.isSplitOrMergeEnabled(MasterSwitchType.SPLIT)) {
+          throw new IOException("Split switch is off");
+        }
       } catch (IOException exp) {
         errorMsg = StringUtils.stringifyException(exp);
         break;
@@ -4290,6 +4294,14 @@ public class AssignmentManager extends ZooKeeperListener {
       }
       break;
     case READY_TO_MERGE:
+      try {
+        if (!server.isSplitOrMergeEnabled(MasterSwitchType.MERGE)) {
+          throw new IOException("Merge switch is off");
+        }
+      } catch (IOException exp) {
+        errorMsg = StringUtils.stringifyException(exp);
+        break;
+      }
     case MERGE_PONR:
     case MERGED:
       if (code == TransitionCode.MERGED) {
