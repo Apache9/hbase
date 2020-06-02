@@ -134,6 +134,8 @@ import org.apache.hadoop.hbase.master.procedure.ReopenTableRegionsProcedure;
 import org.apache.hadoop.hbase.master.procedure.ServerCrashProcedure;
 import org.apache.hadoop.hbase.master.procedure.TruncateTableProcedure;
 import org.apache.hadoop.hbase.master.replication.AbstractPeerProcedure;
+import org.apache.hadoop.hbase.master.region.MasterRegion;
+import org.apache.hadoop.hbase.master.region.MasterRegionFactory;
 import org.apache.hadoop.hbase.master.replication.AddPeerProcedure;
 import org.apache.hadoop.hbase.master.replication.DisablePeerProcedure;
 import org.apache.hadoop.hbase.master.replication.EnablePeerProcedure;
@@ -143,7 +145,6 @@ import org.apache.hadoop.hbase.master.replication.SyncReplicationReplayWALManage
 import org.apache.hadoop.hbase.master.replication.TransitPeerSyncReplicationStateProcedure;
 import org.apache.hadoop.hbase.master.replication.UpdatePeerConfigProcedure;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
-import org.apache.hadoop.hbase.master.store.LocalStore;
 import org.apache.hadoop.hbase.master.zksyncer.MasterAddressSyncer;
 import org.apache.hadoop.hbase.master.zksyncer.MetaLocationSyncer;
 import org.apache.hadoop.hbase.mob.MobConstants;
@@ -231,6 +232,7 @@ import com.xiaomi.infra.hbase.master.chore.RSGroupNormalizerChore;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.CollectionUtils;
 import com.xiaomi.keycenter.agent.KeycenterAgent;
 import com.xiaomi.keycenter.common.iface.DataProtectionException;
 
@@ -454,7 +456,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   private ProcedureStore procedureStore;
 
   // the master local storage to store procedure data, etc.
-  private LocalStore localStore;
+  private MasterRegion masterRegion;
 
   // handle table states
   private TableStateManager tableStateManager;
@@ -943,8 +945,8 @@ public class HMaster extends HRegionServer implements MasterServices {
       this.splitWALManager = new SplitWALManager(this);
     }
 
-    // initialize local store
-    localStore = LocalStore.create(this);
+    // initialize master local region
+    masterRegion = MasterRegionFactory.create(this);
     createProcedureExecutor();
     Map<Class<?>, List<Procedure<MasterProcedureEnv>>> procsByType =
       procedureExecutor.getActiveProceduresNoCopy().stream()
@@ -1538,8 +1540,8 @@ public class HMaster extends HRegionServer implements MasterServices {
       this.assignmentManager.stop();
     }
 
-    if (localStore != null) {
-      localStore.close(isAborted());
+    if (masterRegion != null) {
+      masterRegion.close(isAborted());
     }
     if (this.walManager != null) {
       this.walManager.stop();
@@ -1558,7 +1560,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   private void createProcedureExecutor() throws IOException {
     MasterProcedureEnv procEnv = new MasterProcedureEnv(this);
     procedureStore =
-      new RegionProcedureStore(this, localStore, new MasterProcedureEnv.FsUtilsLeaseRecovery(this));
+      new RegionProcedureStore(this, masterRegion, new MasterProcedureEnv.FsUtilsLeaseRecovery(this));
     procedureStore.registerListener(new ProcedureStoreListener() {
 
       @Override
