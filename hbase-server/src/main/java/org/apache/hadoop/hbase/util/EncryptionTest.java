@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.io.crypto.DefaultCipherProvider;
 import org.apache.hadoop.hbase.io.crypto.Encryption;
 import org.apache.hadoop.hbase.io.crypto.KeyStoreKeyProvider;
 import org.apache.hadoop.hbase.security.EncryptionUtil;
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.TOOLS)
 public class EncryptionTest {
@@ -88,12 +89,22 @@ public class EncryptionTest {
         cipherProviderResults.put(providerClassName, true);
       } catch (Exception e) { // most likely a RuntimeException
         cipherProviderResults.put(providerClassName, false);
-        throw new IOException("Cipher provider " + providerClassName + " failed test: " +
-          e.getMessage(), e);
+        String errMsg = "Cipher provider " + providerClassName + " failed test: " + e.getMessage();
+        LOG.error(errMsg, e);
+        throw new IOException(errMsg, e);
       }
     } else if (result.booleanValue() == false) {
       throw new IOException("Cipher provider " + providerClassName + " previously failed test");
     }
+  }
+
+  /**
+   * Check that the configured keycenter provider can be loaded and initialized.
+   * @param conf
+   * @throws IOException
+   */
+  private static void testKeyCenterKeyProvider(Configuration conf) throws IOException {
+    KeyCenterKeyProvider.initKeyProvider(conf);
   }
 
   /**
@@ -111,21 +122,29 @@ public class EncryptionTest {
     if (cipher == null) {
       return;
     }
-    testKeyProvider(conf);
+    String keyCenterKey = conf.get(KeyCenterKeyProvider.CRYPTO_KEYCENTER_KEY);
+    if (keyCenterKey != null) {
+      testKeyCenterKeyProvider(conf);
+    } else {
+      testKeyProvider(conf);
+    }
     testCipherProvider(conf);
     Boolean result = cipherResults.get(cipher);
     if (result == null) {
       try {
         Encryption.Context context = Encryption.newContext(conf);
         context.setCipher(Encryption.getCipher(conf, cipher));
-        if (key == null) {
-          // Make a random key since one was not provided
-          context.setKey(context.getCipher().getRandomKey());
+        if (keyCenterKey != null) {
+          context.setKey(KeyCenterKeyProvider.unwrapKey(keyCenterKey));
         } else {
-          // This will be a wrapped key from schema
-          context.setKey(EncryptionUtil.unwrapKey(conf,
-            conf.get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY, "hbase"),
-            key));
+          if (key == null) {
+            // Make a random key since one was not provided
+            context.setKey(context.getCipher().getRandomKey());
+          } else {
+            // This will be a wrapped key from schema
+            context.setKey(EncryptionUtil.unwrapKey(conf,
+              conf.get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY, "hbase"), key));
+          }
         }
         byte[] iv = null;
         if (context.getCipher().getIvLength() > 0) {
@@ -147,7 +166,9 @@ public class EncryptionTest {
         cipherResults.put(cipher, true);
       } catch (Exception e) {
         cipherResults.put(cipher, false);
-        throw new IOException("Cipher " + cipher + " failed test: " + e.getMessage(), e);
+        String errMsg = "Cipher " + cipher + " failed test: " + e.getMessage();
+        LOG.error(errMsg, e);
+        throw new IOException(errMsg, e);
       }
     } else if (result.booleanValue() == false) {
       throw new IOException("Cipher " + cipher + " previously failed test");

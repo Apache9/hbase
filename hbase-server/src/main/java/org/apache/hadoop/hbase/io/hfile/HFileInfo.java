@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.security.EncryptionUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
@@ -391,7 +392,12 @@ public class HFileInfo implements SortedMap<byte[], byte[]> {
     byte[] keyBytes = trailer.getEncryptionKey();
     if (keyBytes != null) {
       Encryption.Context cryptoContext = Encryption.newContext(conf);
-      Key key = EncryptionUtil.unwrapKey(conf, keyBytes);
+      Key key;
+      if (conf.get(KeyCenterKeyProvider.CRYPTO_KEYCENTER_KEY) != null) {
+        key = KeyCenterKeyProvider.unwrapKey(keyBytes);
+      } else {
+        key = EncryptionUtil.unwrapKey(conf, keyBytes);
+      }
       // Use the algorithm the key wants
       Cipher cipher = Encryption.getCipher(conf, key.getAlgorithm());
       if (cipher == null) {

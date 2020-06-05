@@ -1390,6 +1390,7 @@
     <wagon.ssh.version>2.12</wagon.ssh.version>
     <xml.maven.version>1.0.1</xml.maven.version>
     <infra-thirdparty.version>2.2.0</infra-thirdparty.version>
+    <keycenter.version>2.1.10</keycenter.version>
     <!-- Intraproject jar naming properties -->
     <!-- TODO this is pretty ugly, but works for the moment.
       Modules are pretty heavy-weight things, so doing this work isn't too bad. -->
@@ -2836,6 +2837,53 @@
            <artifactId>hadoop-annotations</artifactId>
            <version>${hadoop-two.version}</version>
          </dependency>
+         <dependency>
+           <groupId>com.xiaomi</groupId>
+           <artifactId>keycenter-agent-client</artifactId>
+           <version>${keycenter.version}</version>
+           <exclusions>
+             <exclusion>
+               <groupId>com.google.guava</groupId>
+               <artifactId>guava</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>commons-collections</groupId>
+               <artifactId>commons-collections</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>commons-lang</groupId>
+               <artifactId>commons-lang</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.xiaomi.common.perfcounter</groupId>
+               <artifactId>xiaomi-common-perfcounter</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>org.json</groupId>
+               <artifactId>json</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.xiaomi</groupId>
+               <artifactId>xiaomi-common-utils</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.yammer.metrics</groupId>
+               <artifactId>metrics-core</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>org.aspectj</groupId>
+               <artifactId>aspectjrt</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>org.aspectj</groupId>
+               <artifactId>aspectjweaver</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.typesafe</groupId>
+               <artifactId>config</artifactId>
+             </exclusion>
+            </exclusions>
+          </dependency>
         </dependencies>
       </dependencyManagement>
     </profile>
@@ -3212,6 +3260,53 @@
             <version>${hadoop-three.version}</version>
             <scope>test</scope>
           </dependency>
+         <dependency>
+           <groupId>com.xiaomi</groupId>
+           <artifactId>keycenter-agent-client</artifactId>
+           <version>${keycenter.version}</version>
+           <exclusions>
+             <exclusion>
+               <groupId>com.google.guava</groupId>
+               <artifactId>guava</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>commons-collections</groupId>
+               <artifactId>commons-collections</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>commons-lang</groupId>
+               <artifactId>commons-lang</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.xiaomi.common.perfcounter</groupId>
+               <artifactId>xiaomi-common-perfcounter</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>org.json</groupId>
+               <artifactId>json</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.xiaomi</groupId>
+               <artifactId>xiaomi-common-utils</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.yammer.metrics</groupId>
+               <artifactId>metrics-core</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>org.aspectj</groupId>
+               <artifactId>aspectjrt</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>org.aspectj</groupId>
+               <artifactId>aspectjweaver</artifactId>
+             </exclusion>
+             <exclusion>
+               <groupId>com.typesafe</groupId>
+               <artifactId>config</artifactId>
+             </exclusion>
+           </exclusions>
+         </dependency>
        </dependencies>
      </dependencyManagement>
 

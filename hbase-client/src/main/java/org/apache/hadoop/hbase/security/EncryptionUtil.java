@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.io.crypto.Cipher;
 import org.apache.hadoop.hbase.io.crypto.Encryption;
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.EncryptionProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
@@ -188,30 +189,39 @@ public final class EncryptionUtil {
     if (cipherName != null) {
       Cipher cipher;
       Key key;
-      byte[] keyBytes = family.getEncryptionKey();
-      if (keyBytes != null) {
-        // Family provides specific key material
-        key = unwrapKey(conf, keyBytes);
-        // Use the algorithm the key wants
-        cipher = Encryption.getCipher(conf, key.getAlgorithm());
-        if (cipher == null) {
-          throw new RuntimeException("Cipher '" + key.getAlgorithm() + "' is not available");
-        }
-        // Fail if misconfigured
-        // We use the encryption type specified in the column schema as a sanity check on
-        // what the wrapped key is telling us
-        if (!cipher.getName().equalsIgnoreCase(cipherName)) {
-          throw new RuntimeException("Encryption for family '" + family.getNameAsString()
-            + "' configured with type '" + cipherName + "' but key specifies algorithm '"
-            + cipher.getName() + "'");
-        }
-      } else {
-        // Family does not provide key material, create a random key
+      String keyCenterKey = conf.get(KeyCenterKeyProvider.CRYPTO_KEYCENTER_KEY);
+      if (keyCenterKey != null) {
         cipher = Encryption.getCipher(conf, cipherName);
         if (cipher == null) {
           throw new RuntimeException("Cipher '" + cipherName + "' is not available");
         }
-        key = cipher.getRandomKey();
+        key = KeyCenterKeyProvider.unwrapKey(keyCenterKey);
+      } else {
+        byte[] keyBytes = family.getEncryptionKey();
+        if (keyBytes != null) {
+          // Family provides specific key material
+          key = unwrapKey(conf, keyBytes);
+          // Use the algorithm the key wants
+          cipher = Encryption.getCipher(conf, key.getAlgorithm());
+          if (cipher == null) {
+            throw new RuntimeException("Cipher '" + key.getAlgorithm() + "' is not available");
+          }
+          // Fail if misconfigured
+          // We use the encryption type specified in the column schema as a sanity check on
+          // what the wrapped key is telling us
+          if (!cipher.getName().equalsIgnoreCase(cipherName)) {
+            throw new RuntimeException(
+              "Encryption for family '" + family.getNameAsString() + "' configured with type '" + cipherName + "' but key specifies algorithm '"
+                + cipher.getName() + "'");
+          }
+        } else {
+          // Family does not provide key material, create a random key
+          cipher = Encryption.getCipher(conf, cipherName);
+          if (cipher == null) {
+            throw new RuntimeException("Cipher '" + cipherName + "' is not available");
+          }
+          key = cipher.getRandomKey();
+        }
       }
       cryptoContext = Encryption.newContext(conf);
       cryptoContext.setCipher(cipher);

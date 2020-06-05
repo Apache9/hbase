@@ -221,10 +221,13 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.infra.hbase.master.chore.BusyRegionDetector;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.keycenter.agent.KeycenterAgent;
+import com.xiaomi.keycenter.common.iface.DataProtectionException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.GetRegionInfoResponse.CompactionState;
@@ -858,8 +861,8 @@ public class HMaster extends HRegionServer implements MasterServices {
    * Notice that now we will not schedule a special procedure to make meta online(unless the first
    * time where meta has not been created yet), we will rely on SCP to bring meta online.
    */
-  private void finishActiveMasterInitialization(MonitoredTask status)
-      throws IOException, InterruptedException, KeeperException, ReplicationException {
+  private void finishActiveMasterInitialization(MonitoredTask status) throws IOException,
+      InterruptedException, KeeperException, ReplicationException, DataProtectionException {
     Thread zombieDetector = new Thread(new InitializationMonitor(this),
         "ActiveMasterInitializationMonitor-" + System.currentTimeMillis());
     zombieDetector.setDaemon(true);
@@ -872,6 +875,10 @@ public class HMaster extends HRegionServer implements MasterServices {
 
     this.masterActiveTime = System.currentTimeMillis();
     // TODO: Do this using Dependency Injection, using PicoContainer, Guice or Spring.
+
+    if (conf.get(KeyCenterKeyProvider.CRYPTO_KEYCENTER_KEY) != null) {
+      KeyCenterKeyProvider.loadCacheFromKeyCenter(conf);
+    }
 
     // always initialize the MemStoreLAB as we use a region to store procedure now.
     initializeMemStoreChunkCreator();

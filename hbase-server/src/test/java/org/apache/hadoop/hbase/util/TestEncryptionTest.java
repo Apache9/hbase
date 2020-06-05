@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.util;
 import static org.junit.Assert.fail;
 
 import java.security.Key;
+import java.security.SecureRandom;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -29,11 +30,15 @@ import org.apache.hadoop.hbase.io.crypto.CipherProvider;
 import org.apache.hadoop.hbase.io.crypto.DefaultCipherProvider;
 import org.apache.hadoop.hbase.io.crypto.KeyProvider;
 import org.apache.hadoop.hbase.io.crypto.KeyProviderForTesting;
+import org.apache.hadoop.hbase.io.crypto.aes.AES;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 
 @Category({MiscTests.class, SmallTests.class})
 public class TestEncryptionTest {
@@ -41,6 +46,29 @@ public class TestEncryptionTest {
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
       HBaseClassTestRule.forClass(TestEncryptionTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestEncryptionTest.class);
+
+  @Test
+  public void testKeyCenterKeyProvider() {
+    Configuration conf = HBaseConfiguration.create();
+    SecureRandom rng = new SecureRandom();
+    byte[] keyBytes = new byte[AES.KEY_LENGTH];
+    byte[] wrappedKeyBytes = new byte[256];
+    rng.nextBytes(keyBytes);
+    String initialKey = Bytes.toStringBinary(keyBytes);
+    rng.nextBytes(wrappedKeyBytes);
+    String initialWrappedKey = Bytes.toStringBinary(wrappedKeyBytes);
+    KeyCenterKeyProvider.addToCache(initialKey, initialWrappedKey);
+    conf.set(KeyCenterKeyProvider.CRYPTO_KEYCENTER_KEY, initialWrappedKey);
+    conf.setBoolean(KeyCenterKeyProvider.SKIP_ACCESS_KEYCENTER, true);
+    String algorithm = conf.get(HConstants.CRYPTO_KEY_ALGORITHM_CONF_KEY, HConstants.CIPHER_AES);
+    try {
+      EncryptionTest.testEncryption(conf, algorithm, null);
+    } catch (Exception e) {
+      LOG.error("Got exception when testEncryption", e);
+      fail("Test for encryption with keycenter should have succeeded");
+    }
+  }
 
   @Test
   public void testTestKeyProvider() {

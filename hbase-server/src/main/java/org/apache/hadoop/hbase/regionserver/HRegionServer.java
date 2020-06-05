@@ -22,6 +22,7 @@ import static org.apache.hadoop.hbase.HConstants.DEFAULT_HBASE_SPLIT_WAL_MAX_SPL
 import static org.apache.hadoop.hbase.HConstants.HBASE_SPLIT_WAL_COORDINATED_BY_ZK;
 import static org.apache.hadoop.hbase.HConstants.HBASE_SPLIT_WAL_MAX_SPLITTER;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
@@ -1588,6 +1589,10 @@ public class HRegionServer extends HasThread implements
       LOG.info("Serving as " + this.serverName + ", RpcServer on " + rpcServices.isa +
           ", sessionid=0x" +
           Long.toHexString(this.zooKeeper.getRecoverableZooKeeper().getSessionId()));
+
+      if (conf.get(KeyCenterKeyProvider.CRYPTO_KEYCENTER_KEY) != null) {
+        KeyCenterKeyProvider.loadCacheFromKeyCenter(conf);
+      }
 
       // Wake up anyone waiting for this server to online
       synchronized (online) {

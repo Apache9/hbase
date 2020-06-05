@@ -53,6 +53,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -827,10 +828,14 @@ public class HFileWriterImpl implements HFile.Writer {
     if (cryptoContext != Encryption.Context.NONE) {
       // Wrap the context's key and write it as the encryption metadata, the wrapper includes
       // all information needed for decryption
-      trailer.setEncryptionKey(EncryptionUtil.wrapKey(cryptoContext.getConf(),
-        cryptoContext.getConf().get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY,
-          User.getCurrent().getShortName()),
-        cryptoContext.getKey()));
+      if (cryptoContext.getConf().get(KeyCenterKeyProvider.CRYPTO_KEYCENTER_KEY) != null) {
+        trailer.setEncryptionKey(KeyCenterKeyProvider.wrapKey(cryptoContext.getKey().getEncoded()));
+      } else {
+        trailer.setEncryptionKey(EncryptionUtil.wrapKey(
+          cryptoContext.getConf(), cryptoContext.getConf()
+              .get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY, User.getCurrent().getShortName()),
+          cryptoContext.getKey()));
+      }
     }
     // Now we can finish the close
     trailer.setMetaIndexCount(metaNames.size());
