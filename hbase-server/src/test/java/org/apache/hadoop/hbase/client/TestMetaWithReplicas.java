@@ -57,6 +57,7 @@ import org.apache.hadoop.hbase.zookeeper.MetaTableLocator;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
+import org.apache.zookeeper.KeeperException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -397,7 +398,7 @@ public class TestMetaWithReplicas {
   }
 
   public static class BrokenMetaReplicaMaster extends HMaster{
-    public BrokenMetaReplicaMaster(final Configuration conf) throws IOException {
+    public BrokenMetaReplicaMaster(final Configuration conf) throws IOException, KeeperException {
       super(conf);
     }
 
