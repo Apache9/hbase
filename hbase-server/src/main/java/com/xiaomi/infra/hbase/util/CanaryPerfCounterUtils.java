@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 @InterfaceAudience.Private
 public final class CanaryPerfCounterUtils {
@@ -45,7 +46,7 @@ public final class CanaryPerfCounterUtils {
 
   public static final String PERFCOUNT_NAME_TAG_DELIMITER = ",";
 
-  public static String HOSTNAME;
+  private static String HOSTNAME;
 
   static {
     try {
@@ -126,5 +127,10 @@ public final class CanaryPerfCounterUtils {
       tags.forEach(kv -> joiner.add(kv.getFirst() + "=" + kv.getSecond()));
       return joiner.toString();
     }
+  }
+
+  @VisibleForTesting
+  public static String getHostname() {
+    return HOSTNAME;
   }
 }

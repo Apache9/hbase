@@ -505,6 +505,10 @@ public class HBaseStreamReplicationEndpoint extends BaseReplicationEndpoint {
     SimpleProducer get(byte[] hashkey) {
       return producers[(Bytes.hashCode(hashkey) & Integer.MAX_VALUE) % producers.length];
     }
+
+    Topic getTopic() {
+      return topic;
+    }
   }
 
   static enum FieldsControl {

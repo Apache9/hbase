@@ -33,12 +33,13 @@ public class DummyHBaseStreamCopyTableReducer extends HBaseStreamCopyTableToTalo
 
   @Override
   protected void productMessages(Cell cell, List<Message> messages) throws IOException {
-    FileOutputStream writer = new FileOutputStream(outputFile, true);
-    // write messages bytes into file
-    for (Message message : messages) {
-      writer.write(message.getMessage());
-      writer.write("\n".getBytes());
-      writer.flush();
+    try (FileOutputStream writer = new FileOutputStream(outputFile, true)) {
+      // write messages bytes into file
+      for (Message message : messages) {
+        writer.write(message.getMessage());
+        writer.write("\n".getBytes());
+        writer.flush();
+      }
     }
   }
 }

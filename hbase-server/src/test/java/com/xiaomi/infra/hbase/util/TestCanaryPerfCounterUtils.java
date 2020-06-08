@@ -18,7 +18,6 @@
  */
 package com.xiaomi.infra.hbase.util;
 
-import static com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils.HOSTNAME;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.hadoop.hbase.HBaseClassTestRule;
@@ -45,7 +44,9 @@ public class TestCanaryPerfCounterUtils {
 
     name = new PerfCounterNameJoiner().method("read").cluster("cluster")
         .table(TableName.valueOf("table")).host().getName();
-    assertEquals("hbase-canary-read,cluster=cluster,table=table,host=" + HOSTNAME, name);
+    assertEquals(
+      "hbase-canary-read,cluster=cluster,table=table,host=" + CanaryPerfCounterUtils.getHostname(),
+      name);
 
     name = new PerfCounterNameJoiner().method("read").cluster("hbase://cluster/")
         .table(TableName.valueOf("ns:table"))
