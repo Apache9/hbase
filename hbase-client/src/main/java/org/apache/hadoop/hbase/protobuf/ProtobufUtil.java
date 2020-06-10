@@ -97,6 +97,7 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.Re
 import org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos;
 import org.apache.hadoop.hbase.protobuf.generated.TableProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RSGroupProtos;
+import org.apache.hadoop.hbase.protobuf.generated.TableProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.util.Addressing;
@@ -1775,6 +1776,14 @@ public final class ProtobufUtil {
     return ServerName.valueOf(hostname, port, -1L);
   }
 
+  public static HBaseProtos.TimeRange toTimeRange(TimeRange timeRange) {
+    if (timeRange == null) {
+      timeRange = TimeRange.allTime();
+    }
+    return HBaseProtos.TimeRange.newBuilder().setFrom(timeRange.getMin()).setTo(timeRange.getMax())
+        .build();
+  }
+
   public static RSGroupInfo toGroupInfo(RSGroupProtos.RSGroupInfo proto) {
     RSGroupInfo RSGroupInfo = new RSGroupInfo(proto.getName());
     for(HBaseProtos.ServerName el: proto.getServersList()) {
@@ -1786,13 +1795,18 @@ public final class ProtobufUtil {
     return RSGroupInfo;
   }
 
-  public static HBaseProtos.TimeRange toTimeRange(TimeRange timeRange) {
-    if (timeRange == null) {
-      timeRange = TimeRange.allTime();
+  public static RSGroupProtos.RSGroupInfo toProtoGroupInfo(RSGroupInfo pojo) {
+    List<TableProtos.TableName> tables = new ArrayList<>(pojo.getTables().size());
+    for (TableName arg : pojo.getTables()) {
+      tables.add(ProtobufUtil.toProtoTableName(arg));
     }
-    return HBaseProtos.TimeRange.newBuilder().setFrom(timeRange.getMin())
-      .setTo(timeRange.getMax())
-      .build();
+    List<HBaseProtos.ServerName> hostports = new ArrayList<>(pojo.getServers().size());
+    for (Address el : pojo.getServers()) {
+      hostports.add(HBaseProtos.ServerName.newBuilder().setHostName(el.getHostname())
+          .setPort(el.getPort()).build());
+    }
+    return RSGroupProtos.RSGroupInfo.newBuilder().setName(pojo.getName()).addAllServers(hostports)
+        .addAllTables(tables).build();
   }
 
   /**

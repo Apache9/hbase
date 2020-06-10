@@ -92,13 +92,13 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
  * RSGroupInfo Map at {@link #rsGroupMap} and a Map of tables to the name of the rsgroup they belong
  * too (in {@link #tableMap}). These Maps are persisted to the hbase:rsgroup table (and cached in
  * zk) on each modification.
- * <p>
+ * <p/>
  * Mutations on state are synchronized but reads can continue without having to wait on an instance
  * monitor, mutations do wholesale replace of the Maps on update -- Copy-On-Write; the local Maps of
  * state are read-only, just-in-case (see flushConfig).
- * <p>
+ * <p/>
  * Reads must not block else there is a danger we'll deadlock.
- * <p>
+ * <p/>
  * Clients of this class, the {@link RSGroupAdminEndpoint} for example, want to query and then act
  * on the results of the query modifying cache in zookeeper without another thread making
  * intermediate modifications. These clients synchronize on the 'this' instance so no other has
@@ -107,6 +107,24 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 @InterfaceAudience.Private
 final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
   private static final Logger LOG = LoggerFactory.getLogger(RSGroupInfoManagerImpl.class);
+
+  private static final String REASSIGN_WAIT_INTERVAL_KEY = "hbase.rsgroup.reassign.wait";
+  private static final long DEFAULT_REASSIGN_WAIT_INTERVAL = 30 * 1000L;
+
+  // Assigned before user tables
+  @VisibleForTesting
+  static final TableName RSGROUP_TABLE_NAME =
+      TableName.valueOf(NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR, "rsgroup");
+
+  private static final String RS_GROUP_ZNODE = "rsgroup";
+
+  @VisibleForTesting
+  static final byte[] META_FAMILY_BYTES = Bytes.toBytes("m");
+
+  @VisibleForTesting
+  static final byte[] META_QUALIFIER_BYTES = Bytes.toBytes("i");
+
+  private static final byte[] ROW_KEY = { 0 };
 
   /** Table descriptor for <code>hbase:rsgroup</code> catalog table */
   private static final TableDescriptor RSGROUP_TABLE_DESC;
@@ -187,6 +205,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     this.rsGroupStartupWorker = new RSGroupStartupWorker();
     script = new RSGroupMappingScript(masterServices.getConfiguration());
   }
+
 
   private synchronized void init() throws IOException {
     refresh();
@@ -452,7 +471,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     return getRSGroup(RSGroupInfo.DEFAULT_GROUP);
   }
 
-  List<RSGroupInfo> retrieveGroupListFromGroupTable() throws IOException {
+  private List<RSGroupInfo> retrieveGroupListFromGroupTable() throws IOException {
     List<RSGroupInfo> rsGroupInfoList = Lists.newArrayList();
     try (Table table = conn.getTable(RSGROUP_TABLE_NAME);
         ResultScanner scanner = table.getScanner(new Scan())) {
@@ -463,14 +482,14 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
         }
         RSGroupProtos.RSGroupInfo proto = RSGroupProtos.RSGroupInfo
           .parseFrom(result.getValue(META_FAMILY_BYTES, META_QUALIFIER_BYTES));
-        rsGroupInfoList.add(RSGroupProtobufUtil.toGroupInfo(proto));
+        rsGroupInfoList.add(ProtobufUtil.toGroupInfo(proto));
       }
     }
     return rsGroupInfoList;
   }
 
-  List<RSGroupInfo> retrieveGroupListFromZookeeper() throws IOException {
-    String groupBasePath = ZNodePaths.joinZNode(watcher.getZNodePaths().baseZNode, rsGroupZNode);
+  private List<RSGroupInfo> retrieveGroupListFromZookeeper() throws IOException {
+    String groupBasePath = ZNodePaths.joinZNode(watcher.getZNodePaths().baseZNode, RS_GROUP_ZNODE);
     List<RSGroupInfo> RSGroupInfoList = Lists.newArrayList();
     // Overwrite any info stored by table, this takes precedence
     try {
@@ -486,7 +505,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
             ByteArrayInputStream bis =
               new ByteArrayInputStream(data, ProtobufUtil.lengthOfPBMagic(), data.length);
             RSGroupInfoList
-              .add(RSGroupProtobufUtil.toGroupInfo(RSGroupProtos.RSGroupInfo.parseFrom(bis)));
+              .add(ProtobufUtil.toGroupInfo(RSGroupProtos.RSGroupInfo.parseFrom(bis)));
           }
         }
         LOG.debug("Read ZK GroupInfo count:" + RSGroupInfoList.size());
@@ -562,7 +581,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
 
     // populate puts
     for (RSGroupInfo RSGroupInfo : groupMap.values()) {
-      RSGroupProtos.RSGroupInfo proto = RSGroupProtobufUtil.toProtoGroupInfo(RSGroupInfo);
+      RSGroupProtos.RSGroupInfo proto = ProtobufUtil.toProtoGroupInfo(RSGroupInfo);
       Put p = new Put(Bytes.toBytes(RSGroupInfo.getName()));
       p.addColumn(META_FAMILY_BYTES, META_QUALIFIER_BYTES, proto.toByteArray());
       mutations.add(p);
@@ -622,7 +641,8 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     resetRSGroupAndTableMaps(newGroupMap, newTableMap);
 
     try {
-      String groupBasePath = ZNodePaths.joinZNode(watcher.getZNodePaths().baseZNode, rsGroupZNode);
+      String groupBasePath =
+          ZNodePaths.joinZNode(watcher.getZNodePaths().baseZNode, RS_GROUP_ZNODE);
       ZKUtil.createAndFailSilent(watcher, groupBasePath, ProtobufMagic.PB_MAGIC);
 
       List<ZKUtil.ZKUtilOp> zkOps = new ArrayList<>(newGroupMap.size());
@@ -635,7 +655,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
 
       for (RSGroupInfo RSGroupInfo : newGroupMap.values()) {
         String znode = ZNodePaths.joinZNode(groupBasePath, RSGroupInfo.getName());
-        RSGroupProtos.RSGroupInfo proto = RSGroupProtobufUtil.toProtoGroupInfo(RSGroupInfo);
+        RSGroupProtos.RSGroupInfo proto = ProtobufUtil.toProtoGroupInfo(RSGroupInfo);
         LOG.debug("Updating znode: " + znode);
         ZKUtil.createAndFailSilent(watcher, znode);
         zkOps.add(ZKUtil.ZKUtilOp.deleteNodeFailSilent(znode));
@@ -851,8 +871,8 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
       } else {
         Procedure<?> result = masterServices.getMasterProcedureExecutor().getResult(procId);
         if (result != null && result.isFailed()) {
-          throw new IOException(
-            "Failed to create group table. " + MasterProcedureUtil.unwrapRemoteIOException(result));
+          throw new IOException("Failed to create group table. " +
+              MasterProcedureUtil.unwrapRemoteIOException(result));
         }
       }
     }
