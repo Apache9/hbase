@@ -6783,6 +6783,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver { // 
     }
 
     if (!splitPolicy.shouldSplit()) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Cannot split region " + this.getRegionInfo().getEncodedName()
+            + " because of split policy: " + splitPolicy.getClass().getSimpleName());
+      }
       return null;
     }
 

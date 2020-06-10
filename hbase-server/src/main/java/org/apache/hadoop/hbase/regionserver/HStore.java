@@ -1862,11 +1862,16 @@ public class HStore implements Store, PropagatingConfigurationObserver {
       assert !this.getRegionInfo().isMetaRegion();
       // Not split-able if we find a reference store file present in the store.
       if (hasReferences()) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Cannot split region: " + region.getRegionNameAsString()
+              + " because there are references for store: " + getColumnFamilyName());
+        }
         return null;
       }
       return this.storeEngine.getStoreFileManager().getSplitPoint();
     } catch(IOException e) {
-      LOG.warn("Failed getting store size for " + this, e);
+      LOG.warn("Failed getting store size for region: " + region.getRegionNameAsString()
+          + ", store: " + this, e);
     } finally {
       this.lock.readLock().unlock();
     }

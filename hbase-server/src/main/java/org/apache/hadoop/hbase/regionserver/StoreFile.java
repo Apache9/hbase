@@ -727,11 +727,17 @@ public class StoreFile {
       // if the midkey is the same as the first or last keys, we cannot (ever) split this region.
       if (comparator.compareRows(mk, firstKey) == 0 || comparator.compareRows(mk, lastKey) == 0) {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("cannot split because midkey is the same as first or last row");
+          LOG.debug("Cannot split because midkey is the same as first or last row for store file: "
+              + fileInfo.getPath().toString());
         }
         return null;
       }
       return mk.getRow();
+    } else {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(
+          "Cannot split because midkey is null for store file: " + fileInfo.getPath().toString());
+      }
     }
     return null;
   }
