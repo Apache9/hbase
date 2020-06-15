@@ -283,10 +283,15 @@ public class HBaseConfiguration extends Configuration {
    */
   private static void applyClusterKeyToConf(Configuration conf, String key)
       throws IOException{
-    ZKConfig.ZKClusterKey zkClusterKey = ZKConfig.transformClusterKey(key);
-    conf.set(HConstants.ZOOKEEPER_QUORUM, zkClusterKey.getQuorumString());
-    conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, zkClusterKey.getClientPort());
-    conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, zkClusterKey.getZnodeParent());
+    if (key.startsWith(NameService.HBASE_URI_PREFIX)) {
+      // it just copy configuration and change it, the old configuration do not change
+      HBaseConfiguration.merge(conf, NameService.createConfigurationByClusterKey(key, conf));
+    } else {
+      ZKConfig.ZKClusterKey zkClusterKey = ZKConfig.transformClusterKey(key);
+      conf.set(HConstants.ZOOKEEPER_QUORUM, zkClusterKey.getQuorumString());
+      conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, zkClusterKey.getClientPort());
+      conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, zkClusterKey.getZnodeParent());
+    }
   }
 
   /**
