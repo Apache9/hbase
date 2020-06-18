@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.ClusterConnection;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.mob.ManualMobMaintHFileCleaner;
@@ -379,7 +380,13 @@ public class TestHFileCleaner {
     createFilesForTesting(LARGE_FILE_NUM, SMALL_FILE_NUM, fs, archivedHfileDir);
     // call cleanup
     cleaner.chore();
-
+    UTIL.waitFor(3000, new Waiter.Predicate<IOException>() {
+      @Override
+      public boolean evaluate() throws IOException {
+        return (cleaner.getNumOfDeletedLargeFiles() == LARGE_FILE_NUM)
+          && (cleaner.getNumOfDeletedSmallFiles() == SMALL_FILE_NUM);
+      }
+    });
     Assert.assertEquals(LARGE_FILE_NUM, cleaner.getNumOfDeletedLargeFiles());
     Assert.assertEquals(SMALL_FILE_NUM, cleaner.getNumOfDeletedSmallFiles());
   }
