@@ -126,7 +126,7 @@ public class BoundedRecoveredHFilesOutputSink extends OutputSink {
   public List<Path> close() throws IOException {
     boolean isSuccessful = true;
     try {
-      isSuccessful &= finishWriterThreads(false);
+      isSuccessful = finishWriterThreads(false);
     } finally {
       isSuccessful &= writeRemainingEntryBuffers();
     }

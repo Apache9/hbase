@@ -29,6 +29,7 @@ import java.util.concurrent.Future;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -72,7 +73,7 @@ class RecoveredEditsOutputSink extends AbstractRecoveredEditsOutputSink {
    * @return null if this region shouldn't output any logs
    */
   private RecoveredEditsWriter getRecoveredEditsWriter(TableName tableName, byte[] region,
-    long seqId) throws IOException {
+      long seqId) throws IOException {
     RecoveredEditsWriter ret = writers.get(Bytes.toString(region));
     if (ret != null) {
       return ret;
@@ -89,7 +90,7 @@ class RecoveredEditsOutputSink extends AbstractRecoveredEditsOutputSink {
   public List<Path> close() throws IOException {
     boolean isSuccessful = true;
     try {
-      isSuccessful &= finishWriterThreads(false);
+      isSuccessful = finishWriterThreads(false);
     } finally {
       isSuccessful &= closeWriters();
     }
