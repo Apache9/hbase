@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.management.ObjectName;
 
@@ -243,6 +242,22 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdResponse;
@@ -4440,6 +4455,56 @@ MasterServices, Server {
     } catch (Exception e) {
       throw new ServiceException(e);
     }
+  }
+
+  @Override
+  public GetRSGroupInfoResponse
+  getRSGroupInfo(RpcController controller, GetRSGroupInfoRequest request) throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
+  }
+
+  @Override
+  public GetRSGroupInfoOfTableResponse
+  getRSGroupInfoOfTable(RpcController controller, GetRSGroupInfoOfTableRequest request)
+      throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
+  }
+
+  @Override
+  public MoveTablesResponse moveTables(RpcController controller, MoveTablesRequest request)
+      throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
+  }
+
+  @Override
+  public AddRSGroupResponse addRSGroup(RpcController controller, AddRSGroupRequest request)
+      throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
+  }
+
+  @Override
+  public RemoveRSGroupResponse removeRSGroup(RpcController controller, RemoveRSGroupRequest request)
+      throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
+  }
+
+  @Override
+  public UpdateRSGroupConfigResponse
+  updateRSGroupConfig(RpcController controller, UpdateRSGroupConfigRequest request)
+      throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
+  }
+
+  @Override
+  public DissolveRSGroupLocallyResponse dissolveRSGroupLocally(RpcController controller,
+      DissolveRSGroupLocallyRequest request) throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
+  }
+
+  @Override
+  public ListRSGroupInfosResponse listRSGroupInfos(RpcController controller,
+      ListRSGroupInfosRequest request) throws ServiceException {
+    throw new ServiceException("This is a 0.98 server, not support rsgroup");
   }
 
   private MasterSwitchType convert(MasterProtos.MasterSwitchType switchType) {

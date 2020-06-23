@@ -49182,6 +49182,70 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse> done);
 
+      /**
+       * <code>rpc GetRSGroupInfo(.GetRSGroupInfoRequest) returns (.GetRSGroupInfoResponse);</code>
+       */
+      public abstract void getRSGroupInfo(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse> done);
+
+      /**
+       * <code>rpc GetRSGroupInfoOfTable(.GetRSGroupInfoOfTableRequest) returns (.GetRSGroupInfoOfTableResponse);</code>
+       */
+      public abstract void getRSGroupInfoOfTable(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse> done);
+
+      /**
+       * <code>rpc MoveTables(.MoveTablesRequest) returns (.MoveTablesResponse);</code>
+       */
+      public abstract void moveTables(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse> done);
+
+      /**
+       * <code>rpc AddRSGroup(.AddRSGroupRequest) returns (.AddRSGroupResponse);</code>
+       */
+      public abstract void addRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse> done);
+
+      /**
+       * <code>rpc RemoveRSGroup(.RemoveRSGroupRequest) returns (.RemoveRSGroupResponse);</code>
+       */
+      public abstract void removeRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse> done);
+
+      /**
+       * <code>rpc UpdateRSGroupConfig(.UpdateRSGroupConfigRequest) returns (.UpdateRSGroupConfigResponse);</code>
+       */
+      public abstract void updateRSGroupConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse> done);
+
+      /**
+       * <code>rpc DissolveRSGroupLocally(.DissolveRSGroupLocallyRequest) returns (.DissolveRSGroupLocallyResponse);</code>
+       */
+      public abstract void dissolveRSGroupLocally(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse> done);
+
+      /**
+       * <code>rpc ListRSGroupInfos(.ListRSGroupInfosRequest) returns (.ListRSGroupInfosResponse);</code>
+       */
+      public abstract void listRSGroupInfos(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -49659,6 +49723,70 @@ public final class MasterProtos {
           impl.listRegionQuota(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void getRSGroupInfo(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse> done) {
+          impl.getRSGroupInfo(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void getRSGroupInfoOfTable(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse> done) {
+          impl.getRSGroupInfoOfTable(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void moveTables(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse> done) {
+          impl.moveTables(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void addRSGroup(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse> done) {
+          impl.addRSGroup(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void removeRSGroup(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse> done) {
+          impl.removeRSGroup(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void updateRSGroupConfig(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse> done) {
+          impl.updateRSGroupConfig(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void dissolveRSGroupLocally(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse> done) {
+          impl.dissolveRSGroupLocally(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void listRSGroupInfos(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse> done) {
+          impl.listRSGroupInfos(controller, request, done);
+        }
+
       };
     }
 
@@ -49799,6 +49927,22 @@ public final class MasterProtos {
               return impl.setRegionQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest)request);
             case 58:
               return impl.listRegionQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest)request);
+            case 59:
+              return impl.getRSGroupInfo(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest)request);
+            case 60:
+              return impl.getRSGroupInfoOfTable(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest)request);
+            case 61:
+              return impl.moveTables(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest)request);
+            case 62:
+              return impl.addRSGroup(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest)request);
+            case 63:
+              return impl.removeRSGroup(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest)request);
+            case 64:
+              return impl.updateRSGroupConfig(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest)request);
+            case 65:
+              return impl.dissolveRSGroupLocally(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest)request);
+            case 66:
+              return impl.listRSGroupInfos(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -49931,6 +50075,22 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.getDefaultInstance();
             case 58:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.getDefaultInstance();
+            case 59:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest.getDefaultInstance();
+            case 60:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest.getDefaultInstance();
+            case 61:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest.getDefaultInstance();
+            case 62:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest.getDefaultInstance();
+            case 63:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest.getDefaultInstance();
+            case 64:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest.getDefaultInstance();
+            case 65:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest.getDefaultInstance();
+            case 66:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -50063,6 +50223,22 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance();
             case 58:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance();
+            case 59:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse.getDefaultInstance();
+            case 60:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse.getDefaultInstance();
+            case 61:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse.getDefaultInstance();
+            case 62:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse.getDefaultInstance();
+            case 63:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse.getDefaultInstance();
+            case 64:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse.getDefaultInstance();
+            case 65:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse.getDefaultInstance();
+            case 66:
+              return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -50782,6 +50958,70 @@ public final class MasterProtos {
         org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse> done);
 
+    /**
+     * <code>rpc GetRSGroupInfo(.GetRSGroupInfoRequest) returns (.GetRSGroupInfoResponse);</code>
+     */
+    public abstract void getRSGroupInfo(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse> done);
+
+    /**
+     * <code>rpc GetRSGroupInfoOfTable(.GetRSGroupInfoOfTableRequest) returns (.GetRSGroupInfoOfTableResponse);</code>
+     */
+    public abstract void getRSGroupInfoOfTable(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse> done);
+
+    /**
+     * <code>rpc MoveTables(.MoveTablesRequest) returns (.MoveTablesResponse);</code>
+     */
+    public abstract void moveTables(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse> done);
+
+    /**
+     * <code>rpc AddRSGroup(.AddRSGroupRequest) returns (.AddRSGroupResponse);</code>
+     */
+    public abstract void addRSGroup(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse> done);
+
+    /**
+     * <code>rpc RemoveRSGroup(.RemoveRSGroupRequest) returns (.RemoveRSGroupResponse);</code>
+     */
+    public abstract void removeRSGroup(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse> done);
+
+    /**
+     * <code>rpc UpdateRSGroupConfig(.UpdateRSGroupConfigRequest) returns (.UpdateRSGroupConfigResponse);</code>
+     */
+    public abstract void updateRSGroupConfig(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse> done);
+
+    /**
+     * <code>rpc DissolveRSGroupLocally(.DissolveRSGroupLocallyRequest) returns (.DissolveRSGroupLocallyResponse);</code>
+     */
+    public abstract void dissolveRSGroupLocally(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse> done);
+
+    /**
+     * <code>rpc ListRSGroupInfos(.ListRSGroupInfosRequest) returns (.ListRSGroupInfosResponse);</code>
+     */
+    public abstract void listRSGroupInfos(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -51099,6 +51339,46 @@ public final class MasterProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse>specializeCallback(
               done));
           return;
+        case 59:
+          this.getRSGroupInfo(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse>specializeCallback(
+              done));
+          return;
+        case 60:
+          this.getRSGroupInfoOfTable(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse>specializeCallback(
+              done));
+          return;
+        case 61:
+          this.moveTables(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse>specializeCallback(
+              done));
+          return;
+        case 62:
+          this.addRSGroup(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse>specializeCallback(
+              done));
+          return;
+        case 63:
+          this.removeRSGroup(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse>specializeCallback(
+              done));
+          return;
+        case 64:
+          this.updateRSGroupConfig(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse>specializeCallback(
+              done));
+          return;
+        case 65:
+          this.dissolveRSGroupLocally(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse>specializeCallback(
+              done));
+          return;
+        case 66:
+          this.listRSGroupInfos(controller, (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -51231,6 +51511,22 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaRequest.getDefaultInstance();
         case 58:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest.getDefaultInstance();
+        case 59:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest.getDefaultInstance();
+        case 60:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest.getDefaultInstance();
+        case 61:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest.getDefaultInstance();
+        case 62:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest.getDefaultInstance();
+        case 63:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest.getDefaultInstance();
+        case 64:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest.getDefaultInstance();
+        case 65:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest.getDefaultInstance();
+        case 66:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -51363,6 +51659,22 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetRegionQuotaResponse.getDefaultInstance();
         case 58:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance();
+        case 59:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse.getDefaultInstance();
+        case 60:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse.getDefaultInstance();
+        case 61:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse.getDefaultInstance();
+        case 62:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse.getDefaultInstance();
+        case 63:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse.getDefaultInstance();
+        case 64:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse.getDefaultInstance();
+        case 65:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse.getDefaultInstance();
+        case 66:
+          return org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -52268,6 +52580,126 @@ public final class MasterProtos {
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance()));
       }
+
+      public  void getRSGroupInfo(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(59),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse.getDefaultInstance()));
+      }
+
+      public  void getRSGroupInfoOfTable(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(60),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse.getDefaultInstance()));
+      }
+
+      public  void moveTables(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(61),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse.getDefaultInstance()));
+      }
+
+      public  void addRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(62),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse.getDefaultInstance()));
+      }
+
+      public  void removeRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(63),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse.getDefaultInstance()));
+      }
+
+      public  void updateRSGroupConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(64),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse.getDefaultInstance()));
+      }
+
+      public  void dissolveRSGroupLocally(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(65),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse.getDefaultInstance()));
+      }
+
+      public  void listRSGroupInfos(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(66),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -52569,6 +53001,46 @@ public final class MasterProtos {
       public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse listRegionQuota(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse getRSGroupInfo(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse getRSGroupInfoOfTable(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse moveTables(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse addRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse removeRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse updateRSGroupConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse dissolveRSGroupLocally(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse listRSGroupInfos(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -53286,6 +53758,102 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListRegionQuotaResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse getRSGroupInfo(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(59),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse getRSGroupInfoOfTable(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(60),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse moveTables(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(61),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse addRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(62),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse removeRSGroup(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(63),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse updateRSGroupConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(64),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse dissolveRSGroupLocally(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(65),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse listRSGroupInfos(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(66),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:MasterService)
@@ -53777,252 +54345,267 @@ public final class MasterProtos {
     java.lang.String[] descriptorData = {
       "\n\014Master.proto\032\013HBase.proto\032\014Client.prot" +
       "o\032\023ClusterStatus.proto\032\013Quota.proto\032\016Sna" +
-      "pshot.proto\032\021Replication.proto\"`\n\020AddCol" +
-      "umnRequest\022\036\n\ntable_name\030\001 \002(\0132\n.TableNa" +
-      "me\022,\n\017column_families\030\002 \002(\0132\023.ColumnFami" +
-      "lySchema\"\023\n\021AddColumnResponse\"J\n\023DeleteC" +
-      "olumnRequest\022\036\n\ntable_name\030\001 \002(\0132\n.Table" +
-      "Name\022\023\n\013column_name\030\002 \002(\014\"\026\n\024DeleteColum" +
-      "nResponse\"c\n\023ModifyColumnRequest\022\036\n\ntabl" +
-      "e_name\030\001 \002(\0132\n.TableName\022,\n\017column_famil",
-      "ies\030\002 \002(\0132\023.ColumnFamilySchema\"\026\n\024Modify" +
-      "ColumnResponse\"\\\n\021MoveRegionRequest\022 \n\006r" +
-      "egion\030\001 \002(\0132\020.RegionSpecifier\022%\n\020dest_se" +
-      "rver_name\030\002 \001(\0132\013.ServerName\"\024\n\022MoveRegi" +
-      "onResponse\"\200\001\n\035DispatchMergingRegionsReq" +
-      "uest\022\"\n\010region_a\030\001 \002(\0132\020.RegionSpecifier" +
-      "\022\"\n\010region_b\030\002 \002(\0132\020.RegionSpecifier\022\027\n\010" +
-      "forcible\030\003 \001(\010:\005false\" \n\036DispatchMerging" +
-      "RegionsResponse\"7\n\023AssignRegionRequest\022 " +
-      "\n\006region\030\001 \002(\0132\020.RegionSpecifier\"\026\n\024Assi",
-      "gnRegionResponse\"O\n\025UnassignRegionReques" +
-      "t\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\024\n\005f" +
-      "orce\030\002 \001(\010:\005false\"\030\n\026UnassignRegionRespo" +
-      "nse\"8\n\024OfflineRegionRequest\022 \n\006region\030\001 " +
-      "\002(\0132\020.RegionSpecifier\"\027\n\025OfflineRegionRe" +
-      "sponse\"L\n\022CreateTableRequest\022\"\n\014table_sc" +
-      "hema\030\001 \002(\0132\014.TableSchema\022\022\n\nsplit_keys\030\002" +
-      " \003(\014\"\025\n\023CreateTableResponse\"4\n\022DeleteTab" +
-      "leRequest\022\036\n\ntable_name\030\001 \002(\0132\n.TableNam" +
-      "e\"\025\n\023DeleteTableResponse\"4\n\022EnableTableR",
-      "equest\022\036\n\ntable_name\030\001 \002(\0132\n.TableName\"\025" +
-      "\n\023EnableTableResponse\"5\n\023DisableTableReq" +
-      "uest\022\036\n\ntable_name\030\001 \002(\0132\n.TableName\"\026\n\024" +
-      "DisableTableResponse\"X\n\022ModifyTableReque" +
-      "st\022\036\n\ntable_name\030\001 \002(\0132\n.TableName\022\"\n\014ta" +
-      "ble_schema\030\002 \002(\0132\014.TableSchema\"\025\n\023Modify" +
-      "TableResponse\"K\n\026CreateNamespaceRequest\022" +
+      "pshot.proto\032\021Replication.proto\032\022RSGroupA" +
+      "dmin.proto\"`\n\020AddColumnRequest\022\036\n\ntable_" +
+      "name\030\001 \002(\0132\n.TableName\022,\n\017column_familie" +
+      "s\030\002 \002(\0132\023.ColumnFamilySchema\"\023\n\021AddColum" +
+      "nResponse\"J\n\023DeleteColumnRequest\022\036\n\ntabl" +
+      "e_name\030\001 \002(\0132\n.TableName\022\023\n\013column_name\030" +
+      "\002 \002(\014\"\026\n\024DeleteColumnResponse\"c\n\023ModifyC" +
+      "olumnRequest\022\036\n\ntable_name\030\001 \002(\0132\n.Table",
+      "Name\022,\n\017column_families\030\002 \002(\0132\023.ColumnFa" +
+      "milySchema\"\026\n\024ModifyColumnResponse\"\\\n\021Mo" +
+      "veRegionRequest\022 \n\006region\030\001 \002(\0132\020.Region" +
+      "Specifier\022%\n\020dest_server_name\030\002 \001(\0132\013.Se" +
+      "rverName\"\024\n\022MoveRegionResponse\"\200\001\n\035Dispa" +
+      "tchMergingRegionsRequest\022\"\n\010region_a\030\001 \002" +
+      "(\0132\020.RegionSpecifier\022\"\n\010region_b\030\002 \002(\0132\020" +
+      ".RegionSpecifier\022\027\n\010forcible\030\003 \001(\010:\005fals" +
+      "e\" \n\036DispatchMergingRegionsResponse\"7\n\023A" +
+      "ssignRegionRequest\022 \n\006region\030\001 \002(\0132\020.Reg",
+      "ionSpecifier\"\026\n\024AssignRegionResponse\"O\n\025" +
+      "UnassignRegionRequest\022 \n\006region\030\001 \002(\0132\020." +
+      "RegionSpecifier\022\024\n\005force\030\002 \001(\010:\005false\"\030\n" +
+      "\026UnassignRegionResponse\"8\n\024OfflineRegion" +
+      "Request\022 \n\006region\030\001 \002(\0132\020.RegionSpecifie" +
+      "r\"\027\n\025OfflineRegionResponse\"L\n\022CreateTabl" +
+      "eRequest\022\"\n\014table_schema\030\001 \002(\0132\014.TableSc" +
+      "hema\022\022\n\nsplit_keys\030\002 \003(\014\"\025\n\023CreateTableR" +
+      "esponse\"4\n\022DeleteTableRequest\022\036\n\ntable_n" +
+      "ame\030\001 \002(\0132\n.TableName\"\025\n\023DeleteTableResp",
+      "onse\"4\n\022EnableTableRequest\022\036\n\ntable_name" +
+      "\030\001 \002(\0132\n.TableName\"\025\n\023EnableTableRespons" +
+      "e\"5\n\023DisableTableRequest\022\036\n\ntable_name\030\001" +
+      " \002(\0132\n.TableName\"\026\n\024DisableTableResponse" +
+      "\"X\n\022ModifyTableRequest\022\036\n\ntable_name\030\001 \002" +
+      "(\0132\n.TableName\022\"\n\014table_schema\030\002 \002(\0132\014.T" +
+      "ableSchema\"\025\n\023ModifyTableResponse\"K\n\026Cre" +
+      "ateNamespaceRequest\0221\n\023namespaceDescript" +
+      "or\030\001 \002(\0132\024.NamespaceDescriptor\"\031\n\027Create" +
+      "NamespaceResponse\"/\n\026DeleteNamespaceRequ",
+      "est\022\025\n\rnamespaceName\030\001 \002(\t\"\031\n\027DeleteName" +
+      "spaceResponse\"K\n\026ModifyNamespaceRequest\022" +
       "1\n\023namespaceDescriptor\030\001 \002(\0132\024.Namespace" +
-      "Descriptor\"\031\n\027CreateNamespaceResponse\"/\n" +
-      "\026DeleteNamespaceRequest\022\025\n\rnamespaceName",
-      "\030\001 \002(\t\"\031\n\027DeleteNamespaceResponse\"K\n\026Mod" +
-      "ifyNamespaceRequest\0221\n\023namespaceDescript" +
-      "or\030\001 \002(\0132\024.NamespaceDescriptor\"\031\n\027Modify" +
-      "NamespaceResponse\"6\n\035GetNamespaceDescrip" +
-      "torRequest\022\025\n\rnamespaceName\030\001 \002(\t\"S\n\036Get" +
-      "NamespaceDescriptorResponse\0221\n\023namespace" +
-      "Descriptor\030\001 \002(\0132\024.NamespaceDescriptor\"!" +
-      "\n\037ListNamespaceDescriptorsRequest\"U\n Lis" +
-      "tNamespaceDescriptorsResponse\0221\n\023namespa" +
-      "ceDescriptor\030\001 \003(\0132\024.NamespaceDescriptor",
-      "\"?\n&ListTableDescriptorsByNamespaceReque" +
-      "st\022\025\n\rnamespaceName\030\001 \002(\t\"L\n\'ListTableDe" +
-      "scriptorsByNamespaceResponse\022!\n\013tableSch" +
-      "ema\030\001 \003(\0132\014.TableSchema\"9\n ListTableName" +
-      "sByNamespaceRequest\022\025\n\rnamespaceName\030\001 \002" +
-      "(\t\"B\n!ListTableNamesByNamespaceResponse\022" +
-      "\035\n\ttableName\030\001 \003(\0132\n.TableName\"\021\n\017Shutdo" +
-      "wnRequest\"\022\n\020ShutdownResponse\"\023\n\021StopMas" +
-      "terRequest\"\024\n\022StopMasterResponse\"\020\n\016Bala" +
-      "nceRequest\"\'\n\017BalanceResponse\022\024\n\014balance",
-      "r_ran\030\001 \002(\010\"<\n\031SetBalancerRunningRequest" +
-      "\022\n\n\002on\030\001 \002(\010\022\023\n\013synchronous\030\002 \001(\010\"8\n\032Set" +
-      "BalancerRunningResponse\022\032\n\022prev_balance_" +
-      "value\030\001 \001(\010\"\027\n\025RunCatalogScanRequest\"-\n\026" +
-      "RunCatalogScanResponse\022\023\n\013scan_result\030\001 " +
-      "\001(\005\"-\n\033EnableCatalogJanitorRequest\022\016\n\006en" +
-      "able\030\001 \002(\010\"2\n\034EnableCatalogJanitorRespon" +
-      "se\022\022\n\nprev_value\030\001 \001(\010\" \n\036IsCatalogJanit" +
-      "orEnabledRequest\"0\n\037IsCatalogJanitorEnab" +
-      "ledResponse\022\r\n\005value\030\001 \002(\010\"9\n\017SnapshotRe",
-      "quest\022&\n\010snapshot\030\001 \002(\0132\024.SnapshotDescri" +
-      "ption\",\n\020SnapshotResponse\022\030\n\020expected_ti" +
-      "meout\030\001 \002(\003\"\036\n\034GetCompletedSnapshotsRequ" +
-      "est\"H\n\035GetCompletedSnapshotsResponse\022\'\n\t" +
-      "snapshots\030\001 \003(\0132\024.SnapshotDescription\"?\n" +
-      "\025DeleteSnapshotRequest\022&\n\010snapshot\030\001 \002(\013" +
-      "2\024.SnapshotDescription\"\030\n\026DeleteSnapshot" +
-      "Response\"[\n\026RestoreSnapshotRequest\022&\n\010sn" +
-      "apshot\030\001 \002(\0132\024.SnapshotDescription\022\031\n\nre" +
-      "storeACL\030\002 \001(\010:\005false\"\031\n\027RestoreSnapshot",
-      "Response\"?\n\025IsSnapshotDoneRequest\022&\n\010sna" +
-      "pshot\030\001 \001(\0132\024.SnapshotDescription\"U\n\026IsS" +
-      "napshotDoneResponse\022\023\n\004done\030\001 \001(\010:\005false" +
-      "\022&\n\010snapshot\030\002 \001(\0132\024.SnapshotDescription" +
-      "\"F\n\034IsRestoreSnapshotDoneRequest\022&\n\010snap" +
-      "shot\030\001 \001(\0132\024.SnapshotDescription\"4\n\035IsRe" +
-      "storeSnapshotDoneResponse\022\023\n\004done\030\001 \001(\010:" +
-      "\005false\"=\n\033GetSchemaAlterStatusRequest\022\036\n" +
-      "\ntable_name\030\001 \002(\0132\n.TableName\"T\n\034GetSche" +
-      "maAlterStatusResponse\022\035\n\025yet_to_update_r",
-      "egions\030\001 \001(\r\022\025\n\rtotal_regions\030\002 \001(\r\"L\n\032G" +
-      "etTableDescriptorsRequest\022\037\n\013table_names" +
-      "\030\001 \003(\0132\n.TableName\022\r\n\005regex\030\002 \001(\t\"A\n\033Get" +
-      "TableDescriptorsResponse\022\"\n\014table_schema" +
-      "\030\001 \003(\0132\014.TableSchema\"\026\n\024GetTableNamesReq" +
-      "uest\"8\n\025GetTableNamesResponse\022\037\n\013table_n" +
-      "ames\030\001 \003(\0132\n.TableName\"3\n\027GetClusterStat" +
-      "usRequest\022\030\n\007options\030\001 \003(\0162\007.Option\"B\n\030G" +
-      "etClusterStatusResponse\022&\n\016cluster_statu" +
-      "s\030\001 \002(\0132\016.ClusterStatus\"\030\n\026IsMasterRunni",
-      "ngRequest\"4\n\027IsMasterRunningResponse\022\031\n\021" +
-      "is_master_running\030\001 \002(\010\"@\n\024ExecProcedure" +
-      "Request\022(\n\tprocedure\030\001 \002(\0132\025.ProcedureDe" +
-      "scription\"1\n\025ExecProcedureResponse\022\030\n\020ex" +
-      "pected_timeout\030\001 \002(\003\"B\n\026IsProcedureDoneR" +
-      "equest\022(\n\tprocedure\030\001 \001(\0132\025.ProcedureDes" +
-      "cription\"W\n\027IsProcedureDoneResponse\022\023\n\004d" +
-      "one\030\001 \001(\010:\005false\022\'\n\010snapshot\030\002 \001(\0132\025.Pro" +
-      "cedureDescription\"T\n\024TruncateTableReques" +
-      "t\022\035\n\ttableName\030\001 \002(\0132\n.TableName\022\035\n\016pres",
-      "erveSplits\030\002 \001(\010:\005false\"\027\n\025TruncateTable" +
-      "Response\"\273\001\n\017SetQuotaRequest\022\021\n\tuser_nam" +
-      "e\030\001 \001(\t\022\022\n\nuser_group\030\002 \001(\t\022\021\n\tnamespace" +
-      "\030\003 \001(\t\022\036\n\ntable_name\030\004 \001(\0132\n.TableName\022\022" +
-      "\n\nremove_all\030\005 \001(\010\022\026\n\016bypass_globals\030\006 \001" +
-      "(\010\022\"\n\010throttle\030\007 \001(\0132\020.ThrottleRequest\"\022" +
-      "\n\020SetQuotaResponse\"?\n\025SwitchThrottleRequ" +
-      "est\022&\n\016throttle_state\030\001 \002(\0162\016.ThrottleSt" +
-      "ate\"E\n\026SwitchThrottleResponse\022+\n\023prev_th" +
-      "rottle_state\030\001 \001(\0162\016.ThrottleState\"n\n\035Se",
-      "tSplitOrMergeEnabledRequest\022\017\n\007enabled\030\001" +
-      " \002(\010\022\023\n\013synchronous\030\002 \001(\010\022\'\n\014switch_type" +
-      "s\030\003 \003(\0162\021.MasterSwitchType\"4\n\036SetSplitOr" +
-      "MergeEnabledResponse\022\022\n\nprev_value\030\001 \003(\010" +
-      "\"F\n\034IsSplitOrMergeEnabledRequest\022&\n\013swit" +
-      "ch_type\030\001 \002(\0162\021.MasterSwitchType\"0\n\035IsSp" +
-      "litOrMergeEnabledResponse\022\017\n\007enabled\030\001 \002" +
-      "(\010\"A\n\013RegionQuota\022\016\n\006region\030\001 \002(\014\022\"\n\010thr" +
-      "ottle\030\002 \001(\0132\020.ThrottleRequest\";\n\025SetRegi" +
-      "onQuotaRequest\022\"\n\014region_quota\030\001 \002(\0132\014.R",
-      "egionQuota\"\030\n\026SetRegionQuotaResponse\"\030\n\026" +
-      "ListRegionQuotaRequest\"=\n\027ListRegionQuot" +
-      "aResponse\022\"\n\014region_quota\030\001 \003(\0132\014.Region" +
-      "Quota*(\n\020MasterSwitchType\022\t\n\005SPLIT\020\000\022\t\n\005" +
-      "MERGE\020\0012\361\"\n\rMasterService\022S\n\024GetSchemaAl" +
-      "terStatus\022\034.GetSchemaAlterStatusRequest\032" +
-      "\035.GetSchemaAlterStatusResponse\022P\n\023GetTab" +
-      "leDescriptors\022\033.GetTableDescriptorsReque" +
-      "st\032\034.GetTableDescriptorsResponse\022>\n\rGetT" +
-      "ableNames\022\025.GetTableNamesRequest\032\026.GetTa",
-      "bleNamesResponse\022G\n\020GetClusterStatus\022\030.G" +
-      "etClusterStatusRequest\032\031.GetClusterStatu" +
-      "sResponse\022D\n\017IsMasterRunning\022\027.IsMasterR" +
-      "unningRequest\032\030.IsMasterRunningResponse\022" +
-      "2\n\tAddColumn\022\021.AddColumnRequest\032\022.AddCol" +
-      "umnResponse\022;\n\014DeleteColumn\022\024.DeleteColu" +
-      "mnRequest\032\025.DeleteColumnResponse\022;\n\014Modi" +
-      "fyColumn\022\024.ModifyColumnRequest\032\025.ModifyC" +
-      "olumnResponse\0225\n\nMoveRegion\022\022.MoveRegion" +
-      "Request\032\023.MoveRegionResponse\022Y\n\026Dispatch",
-      "MergingRegions\022\036.DispatchMergingRegionsR" +
-      "equest\032\037.DispatchMergingRegionsResponse\022" +
-      ";\n\014AssignRegion\022\024.AssignRegionRequest\032\025." +
-      "AssignRegionResponse\022A\n\016UnassignRegion\022\026" +
-      ".UnassignRegionRequest\032\027.UnassignRegionR" +
-      "esponse\022>\n\rOfflineRegion\022\025.OfflineRegion" +
-      "Request\032\026.OfflineRegionResponse\0228\n\013Delet" +
-      "eTable\022\023.DeleteTableRequest\032\024.DeleteTabl" +
-      "eResponse\0228\n\013EnableTable\022\023.EnableTableRe" +
-      "quest\032\024.EnableTableResponse\022;\n\014DisableTa",
-      "ble\022\024.DisableTableRequest\032\025.DisableTable" +
-      "Response\0228\n\013ModifyTable\022\023.ModifyTableReq" +
-      "uest\032\024.ModifyTableResponse\0228\n\013CreateTabl" +
-      "e\022\023.CreateTableRequest\032\024.CreateTableResp" +
-      "onse\022/\n\010Shutdown\022\020.ShutdownRequest\032\021.Shu" +
-      "tdownResponse\0225\n\nStopMaster\022\022.StopMaster" +
-      "Request\032\023.StopMasterResponse\022,\n\007Balance\022" +
-      "\017.BalanceRequest\032\020.BalanceResponse\022M\n\022Se" +
-      "tBalancerRunning\022\032.SetBalancerRunningReq" +
-      "uest\032\033.SetBalancerRunningResponse\022A\n\016Run",
-      "CatalogScan\022\026.RunCatalogScanRequest\032\027.Ru" +
-      "nCatalogScanResponse\022S\n\024EnableCatalogJan" +
-      "itor\022\034.EnableCatalogJanitorRequest\032\035.Ena" +
-      "bleCatalogJanitorResponse\022\\\n\027IsCatalogJa" +
-      "nitorEnabled\022\037.IsCatalogJanitorEnabledRe" +
-      "quest\032 .IsCatalogJanitorEnabledResponse\022" +
-      "L\n\021ExecMasterService\022\032.CoprocessorServic" +
-      "eRequest\032\033.CoprocessorServiceResponse\022/\n" +
-      "\010Snapshot\022\020.SnapshotRequest\032\021.SnapshotRe" +
-      "sponse\022V\n\025GetCompletedSnapshots\022\035.GetCom",
-      "pletedSnapshotsRequest\032\036.GetCompletedSna" +
-      "pshotsResponse\022A\n\016DeleteSnapshot\022\026.Delet" +
-      "eSnapshotRequest\032\027.DeleteSnapshotRespons" +
-      "e\022A\n\016IsSnapshotDone\022\026.IsSnapshotDoneRequ" +
-      "est\032\027.IsSnapshotDoneResponse\022D\n\017RestoreS" +
-      "napshot\022\027.RestoreSnapshotRequest\032\030.Resto" +
-      "reSnapshotResponse\022V\n\025IsRestoreSnapshotD" +
-      "one\022\035.IsRestoreSnapshotDoneRequest\032\036.IsR" +
-      "estoreSnapshotDoneResponse\022>\n\rExecProced" +
-      "ure\022\025.ExecProcedureRequest\032\026.ExecProcedu",
-      "reResponse\022D\n\017IsProcedureDone\022\027.IsProced" +
-      "ureDoneRequest\032\030.IsProcedureDoneResponse" +
-      "\022D\n\017ModifyNamespace\022\027.ModifyNamespaceReq" +
-      "uest\032\030.ModifyNamespaceResponse\022D\n\017Create" +
-      "Namespace\022\027.CreateNamespaceRequest\032\030.Cre" +
-      "ateNamespaceResponse\022D\n\017DeleteNamespace\022" +
-      "\027.DeleteNamespaceRequest\032\030.DeleteNamespa" +
-      "ceResponse\022Y\n\026GetNamespaceDescriptor\022\036.G" +
-      "etNamespaceDescriptorRequest\032\037.GetNamesp" +
-      "aceDescriptorResponse\022_\n\030ListNamespaceDe",
-      "scriptors\022 .ListNamespaceDescriptorsRequ" +
-      "est\032!.ListNamespaceDescriptorsResponse\022t" +
-      "\n\037ListTableDescriptorsByNamespace\022\'.List" +
-      "TableDescriptorsByNamespaceRequest\032(.Lis" +
-      "tTableDescriptorsByNamespaceResponse\022b\n\031" +
-      "ListTableNamesByNamespace\022!.ListTableNam" +
-      "esByNamespaceRequest\032\".ListTableNamesByN" +
-      "amespaceResponse\022>\n\rtruncateTable\022\025.Trun" +
-      "cateTableRequest\032\026.TruncateTableResponse" +
-      "\022/\n\010SetQuota\022\020.SetQuotaRequest\032\021.SetQuot",
-      "aResponse\022A\n\016SwitchThrottle\022\026.SwitchThro" +
-      "ttleRequest\032\027.SwitchThrottleResponse\022M\n\022" +
-      "AddReplicationPeer\022\032.AddReplicationPeerR" +
-      "equest\032\033.AddReplicationPeerResponse\022V\n\025R" +
-      "emoveReplicationPeer\022\035.RemoveReplication" +
-      "PeerRequest\032\036.RemoveReplicationPeerRespo" +
-      "nse\022V\n\025EnableReplicationPeer\022\035.EnableRep" +
-      "licationPeerRequest\032\036.EnableReplicationP" +
-      "eerResponse\022Y\n\026DisableReplicationPeer\022\036." +
-      "DisableReplicationPeerRequest\032\037.DisableR",
-      "eplicationPeerResponse\022_\n\030GetReplication" +
-      "PeerConfig\022 .GetReplicationPeerConfigReq" +
-      "uest\032!.GetReplicationPeerConfigResponse\022" +
-      "h\n\033UpdateReplicationPeerConfig\022#.UpdateR" +
-      "eplicationPeerConfigRequest\032$.UpdateRepl" +
-      "icationPeerConfigResponse\022S\n\024ListReplica" +
-      "tionPeers\022\034.ListReplicationPeersRequest\032" +
-      "\035.ListReplicationPeersResponse\022b\n\031GetPee" +
-      "rMaxReplicationLoad\022!.GetPeerMaxReplicat" +
-      "ionLoadRequest\032\".GetPeerMaxReplicationLo",
-      "adResponse\022`\n\036ListReplicationPeersForBra" +
-      "nch2\022\034.ListReplicationPeersRequest\032 .New" +
-      "ListReplicationPeersResponse\022Z\n\034AddRepli" +
-      "cationPeerForBranch2\022\035.NewAddReplication" +
-      "PeerRequest\032\033.AddReplicationPeerResponse" +
-      "\022u\n%UpdateReplicationPeerConfigForBranch" +
-      "2\022&.NewUpdateReplicationPeerConfigReques" +
-      "t\032$.UpdateReplicationPeerConfigResponse\022" +
-      "Y\n\026SetSplitOrMergeEnabled\022\036.SetSplitOrMe" +
-      "rgeEnabledRequest\032\037.SetSplitOrMergeEnabl",
-      "edResponse\022V\n\025IsSplitOrMergeEnabled\022\035.Is" +
-      "SplitOrMergeEnabledRequest\032\036.IsSplitOrMe" +
-      "rgeEnabledResponse\022A\n\016SetRegionQuota\022\026.S" +
-      "etRegionQuotaRequest\032\027.SetRegionQuotaRes" +
-      "ponse\022D\n\017ListRegionQuota\022\027.ListRegionQuo" +
-      "taRequest\032\030.ListRegionQuotaResponseBB\n*o" +
-      "rg.apache.hadoop.hbase.protobuf.generate" +
-      "dB\014MasterProtosH\001\210\001\001\240\001\001"
+      "Descriptor\"\031\n\027ModifyNamespaceResponse\"6\n" +
+      "\035GetNamespaceDescriptorRequest\022\025\n\rnamesp" +
+      "aceName\030\001 \002(\t\"S\n\036GetNamespaceDescriptorR" +
+      "esponse\0221\n\023namespaceDescriptor\030\001 \002(\0132\024.N" +
+      "amespaceDescriptor\"!\n\037ListNamespaceDescr" +
+      "iptorsRequest\"U\n ListNamespaceDescriptor" +
+      "sResponse\0221\n\023namespaceDescriptor\030\001 \003(\0132\024",
+      ".NamespaceDescriptor\"?\n&ListTableDescrip" +
+      "torsByNamespaceRequest\022\025\n\rnamespaceName\030" +
+      "\001 \002(\t\"L\n\'ListTableDescriptorsByNamespace" +
+      "Response\022!\n\013tableSchema\030\001 \003(\0132\014.TableSch" +
+      "ema\"9\n ListTableNamesByNamespaceRequest\022" +
+      "\025\n\rnamespaceName\030\001 \002(\t\"B\n!ListTableNames" +
+      "ByNamespaceResponse\022\035\n\ttableName\030\001 \003(\0132\n" +
+      ".TableName\"\021\n\017ShutdownRequest\"\022\n\020Shutdow" +
+      "nResponse\"\023\n\021StopMasterRequest\"\024\n\022StopMa" +
+      "sterResponse\"\020\n\016BalanceRequest\"\'\n\017Balanc",
+      "eResponse\022\024\n\014balancer_ran\030\001 \002(\010\"<\n\031SetBa" +
+      "lancerRunningRequest\022\n\n\002on\030\001 \002(\010\022\023\n\013sync" +
+      "hronous\030\002 \001(\010\"8\n\032SetBalancerRunningRespo" +
+      "nse\022\032\n\022prev_balance_value\030\001 \001(\010\"\027\n\025RunCa" +
+      "talogScanRequest\"-\n\026RunCatalogScanRespon" +
+      "se\022\023\n\013scan_result\030\001 \001(\005\"-\n\033EnableCatalog" +
+      "JanitorRequest\022\016\n\006enable\030\001 \002(\010\"2\n\034Enable" +
+      "CatalogJanitorResponse\022\022\n\nprev_value\030\001 \001" +
+      "(\010\" \n\036IsCatalogJanitorEnabledRequest\"0\n\037" +
+      "IsCatalogJanitorEnabledResponse\022\r\n\005value",
+      "\030\001 \002(\010\"9\n\017SnapshotRequest\022&\n\010snapshot\030\001 " +
+      "\002(\0132\024.SnapshotDescription\",\n\020SnapshotRes" +
+      "ponse\022\030\n\020expected_timeout\030\001 \002(\003\"\036\n\034GetCo" +
+      "mpletedSnapshotsRequest\"H\n\035GetCompletedS" +
+      "napshotsResponse\022\'\n\tsnapshots\030\001 \003(\0132\024.Sn" +
+      "apshotDescription\"?\n\025DeleteSnapshotReque" +
+      "st\022&\n\010snapshot\030\001 \002(\0132\024.SnapshotDescripti" +
+      "on\"\030\n\026DeleteSnapshotResponse\"[\n\026RestoreS" +
+      "napshotRequest\022&\n\010snapshot\030\001 \002(\0132\024.Snaps" +
+      "hotDescription\022\031\n\nrestoreACL\030\002 \001(\010:\005fals",
+      "e\"\031\n\027RestoreSnapshotResponse\"?\n\025IsSnapsh" +
+      "otDoneRequest\022&\n\010snapshot\030\001 \001(\0132\024.Snapsh" +
+      "otDescription\"U\n\026IsSnapshotDoneResponse\022" +
+      "\023\n\004done\030\001 \001(\010:\005false\022&\n\010snapshot\030\002 \001(\0132\024" +
+      ".SnapshotDescription\"F\n\034IsRestoreSnapsho" +
+      "tDoneRequest\022&\n\010snapshot\030\001 \001(\0132\024.Snapsho" +
+      "tDescription\"4\n\035IsRestoreSnapshotDoneRes" +
+      "ponse\022\023\n\004done\030\001 \001(\010:\005false\"=\n\033GetSchemaA" +
+      "lterStatusRequest\022\036\n\ntable_name\030\001 \002(\0132\n." +
+      "TableName\"T\n\034GetSchemaAlterStatusRespons",
+      "e\022\035\n\025yet_to_update_regions\030\001 \001(\r\022\025\n\rtota" +
+      "l_regions\030\002 \001(\r\"L\n\032GetTableDescriptorsRe" +
+      "quest\022\037\n\013table_names\030\001 \003(\0132\n.TableName\022\r" +
+      "\n\005regex\030\002 \001(\t\"A\n\033GetTableDescriptorsResp" +
+      "onse\022\"\n\014table_schema\030\001 \003(\0132\014.TableSchema" +
+      "\"\026\n\024GetTableNamesRequest\"8\n\025GetTableName" +
+      "sResponse\022\037\n\013table_names\030\001 \003(\0132\n.TableNa" +
+      "me\"3\n\027GetClusterStatusRequest\022\030\n\007options" +
+      "\030\001 \003(\0162\007.Option\"B\n\030GetClusterStatusRespo" +
+      "nse\022&\n\016cluster_status\030\001 \002(\0132\016.ClusterSta",
+      "tus\"\030\n\026IsMasterRunningRequest\"4\n\027IsMaste" +
+      "rRunningResponse\022\031\n\021is_master_running\030\001 " +
+      "\002(\010\"@\n\024ExecProcedureRequest\022(\n\tprocedure" +
+      "\030\001 \002(\0132\025.ProcedureDescription\"1\n\025ExecPro" +
+      "cedureResponse\022\030\n\020expected_timeout\030\001 \002(\003" +
+      "\"B\n\026IsProcedureDoneRequest\022(\n\tprocedure\030" +
+      "\001 \001(\0132\025.ProcedureDescription\"W\n\027IsProced" +
+      "ureDoneResponse\022\023\n\004done\030\001 \001(\010:\005false\022\'\n\010" +
+      "snapshot\030\002 \001(\0132\025.ProcedureDescription\"T\n" +
+      "\024TruncateTableRequest\022\035\n\ttableName\030\001 \002(\013",
+      "2\n.TableName\022\035\n\016preserveSplits\030\002 \001(\010:\005fa" +
+      "lse\"\027\n\025TruncateTableResponse\"\273\001\n\017SetQuot" +
+      "aRequest\022\021\n\tuser_name\030\001 \001(\t\022\022\n\nuser_grou" +
+      "p\030\002 \001(\t\022\021\n\tnamespace\030\003 \001(\t\022\036\n\ntable_name" +
+      "\030\004 \001(\0132\n.TableName\022\022\n\nremove_all\030\005 \001(\010\022\026" +
+      "\n\016bypass_globals\030\006 \001(\010\022\"\n\010throttle\030\007 \001(\013" +
+      "2\020.ThrottleRequest\"\022\n\020SetQuotaResponse\"?" +
+      "\n\025SwitchThrottleRequest\022&\n\016throttle_stat" +
+      "e\030\001 \002(\0162\016.ThrottleState\"E\n\026SwitchThrottl" +
+      "eResponse\022+\n\023prev_throttle_state\030\001 \001(\0162\016",
+      ".ThrottleState\"n\n\035SetSplitOrMergeEnabled" +
+      "Request\022\017\n\007enabled\030\001 \002(\010\022\023\n\013synchronous\030" +
+      "\002 \001(\010\022\'\n\014switch_types\030\003 \003(\0162\021.MasterSwit" +
+      "chType\"4\n\036SetSplitOrMergeEnabledResponse" +
+      "\022\022\n\nprev_value\030\001 \003(\010\"F\n\034IsSplitOrMergeEn" +
+      "abledRequest\022&\n\013switch_type\030\001 \002(\0162\021.Mast" +
+      "erSwitchType\"0\n\035IsSplitOrMergeEnabledRes" +
+      "ponse\022\017\n\007enabled\030\001 \002(\010\"A\n\013RegionQuota\022\016\n" +
+      "\006region\030\001 \002(\014\022\"\n\010throttle\030\002 \001(\0132\020.Thrott" +
+      "leRequest\";\n\025SetRegionQuotaRequest\022\"\n\014re",
+      "gion_quota\030\001 \002(\0132\014.RegionQuota\"\030\n\026SetReg" +
+      "ionQuotaResponse\"\030\n\026ListRegionQuotaReque" +
+      "st\"=\n\027ListRegionQuotaResponse\022\"\n\014region_" +
+      "quota\030\001 \003(\0132\014.RegionQuota*(\n\020MasterSwitc" +
+      "hType\022\t\n\005SPLIT\020\000\022\t\n\005MERGE\020\0012\260\'\n\rMasterSe" +
+      "rvice\022S\n\024GetSchemaAlterStatus\022\034.GetSchem" +
+      "aAlterStatusRequest\032\035.GetSchemaAlterStat" +
+      "usResponse\022P\n\023GetTableDescriptors\022\033.GetT" +
+      "ableDescriptorsRequest\032\034.GetTableDescrip" +
+      "torsResponse\022>\n\rGetTableNames\022\025.GetTable",
+      "NamesRequest\032\026.GetTableNamesResponse\022G\n\020" +
+      "GetClusterStatus\022\030.GetClusterStatusReque" +
+      "st\032\031.GetClusterStatusResponse\022D\n\017IsMaste" +
+      "rRunning\022\027.IsMasterRunningRequest\032\030.IsMa" +
+      "sterRunningResponse\0222\n\tAddColumn\022\021.AddCo" +
+      "lumnRequest\032\022.AddColumnResponse\022;\n\014Delet" +
+      "eColumn\022\024.DeleteColumnRequest\032\025.DeleteCo" +
+      "lumnResponse\022;\n\014ModifyColumn\022\024.ModifyCol" +
+      "umnRequest\032\025.ModifyColumnResponse\0225\n\nMov" +
+      "eRegion\022\022.MoveRegionRequest\032\023.MoveRegion",
+      "Response\022Y\n\026DispatchMergingRegions\022\036.Dis" +
+      "patchMergingRegionsRequest\032\037.DispatchMer" +
+      "gingRegionsResponse\022;\n\014AssignRegion\022\024.As" +
+      "signRegionRequest\032\025.AssignRegionResponse" +
+      "\022A\n\016UnassignRegion\022\026.UnassignRegionReque" +
+      "st\032\027.UnassignRegionResponse\022>\n\rOfflineRe" +
+      "gion\022\025.OfflineRegionRequest\032\026.OfflineReg" +
+      "ionResponse\0228\n\013DeleteTable\022\023.DeleteTable" +
+      "Request\032\024.DeleteTableResponse\0228\n\013EnableT" +
+      "able\022\023.EnableTableRequest\032\024.EnableTableR",
+      "esponse\022;\n\014DisableTable\022\024.DisableTableRe" +
+      "quest\032\025.DisableTableResponse\0228\n\013ModifyTa" +
+      "ble\022\023.ModifyTableRequest\032\024.ModifyTableRe" +
+      "sponse\0228\n\013CreateTable\022\023.CreateTableReque" +
+      "st\032\024.CreateTableResponse\022/\n\010Shutdown\022\020.S" +
+      "hutdownRequest\032\021.ShutdownResponse\0225\n\nSto" +
+      "pMaster\022\022.StopMasterRequest\032\023.StopMaster" +
+      "Response\022,\n\007Balance\022\017.BalanceRequest\032\020.B" +
+      "alanceResponse\022M\n\022SetBalancerRunning\022\032.S" +
+      "etBalancerRunningRequest\032\033.SetBalancerRu",
+      "nningResponse\022A\n\016RunCatalogScan\022\026.RunCat" +
+      "alogScanRequest\032\027.RunCatalogScanResponse" +
+      "\022S\n\024EnableCatalogJanitor\022\034.EnableCatalog" +
+      "JanitorRequest\032\035.EnableCatalogJanitorRes" +
+      "ponse\022\\\n\027IsCatalogJanitorEnabled\022\037.IsCat" +
+      "alogJanitorEnabledRequest\032 .IsCatalogJan" +
+      "itorEnabledResponse\022L\n\021ExecMasterService" +
+      "\022\032.CoprocessorServiceRequest\032\033.Coprocess" +
+      "orServiceResponse\022/\n\010Snapshot\022\020.Snapshot" +
+      "Request\032\021.SnapshotResponse\022V\n\025GetComplet",
+      "edSnapshots\022\035.GetCompletedSnapshotsReque" +
+      "st\032\036.GetCompletedSnapshotsResponse\022A\n\016De" +
+      "leteSnapshot\022\026.DeleteSnapshotRequest\032\027.D" +
+      "eleteSnapshotResponse\022A\n\016IsSnapshotDone\022" +
+      "\026.IsSnapshotDoneRequest\032\027.IsSnapshotDone" +
+      "Response\022D\n\017RestoreSnapshot\022\027.RestoreSna" +
+      "pshotRequest\032\030.RestoreSnapshotResponse\022V" +
+      "\n\025IsRestoreSnapshotDone\022\035.IsRestoreSnaps" +
+      "hotDoneRequest\032\036.IsRestoreSnapshotDoneRe" +
+      "sponse\022>\n\rExecProcedure\022\025.ExecProcedureR",
+      "equest\032\026.ExecProcedureResponse\022D\n\017IsProc" +
+      "edureDone\022\027.IsProcedureDoneRequest\032\030.IsP" +
+      "rocedureDoneResponse\022D\n\017ModifyNamespace\022" +
+      "\027.ModifyNamespaceRequest\032\030.ModifyNamespa" +
+      "ceResponse\022D\n\017CreateNamespace\022\027.CreateNa" +
+      "mespaceRequest\032\030.CreateNamespaceResponse" +
+      "\022D\n\017DeleteNamespace\022\027.DeleteNamespaceReq" +
+      "uest\032\030.DeleteNamespaceResponse\022Y\n\026GetNam" +
+      "espaceDescriptor\022\036.GetNamespaceDescripto" +
+      "rRequest\032\037.GetNamespaceDescriptorRespons",
+      "e\022_\n\030ListNamespaceDescriptors\022 .ListName" +
+      "spaceDescriptorsRequest\032!.ListNamespaceD" +
+      "escriptorsResponse\022t\n\037ListTableDescripto" +
+      "rsByNamespace\022\'.ListTableDescriptorsByNa" +
+      "mespaceRequest\032(.ListTableDescriptorsByN" +
+      "amespaceResponse\022b\n\031ListTableNamesByName" +
+      "space\022!.ListTableNamesByNamespaceRequest" +
+      "\032\".ListTableNamesByNamespaceResponse\022>\n\r" +
+      "truncateTable\022\025.TruncateTableRequest\032\026.T" +
+      "runcateTableResponse\022/\n\010SetQuota\022\020.SetQu",
+      "otaRequest\032\021.SetQuotaResponse\022A\n\016SwitchT" +
+      "hrottle\022\026.SwitchThrottleRequest\032\027.Switch" +
+      "ThrottleResponse\022M\n\022AddReplicationPeer\022\032" +
+      ".AddReplicationPeerRequest\032\033.AddReplicat" +
+      "ionPeerResponse\022V\n\025RemoveReplicationPeer" +
+      "\022\035.RemoveReplicationPeerRequest\032\036.Remove" +
+      "ReplicationPeerResponse\022V\n\025EnableReplica" +
+      "tionPeer\022\035.EnableReplicationPeerRequest\032" +
+      "\036.EnableReplicationPeerResponse\022Y\n\026Disab" +
+      "leReplicationPeer\022\036.DisableReplicationPe",
+      "erRequest\032\037.DisableReplicationPeerRespon" +
+      "se\022_\n\030GetReplicationPeerConfig\022 .GetRepl" +
+      "icationPeerConfigRequest\032!.GetReplicatio" +
+      "nPeerConfigResponse\022h\n\033UpdateReplication" +
+      "PeerConfig\022#.UpdateReplicationPeerConfig" +
+      "Request\032$.UpdateReplicationPeerConfigRes" +
+      "ponse\022S\n\024ListReplicationPeers\022\034.ListRepl" +
+      "icationPeersRequest\032\035.ListReplicationPee" +
+      "rsResponse\022b\n\031GetPeerMaxReplicationLoad\022" +
+      "!.GetPeerMaxReplicationLoadRequest\032\".Get",
+      "PeerMaxReplicationLoadResponse\022`\n\036ListRe" +
+      "plicationPeersForBranch2\022\034.ListReplicati" +
+      "onPeersRequest\032 .NewListReplicationPeers" +
+      "Response\022Z\n\034AddReplicationPeerForBranch2" +
+      "\022\035.NewAddReplicationPeerRequest\032\033.AddRep" +
+      "licationPeerResponse\022u\n%UpdateReplicatio" +
+      "nPeerConfigForBranch2\022&.NewUpdateReplica" +
+      "tionPeerConfigRequest\032$.UpdateReplicatio" +
+      "nPeerConfigResponse\022Y\n\026SetSplitOrMergeEn" +
+      "abled\022\036.SetSplitOrMergeEnabledRequest\032\037.",
+      "SetSplitOrMergeEnabledResponse\022V\n\025IsSpli" +
+      "tOrMergeEnabled\022\035.IsSplitOrMergeEnabledR" +
+      "equest\032\036.IsSplitOrMergeEnabledResponse\022A" +
+      "\n\016SetRegionQuota\022\026.SetRegionQuotaRequest" +
+      "\032\027.SetRegionQuotaResponse\022D\n\017ListRegionQ" +
+      "uota\022\027.ListRegionQuotaRequest\032\030.ListRegi" +
+      "onQuotaResponse\022A\n\016GetRSGroupInfo\022\026.GetR" +
+      "SGroupInfoRequest\032\027.GetRSGroupInfoRespon" +
+      "se\022V\n\025GetRSGroupInfoOfTable\022\035.GetRSGroup" +
+      "InfoOfTableRequest\032\036.GetRSGroupInfoOfTab",
+      "leResponse\0225\n\nMoveTables\022\022.MoveTablesReq" +
+      "uest\032\023.MoveTablesResponse\0225\n\nAddRSGroup\022" +
+      "\022.AddRSGroupRequest\032\023.AddRSGroupResponse" +
+      "\022>\n\rRemoveRSGroup\022\025.RemoveRSGroupRequest" +
+      "\032\026.RemoveRSGroupResponse\022P\n\023UpdateRSGrou" +
+      "pConfig\022\033.UpdateRSGroupConfigRequest\032\034.U" +
+      "pdateRSGroupConfigResponse\022Y\n\026DissolveRS" +
+      "GroupLocally\022\036.DissolveRSGroupLocallyReq" +
+      "uest\032\037.DissolveRSGroupLocallyResponse\022G\n" +
+      "\020ListRSGroupInfos\022\030.ListRSGroupInfosRequ",
+      "est\032\031.ListRSGroupInfosResponseBB\n*org.ap" +
+      "ache.hadoop.hbase.protobuf.generatedB\014Ma" +
+      "sterProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -54611,6 +55194,7 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.getDescriptor(),
+          org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.getDescriptor(),
         }, assigner);
   }
 

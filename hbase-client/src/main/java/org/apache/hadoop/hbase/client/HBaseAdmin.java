@@ -19,6 +19,8 @@
 package org.apache.hadoop.hbase.client;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.RpcCallback;
+import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
@@ -37,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -80,6 +83,7 @@ import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.ipc.HBaseRpcControllerImpl;
 import org.apache.hadoop.hbase.ipc.MasterCoprocessorRpcChannel;
 import org.apache.hadoop.hbase.ipc.RegionServerCoprocessorRpcChannel;
+import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
@@ -156,6 +160,16 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
@@ -170,6 +184,7 @@ import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
@@ -3998,5 +4013,144 @@ public class HBaseAdmin implements Abortable, Closeable {
     for (ServerName sn : servers) {
       updateConfiguration(sn);
     }
+  }
+
+  /**
+   * Get group info for the given group name
+   * @param groupName the group name
+   * @return group info
+   * @throws IOException if a remote or network exception occurs
+   */
+  public RSGroupInfo getRSGroup(String groupName) throws IOException {
+    return executeCallable(new MasterCallable<RSGroupInfo>(getConnection()) {
+      @Override
+      protected RSGroupInfo rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        GetRSGroupInfoRequest req = GetRSGroupInfoRequest.newBuilder().setRSGroupName(groupName)
+            .build();
+        GetRSGroupInfoResponse resp = master.getRSGroupInfo(controller, req);
+        if (resp.hasRSGroupInfo()) {
+          return ProtobufUtil.toGroupInfo(resp.getRSGroupInfo());
+        }
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Get group info for the given table
+   * @param tableName table name to get RSGroupInfo for
+   * @throws IOException if a remote or network exception occurs
+   */
+  public RSGroupInfo getRSGroup(TableName tableName) throws IOException {
+    return executeCallable(new MasterCallable<RSGroupInfo>(getConnection()) {
+      @Override
+      protected RSGroupInfo rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        GetRSGroupInfoOfTableRequest request = GetRSGroupInfoOfTableRequest.newBuilder()
+            .setTableName(ProtobufUtil.toProtoTableName(tableName)).build();
+        GetRSGroupInfoOfTableResponse resp = master.getRSGroupInfoOfTable(controller, request);
+        if (resp.hasRSGroupInfo()) {
+          return ProtobufUtil.toGroupInfo(resp.getRSGroupInfo());
+        }
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Creates a new RegionServer group with the given name
+   * @param groupName the name of the group
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void addRSGroup(String groupName) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        AddRSGroupRequest req = AddRSGroupRequest.newBuilder().setRSGroupName(groupName).build();
+        master.addRSGroup(controller, req);
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Remove RegionServer group associated with the given name
+   * @param groupName the group name
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void removeRSGroup(String groupName) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        RemoveRSGroupRequest req = RemoveRSGroupRequest.newBuilder().setRSGroupName(groupName)
+            .build();
+        master.removeRSGroup(controller, req);
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Update RSGroup configuration
+   * @param groupName the group name
+   * @param configuration new configuration of the group name to be set
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void updateRSGroupConfig(String groupName, Map<String, String> configuration)
+      throws IOException {
+    UpdateRSGroupConfigRequest.Builder req = UpdateRSGroupConfigRequest.newBuilder()
+        .setGroupName(groupName);
+    if (configuration != null) {
+      configuration.entrySet().forEach(e ->
+          req.addConfiguration(NameStringPair.newBuilder().setName(e.getKey())
+              .setValue(e.getValue()).build()));
+    }
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        master.updateRSGroupConfig(controller, req.build());
+        return null;
+      }
+    });
+  }
+
+  /**
+   * remove a rsgroup, dissolved servers in group locally, avoid moving regions on a massive scale.
+   * @param groupName the group name
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void dissolveRSGroupLocally(String groupName)
+      throws IOException {
+    DissolveRSGroupLocallyRequest.Builder req = DissolveRSGroupLocallyRequest.newBuilder()
+        .setGroupName(groupName);
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        master.dissolveRSGroupLocally(controller, req.build());
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Lists current set of RegionServer groups
+   * @throws IOException if a remote or network exception occurs
+   */
+  public List<RSGroupInfo> listRSGroups() throws IOException {
+    return executeCallable(new MasterCallable<List<RSGroupInfo>>(getConnection()) {
+      @Override
+      protected List<RSGroupInfo> rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
+        ListRSGroupInfosResponse resp = master.listRSGroupInfos(controller,
+            ListRSGroupInfosRequest.newBuilder().build());
+        return resp.getRSGroupInfoList().stream().map(ProtobufUtil::toGroupInfo)
+            .collect(Collectors.toList());
+      }
+    });
   }
 }

@@ -95,6 +95,7 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.LimitInputStream;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
+import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.AccessControlService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
@@ -150,6 +151,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RegionQuota;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerStartupRequest;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
@@ -164,6 +166,7 @@ import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.quotas.ThrottleType;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSink;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.TablePermission;
 import org.apache.hadoop.hbase.security.access.UserPermission;
@@ -3581,5 +3584,18 @@ public final class ProtobufUtil {
   public static RegionQuota createRegionQuota(String regionName, ThrottleRequest throttle) {
     return RegionQuota.newBuilder().setRegion(ByteStringer.wrap(regionName.getBytes()))
         .setThrottle(throttle).build();
+  }
+
+  public static RSGroupInfo toGroupInfo(RSGroupProtos.RSGroupInfo proto) {
+    RSGroupInfo rsGroupInfo = new RSGroupInfo(proto.getName());
+    for(HBaseProtos.ServerName el: proto.getServersList()) {
+      rsGroupInfo.addServer(Address.fromParts(el.getHostName(), el.getPort()));
+    }
+    for(HBaseProtos.TableName pTableName: proto.getTablesList()) {
+      rsGroupInfo.addTable(ProtobufUtil.toTableName(pTableName));
+    }
+    proto.getConfigurationList().forEach(pair ->
+        rsGroupInfo.setConfiguration(pair.getName(), pair.getValue()));
+    return rsGroupInfo;
   }
 }

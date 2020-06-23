@@ -167,6 +167,22 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.MoveTablesResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest;
+import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse;
@@ -1827,6 +1843,58 @@ public class HConnectionImplementation implements HConnection, Closeable {
       public ListRegionQuotaResponse listRegionQuota(RpcController controller,
           ListRegionQuotaRequest request) throws ServiceException {
         return stub.listRegionQuota(controller, request);
+      }
+
+      @Override
+      public GetRSGroupInfoResponse
+      getRSGroupInfo(RpcController controller, GetRSGroupInfoRequest request)
+          throws ServiceException {
+        return stub.getRSGroupInfo(controller, request);
+      }
+
+      @Override
+      public GetRSGroupInfoOfTableResponse
+      getRSGroupInfoOfTable(RpcController controller, GetRSGroupInfoOfTableRequest request) throws ServiceException {
+        return stub.getRSGroupInfoOfTable(controller, request);
+      }
+
+      @Override
+      public MoveTablesResponse
+      moveTables(RpcController controller, MoveTablesRequest request) throws ServiceException {
+        return stub.moveTables(controller, request);
+      }
+
+      @Override
+      public AddRSGroupResponse
+      addRSGroup(RpcController controller, AddRSGroupRequest request) throws ServiceException {
+        return stub.addRSGroup(controller, request);
+      }
+
+      @Override
+      public RemoveRSGroupResponse
+      removeRSGroup(RpcController controller, RemoveRSGroupRequest request)
+          throws ServiceException {
+        return stub.removeRSGroup(controller, request);
+      }
+
+      @Override
+      public UpdateRSGroupConfigResponse
+      updateRSGroupConfig(RpcController controller, UpdateRSGroupConfigRequest request)
+          throws ServiceException {
+        return stub.updateRSGroupConfig(controller, request);
+      }
+
+      @Override
+      public DissolveRSGroupLocallyResponse dissolveRSGroupLocally(RpcController controller,
+          DissolveRSGroupLocallyRequest request) throws ServiceException {
+        return stub.dissolveRSGroupLocally(controller, request);
+      }
+
+      @Override
+      public ListRSGroupInfosResponse
+      listRSGroupInfos(RpcController controller, ListRSGroupInfosRequest request)
+          throws ServiceException {
+        return stub.listRSGroupInfos(controller, request);
       }
     };
   }

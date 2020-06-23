@@ -31,6 +31,7 @@ import "ClusterStatus.proto";
 import "Quota.proto";
 import "Snapshot.proto";
 import "Replication.proto";
+import "RSGroupAdmin.proto";
 
 /* Column-level protobufs */
 
@@ -689,4 +690,23 @@ service MasterService {
 
   rpc SetRegionQuota (SetRegionQuotaRequest) returns (SetRegionQuotaResponse);
   rpc ListRegionQuota (ListRegionQuotaRequest) returns (ListRegionQuotaResponse);
+
+  /* rsgroup APIs for branch-2.x */
+
+  rpc GetRSGroupInfo(GetRSGroupInfoRequest) returns (GetRSGroupInfoResponse);
+
+  rpc GetRSGroupInfoOfTable(GetRSGroupInfoOfTableRequest) returns (GetRSGroupInfoOfTableResponse);
+
+  rpc MoveTables(MoveTablesRequest) returns (MoveTablesResponse);
+
+  rpc AddRSGroup(AddRSGroupRequest) returns (AddRSGroupResponse);
+
+  rpc RemoveRSGroup(RemoveRSGroupRequest) returns (RemoveRSGroupResponse);
+
+  rpc UpdateRSGroupConfig(UpdateRSGroupConfigRequest) returns (UpdateRSGroupConfigResponse);
+
+  rpc DissolveRSGroupLocally(DissolveRSGroupLocallyRequest)
+    returns (DissolveRSGroupLocallyResponse);
+
+  rpc ListRSGroupInfos(ListRSGroupInfosRequest) returns (ListRSGroupInfosResponse);
 }
