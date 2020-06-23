@@ -68,21 +68,24 @@ public class OpenTSDBCompactRegionObserver implements RegionCoprocessor, RegionO
       return scanner;
     }
     Configuration conf = c.getEnvironment().getConfiguration();
-    // before hourWindow hours from now, need compact
-    long hourWindow = conf.getInt("hbase.opentsdb.compaction.hour.before", 1);
-    return new OpenTSDBCompactScanner(scanner, store, hourWindow);
+    return new OpenTSDBCompactScanner(scanner, store, conf);
   }
 
   static class OpenTSDBCompactScanner implements InternalScanner {
+    private final Configuration conf;
     // is StoreScanner
     private InternalScanner scanner;
     // in seconds
     private final long compactTimeStamp;
 
-    OpenTSDBCompactScanner(InternalScanner scanner, Store store, long hour) {
+    OpenTSDBCompactScanner(InternalScanner scanner, Store store, Configuration conf) {
+      this.conf = conf;
       this.scanner = scanner;
-      // seconds. Compact before compactTimeStamp Cells
-      this.compactTimeStamp = EnvironmentEdgeManager.currentTime() / 1000 - hour * ONE_HOUR_SECONDS - 1;
+      // Cells before hourWindow hours from now, need compact
+      long hourWindow = conf.getInt("hbase.opentsdb.compaction.hour.before", 1);
+      // Only compact Cells which timestamp < compactTimeStamp(Unix timestamp in second).
+      this.compactTimeStamp = EnvironmentEdgeManager.currentTime() / 1000
+        - hourWindow * ONE_HOUR_SECONDS - 1;
       LOG.info("Created OpenTSDBCompactScanner, table name=" + store.getTableName()
           + ", store cf=" + store.getColumnFamilyName()
           + ", compactTimeStamp=" + compactTimeStamp);
@@ -131,7 +134,7 @@ public class OpenTSDBCompactRegionObserver implements RegionCoprocessor, RegionO
       // do compact one rowkey rowCells
       // Not datapoint cells do not compact, just return them unchanged.
       List<Cell> skipCompactCells = new ArrayList<Cell>();
-      Cell compacted = new OpenTSDBCompaction(results, skipCompactCells).compact();
+      Cell compacted = new OpenTSDBCompaction(results, skipCompactCells, conf).compact();
       if (null == compacted) {
         // something wrong when compact, just return
         if (LOG.isDebugEnabled()) {

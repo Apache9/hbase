@@ -1,5 +1,6 @@
 package com.xiaomi.infra.hbase.coprocessor.opentsdb;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -22,6 +23,7 @@ import static com.xiaomi.infra.hbase.coprocessor.opentsdb.OpenTSDBUtil.USE_OTSDB
 @InterfaceAudience.Private
 public class OpenTSDBCompaction {
   private static final Logger LOG = LoggerFactory.getLogger(OpenTSDBCompaction.class);
+  private final Configuration conf;
   private final List<Cell> row;
   private long compactedKVTimestamp;
   private List<Cell> skipCompactCells;
@@ -44,16 +46,22 @@ public class OpenTSDBCompaction {
   // and if we only had a single column with a single value, we return this.
   private Cell last_append_column;
 
+  // whether use the data point's timestamp for compacted cell or default now
+  private boolean use_otsdb_timestamp;
+
   /**
    * Constructor for Compaction
    * @param row row cells to compact
    * @param skipCells out list
    */
-  public OpenTSDBCompaction(List<Cell> row, List<Cell> skipCells) {
+  public OpenTSDBCompaction(List<Cell> row, List<Cell> skipCells, Configuration conf) {
     nkvs = row.size();
     this.row = row;
     compactedKVTimestamp = Long.MIN_VALUE;
     this.skipCompactCells = skipCells;
+    this.conf = conf;
+    this.use_otsdb_timestamp =
+      conf.getBoolean("hbase.opentsdb.compaction.use.otsdb.timestamp", USE_OTSDB_TIMESTAMP);
   }
 
   /**
@@ -214,7 +222,6 @@ public class OpenTSDBCompaction {
   private void mergeDatapoints(ByteBufferList compacted_qual,
                                ByteBufferList compacted_val) {
     // defalut tsdb.getConfig().use_otsdb_timestamp() = false
-    boolean use_otsdb_timestamp = USE_OTSDB_TIMESTAMP;
     if (use_otsdb_timestamp) {
       dtcsMergeDataPoints(compacted_qual, compacted_val);
     } else {
@@ -323,7 +330,6 @@ public class OpenTSDBCompaction {
 
     final Cell first = row.get(0);
     // tsdb.getConfig().getBoolean("tsd.storage.use_otsdb_timestamp")
-    boolean use_otsdb_timestamp = USE_OTSDB_TIMESTAMP;
     if (use_otsdb_timestamp) {
       // discard Cell: mvcc tags.
       return CellUtil.createCell(CellUtil.cloneRow(first), CellUtil.cloneFamily(first),

@@ -17,6 +17,7 @@
  */
 package com.xiaomi.infra.hbase.coprocessor;
 
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -39,6 +40,7 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -73,6 +75,8 @@ public class TestOpenTSDBCompactRegionObserver {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setInt("hbase.hstore.compactionThreshold", 1);
+    TEST_UTIL.getConfiguration()
+      .setBoolean("hbase.opentsdb.compaction.use.otsdb.timestamp", true);
     TEST_UTIL.startMiniCluster(1);
     HTableDescriptor htd = new HTableDescriptor(TSDB);
     htd.addFamily(new HColumnDescriptor(CF));
@@ -95,10 +99,16 @@ public class TestOpenTSDBCompactRegionObserver {
   @Test
   public void test() throws Exception {
     loadData(TSDB);
+    // test maxTs equals compacted cell timestamp
+    long maxTs = 0;
     try (Table table = conn.getTable(TSDB);) {
       assertAllExists(table);
       Result result1 = table.get(new Get(ROWKEY_1));
-      LOG.info("rowkey1 has 2 cells "+result1.size());
+      for (Cell c: result1.listCells()) {
+        maxTs = Math.max(maxTs, c.getTimestamp());
+      }
+      LOG.info("rowkey1 has 2 cells: " + result1.size()
+        + " maxTs: "+maxTs);
       Result result2 = table.get(new Get(ROWKEY_2));
       LOG.info("rowkey2 has 1 cells "+result2.size());
     }
@@ -114,6 +124,9 @@ public class TestOpenTSDBCompactRegionObserver {
       assertAllExists(table);
       // rowkey1 and rowkey2 should have only one cell
       Result result1 = table.get(new Get(ROWKEY_1));
+      long compactedTs = result1.listCells().get(0).getTimestamp();
+      LOG.info("compacted ts " + compactedTs);
+      assertEquals("Compacted timestamp equals cells max timestamp", maxTs, compactedTs);
       assertTrue("Compacted only one cell", (result1.size() == 1));
       Result result2 = table.get(new Get(ROWKEY_2));
       assertTrue("Compacted only one cell", (result2.size() == 1));

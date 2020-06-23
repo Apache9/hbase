@@ -15,8 +15,8 @@ public class OpenTSDBUtil {
   // our xiaomi opentsdb cluster use 4 bytes width
   public static final short METRIC_WIDTH = 4;
 
-  // our opentsdb set default false.
-  public static final boolean USE_OTSDB_TIMESTAMP = false;
+  // Use origin opentsdb max timestamp for compacted cell
+  public static final boolean USE_OTSDB_TIMESTAMP = true;
 
   /**
    * Number of LSBs in time_deltas reserved for flags.
