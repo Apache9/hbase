@@ -80,7 +80,7 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
             + " state znode " + peerStateNode);
       }
     } catch (KeeperException e) {
-      LOG.warn("Failed to set owner for replication peers znode", e);
+      LOG.error("Failed to set owner for replication peers znode", e);
     }
   }
 
@@ -118,8 +118,8 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
       LOG.info("Successfully upgrade replication peer " + peerId + " config " + peerConfig
           + " to new branch-2 format");
     } catch (IOException | KeeperException e) {
-      LOG.info("Failed upgrade replication peer " + peerId + " config " + peerConfig
-          + " to new branch-2 format");
+      LOG.error("Failed upgrade replication peer " + peerId + " config " + peerConfig
+          + " to new branch-2 format", e);
     }
   }
 
@@ -142,7 +142,7 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
           ReplicationSerDeHelper.toByteArray(newPeerConfig));
       LOG.info("Successfully downgrade replication peer " + peerId + " config to " + newPeerConfig);
     } catch (IOException | KeeperException | DeserializationException e) {
-      LOG.info("Failed downgrade replication peer " + peerId + " config", e);
+      LOG.error("Failed downgrade replication peer " + peerId + " config", e);
     }
   }
 
@@ -178,7 +178,7 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
     try {
       znodes = ZKUtil.listChildrenNoWatch(this.zookeeper, this.peersZNode);
     } catch (KeeperException e) {
-      LOG.warn("", e);
+      LOG.error("Failed to list replication peers znode", e);
     }
     if (znodes != null) {
       for (String peerId : znodes) {
@@ -209,13 +209,13 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
         }
       }
     } catch (KeeperException e) {
-      LOG.warn("NOTICE!! Update peerId failed, peerId=" + peerId, e);
+      LOG.error("NOTICE!! Update peerId failed, peerId=" + peerId, e);
       return false;
     } catch (InterruptedException e) {
-      LOG.warn("NOTICE!! Update peerId failed, peerId=" + peerId, e);
+      LOG.error("NOTICE!! Update peerId failed, peerId=" + peerId, e);
       return false;
     } catch (IOException e) {
-      LOG.warn("NOTICE!! Update peerId failed, peerId=" + peerId, e);
+      LOG.error("NOTICE!! Update peerId failed, peerId=" + peerId, e);
       return false;
     }
     return true;
@@ -233,7 +233,7 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
     try {
       return ReplicationSerDeHelper.parsePeerFrom(data);
     } catch (DeserializationException e) {
-      LOG.warn("Failed to parse cluster key from peer=" + peerNode);
+      LOG.error("Failed to parse cluster key from peer=" + peerNode, e);
       return null;
     }
   }
