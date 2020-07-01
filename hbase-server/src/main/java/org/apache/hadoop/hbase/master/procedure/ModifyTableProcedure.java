@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ConcurrentTableModificationException;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
@@ -46,6 +47,7 @@ import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.replication.ReplicationPeerManager;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -280,8 +282,6 @@ public class ModifyTableProcedure
 
   /**
    * Check conditions before any real action of modifying a table.
-   * @param env MasterProcedureEnv
-   * @throws IOException
    */
   private void prepareModify(final MasterProcedureEnv env) throws IOException {
     // Checks whether the table exists
@@ -324,6 +324,14 @@ public class ModifyTableProcedure
     }
     this.deleteColumnFamilyInModify = isDeleteColumnFamily(unmodifiedTableDescriptor,
       modifiedTableDescriptor);
+    if (!unmodifiedTableDescriptor.getRegionServerGroup()
+      .equals(modifiedTableDescriptor.getRegionServerGroup())) {
+      Supplier<String> forWhom = () -> "table " + getTableName();
+      RSGroupInfo rsGroupInfo = MasterProcedureUtil.checkGroupExists(
+        env.getMasterServices().getRSGroupInfoManager()::getRSGroup,
+        modifiedTableDescriptor.getRegionServerGroup(), forWhom);
+      MasterProcedureUtil.checkGroupNotEmpty(rsGroupInfo, forWhom);
+    }
   }
 
   /**

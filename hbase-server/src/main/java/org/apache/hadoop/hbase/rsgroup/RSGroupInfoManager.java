@@ -17,11 +17,12 @@
  */
 package org.apache.hadoop.hbase.rsgroup;
 
-
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.yetus.audience.InterfaceAudience;
 
@@ -46,13 +47,8 @@ public interface RSGroupInfoManager {
 
   /**
    * Move servers to a new group.
-   * @param servers list of servers, must be part of the same group
-   * @param srcGroup groupName being moved from
-   * @param dstGroup groupName being moved to
-   * @return Set of servers moved (May be a subset of {@code servers}).
    */
-  Set<Address> moveServers(Set<Address> servers, String srcGroup, String dstGroup)
-      throws IOException;
+  void moveServers(Set<Address> servers, String targetGroupName) throws IOException;
 
   /**
    * Gets the group info of server.
@@ -65,26 +61,9 @@ public interface RSGroupInfoManager {
   RSGroupInfo getRSGroup(String groupName) throws IOException;
 
   /**
-   * Get the group membership of a table
-   */
-  String getRSGroupOfTable(TableName tableName) throws IOException;
-
-  /**
-   * Set the group membership of a set of tables
-   * @param tableNames set of tables to move
-   * @param groupName name of group of tables to move to
-   */
-  void moveTables(Set<TableName> tableNames, String groupName) throws IOException;
-
-  /**
    * List the existing {@code RSGroupInfo}s.
    */
   List<RSGroupInfo> listRSGroups() throws IOException;
-
-  /**
-   * Refresh/reload the group information from the persistent store
-   */
-  void refresh() throws IOException;
 
   /**
    * Whether the manager is able to fully return group metadata
@@ -93,20 +72,15 @@ public interface RSGroupInfoManager {
   boolean isOnline();
 
   /**
-   * Move servers and tables to a new group.
-   * @param servers list of servers, must be part of the same group
-   * @param tables set of tables to move
-   * @param srcGroup groupName being moved from
-   * @param dstGroup groupName being moved to
-   */
-  void moveServersAndTables(Set<Address> servers, Set<TableName> tables, String srcGroup,
-      String dstGroup) throws IOException;
-
-  /**
    * Remove decommissioned servers from rsgroup
    * @param servers set of servers to remove
    */
   void removeServers(Set<Address> servers) throws IOException;
+
+  /**
+   * Get {@code RSGroupInfo} for the given table.
+   */
+  RSGroupInfo getRSGroupForTable(TableName tableName) throws IOException;
 
   /**
    * Rename RSGroup
@@ -121,4 +95,38 @@ public interface RSGroupInfoManager {
    * @return {@link RSGroupInfo} which table should belong to
    */
   RSGroupInfo determineRSGroupInfoForTable(TableName tableName) throws IOException;
+
+  /**
+   * Balance a region server group.
+   */
+  boolean balanceRSGroup(String groupName) throws IOException;
+
+  /**
+   * Set group for tables.
+   */
+  void setRSGroup(Set<TableName> tables, String groupName) throws IOException;
+
+  /**
+   * Update RSGroup configuration
+   * @param groupName the group name
+   * @param configuration new configuration of the group name to be set
+   * @throws IOException if a remote or network exception occurs
+   */
+  void updateRSGroupConfig(String groupName, Map<String, String> configuration) throws IOException;
+
+  /**
+   * remove a rsgroup, dissolved servers in group locally, avoid moving regions on a massive scale.
+   * @param groupName the group name to dissolve
+   * @throws IOException if a remote or network exception occurs
+   */
+  void dissolveRSGroupLocally(String groupName) throws IOException;
+
+  static RSGroupInfoManager create(MasterServices master) throws IOException {
+    if (RSGroupUtil.isRSGroupEnabled(master.getConfiguration())) {
+      return RSGroupInfoManagerImpl.getInstance(master);
+    } else {
+      return new DisabledRSGroupInfoManager(master.getServerManager());
+    }
+  }
+
 }

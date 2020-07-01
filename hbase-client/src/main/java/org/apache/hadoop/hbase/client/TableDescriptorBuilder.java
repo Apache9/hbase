@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -51,6 +52,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
 
 /**
+ * Convenience class for composing an instance of {@link TableDescriptor}.
  * @since 2.0.0
  */
 @InterfaceAudience.Public
@@ -201,6 +203,9 @@ public class TableDescriptorBuilder {
   private static final Bytes PRIORITY_KEY
           = new Bytes(Bytes.toBytes(PRIORITY));
 
+  private static final Bytes RSGROUP_KEY =
+      new Bytes(Bytes.toBytes(RSGroupInfo.TABLE_DESC_PROP_GROUP));
+
   // salted
   @InterfaceAudience.Private
   public static final String KEY_SALTER = "KEY_SALTER";
@@ -309,8 +314,9 @@ public class TableDescriptorBuilder {
 
   /**
    * Table descriptor for namespace table
-   * @deprecated We have folded the data in namespace table into meta table, so do not use it any
-   *             more.
+   * @deprecated since 3.0.0 and will be removed in 4.0.0. We have folded the data in namespace
+   *   table into meta table, so do not use it any more.
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-21154">HBASE-21154</a>
    */
   @Deprecated
   public static final TableDescriptor NAMESPACE_TABLEDESC =
@@ -521,12 +527,20 @@ public class TableDescriptorBuilder {
     return this;
   }
 
+  /**
+   * @deprecated since 2.0.0 and will be removed in 3.0.0.
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-15583">HBASE-15583</a>
+   */
   @Deprecated
   public TableDescriptorBuilder setOwner(User owner) {
     desc.setOwner(owner);
     return this;
   }
 
+  /**
+   * @deprecated since 2.0.0 and will be removed in 3.0.0.
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-15583">HBASE-15583</a>
+   */
   @Deprecated
   public TableDescriptorBuilder setOwnerString(String ownerString) {
     desc.setOwnerString(ownerString);
@@ -599,6 +613,16 @@ public class TableDescriptorBuilder {
 
   public TableDescriptorBuilder setSlotsCount(int slotsCount) {
     setValue(SLOTS_COUNT, String.valueOf(slotsCount));
+    return this;
+  }
+
+  public TableDescriptorBuilder setRegionServerGroup(String group) {
+    desc.setValue(RSGROUP_KEY, new Bytes(Bytes.toBytes(group)));
+    return this;
+  }
+
+  public TableDescriptorBuilder clearRegionServerGroup() {
+    desc.removeValue(RSGROUP_KEY);
     return this;
   }
 
@@ -1613,17 +1637,29 @@ public class TableDescriptorBuilder {
       }
     }
 
+    /**
+     * @deprecated since 2.0.0 and will be removed in 3.0.0.
+     * @see <a href="https://issues.apache.org/jira/browse/HBASE-15583">HBASE-15583</a>
+     */
     @Deprecated
     public ModifyableTableDescriptor setOwner(User owner) {
       return setOwnerString(owner != null ? owner.getShortName() : null);
     }
 
+    /**
+     * @deprecated since 2.0.0 and will be removed in 3.0.0.
+     * @see <a href="https://issues.apache.org/jira/browse/HBASE-15583">HBASE-15583</a>
+     */
     // used by admin.rb:alter(table_name,*args) to update owner.
     @Deprecated
     public ModifyableTableDescriptor setOwnerString(String ownerString) {
       return setValue(OWNER_KEY, ownerString);
     }
 
+    /**
+     * @deprecated since 2.0.0 and will be removed in 3.0.0.
+     * @see <a href="https://issues.apache.org/jira/browse/HBASE-15583">HBASE-15583</a>
+     */
     @Override
     @Deprecated
     public String getOwnerString() {
@@ -1666,6 +1702,16 @@ public class TableDescriptorBuilder {
     @Override
     public int getColumnFamilyCount() {
       return families.size();
+    }
+
+    @Override
+    public Optional<String> getRegionServerGroup() {
+      Bytes value = values.get(RSGROUP_KEY);
+      if (value != null) {
+        return Optional.of(Bytes.toString(value.get(), value.getOffset(), value.getLength()));
+      } else {
+        return Optional.empty();
+      }
     }
   }
 

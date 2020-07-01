@@ -323,6 +323,7 @@ public class FavoredNodeLoadBalancer extends BaseLoadBalancer implements Favored
     regionsOnServer.add(region);
   }
 
+  @Override
   public synchronized List<ServerName> getFavoredNodes(RegionInfo regionInfo) {
     return this.fnm.getFavoredNodes(regionInfo);
   }

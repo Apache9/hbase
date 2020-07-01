@@ -19,11 +19,11 @@
 package org.apache.hadoop.hbase.rsgroup;
 
 import java.util.Arrays;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.util.compaction.MajorCompactorTTL;
@@ -40,8 +40,8 @@ import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.ParseException;
 
 /**
- * This script takes an rsgroup as argument and compacts part/all of regions of that table
- * based on the table's TTL.
+ * This script takes an rsgroup as argument and compacts part/all of regions of that table based on
+ * the table's TTL.
  */
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.TOOLS)
 public class RSGroupMajorCompactionTTL extends MajorCompactorTTL {
@@ -54,24 +54,20 @@ public class RSGroupMajorCompactionTTL extends MajorCompactorTTL {
   }
 
   public int compactTTLRegionsOnGroup(Configuration conf, String rsgroup, int concurrency,
-      long sleep, int numServers, int numRegions, boolean dryRun, boolean skipWait)
-      throws Exception {
-
-    Connection conn = ConnectionFactory.createConnection(conf);
-    RSGroupAdmin rsGroupAdmin = new RSGroupAdminClient(conn);
-
-    RSGroupInfo rsGroupInfo = rsGroupAdmin.getRSGroupInfo(rsgroup);
-    if (rsGroupInfo == null) {
-      LOG.error("Invalid rsgroup specified: " + rsgroup);
-      throw new IllegalArgumentException("Invalid rsgroup specified: " + rsgroup);
-    }
-
-    for (TableName tableName : rsGroupInfo.getTables()) {
-      int status = compactRegionsTTLOnTable(conf, tableName.getNameAsString(), concurrency, sleep,
+    long sleep, int numServers, int numRegions, boolean dryRun, boolean skipWait) throws Exception {
+    try (Connection conn = ConnectionFactory.createConnection(conf);
+      Admin admin = conn.getAdmin()) {
+      if (admin.getRSGroup(rsgroup) == null) {
+        LOG.error("Invalid rsgroup specified: " + rsgroup);
+        throw new IllegalArgumentException("Invalid rsgroup specified: " + rsgroup);
+      }
+      for (TableName tableName : admin.listTablesInRSGroup(rsgroup)) {
+        int status = compactRegionsTTLOnTable(conf, tableName.getNameAsString(), concurrency, sleep,
           numServers, numRegions, dryRun, skipWait);
-      if (status != 0) {
-        LOG.error("Failed to compact table: " + tableName);
-        return status;
+        if (status != 0) {
+          LOG.error("Failed to compact table: " + tableName);
+          return status;
+        }
       }
     }
     return 0;
@@ -80,13 +76,8 @@ public class RSGroupMajorCompactionTTL extends MajorCompactorTTL {
   protected Options getOptions() {
     Options options = getCommonOptions();
 
-    options.addOption(
-        Option.builder("rsgroup")
-            .required()
-            .desc("Tables of rsgroup to be compacted")
-            .hasArg()
-            .build()
-    );
+    options.addOption(Option.builder("rsgroup").required().desc("Tables of rsgroup to be compacted")
+      .hasArg().build());
 
     return options;
   }
@@ -100,9 +91,8 @@ public class RSGroupMajorCompactionTTL extends MajorCompactorTTL {
     try {
       commandLine = cmdLineParser.parse(options, args);
     } catch (ParseException parseException) {
-      System.out.println(
-          "ERROR: Unable to parse command-line arguments " + Arrays.toString(args) + " due to: "
-              + parseException);
+      System.out.println("ERROR: Unable to parse command-line arguments " + Arrays.toString(args) +
+        " due to: " + parseException);
       printUsage(options);
       return -1;
     }
@@ -122,7 +112,7 @@ public class RSGroupMajorCompactionTTL extends MajorCompactorTTL {
     Configuration conf = getConf();
 
     return compactTTLRegionsOnGroup(conf, rsgroup, concurrency, sleep, numServers, numRegions,
-        dryRun, skipWait);
+      dryRun, skipWait);
   }
 
   public static void main(String[] args) throws Exception {

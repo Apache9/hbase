@@ -19,23 +19,28 @@
 
 package com.xiaomi.infra.hbase;
 
-import com.xiaomi.infra.base.nameservice.ClusterInfo;
-import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
+import static com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils.addCounter;
+import static com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils.addFailCounter;
+import static com.xiaomi.infra.hbase.util.CanaryRSGroupUtils.getCachedRSGroupOfTable;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.tool.Canary.Sink;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -48,10 +53,11 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.xiaomi.infra.base.nameservice.ClusterInfo;
+import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
 import com.xiaomi.infra.thirdparty.com.google.gson.Gson;
 import com.xiaomi.infra.thirdparty.com.google.gson.JsonArray;
 import com.xiaomi.infra.thirdparty.com.google.gson.JsonObject;
-import com.xiaomi.infra.hbase.util.CanaryPerfCounterUtils;
 
 @InterfaceAudience.Private
 public class FalconSink implements Sink, Configurable {
@@ -68,6 +74,9 @@ public class FalconSink implements Sink, Configurable {
   private long lastPushedRepAvailTime = 0;
 
   private Configuration conf;
+  private Connection connection;
+  private Admin admin;
+
   private final CloseableHttpClient client = HttpClients.createDefault();
   private final AtomicLong failedReadCounter = new AtomicLong(0);
   private final AtomicLong totalReadCounter = new AtomicLong(0);
@@ -87,8 +96,10 @@ public class FalconSink implements Sink, Configurable {
   private double masterAvailability = 100.0;
   private boolean enablePushTableMinAvailability;
   private boolean enablePushRSMinAvailability;
+  private boolean enablePushRSGroupMinAvailability;
   private Pair<TableName, Double> tableMinAvailabilityPair = new Pair<>();
   private Pair<ServerName, Double> regionServerMinAvailabilityPair = new Pair<>();
+  private Pair<String, Double> rsgroupMinAvailabilityPair = new Pair<>();
 
   private String clusterName;
   private Map<String, Long> lastReplicationLags = new HashMap<>();
@@ -104,7 +115,8 @@ public class FalconSink implements Sink, Configurable {
   public void publishReadFailure(RegionInfo region, Throwable e) {
     failedReadCounter.incrementAndGet();
     totalReadCounter.incrementAndGet();
-    CanaryPerfCounterUtils.addFailCounter(clusterName, "read", region.getTable());
+    addFailCounter(clusterName, "read", region.getTable(),
+        getCachedRSGroupOfTable(admin, region.getTable()));
     LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
   }
 
@@ -112,7 +124,8 @@ public class FalconSink implements Sink, Configurable {
   public void publishReadFailure(RegionInfo region, ColumnFamilyDescriptor column, Throwable e) {
     failedReadCounter.incrementAndGet();
     totalReadCounter.incrementAndGet();
-    CanaryPerfCounterUtils.addFailCounter(clusterName, "read", region.getTable());
+    addFailCounter(clusterName, "read", region.getTable(),
+        getCachedRSGroupOfTable(admin, region.getTable()));
     LOG.error(String.format("read from region %s column family %s failed",
       region.getRegionNameAsString(), column.getNameAsString()), e);
   }
@@ -120,7 +133,8 @@ public class FalconSink implements Sink, Configurable {
   @Override
   public void publishReadTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime) {
     totalReadCounter.incrementAndGet();
-    CanaryPerfCounterUtils.addCounter(clusterName, "read", region.getTable(), msTime);
+    addCounter(clusterName, "read", region.getTable(),
+        getCachedRSGroupOfTable(admin, region.getTable()), msTime);
     if (msTime > 500) {
       LOG.info(String.format("read from region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
@@ -131,7 +145,8 @@ public class FalconSink implements Sink, Configurable {
   public void publishWriteFailure(RegionInfo region, Throwable e) {
     failedWriteCounter.incrementAndGet();
     totalWriteCounter.incrementAndGet();
-    CanaryPerfCounterUtils.addFailCounter(clusterName, "write", region.getTable());
+    addFailCounter(clusterName, "write", region.getTable(),
+        getCachedRSGroupOfTable(admin, region.getTable()));
     LOG.error(String.format("write to region %s failed", region.getRegionNameAsString()), e);
   }
 
@@ -139,7 +154,8 @@ public class FalconSink implements Sink, Configurable {
   public void publishWriteFailure(RegionInfo region, ColumnFamilyDescriptor column, Throwable e) {
     failedWriteCounter.incrementAndGet();
     totalWriteCounter.incrementAndGet();
-    CanaryPerfCounterUtils.addFailCounter(clusterName, "write", region.getTable());
+    addFailCounter(clusterName, "write", region.getTable(),
+        getCachedRSGroupOfTable(admin, region.getTable()));
     LOG.error(String.format("write to region %s column family %s failed",
       region.getRegionNameAsString(), column.getNameAsString()), e);
   }
@@ -147,7 +163,8 @@ public class FalconSink implements Sink, Configurable {
   @Override
   public void publishWriteTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime) {
     totalWriteCounter.incrementAndGet();
-    CanaryPerfCounterUtils.addCounter(clusterName, "write", region.getTable(), msTime);
+    addCounter(clusterName, "write", region.getTable(),
+        getCachedRSGroupOfTable(admin, region.getTable()), msTime);
     if (msTime > 500) {
       LOG.info(String.format("write to region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
@@ -186,6 +203,13 @@ public class FalconSink implements Sink, Configurable {
           + serverNameDoublePair.getSecond() + "%");
   }
 
+  @Override
+  public void publishRSGroupMinAvailability(Pair<String, Double> rsgroupDoublePair) {
+    this.rsgroupMinAvailabilityPair.setFirst(rsgroupDoublePair.getFirst());
+    this.rsgroupMinAvailabilityPair.setSecond(rsgroupDoublePair.getSecond());
+    LOG.info("The min availability of regionServer " + rsgroupDoublePair.getFirst() + " was set to "
+        + rsgroupDoublePair.getSecond() + "%");
+  }
 
   @Override
   public double getReadAvailability() {
@@ -342,6 +366,10 @@ public class FalconSink implements Sink, Configurable {
         data.add(buildFalconMetric(clusterName, "cluster-rs-min-availability",
           this.regionServerMinAvailabilityPair.getSecond()));
       }
+      if (rsgroupMinAvailabilityPair.getFirst() != null && enablePushRSGroupMinAvailability) {
+        data.add(buildFalconMetric(clusterName, "cluster-rsgroup-min-availability",
+            this.rsgroupMinAvailabilityPair.getSecond()));
+      }
     } catch (IOException e) {
       LOG.error("Create json error", e);
       return;
@@ -382,10 +410,23 @@ public class FalconSink implements Sink, Configurable {
       HConstants.CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE_DEFAULT);
     enablePushRSMinAvailability = conf.getBoolean(HConstants.CANARY_PUSH_RS_MIN_AVAIL_ENABLE,
         HConstants.CANARY_PUSH_RS_MIN_AVAIL_ENABLE_DEFAULT);
+    enablePushRSGroupMinAvailability = conf.getBoolean(
+        HConstants.CANARY_PUSH_RSGROUP_MIN_AVAIL_ENABLE,
+        HConstants.CANARY_PUSH_RSGROUP_MIN_AVAIL_ENABLE_DEFAULT);
   }
 
   @Override
   public Configuration getConf() {
     return conf;
+  }
+
+  @Override
+  public void setConnection(Connection connection) {
+    this.connection = connection;
+    try {
+      admin = connection.getAdmin();
+    } catch (IOException e) {
+      LOG.error("Failed to init admin", e);
+    }
   }
 }

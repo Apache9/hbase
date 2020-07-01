@@ -22,6 +22,7 @@ import com.google.protobuf.Service;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ClusterMetrics;
@@ -1474,6 +1475,158 @@ public class MasterCoprocessorHost
     });
   }
 
+  public void preGetRSGroupInfo(final String groupName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.preGetRSGroupInfo(this, groupName);
+      }
+    });
+  }
+
+  public void postGetRSGroupInfo(final String groupName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.postGetRSGroupInfo(this, groupName);
+      }
+    });
+  }
+
+  public void preGetRSGroupInfoOfTable(final TableName tableName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.preGetRSGroupInfoOfTable(this, tableName);
+      }
+    });
+  }
+
+  public void postGetRSGroupInfoOfTable(final TableName tableName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.postGetRSGroupInfoOfTable(this, tableName);
+      }
+    });
+  }
+
+  public void preListRSGroups() throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.preListRSGroups(this);
+      }
+    });
+  }
+
+  public void postListRSGroups() throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.postListRSGroups(this);
+      }
+    });
+  }
+
+  public void preListTablesInRSGroup(final String groupName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.preListTablesInRSGroup(this, groupName);
+      }
+    });
+  }
+
+  public void postListTablesInRSGroup(final String groupName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.postListTablesInRSGroup(this, groupName);
+      }
+    });
+  }
+
+  public void preGetConfiguredNamespacesAndTablesInRSGroup(final String groupName)
+      throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.preGetConfiguredNamespacesAndTablesInRSGroup(this, groupName);
+      }
+    });
+  }
+
+  public void postGetConfiguredNamespacesAndTablesInRSGroup(final String groupName)
+      throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.postGetConfiguredNamespacesAndTablesInRSGroup(this, groupName);
+      }
+    });
+  }
+
+  public void preGetRSGroupInfoOfServer(final Address server) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.preGetRSGroupInfoOfServer(this, server);
+      }
+    });
+  }
+
+  public void postGetRSGroupInfoOfServer(final Address server) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      public void call(MasterObserver observer) throws IOException {
+        observer.postGetRSGroupInfoOfServer(this, server);
+      }
+    });
+  }
+
+  public void preUpdateRSGroupConfig(final String groupName,
+                                     final Map<String, String> configuration) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.preUpdateRSGroupConfig(this, groupName, configuration);
+      }
+    });
+  }
+
+  public void postUpdateRSGroupConfig(final String groupName,
+                                      final Map<String, String> configuration) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.postUpdateRSGroupConfig(this, groupName, configuration);
+      }
+    });
+  }
+
+  public void preDissolveRSGroupLocally(final String groupName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.preDissolveRSGroupLocally(this, groupName);
+      }
+    });
+  }
+
+  public void postDissolveRSGroupLocally(final String groupName) throws IOException {
+    execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
+      @Override
+      protected void call(MasterObserver observer) throws IOException {
+        observer.postDissolveRSGroupLocally(this, groupName);
+      }
+    });
+  }
+
   public void preAddReplicationPeer(final String peerId, final ReplicationPeerConfig peerConfig)
       throws IOException {
     execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
@@ -1699,7 +1852,8 @@ public class MasterCoprocessorHost
     });
   }
 
-  public void preDecommissionRegionServers(List<ServerName> servers, boolean offload) throws IOException {
+  public void preDecommissionRegionServers(List<ServerName> servers, boolean offload)
+      throws IOException {
     execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
       @Override
       public void call(MasterObserver observer) throws IOException {
@@ -1708,7 +1862,8 @@ public class MasterCoprocessorHost
     });
   }
 
-  public void postDecommissionRegionServers(List<ServerName> servers, boolean offload) throws IOException {
+  public void postDecommissionRegionServers(List<ServerName> servers, boolean offload)
+      throws IOException {
     execOperation(coprocEnvironments.isEmpty() ? null : new MasterObserverOperation() {
       @Override
       public void call(MasterObserver observer) throws IOException {

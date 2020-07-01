@@ -127,6 +127,32 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos.GetQuotaSta
 import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos.GetQuotaStatesResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos.GetSpaceQuotaRegionSizesRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos.GetSpaceQuotaRegionSizesResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.AddRSGroupRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.AddRSGroupResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.BalanceRSGroupRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.BalanceRSGroupResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.DissolveRSGroupLocallyResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetConfiguredNamespacesAndTablesInRSGroupRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetConfiguredNamespacesAndTablesInRSGroupResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfServerRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfServerResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoOfTableResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.GetRSGroupInfoResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.ListRSGroupInfosResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.ListTablesInRSGroupRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.ListTablesInRSGroupResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.MoveServersRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.MoveServersResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.RemoveRSGroupResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.RemoveServersRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.RemoveServersResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos.UpdateRSGroupConfigResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse;
@@ -1609,6 +1635,92 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
           RpcController controller,
           MasterProtos.ListNamespacesRequest request) throws ServiceException {
         return stub.listNamespaces(controller, request);
+      }
+
+      @Override
+      public GetRSGroupInfoResponse
+      getRSGroupInfo(RpcController controller, GetRSGroupInfoRequest request)
+          throws ServiceException {
+        return stub.getRSGroupInfo(controller, request);
+      }
+
+      @Override
+      public GetRSGroupInfoOfTableResponse
+      getRSGroupInfoOfTable(RpcController controller, GetRSGroupInfoOfTableRequest request)
+          throws ServiceException {
+        return stub.getRSGroupInfoOfTable(controller, request);
+      }
+
+      @Override
+      public GetRSGroupInfoOfServerResponse
+      getRSGroupInfoOfServer(RpcController controller, GetRSGroupInfoOfServerRequest request)
+          throws ServiceException {
+        return stub.getRSGroupInfoOfServer(controller, request);
+      }
+
+      @Override
+      public MoveServersResponse moveServers(RpcController controller, MoveServersRequest request)
+          throws ServiceException {
+        return stub.moveServers(controller, request);
+      }
+
+      @Override
+      public AddRSGroupResponse addRSGroup(RpcController controller, AddRSGroupRequest request)
+          throws ServiceException {
+        return stub.addRSGroup(controller, request);
+      }
+
+      @Override
+      public RemoveRSGroupResponse removeRSGroup(RpcController controller,
+          RemoveRSGroupRequest request) throws ServiceException {
+        return stub.removeRSGroup(controller, request);
+      }
+
+      @Override
+      public BalanceRSGroupResponse balanceRSGroup(RpcController controller,
+          BalanceRSGroupRequest request) throws ServiceException {
+        return stub.balanceRSGroup(controller, request);
+      }
+
+      @Override
+      public ListRSGroupInfosResponse listRSGroupInfos(RpcController controller,
+          ListRSGroupInfosRequest request)
+          throws ServiceException {
+        return stub.listRSGroupInfos(controller, request);
+      }
+
+      @Override
+      public RemoveServersResponse
+      removeServers(RpcController controller, RemoveServersRequest request)
+          throws ServiceException {
+        return stub.removeServers(controller, request);
+      }
+
+      @Override
+      public ListTablesInRSGroupResponse listTablesInRSGroup(RpcController controller,
+          ListTablesInRSGroupRequest request) throws ServiceException {
+        return stub.listTablesInRSGroup(controller, request);
+      }
+
+      @Override
+      public GetConfiguredNamespacesAndTablesInRSGroupResponse
+      getConfiguredNamespacesAndTablesInRSGroup(RpcController controller,
+         GetConfiguredNamespacesAndTablesInRSGroupRequest request) throws ServiceException {
+        return stub.getConfiguredNamespacesAndTablesInRSGroup(controller, request);
+      }
+
+      @Override
+      public UpdateRSGroupConfigResponse
+      updateRSGroupConfig(RpcController controller, UpdateRSGroupConfigRequest request)
+          throws ServiceException {
+        return stub.updateRSGroupConfig(controller, request);
+      }
+
+      @Override
+      public DissolveRSGroupLocallyResponse
+      dissolveRSGroupLocally(RpcController controller, DissolveRSGroupLocallyRequest request)
+          throws ServiceException {
+        return stub.dissolveRSGroupLocally(controller, request);
       }
 
       @Override

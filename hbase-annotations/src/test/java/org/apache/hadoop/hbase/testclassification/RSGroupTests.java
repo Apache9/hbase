@@ -15,18 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.hadoop.hbase.rsgroup;
-
-import org.apache.hadoop.hbase.master.LoadBalancer;
-import org.apache.yetus.audience.InterfaceAudience;
+package org.apache.hadoop.hbase.testclassification;
 
 /**
- * Marker Interface. RSGroups feature will check for a LoadBalancer
- * marked with this Interface before it runs.
+ * Tag the tests related to rs group feature.
  */
-@InterfaceAudience.Private
-public interface RSGroupableBalancer extends LoadBalancer {
-  /** Config for pluggable load balancers */
-  String HBASE_RSGROUP_LOADBALANCER_CLASS = "hbase.rsgroup.grouploadbalancer.class";
+public interface RSGroupTests {
 }

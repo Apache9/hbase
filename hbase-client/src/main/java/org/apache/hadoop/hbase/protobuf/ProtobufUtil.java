@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.Cell.Type;
@@ -72,7 +74,6 @@ import org.apache.hadoop.hbase.client.SnapshotType;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
-import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.net.Address;
@@ -92,12 +93,12 @@ import org.apache.hadoop.hbase.protobuf.generated.ComparatorProtos;
 import org.apache.hadoop.hbase.protobuf.generated.FilterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameBytesPair;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
 import org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos;
 import org.apache.hadoop.hbase.protobuf.generated.TableProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RSGroupProtos;
-import org.apache.hadoop.hbase.protobuf.generated.TableProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.util.Addressing;
@@ -1785,14 +1786,16 @@ public final class ProtobufUtil {
   }
 
   public static RSGroupInfo toGroupInfo(RSGroupProtos.RSGroupInfo proto) {
-    RSGroupInfo RSGroupInfo = new RSGroupInfo(proto.getName());
+    RSGroupInfo rsGroupInfo = new RSGroupInfo(proto.getName());
     for(HBaseProtos.ServerName el: proto.getServersList()) {
-      RSGroupInfo.addServer(Address.fromParts(el.getHostName(), el.getPort()));
+      rsGroupInfo.addServer(Address.fromParts(el.getHostName(), el.getPort()));
     }
     for(TableProtos.TableName pTableName: proto.getTablesList()) {
-      RSGroupInfo.addTable(ProtobufUtil.toTableName(pTableName));
+      rsGroupInfo.addTable(ProtobufUtil.toTableName(pTableName));
     }
-    return RSGroupInfo;
+    proto.getConfigurationList().forEach(pair ->
+        rsGroupInfo.setConfiguration(pair.getName(), pair.getValue()));
+    return rsGroupInfo;
   }
 
   public static RSGroupProtos.RSGroupInfo toProtoGroupInfo(RSGroupInfo pojo) {
@@ -1805,8 +1808,12 @@ public final class ProtobufUtil {
       hostports.add(HBaseProtos.ServerName.newBuilder().setHostName(el.getHostname())
           .setPort(el.getPort()).build());
     }
+    List<NameStringPair> configuration = pojo.getConfiguration().entrySet()
+        .stream().map(entry -> NameStringPair.newBuilder()
+            .setName(entry.getKey()).setValue(entry.getValue()).build())
+        .collect(Collectors.toList());
     return RSGroupProtos.RSGroupInfo.newBuilder().setName(pojo.getName()).addAllServers(hostports)
-        .addAllTables(tables).build();
+        .addAllTables(tables).addAllConfiguration(configuration).build();
   }
 
   /**

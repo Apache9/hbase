@@ -57,14 +57,18 @@ public final class CanaryPerfCounterUtils {
     }
   }
 
-  public static void addCounter(String cluster, String method, TableName tableName, long time) {
+  public static void addCounter(String cluster, String method, TableName tableName, String rsgroup,
+                                long time) {
     count(constructClusterPerfcountName(cluster, method).getName(), 1, time);
     count(constructTablePerfcountName(cluster, method, tableName).getName(), 1, time);
+    count(constructRSGroupPerfcountName(cluster, method, rsgroup).getName(), 1, time);
   }
 
-  public static void addFailCounter(String cluster, String method, TableName tableName) {
+  public static void addFailCounter(String cluster, String method, TableName tableName,
+                                    String rsgroup) {
     count(constructClusterPerfcountName(cluster, method).failed().getName(), 1);
     count(constructTablePerfcountName(cluster, method, tableName).failed().getName(), 1);
+    count(constructRSGroupPerfcountName(cluster, method, rsgroup).failed().getName(), 1);
   }
 
   private static PerfCounterNameJoiner constructClusterPerfcountName(String cluster, String method) {
@@ -74,6 +78,11 @@ public final class CanaryPerfCounterUtils {
   private static PerfCounterNameJoiner constructTablePerfcountName(String cluster, String method,
       TableName tableName) {
     return new PerfCounterNameJoiner().method(method).cluster(cluster).table(tableName).host();
+  }
+
+  private static PerfCounterNameJoiner constructRSGroupPerfcountName(String cluster, String method,
+                                                                   String rsgroup) {
+    return new PerfCounterNameJoiner().method(method).cluster(cluster).rsgroup(rsgroup).host();
   }
 
   private static String parseClusterName(String cluster) {
@@ -104,6 +113,10 @@ public final class CanaryPerfCounterUtils {
 
     public PerfCounterNameJoiner table(TableName tableName) {
       return append("table", tableName.getNameAsString());
+    }
+
+    public PerfCounterNameJoiner rsgroup(String rsgroup) {
+      return append("rsgroup", rsgroup);
     }
 
     public PerfCounterNameJoiner host() {

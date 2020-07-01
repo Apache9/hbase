@@ -1573,6 +1573,8 @@ public final class HConstants {
   public static final Boolean CANARY_PUSH_TABLE_MIN_AVAIL_ENABLE_DEFAULT = false;
   public static final String CANARY_PUSH_RS_MIN_AVAIL_ENABLE = "hbase.canary.push.rs.min.availability.enable";
   public static final Boolean CANARY_PUSH_RS_MIN_AVAIL_ENABLE_DEFAULT = false;
+  public static final String CANARY_PUSH_RSGROUP_MIN_AVAIL_ENABLE = "hbase.canary.push.rsgroup.min.availability.enable";
+  public static final Boolean CANARY_PUSH_RSGROUP_MIN_AVAIL_ENABLE_DEFAULT = false;
 
   private HConstants() {
     // Can't be instantiated with this ctor.

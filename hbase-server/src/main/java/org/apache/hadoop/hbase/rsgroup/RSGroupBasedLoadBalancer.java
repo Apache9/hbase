@@ -19,8 +19,10 @@ package org.apache.hadoop.hbase.rsgroup;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,17 +31,20 @@ import java.util.TreeMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ClusterMetrics;
 import org.apache.hadoop.hbase.HBaseIOException;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.constraint.ConstraintException;
+import org.apache.hadoop.hbase.favored.FavoredNodesManager;
+import org.apache.hadoop.hbase.favored.FavoredNodesPromoter;
 import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.RegionPlan;
-import org.apache.hadoop.hbase.master.balancer.StochasticLoadBalancer;
+import org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +55,7 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.LinkedListMultimap;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.ListMultimap;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 
 /**
  * GroupBasedLoadBalancer, used when Region Server Grouping is configured (HBase-6721) It does
@@ -65,14 +71,26 @@ import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
  * providing appropriate assignments for user tables.
  */
 @InterfaceAudience.Private
-public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
+public class RSGroupBasedLoadBalancer implements LoadBalancer {
   private static final Logger LOG = LoggerFactory.getLogger(RSGroupBasedLoadBalancer.class);
 
   private Configuration config;
   private ClusterMetrics clusterStatus;
   private MasterServices masterServices;
+  private FavoredNodesManager favoredNodesManager;
   private volatile RSGroupInfoManager rsGroupInfoManager;
   private LoadBalancer internalBalancer;
+
+  /**
+   * Define the config key of fallback groups
+   * Enabled only if this property is set
+   * Please keep balancer switch on at the same time, which is relied on to correct misplaced
+   * regions
+   */
+  public static final String FALLBACK_GROUPS_KEY = "hbase.rsgroup.fallback.groups";
+
+  private boolean fallbackEnabled = false;
+  private Set<String> fallbackGroups;
 
   /**
    * Used by reflection in {@link org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory}.
@@ -88,7 +106,7 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
   @Override
   public void setConf(Configuration conf) {
     this.config = conf;
-    if (internalBalancer != null) {
+    if(internalBalancer != null) {
       internalBalancer.setConf(conf);
     }
   }
@@ -111,8 +129,8 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
    * not invoke {@link #balanceTable(TableName, Map)}
    */
   @Override
-  public List<RegionPlan> balanceCluster(
-      Map<TableName, Map<ServerName, List<RegionInfo>>> loadOfAllTable) throws IOException {
+  public List<RegionPlan> balanceCluster(Map<TableName, Map<ServerName,
+      List<RegionInfo>>> loadOfAllTable) throws IOException {
     if (!isOnline()) {
       throw new ConstraintException(
           RSGroupInfoManager.class.getSimpleName() + " is not online, unable to perform balance");
@@ -123,6 +141,7 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
     Map<TableName, Map<ServerName, List<RegionInfo>>> correctedLoadOfAllTable =
         correctedStateAndRegionPlans.getFirst();
     List<RegionPlan> regionPlans = correctedStateAndRegionPlans.getSecond();
+    RSGroupInfo defaultInfo = rsGroupInfoManager.getRSGroup(RSGroupInfo.DEFAULT_GROUP);
     // Add RegionPlan for the regions which have been placed according to the region server group
     // assignment into the movement list
     try {
@@ -132,11 +151,9 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
         for (Map.Entry<TableName, Map<ServerName, List<RegionInfo>>> entry : correctedLoadOfAllTable
             .entrySet()) {
           TableName tableName = entry.getKey();
-          String targetRSGroupName = rsGroupInfoManager.getRSGroupOfTable(tableName);
-          if (targetRSGroupName == null) {
-            targetRSGroupName = RSGroupInfo.DEFAULT_GROUP;
-          }
-          if (targetRSGroupName.equals(rsgroup.getName())) {
+          RSGroupInfo targetRSGInfo = RSGroupUtil
+              .getRSGroupInfo(masterServices, rsGroupInfoManager, tableName).orElse(defaultInfo);
+          if (targetRSGInfo.getName().equals(rsgroup.getName())) {
             loadOfTablesInGroup.put(tableName, entry.getValue());
           }
         }
@@ -157,8 +174,8 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
   }
 
   @Override
-  public Map<ServerName, List<RegionInfo>> roundRobinAssignment(List<RegionInfo> regions,
-    List<ServerName> servers) throws HBaseIOException {
+  public Map<ServerName, List<RegionInfo>> roundRobinAssignment(
+      List<RegionInfo> regions, List<ServerName> servers) throws IOException {
     Map<ServerName, List<RegionInfo>> assignments = Maps.newHashMap();
     ListMultimap<String, RegionInfo> regionMap = ArrayListMultimap.create();
     ListMultimap<String, ServerName> serverMap = ArrayListMultimap.create();
@@ -187,19 +204,21 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
     try {
       Map<ServerName, List<RegionInfo>> assignments = new TreeMap<>();
       ListMultimap<String, RegionInfo> groupToRegion = ArrayListMultimap.create();
+      RSGroupInfo defaultInfo = rsGroupInfoManager.getRSGroup(RSGroupInfo.DEFAULT_GROUP);
       for (RegionInfo region : regions.keySet()) {
-        String groupName = rsGroupInfoManager.getRSGroupOfTable(region.getTable());
-        if (groupName == null) {
-          LOG.debug("Group not found for table " + region.getTable() + ", using default");
-          groupName = RSGroupInfo.DEFAULT_GROUP;
-        }
+        String groupName =
+          RSGroupUtil.getRSGroupInfo(masterServices, rsGroupInfoManager, region.getTable())
+              .orElse(defaultInfo).getName();
         groupToRegion.put(groupName, region);
       }
-      for (String key : groupToRegion.keySet()) {
+      for (String group : groupToRegion.keySet()) {
         Map<RegionInfo, ServerName> currentAssignmentMap = new TreeMap<RegionInfo, ServerName>();
-        List<RegionInfo> regionList = groupToRegion.get(key);
-        RSGroupInfo info = rsGroupInfoManager.getRSGroup(key);
+        List<RegionInfo> regionList = groupToRegion.get(group);
+        RSGroupInfo info = rsGroupInfoManager.getRSGroup(group);
         List<ServerName> candidateList = filterOfflineServers(info, servers);
+        if (fallbackEnabled && candidateList.isEmpty()) {
+          candidateList = getFallBackCandidates(servers);
+        }
         for (RegionInfo region : regionList) {
           currentAssignmentMap.put(region, regions.get(region));
         }
@@ -208,8 +227,8 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
             .putAll(this.internalBalancer.retainAssignment(currentAssignmentMap, candidateList));
         } else {
           if (LOG.isDebugEnabled()) {
-            LOG.debug("No available servers to assign regions: {}",
-              RegionInfo.getShortNameToLog(regionList));
+            LOG.debug("No available servers for group {} to assign regions: {}", group,
+                RegionInfo.getShortNameToLog(regionList));
           }
           assignments.computeIfAbsent(LoadBalancer.BOGUS_SERVER_NAME, s -> new ArrayList<>())
             .addAll(regionList);
@@ -223,7 +242,7 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
 
   @Override
   public ServerName randomAssignment(RegionInfo region,
-      List<ServerName> servers) throws HBaseIOException {
+      List<ServerName> servers) throws IOException {
     ListMultimap<String,RegionInfo> regionMap = LinkedListMultimap.create();
     ListMultimap<String,ServerName> serverMap = LinkedListMultimap.create();
     generateGroupMaps(Lists.newArrayList(region), servers, regionMap, serverMap);
@@ -235,18 +254,20 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
     ListMultimap<String, RegionInfo> regionMap, ListMultimap<String, ServerName> serverMap)
     throws HBaseIOException {
     try {
+      RSGroupInfo defaultInfo = rsGroupInfoManager.getRSGroup(RSGroupInfo.DEFAULT_GROUP);
       for (RegionInfo region : regions) {
-        String groupName = rsGroupInfoManager.getRSGroupOfTable(region.getTable());
-        if (groupName == null) {
-          LOG.debug("Group not found for table " + region.getTable() + ", using default");
-          groupName = RSGroupInfo.DEFAULT_GROUP;
-        }
+        String groupName =
+            RSGroupUtil.getRSGroupInfo(masterServices, rsGroupInfoManager, region.getTable())
+                .orElse(defaultInfo).getName();
         regionMap.put(groupName, region);
       }
       for (String groupKey : regionMap.keySet()) {
         RSGroupInfo info = rsGroupInfoManager.getRSGroup(groupKey);
         serverMap.putAll(groupKey, filterOfflineServers(info, servers));
-        if(serverMap.get(groupKey).size() < 1) {
+        if (fallbackEnabled && serverMap.get(groupKey).isEmpty()) {
+          serverMap.putAll(groupKey, getFallBackCandidates(servers));
+        }
+        if (serverMap.get(groupKey).isEmpty()) {
           serverMap.put(groupKey, LoadBalancer.BOGUS_SERVER_NAME);
         }
       }
@@ -293,6 +314,7 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
     // To return
     Map<TableName, Map<ServerName, List<RegionInfo>>> correctAssignments = new HashMap<>();
     List<RegionPlan> regionPlansForMisplacedRegions = new ArrayList<>();
+    RSGroupInfo defaultInfo = rsGroupInfoManager.getRSGroup(RSGroupInfo.DEFAULT_GROUP);
     for (Map.Entry<TableName, Map<ServerName, List<RegionInfo>>> assignments : existingAssignments
         .entrySet()) {
       TableName tableName = assignments.getKey();
@@ -300,12 +322,8 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
       Map<ServerName, List<RegionInfo>> correctServerRegion = new TreeMap<>();
       RSGroupInfo targetRSGInfo = null;
       try {
-        String groupName = rsGroupInfoManager.getRSGroupOfTable(tableName);
-        if (groupName == null) {
-          LOG.debug("Group not found for table " + tableName + ", using default");
-          groupName = RSGroupInfo.DEFAULT_GROUP;
-        }
-        targetRSGInfo = rsGroupInfoManager.getRSGroup(groupName);
+        targetRSGInfo = RSGroupUtil.getRSGroupInfo(masterServices, rsGroupInfoManager, tableName)
+            .orElse(defaultInfo);
       } catch (IOException exp) {
         LOG.debug("RSGroup information null for region of table " + tableName, exp);
       }
@@ -329,38 +347,50 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
   }
 
   @Override
-  public void initialize() throws HBaseIOException {
-    try {
+  public void initialize() throws IOException {
+    if (rsGroupInfoManager == null) {
+      rsGroupInfoManager = masterServices.getRSGroupInfoManager();
       if (rsGroupInfoManager == null) {
-        List<RSGroupAdminEndpoint> cps =
-          masterServices.getMasterCoprocessorHost().findCoprocessors(RSGroupAdminEndpoint.class);
-        if (cps.size() != 1) {
-          String msg = "Expected one implementation of GroupAdminEndpoint but found " + cps.size();
-          LOG.error(msg);
-          throw new HBaseIOException(msg);
-        }
-        rsGroupInfoManager = cps.get(0).getGroupInfoManager();
-        if(rsGroupInfoManager == null){
-          String msg = "RSGroupInfoManager hasn't been initialized";
-          LOG.error(msg);
-          throw new HBaseIOException(msg);
-        }
-        rsGroupInfoManager.start();
+        String msg = "RSGroupInfoManager hasn't been initialized";
+        LOG.error(msg);
+        throw new HBaseIOException(msg);
       }
-    } catch (IOException e) {
-      throw new HBaseIOException("Failed to initialize GroupInfoManagerImpl", e);
+      rsGroupInfoManager.start();
     }
 
     // Create the balancer
-    Class<? extends LoadBalancer> balancerKlass = config.getClass(HBASE_RSGROUP_LOADBALANCER_CLASS,
-        StochasticLoadBalancer.class, LoadBalancer.class);
-    internalBalancer = ReflectionUtils.newInstance(balancerKlass, config);
+    Class<? extends LoadBalancer> balancerClass;
+    String balancerClassName = config.get(HBASE_RSGROUP_LOADBALANCER_CLASS);
+    if (balancerClassName == null) {
+      balancerClass = config.getClass(HConstants.HBASE_MASTER_LOADBALANCER_CLASS,
+        LoadBalancerFactory.getDefaultLoadBalancerClass(), LoadBalancer.class);
+    } else {
+      try {
+        balancerClass = Class.forName(balancerClassName).asSubclass(LoadBalancer.class);
+      } catch (ClassNotFoundException e) {
+        throw new IOException(e);
+      }
+    }
+    // avoid infinite nesting
+    if (getClass().isAssignableFrom(balancerClass)) {
+      balancerClass = LoadBalancerFactory.getDefaultLoadBalancerClass();
+    }
+    internalBalancer = ReflectionUtils.newInstance(balancerClass);
+    if (internalBalancer instanceof FavoredNodesPromoter) {
+      favoredNodesManager = new FavoredNodesManager(masterServices);
+    }
+    internalBalancer.setConf(config);
     internalBalancer.setMasterServices(masterServices);
     if (clusterStatus != null) {
       internalBalancer.setClusterMetrics(clusterStatus);
     }
-    internalBalancer.setConf(config);
     internalBalancer.initialize();
+    // init fallback groups
+    Collection<String> groups = config.getTrimmedStringCollection(FALLBACK_GROUPS_KEY);
+    if (groups != null && !groups.isEmpty()) {
+      this.fallbackEnabled = true;
+      this.fallbackGroups = new HashSet<>(groups);
+    }
   }
 
   public boolean isOnline() {
@@ -370,7 +400,6 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
 
     return this.rsGroupInfoManager.isOnline();
   }
-
 
   @Override
   public void regionOnline(RegionInfo regionInfo, ServerName sn) {
@@ -397,6 +426,14 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
   @VisibleForTesting
   public void setRsGroupInfoManager(RSGroupInfoManager rsGroupInfoManager) {
     this.rsGroupInfoManager = rsGroupInfoManager;
+  }
+
+  public LoadBalancer getInternalBalancer() {
+    return internalBalancer;
+  }
+
+  public FavoredNodesManager getFavoredNodesManager() {
+    return favoredNodesManager;
   }
 
   @Override
@@ -440,5 +477,18 @@ public class RSGroupBasedLoadBalancer implements RSGroupableBalancer {
       regionPlans.addAll(tablePlans);
     }
     return regionPlans;
+  }
+
+  private List<ServerName> getFallBackCandidates(List<ServerName> servers) {
+    List<ServerName> serverNames = new ArrayList<>();
+    for (String fallbackGroup : fallbackGroups) {
+      try {
+        RSGroupInfo info = rsGroupInfoManager.getRSGroup(fallbackGroup);
+        serverNames.addAll(filterOfflineServers(info, servers));
+      } catch (IOException e) {
+        LOG.error("Get group info for {} failed", fallbackGroup, e);
+      }
+    }
+    return serverNames;
   }
 }

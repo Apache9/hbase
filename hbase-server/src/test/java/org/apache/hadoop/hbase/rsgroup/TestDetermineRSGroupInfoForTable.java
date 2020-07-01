@@ -18,14 +18,12 @@
 package org.apache.hadoop.hbase.rsgroup;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -67,8 +65,6 @@ public class TestDetermineRSGroupInfoForTable {
 
   private static RSGroupInfoManager rsGroupInfoManager;
 
-  private static RSGroupAdminClient rsGroupAdminClient;
-
   private static final String GROUP_NAME = "rsg";
 
   private static final String NAMESPACE_NAME = "ns";
@@ -86,20 +82,15 @@ public class TestDetermineRSGroupInfoForTable {
     UTIL.startMiniCluster(5);
     master = UTIL.getMiniHBaseCluster().getMaster();
     admin = UTIL.getAdmin();
-    rsGroupAdminClient = new RSGroupAdminClient(UTIL.getConnection());
 
     UTIL.waitFor(60000, (Predicate<Exception>) () ->
-        master.isInitialized() && ((RSGroupBasedLoadBalancer) master.getLoadBalancer()).isOnline());
+        master.isInitialized() && master.getLoadBalancer().isOnline());
 
-    List<RSGroupAdminEndpoint> cps =
-        master.getMasterCoprocessorHost().findCoprocessors(RSGroupAdminEndpoint.class);
-    assertTrue(cps.size() > 0);
-    rsGroupInfoManager = cps.get(0).getGroupInfoManager();
+    rsGroupInfoManager = master.getRSGroupInfoManager();
 
     HRegionServer rs = UTIL.getHBaseCluster().getRegionServer(0);
-    rsGroupAdminClient.addRSGroup(GROUP_NAME);
-    rsGroupAdminClient.moveServers(
-      Collections.singleton(rs.getServerName().getAddress()), GROUP_NAME);
+    admin.addRSGroup(GROUP_NAME);
+    admin.moveServersToRSGroup(Collections.singleton(rs.getServerName().getAddress()), GROUP_NAME);
     admin.createNamespace(NamespaceDescriptor.create(NAMESPACE_NAME)
       .addConfiguration(RSGroupInfo.NAMESPACE_DESC_PROP_GROUP, GROUP_NAME)
       .build());

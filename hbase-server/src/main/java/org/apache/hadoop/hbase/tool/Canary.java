@@ -21,6 +21,8 @@ package org.apache.hadoop.hbase.tool;
 import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
 
 import com.xiaomi.infra.hbase.CanaryStatusServlet;
+import com.xiaomi.infra.hbase.util.CanaryRSGroupUtils;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.BindException;
@@ -31,6 +33,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -112,6 +115,7 @@ public final class Canary implements Tool {
 
     public void publishRegionServerMinAvilability(Pair<ServerName, Double> serverNameDoublePair);
 
+    default void publishRSGroupMinAvailability(Pair<String, Double> rsgroupDoublePair) {}
 
     public void reportSummary();
 
@@ -126,6 +130,8 @@ public final class Canary implements Tool {
     default double getAvailability() {
       return 100.0;
     }
+
+    default void setConnection(Connection connection) {}
   }
 
   // Simple implementation of canary sink that allows to plot on
@@ -190,6 +196,12 @@ public final class Canary implements Tool {
     public void publishRegionServerMinAvilability(Pair<ServerName, Double> serverNameDoublePair) {
       LOG.info("The minAvailability of regionServer " + serverNameDoublePair.getFirst() + " was set to "
               + serverNameDoublePair.getSecond() + "%");
+    }
+
+    @Override
+    public void publishRSGroupMinAvailability(Pair<String, Double> rsgroupDoublePair) {
+      LOG.info("The minAvailability of RSGroup " + rsgroupDoublePair.getFirst() + " was set to "
+          + rsgroupDoublePair.getSecond() + "%");
     }
 
     @Override
@@ -345,17 +357,20 @@ public final class Canary implements Tool {
   private Path rootdir;
   private ConcurrentMap<ServerName, Integer> failuresByServer;
   private ConcurrentMap<TableName, Integer> failuresByTable;
+  private ConcurrentMap<String, Integer> failuresByRsgroup;
   private ConcurrentMap<ServerName, Integer> totalRequestByServer;
   private ConcurrentMap<TableName, Integer> totalRequestByTable;
+  private ConcurrentMap<String, Integer> totalRequestByRsgroup;
   private InfoServer infoServer;
 
   public Canary(Sink sink) {
     this.sink = sink;
     this.failuresByServer = new ConcurrentHashMap<>();
     this.failuresByTable = new ConcurrentHashMap<>();
+    this.failuresByRsgroup = new ConcurrentHashMap<>();
     this.totalRequestByServer = new ConcurrentHashMap<>();
     this.totalRequestByTable = new ConcurrentHashMap<>();
-
+    this.totalRequestByRsgroup = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -410,10 +425,12 @@ public final class Canary implements Tool {
     // clear the previous failures
     this.failuresByServer.clear();
     this.failuresByTable.clear();
+    this.failuresByRsgroup.clear();
 
     //clear the previous total count
     this.totalRequestByServer.clear();
     this.totalRequestByTable.clear();
+    this.totalRequestByRsgroup.clear();
 
     List<RegionTask> tasksNotRun = new ArrayList<>();
     Semaphore concurrencyControl = new Semaphore(maxConcurrency);
@@ -451,6 +468,7 @@ public final class Canary implements Tool {
     getMasterAvailability();
     getTableMinAvailability();
     getRegionServerMinAvailability();
+    getRSGroupMinAvailability();
     sink.reportSummary();
     long finishTime = System.currentTimeMillis();
     LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
@@ -525,6 +543,7 @@ public final class Canary implements Tool {
     rootdir = FSUtils.getRootDir(conf);
     fs = rootdir.getFileSystem(conf);
     excludeNamespace = conf.get(EXCLUDE_NAMESPACE, "");
+    sink.setConnection(conn);
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
     // lets the canary monitor the cluster
@@ -555,6 +574,11 @@ public final class Canary implements Tool {
         .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).collect(Collectors.toList());
   }
 
+  public List<Entry<String, Integer>> getFailuresByRsgroup() {
+    return failuresByRsgroup.entrySet().stream()
+        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).collect(Collectors.toList());
+  }
+
   public double getReadAvailability() {
     return sink.getReadAvailability();
   }
@@ -575,6 +599,10 @@ public final class Canary implements Tool {
     failuresByTable.entrySet().stream().sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
         .forEach(entry -> {
           LOG.warn("Failed table and count: " + entry.getKey() + " , " + entry.getValue());
+        });
+    failuresByRsgroup.entrySet().stream().sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
+        .forEach(entry -> {
+          LOG.warn("Failed rsgroup and count: " + entry.getKey() + " , " + entry.getValue());
         });
   }
 
@@ -618,11 +646,15 @@ public final class Canary implements Tool {
   protected void recordFailure(ServerName server, TableName table) {
     failuresByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
     failuresByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
+    Optional.ofNullable(CanaryRSGroupUtils.getCachedRSGroupOfTable(admin, table))
+        .ifPresent(group -> failuresByRsgroup.compute(group, (k, v) -> v == null ? 1 : v + 1));
   }
 
   protected void caclTotalRequest(ServerName server, TableName table) {
     totalRequestByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
     totalRequestByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
+    Optional.ofNullable(CanaryRSGroupUtils.getCachedRSGroupOfTable(admin, table))
+        .ifPresent(group -> totalRequestByRsgroup.compute(group, (k, v) -> v == null ? 1 : v + 1));
   }
 
   /*
@@ -799,6 +831,24 @@ public final class Canary implements Tool {
     });
     if (regionServerMinAvailabilityPair.getFirst() != null) {
       sink.publishRegionServerMinAvilability(regionServerMinAvailabilityPair);
+    }
+  }
+
+  private void getRSGroupMinAvailability(){
+    Pair<String, Double> rsgroupMinAvailabilityPair = new Pair<>();
+    totalRequestByRsgroup.forEach((rsgroup, totalCount) -> {
+      if (totalCount != 0) {
+        int serverFailures = failuresByRsgroup.computeIfAbsent(rsgroup, k -> 0);
+        double serverAvailability = (totalCount - serverFailures) * 100.0 / totalCount;
+        if (rsgroupMinAvailabilityPair.getFirst() == null
+            || serverAvailability < rsgroupMinAvailabilityPair.getSecond()) {
+          rsgroupMinAvailabilityPair.setFirst(rsgroup);
+          rsgroupMinAvailabilityPair.setSecond(serverAvailability);
+        }
+      }
+    });
+    if (rsgroupMinAvailabilityPair.getFirst() != null) {
+      sink.publishRSGroupMinAvailability(rsgroupMinAvailabilityPair);
     }
   }
 

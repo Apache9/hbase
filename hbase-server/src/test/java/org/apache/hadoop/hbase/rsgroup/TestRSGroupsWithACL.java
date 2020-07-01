@@ -21,19 +21,21 @@ import static org.apache.hadoop.hbase.AuthUtil.toGroupEntry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.Waiter.Predicate;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
-import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
+import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.AccessControlClient;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.PermissionStorage;
@@ -41,7 +43,6 @@ import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.SecurityTests;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -93,31 +94,22 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   private static User USER_GROUP_WRITE;
 
   private static byte[] TEST_FAMILY = Bytes.toBytes("f1");
-
-  private static RSGroupAdminEndpoint rsGroupAdminEndpoint;
+  private static HMaster master;
+  private static AccessChecker accessChecker;
+  private static UserProvider userProvider;
 
   @BeforeClass
   public static void setupBeforeClass() throws Exception {
     // setup configuration
     conf = TEST_UTIL.getConfiguration();
-    conf.set(HConstants.HBASE_MASTER_LOADBALANCER_CLASS, RSGroupBasedLoadBalancer.class.getName());
     // Enable security
     enableSecurity(conf);
     // Verify enableSecurity sets up what we require
     verifyConfiguration(conf);
     // Enable rsgroup
-    configureRSGroupAdminEndpoint(conf);
+    RSGroupUtil.enableRSGroup(conf);
 
     TEST_UTIL.startMiniCluster();
-    rsGroupAdminEndpoint = (RSGroupAdminEndpoint) TEST_UTIL.getMiniHBaseCluster().getMaster()
-        .getMasterCoprocessorHost().findCoprocessor(RSGroupAdminEndpoint.class.getName());
-
-    HMaster master = TEST_UTIL.getHBaseCluster().getMaster();
-    TEST_UTIL.waitFor(60000, (Predicate<Exception>) () ->
-        master.isInitialized() && ((RSGroupBasedLoadBalancer) master.getLoadBalancer()).isOnline());
-
-    rsGroupAdminEndpoint = (RSGroupAdminEndpoint) TEST_UTIL.getMiniHBaseCluster().getMaster().
-        getMasterCoprocessorHost().findCoprocessor(RSGroupAdminEndpoint.class.getName());
     // Wait for the ACL table to become available
     TEST_UTIL.waitUntilAllRegionsAssigned(PermissionStorage.ACL_TABLE_NAME);
 
@@ -141,6 +133,22 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
 
     systemUserConnection = TEST_UTIL.getConnection();
     setUpTableAndUserPermissions();
+    master = TEST_UTIL.getHBaseCluster().getMaster();
+    accessChecker = master.getAccessChecker();
+    userProvider = UserProvider.instantiate(TEST_UTIL.getConfiguration());
+  }
+
+  private void checkPermission(String request) throws IOException {
+    accessChecker.requirePermission(getActiveUser(), request, null, Permission.Action.ADMIN);
+  }
+
+  private User getActiveUser() throws IOException {
+    // for non-rpc handling, fallback to system user
+    Optional<User> optionalUser = RpcServer.getRequestUser();
+    if (optionalUser.isPresent()) {
+      return optionalUser.get();
+    }
+    return userProvider.getCurrent();
   }
 
   private static void setUpTableAndUserPermissions() throws Exception {
@@ -201,20 +209,10 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
     TEST_UTIL.shutdownMiniCluster();
   }
 
-  private static void configureRSGroupAdminEndpoint(Configuration conf) {
-    String currentCoprocessors = conf.get(CoprocessorHost.MASTER_COPROCESSOR_CONF_KEY);
-    String coprocessors = RSGroupAdminEndpoint.class.getName();
-    if (currentCoprocessors != null) {
-      coprocessors += "," + currentCoprocessors;
-    }
-    conf.set(CoprocessorHost.MASTER_COPROCESSOR_CONF_KEY, coprocessors);
-    conf.set(HConstants.HBASE_MASTER_LOADBALANCER_CLASS, RSGroupBasedLoadBalancer.class.getName());
-  }
-
   @Test
   public void testGetRSGroupInfo() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("getRSGroupInfo");
+      checkPermission("getRSGroupInfo");
       return null;
     };
 
@@ -224,7 +222,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testGetRSGroupInfoOfTable() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("getRSGroupInfoOfTable");
+      checkPermission("getRSGroupInfoOfTable");
       return null;
     };
 
@@ -234,7 +232,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testMoveServers() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("moveServers");
+      checkPermission("moveServers");
       return null;
     };
 
@@ -244,7 +242,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testMoveTables() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("moveTables");
+      checkPermission("moveTables");
       return null;
     };
 
@@ -254,7 +252,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testAddRSGroup() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("addRSGroup");
+      checkPermission("addRSGroup");
       return null;
     };
 
@@ -264,7 +262,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testRemoveRSGroup() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("removeRSGroup");
+      checkPermission("removeRSGroup");
       return null;
     };
 
@@ -274,7 +272,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testBalanceRSGroup() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("balanceRSGroup");
+      checkPermission("balanceRSGroup");
       return null;
     };
 
@@ -284,7 +282,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testListRSGroup() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("listRSGroup");
+      checkPermission("listRSGroup");
       return null;
     };
 
@@ -294,7 +292,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testGetRSGroupInfoOfServer() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("getRSGroupInfoOfServer");
+      checkPermission("getRSGroupInfoOfServer");
       return null;
     };
 
@@ -304,7 +302,17 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
   @Test
   public void testMoveServersAndTables() throws Exception {
     AccessTestAction action = () -> {
-      rsGroupAdminEndpoint.getGroupAdminService().checkPermission("moveServersAndTables");
+      checkPermission("moveServersAndTables");
+      return null;
+    };
+
+    validateAdminPermissions(action);
+  }
+
+  @Test
+  public void testRemoveServers() throws Exception {
+    AccessTestAction action = () -> {
+      checkPermission("removeServers");
       return null;
     };
 
@@ -313,7 +321,7 @@ public class TestRSGroupsWithACL extends SecureTestUtil {
 
   private void validateAdminPermissions(AccessTestAction action) throws Exception {
     verifyAllowed(action, SUPERUSER, USER_ADMIN, USER_GROUP_ADMIN);
-    verifyDenied(action, USER_CREATE, USER_OWNER, USER_RW, USER_RO,
-        USER_NONE, USER_GROUP_READ, USER_GROUP_WRITE, USER_GROUP_CREATE);
+    verifyDenied(action, USER_CREATE, USER_OWNER, USER_RW, USER_RO, USER_NONE, USER_GROUP_READ,
+      USER_GROUP_WRITE, USER_GROUP_CREATE);
   }
 }

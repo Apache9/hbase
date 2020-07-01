@@ -20,11 +20,8 @@ package org.apache.hadoop.hbase.rsgroup;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
@@ -37,8 +34,8 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.quotas.QuotaTableUtil;
-import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.RSGroupTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -53,7 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
-@Category({ MediumTests.class })
+@Category({ RSGroupTests.class, MediumTests.class })
 public class TestRSGroupsBasics extends TestRSGroupsBase {
 
   @ClassRule
@@ -84,11 +81,13 @@ public class TestRSGroupsBasics extends TestRSGroupsBase {
 
   @Test
   public void testBasicStartUp() throws IOException {
-    RSGroupInfo defaultInfo = rsGroupAdmin.getRSGroupInfo(RSGroupInfo.DEFAULT_GROUP);
+    RSGroupInfo defaultInfo = ADMIN.getRSGroup(RSGroupInfo.DEFAULT_GROUP);
     assertEquals(NUM_SLAVES_BASE, defaultInfo.getServers().size());
-    // Assignment of meta, namespace and rsgroup regions.
-    int count = master.getAssignmentManager().getRegionStates().getRegionAssignments().size();
-    // 2 meta, group
+    // Assignment of meta and rsgroup regions.
+    int count = MASTER.getAssignmentManager().getRegionStates().getRegionAssignments().size();
+    LOG.info("regions assignments are" +
+      MASTER.getAssignmentManager().getRegionStates().getRegionAssignments().toString());
+    // 2 (meta and rsgroup)
     assertEquals(2, count);
   }
 
@@ -116,14 +115,14 @@ public class TestRSGroupsBasics extends TestRSGroupsBase {
   @Test
   public void testNamespaceCreateAndAssign() throws Exception {
     LOG.info("testNamespaceCreateAndAssign");
-    String nsName = tablePrefix + "_foo";
-    final TableName tableName = TableName.valueOf(nsName, tablePrefix + "_testCreateAndAssign");
+    String nsName = TABLE_PREFIX + "_foo";
+    final TableName tableName = TableName.valueOf(nsName, TABLE_PREFIX + "_testCreateAndAssign");
     RSGroupInfo appInfo = addGroup("appInfo", 1);
-    admin.createNamespace(NamespaceDescriptor.create(nsName)
+    ADMIN.createNamespace(NamespaceDescriptor.create(nsName)
       .addConfiguration(RSGroupInfo.NAMESPACE_DESC_PROP_GROUP, "appInfo").build());
     final TableDescriptor desc = TableDescriptorBuilder.newBuilder(tableName)
       .setColumnFamily(ColumnFamilyDescriptorBuilder.of("f")).build();
-    admin.createTable(desc);
+    ADMIN.createTable(desc);
     // wait for created table to be assigned
     TEST_UTIL.waitFor(WAIT_TIMEOUT, new Waiter.Predicate<Exception>() {
       @Override
@@ -133,57 +132,18 @@ public class TestRSGroupsBasics extends TestRSGroupsBase {
     });
     ServerName targetServer = getServerName(appInfo.getServers().iterator().next());
     // verify it was assigned to the right group
-    Assert.assertEquals(1, admin.getRegions(targetServer).size());
-  }
-
-  @Test
-  public void testCreateWhenRsgroupNoOnlineServers() throws Exception {
-    LOG.info("testCreateWhenRsgroupNoOnlineServers");
-
-    // set rsgroup has no online servers and test create table
-    final RSGroupInfo appInfo = addGroup("appInfo", 1);
-    Iterator<Address> iterator = appInfo.getServers().iterator();
-    List<ServerName> serversToDecommission = new ArrayList<>();
-    ServerName targetServer = getServerName(iterator.next());
-    assertTrue(master.getServerManager().getOnlineServers().containsKey(targetServer));
-    serversToDecommission.add(targetServer);
-    admin.decommissionRegionServers(serversToDecommission, true);
-    assertEquals(1, admin.listDecommissionedRegionServers().size());
-
-    final TableName tableName = TableName.valueOf(tablePrefix + "_ns", name.getMethodName());
-    admin.createNamespace(NamespaceDescriptor.create(tableName.getNamespaceAsString())
-      .addConfiguration(RSGroupInfo.NAMESPACE_DESC_PROP_GROUP, appInfo.getName()).build());
-    final TableDescriptor desc = TableDescriptorBuilder.newBuilder(tableName)
-      .setColumnFamily(ColumnFamilyDescriptorBuilder.of("f")).build();
-    try {
-      admin.createTable(desc);
-      fail("Shouldn't create table successfully!");
-    } catch (Exception e) {
-      LOG.debug("create table error", e);
-    }
-
-    // recommission and test create table
-    admin.recommissionRegionServer(targetServer, null);
-    assertEquals(0, admin.listDecommissionedRegionServers().size());
-    admin.createTable(desc);
-    // wait for created table to be assigned
-    TEST_UTIL.waitFor(WAIT_TIMEOUT, new Waiter.Predicate<Exception>() {
-      @Override
-      public boolean evaluate() throws Exception {
-        return getTableRegionMap().get(desc.getTableName()) != null;
-      }
-    });
+    Assert.assertEquals(1, ADMIN.getRegions(targetServer).size());
   }
 
   @Test
   public void testDefaultNamespaceCreateAndAssign() throws Exception {
     LOG.info("testDefaultNamespaceCreateAndAssign");
-    String tableName = tablePrefix + "_testCreateAndAssign";
-    admin.modifyNamespace(NamespaceDescriptor.create("default")
+    String tableName = TABLE_PREFIX + "_testCreateAndAssign";
+    ADMIN.modifyNamespace(NamespaceDescriptor.create("default")
       .addConfiguration(RSGroupInfo.NAMESPACE_DESC_PROP_GROUP, "default").build());
     final TableDescriptor desc = TableDescriptorBuilder.newBuilder(TableName.valueOf(tableName))
       .setColumnFamily(ColumnFamilyDescriptorBuilder.of("f")).build();
-    admin.createTable(desc);
+    ADMIN.createTable(desc);
     // wait for created table to be assigned
     TEST_UTIL.waitFor(WAIT_TIMEOUT, new Waiter.Predicate<Exception>() {
       @Override
@@ -203,10 +163,11 @@ public class TestRSGroupsBasics extends TestRSGroupsBase {
     TEST_UTIL.createTable(tableName, FAMILY);
 
     // create snapshot
-    admin.snapshot(snapshotName, tableName);
+    ADMIN.snapshot(snapshotName, tableName);
 
     // clone
-    admin.cloneSnapshot(snapshotName, clonedTableName);
+    ADMIN.cloneSnapshot(snapshotName, clonedTableName);
+    ADMIN.deleteSnapshot(snapshotName);
   }
 
   @Test
@@ -216,41 +177,39 @@ public class TestRSGroupsBasics extends TestRSGroupsBase {
     // move region servers from default group to new group
     final int serverCountToMoveToNewGroup = 3;
     final RSGroupInfo newGroup =
-        addGroup(getGroupName(name.getMethodName()), serverCountToMoveToNewGroup);
+      addGroup(getGroupName(name.getMethodName()), serverCountToMoveToNewGroup);
 
     // get the existing dead servers
-    NUM_DEAD_SERVERS = cluster.getClusterMetrics().getDeadServerNames().size();
+    NUM_DEAD_SERVERS = CLUSTER.getClusterMetrics().getDeadServerNames().size();
 
     // stop 1 region server in new group
     ServerName serverToStop = getServerName(newGroup.getServers().iterator().next());
     try {
       // stopping may cause an exception
       // due to the connection loss
-      admin.stopRegionServer(serverToStop.getAddress().toString());
+      ADMIN.stopRegionServer(serverToStop.getAddress().toString());
       NUM_DEAD_SERVERS++;
     } catch (Exception e) {
     }
 
-    // wait for the stopped region server to show up in the dead server list
+    // wait for stopped regionserver to dead server list
     TEST_UTIL.waitFor(WAIT_TIMEOUT, new Waiter.Predicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
-        return cluster.getClusterMetrics().getDeadServerNames().size() == NUM_DEAD_SERVERS &&
-          !master.getServerManager().areDeadServersInProgress();
+        return CLUSTER.getClusterMetrics().getDeadServerNames().size() == NUM_DEAD_SERVERS &&
+          !MASTER.getServerManager().areDeadServersInProgress();
       }
     });
-
-    // verify
-    assertFalse(cluster.getClusterMetrics().getLiveServerMetrics().containsKey(serverToStop));
-    assertTrue(cluster.getClusterMetrics().getDeadServerNames().contains(serverToStop));
+    assertFalse(CLUSTER.getClusterMetrics().getLiveServerMetrics().containsKey(serverToStop));
+    assertTrue(CLUSTER.getClusterMetrics().getDeadServerNames().contains(serverToStop));
     assertTrue(newGroup.getServers().contains(serverToStop.getAddress()));
 
     // clear dead servers list
-    List<ServerName> notClearedServers = admin.clearDeadServers(Lists.newArrayList(serverToStop));
+    List<ServerName> notClearedServers = ADMIN.clearDeadServers(Lists.newArrayList(serverToStop));
     assertEquals(0, notClearedServers.size());
 
-    // verify if the stopped region server gets cleared and removed from the group
-    Set<Address> newGroupServers = rsGroupAdmin.getRSGroupInfo(newGroup.getName()).getServers();
+    // the stopped region server gets cleared and removed from the group
+    Set<Address> newGroupServers = ADMIN.getRSGroup(newGroup.getName()).getServers();
     assertFalse(newGroupServers.contains(serverToStop.getAddress()));
     assertEquals(serverCountToMoveToNewGroup - 1 /* 1 stopped */, newGroupServers.size());
   }
@@ -260,58 +219,43 @@ public class TestRSGroupsBasics extends TestRSGroupsBase {
     LOG.info("testClearNotProcessedDeadServer");
 
     // get the existing dead servers
-    NUM_DEAD_SERVERS = cluster.getClusterMetrics().getDeadServerNames().size();
+    NUM_DEAD_SERVERS = CLUSTER.getClusterMetrics().getDeadServerNames().size();
 
     // move region servers from default group to "dead server" group
     final int serverCountToMoveToDeadServerGroup = 1;
-    RSGroupInfo deadServerGroup =
-        addGroup("deadServerGroup", serverCountToMoveToDeadServerGroup);
+    RSGroupInfo deadServerGroup = addGroup("deadServerGroup", serverCountToMoveToDeadServerGroup);
 
-    // stop 1 region server in "dead server" group
+    // stop 1 region servers in "dead server" group
     ServerName serverToStop = getServerName(deadServerGroup.getServers().iterator().next());
     try {
       // stopping may cause an exception
       // due to the connection loss
-      admin.stopRegionServer(serverToStop.getAddress().toString());
+      ADMIN.stopRegionServer(serverToStop.getAddress().toString());
       NUM_DEAD_SERVERS++;
     } catch (Exception e) {
     }
     TEST_UTIL.waitFor(WAIT_TIMEOUT, new Waiter.Predicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
-        return cluster.getClusterMetrics().getDeadServerNames().size() == NUM_DEAD_SERVERS;
+        return CLUSTER.getClusterMetrics().getDeadServerNames().size() == NUM_DEAD_SERVERS;
       }
     });
 
     Set<Address> ServersInDeadServerGroup =
-        rsGroupAdmin.getRSGroupInfo(deadServerGroup.getName()).getServers();
+      ADMIN.getRSGroup(deadServerGroup.getName()).getServers();
     assertEquals(serverCountToMoveToDeadServerGroup, ServersInDeadServerGroup.size());
     assertTrue(ServersInDeadServerGroup.contains(serverToStop.getAddress()));
   }
 
   @Test
   public void testRSGroupsWithHBaseQuota() throws Exception {
-    TEST_UTIL.getConfiguration().setBoolean(QuotaUtil.QUOTA_CONF_KEY, true);
-    restartHBaseCluster();
-    try {
-      TEST_UTIL.waitFor(90000, new Waiter.Predicate<Exception>() {
-        @Override
-        public boolean evaluate() throws Exception {
-          return admin.isTableAvailable(QuotaTableUtil.QUOTA_TABLE_NAME);
-        }
-      });
-    } finally {
-      TEST_UTIL.getConfiguration().setBoolean(QuotaUtil.QUOTA_CONF_KEY, false);
-      restartHBaseCluster();
-    }
-  }
-
-  private void restartHBaseCluster() throws Exception {
-    LOG.info("\n\nShutting down cluster");
-    TEST_UTIL.shutdownMiniHBaseCluster();
-    LOG.info("\n\nSleeping a bit");
-    Thread.sleep(2000);
-    TEST_UTIL.restartHBaseCluster(NUM_SLAVES_BASE - 1);
-    initialize();
+    toggleQuotaCheckAndRestartMiniCluster(true);
+    TEST_UTIL.waitFor(90000, new Waiter.Predicate<Exception>() {
+      @Override
+      public boolean evaluate() throws Exception {
+        return ADMIN.isTableAvailable(QuotaTableUtil.QUOTA_TABLE_NAME);
+      }
+    });
+    toggleQuotaCheckAndRestartMiniCluster(false);
   }
 }

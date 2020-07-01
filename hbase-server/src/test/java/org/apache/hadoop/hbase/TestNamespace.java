@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.hadoop.fs.FileSystem;
@@ -31,6 +32,7 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
@@ -111,12 +113,11 @@ public class TestNamespace {
     assertEquals(2, admin.listNamespaceDescriptors().length);
 
     //verify existence of system tables
-    Set<TableName> systemTables = Sets.newHashSet(
-        TableName.META_TABLE_NAME);
-    HTableDescriptor[] descs =
-        admin.listTableDescriptorsByNamespace(NamespaceDescriptor.SYSTEM_NAMESPACE.getName());
-    assertEquals(systemTables.size(), descs.length);
-    for (HTableDescriptor desc : descs) {
+    Set<TableName> systemTables = Sets.newHashSet(TableName.META_TABLE_NAME);
+    List<TableDescriptor> descs = admin.listTableDescriptorsByNamespace(
+      Bytes.toBytes(NamespaceDescriptor.SYSTEM_NAMESPACE.getName()));
+    assertEquals(systemTables.size(), descs.size());
+    for (TableDescriptor desc : descs) {
       assertTrue(systemTables.contains(desc.getTableName()));
     }
     //verify system tables aren't listed

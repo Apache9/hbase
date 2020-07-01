@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUtil;
 import org.apache.hadoop.hbase.client.replication.TableCFs;
 import org.apache.hadoop.hbase.client.security.SecurityCapability;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
+import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaRetriever;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
@@ -58,6 +59,7 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.security.access.GetUserPermissionsRequest;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.UserPermission;
@@ -3166,4 +3168,119 @@ public interface Admin extends Abortable, Closeable {
    */
   boolean isSnapshotCleanupEnabled() throws IOException;
 
+  /**
+   * Creates a new RegionServer group with the given name
+   * @param groupName the name of the group
+   * @throws IOException if a remote or network exception occurs
+   */
+  void addRSGroup(String groupName) throws IOException;
+
+  /**
+   * Get group info for the given group name
+   * @param groupName the group name
+   * @return group info
+   * @throws IOException if a remote or network exception occurs
+   */
+  RSGroupInfo getRSGroup(String groupName) throws IOException;
+
+  /**
+   * Get group info for the given hostPort
+   * @param hostPort HostPort to get RSGroupInfo for
+   * @throws IOException if a remote or network exception occurs
+   */
+  RSGroupInfo getRSGroup(Address hostPort) throws IOException;
+
+  /**
+   * Get group info for the given table
+   * @param tableName table name to get RSGroupInfo for
+   * @throws IOException if a remote or network exception occurs
+   */
+  RSGroupInfo getRSGroup(TableName tableName) throws IOException;
+
+  /**
+   * Lists current set of RegionServer groups
+   * @throws IOException if a remote or network exception occurs
+   */
+  List<RSGroupInfo> listRSGroups() throws IOException;
+
+  /**
+   * Get all tables in this RegionServer group.
+   * @param groupName the group name
+   * @throws IOException if a remote or network exception occurs
+   * @see #getConfiguredNamespacesAndTablesInRSGroup(String)
+   */
+  List<TableName> listTablesInRSGroup(String groupName) throws IOException;
+
+  /**
+   * Get the namespaces and tables which have this RegionServer group in descriptor.
+   * <p/>
+   * The difference between this method and {@link #listTablesInRSGroup(String)} is that, this
+   * method will not include the table which is actually in this RegionServr group but without the
+   * RegionServer group configuration in its {@link TableDescriptor}. For example, we have a group
+   * 'A', and we make namespace 'nsA' in this group, then all the tables under this namespace will
+   * in the group 'A', but this method will not return these tables but only the namespace 'nsA',
+   * while the {@link #listTablesInRSGroup(String)} will return all these tables.
+   * @param groupName the group name
+   * @throws IOException if a remote or network exception occurs
+   * @see #listTablesInRSGroup(String)
+   */
+  Pair<List<String>, List<TableName>> getConfiguredNamespacesAndTablesInRSGroup(String groupName)
+    throws IOException;
+
+  /**
+   * Remove RegionServer group associated with the given name
+   * @param groupName the group name
+   * @throws IOException if a remote or network exception occurs
+   */
+  void removeRSGroup(String groupName) throws IOException;
+
+  /**
+   * Remove decommissioned servers from group
+   *  1. Sometimes we may find the server aborted due to some hardware failure and we must offline
+   *     the server for repairing. Or we need to move some servers to join other clusters.
+   *     So we need to remove these servers from the group.
+   *  2. Dead/recovering/live servers will be disallowed.
+   * @param servers set of servers to remove
+   * @throws IOException if a remote or network exception occurs
+   */
+  void removeServersFromRSGroup(Set<Address> servers) throws IOException;
+
+  /**
+   * Move given set of servers to the specified target RegionServer group
+   * @param servers set of servers to move
+   * @param targetGroup the group to move servers to
+   * @throws IOException if a remote or network exception occurs
+   */
+  void moveServersToRSGroup(Set<Address> servers, String targetGroup) throws IOException;
+
+  /**
+   * Set the RegionServer group for tables
+   * @param tables tables to set group for
+   * @param groupName group name for tables
+   * @throws IOException if a remote or network exception occurs
+   */
+  void setRSGroup(Set<TableName> tables, String groupName) throws IOException;
+
+  /**
+   * Balance regions in the given RegionServer group
+   * @param groupName the group name
+   * @return boolean Whether balance ran or not
+   * @throws IOException if a remote or network exception occurs
+   */
+  boolean balanceRSGroup(String groupName) throws IOException;
+
+  /**
+   * Update RSGroup configuration
+   * @param groupName the group name
+   * @param configuration new configuration of the group name to be set
+   * @throws IOException if a remote or network exception occurs
+   */
+  void updateRSGroupConfig(String groupName, Map<String, String> configuration) throws IOException;
+
+  /**
+   * remove a rsgroup, dissolved servers in group locally, avoid moving regions on a massive scale.
+   * @param groupName the group name
+   * @throws IOException if a remote or network exception occurs
+   */
+  void dissolveRSGroupLocally(String groupName) throws IOException;
 }

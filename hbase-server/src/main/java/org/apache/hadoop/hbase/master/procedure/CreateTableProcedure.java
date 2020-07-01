@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.master.procedure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -28,6 +29,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.MetaTableAccessor;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
@@ -41,6 +43,7 @@ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.master.replication.ReplicationPeerManager;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.util.FSTableDescriptors;
@@ -51,8 +54,10 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos;
@@ -265,9 +270,26 @@ public class CreateTableProcedure
 
     // check that we have at least 1 CF
     if (tableDescriptor.getColumnFamilyCount() == 0) {
-      setFailure("master-create-table", new DoNotRetryIOException("Table " +
-          getTableName().toString() + " should have at least one column family."));
+      setFailure("master-create-table", new DoNotRetryIOException(
+        "Table " + getTableName().toString() + " should have at least one column family."));
       return false;
+    }
+    if (!tableName.isSystemTable()) {
+      // do not check rs group for system tables as we may block the bootstrap.
+      Supplier<String> forWhom = () -> "table " + tableName;
+      RSGroupInfo rsGroupInfo = MasterProcedureUtil.checkGroupExists(
+        env.getMasterServices().getRSGroupInfoManager()::getRSGroup,
+        tableDescriptor.getRegionServerGroup(), forWhom);
+      if (rsGroupInfo == null) {
+        // we do not set rs group info on table, check if we have one on namespace
+        String namespace = tableName.getNamespaceAsString();
+        NamespaceDescriptor nd = env.getMasterServices().getClusterSchema().getNamespace(namespace);
+        forWhom = () -> "table " + tableName + "(inherit from namespace)";
+        rsGroupInfo = MasterProcedureUtil.checkGroupExists(
+          env.getMasterServices().getRSGroupInfoManager()::getRSGroup,
+          MasterProcedureUtil.getNamespaceGroup(nd), forWhom);
+      }
+      MasterProcedureUtil.checkGroupNotEmpty(rsGroupInfo, forWhom);
     }
 
     return true;

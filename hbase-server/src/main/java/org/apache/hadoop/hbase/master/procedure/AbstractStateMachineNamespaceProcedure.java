@@ -19,11 +19,13 @@
 package org.apache.hadoop.hbase.master.procedure;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.master.TableNamespaceManager;
 import org.apache.hadoop.hbase.procedure2.StateMachineProcedure;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 
@@ -120,5 +122,14 @@ public abstract class AbstractStateMachineNamespaceProcedure<TState>
 
   protected void releaseSyncLatch() {
     ProcedurePrepareLatch.releaseLatch(syncLatch, this);
+  }
+
+  protected final void checkNamespaceRSGroup(MasterProcedureEnv env, NamespaceDescriptor nd)
+    throws IOException {
+    Supplier<String> forWhom = () -> "namespace " + nd.getName();
+    RSGroupInfo rsGroupInfo = MasterProcedureUtil.checkGroupExists(
+      env.getMasterServices().getRSGroupInfoManager()::getRSGroup,
+      MasterProcedureUtil.getNamespaceGroup(nd), forWhom);
+    MasterProcedureUtil.checkGroupNotEmpty(rsGroupInfo, forWhom);
   }
 }

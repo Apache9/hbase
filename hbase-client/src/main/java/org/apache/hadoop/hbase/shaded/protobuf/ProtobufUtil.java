@@ -3396,14 +3396,16 @@ public final class ProtobufUtil {
 
 
   public static RSGroupInfo toGroupInfo(RSGroupProtos.RSGroupInfo proto) {
-    RSGroupInfo RSGroupInfo = new RSGroupInfo(proto.getName());
+    RSGroupInfo rsGroupInfo = new RSGroupInfo(proto.getName());
     for (HBaseProtos.ServerName el : proto.getServersList()) {
-      RSGroupInfo.addServer(Address.fromParts(el.getHostName(), el.getPort()));
+      rsGroupInfo.addServer(Address.fromParts(el.getHostName(), el.getPort()));
     }
     for (HBaseProtos.TableName pTableName : proto.getTablesList()) {
-      RSGroupInfo.addTable(ProtobufUtil.toTableName(pTableName));
+      rsGroupInfo.addTable(ProtobufUtil.toTableName(pTableName));
     }
-    return RSGroupInfo;
+    proto.getConfigurationList().forEach(pair ->
+        rsGroupInfo.setConfiguration(pair.getName(), pair.getValue()));
+    return rsGroupInfo;
   }
 
   public static RSGroupProtos.RSGroupInfo toProtoGroupInfo(RSGroupInfo pojo) {
@@ -3416,7 +3418,11 @@ public final class ProtobufUtil {
       hostports.add(HBaseProtos.ServerName.newBuilder().setHostName(el.getHostname())
           .setPort(el.getPort()).build());
     }
+    List<HBaseProtos.NameStringPair> configuration = pojo.getConfiguration().entrySet()
+        .stream().map(entry -> HBaseProtos.NameStringPair.newBuilder()
+            .setName(entry.getKey()).setValue(entry.getValue()).build())
+        .collect(Collectors.toList());
     return RSGroupProtos.RSGroupInfo.newBuilder().setName(pojo.getName()).addAllServers(hostports)
-        .addAllTables(tables).build();
+        .addAllTables(tables).addAllConfiguration(configuration).build();
   }
 }

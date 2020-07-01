@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -602,9 +603,11 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
   /**
    * Returns an unmodifiable collection of all the {@link HColumnDescriptor}
    * of all the column families of the table.
-   * @deprecated Use {@link #getColumnFamilies}.
+   * @deprecated since 2.0.0 and will be removed in 3.0.0. Use {@link #getColumnFamilies()} instead.
    * @return Immutable collection of {@link HColumnDescriptor} of all the
    * column families.
+   * @see #getColumnFamilies()
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-18008">HBASE-18008</a>
    */
   @Deprecated
   public Collection<HColumnDescriptor> getFamilies() {
@@ -711,8 +714,9 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
    * of the table.
    *
    * @return Array of all the HColumnDescriptors of the current table
-   *
+   * @deprecated since 2.0.0 and will be removed in 3.0.0.
    * @see #getFamilies()
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-18008">HBASE-18008</a>
    */
   @Deprecated
   @Override
@@ -728,7 +732,10 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
    * @param column Column family name
    * @return Column descriptor for the passed family name or the family on
    * passed in column.
-   * @deprecated Use {@link #getColumnFamily(byte[])}.
+   * @deprecated since 2.0.0 and will be removed in 3.0.0. Use {@link #getColumnFamily(byte[])}
+   *   instead.
+   * @see #getColumnFamily(byte[])
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-18008">HBASE-18008</a>
    */
   @Deprecated
   public HColumnDescriptor getFamily(final byte[] column) {
@@ -851,12 +858,20 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
   public static final HTableDescriptor NAMESPACE_TABLEDESC
     = new HTableDescriptor(TableDescriptorBuilder.NAMESPACE_TABLEDESC);
 
+  /**
+   * @deprecated since 0.94.1
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-6188">HBASE-6188</a>
+   */
   @Deprecated
   public HTableDescriptor setOwner(User owner) {
     getDelegateeForModification().setOwner(owner);
     return this;
   }
 
+  /**
+   * @deprecated since 0.94.1
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-6188">HBASE-6188</a>
+   */
   // used by admin.rb:alter(table_name,*args) to update owner.
   @Deprecated
   public HTableDescriptor setOwnerString(String ownerString) {
@@ -864,6 +879,10 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
     return this;
   }
 
+  /**
+   * @deprecated since 0.94.1
+   * @see <a href="https://issues.apache.org/jira/browse/HBASE-6188">HBASE-6188</a>
+   */
   @Override
   @Deprecated
   public String getOwnerString() {
@@ -992,5 +1011,10 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
   public Integer getSlotsCount() {
     String slotsCountStr = getValue(TableDescriptorBuilder.SLOTS_COUNT);
     return slotsCountStr == null ? null : Integer.parseInt(slotsCountStr);
+  }
+
+  @Override
+  public Optional<String> getRegionServerGroup() {
+    return delegatee.getRegionServerGroup();
   }
 }

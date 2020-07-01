@@ -88,4 +88,6 @@ public interface MetricsClusterSource extends BaseSource {
   String REPLICATION_LAG_DESC = "Replication lag";
   String APPROXIMATE_ROW_COUNT = "approximateRowCount";
   String APPROXIMATE_ROW_COUNT_DESC = "Number of approximate row count";
+  String REGION_SERVER_COUNT = "regionServerCount";
+  String REGION_SERVER_COUNT_DESC = "Number of RegionServers";
 }

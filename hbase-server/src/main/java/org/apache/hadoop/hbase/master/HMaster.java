@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -90,7 +90,6 @@ import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.executor.ExecutorType;
 import org.apache.hadoop.hbase.favored.FavoredNodesManager;
-import org.apache.hadoop.hbase.favored.FavoredNodesPromoter;
 import org.apache.hadoop.hbase.http.InfoServer;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.RpcServer;
@@ -103,7 +102,6 @@ import org.apache.hadoop.hbase.master.assignment.RegionStateNode;
 import org.apache.hadoop.hbase.master.assignment.RegionStates;
 import org.apache.hadoop.hbase.master.assignment.TransitRegionStateProcedure;
 import org.apache.hadoop.hbase.master.balancer.BalancerChore;
-import org.apache.hadoop.hbase.master.balancer.BaseLoadBalancer;
 import org.apache.hadoop.hbase.master.balancer.ClusterStatusChore;
 import org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory;
 import org.apache.hadoop.hbase.master.cleaner.DirScanPool;
@@ -184,6 +182,11 @@ import org.apache.hadoop.hbase.replication.SyncReplicationState;
 import org.apache.hadoop.hbase.replication.master.ReplicationHFileCleaner;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader;
+import org.apache.hadoop.hbase.replication.regionserver.ReplicationStatus;
+import org.apache.hadoop.hbase.rsgroup.RSGroupAdminEndpoint;
+import org.apache.hadoop.hbase.rsgroup.RSGroupBasedLoadBalancer;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfoManager;
+import org.apache.hadoop.hbase.rsgroup.RSGroupUtil;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.SecurityConstants;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -223,6 +226,7 @@ import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.infra.hbase.master.chore.BusyRegionDetector;
+import com.xiaomi.infra.hbase.master.chore.RSGroupNormalizerChore;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
@@ -362,6 +366,8 @@ public class HMaster extends HRegionServer implements MasterServices {
   // manager of assignment nodes in zookeeper
   private AssignmentManager assignmentManager;
 
+  private RSGroupInfoManager rsGroupInfoManager;
+
   // manager of replication
   private ReplicationPeerManager replicationPeerManager;
 
@@ -389,7 +395,7 @@ public class HMaster extends HRegionServer implements MasterServices {
 
   private final LockManager lockManager = new LockManager(this);
 
-  private LoadBalancer balancer;
+  private RSGroupBasedLoadBalancer balancer;
   private RegionNormalizer normalizer;
   private BalancerChore balancerChore;
   private RegionNormalizerChore normalizerChore;
@@ -397,6 +403,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   private ClusterStatusPublisher clusterStatusPublisherChore = null;
   private SnapshotCleanerChore snapshotCleanerChore = null;
   private BusyRegionDetector busyRegionDetector;
+  private RSGroupNormalizerChore rsGroupNormalizerChore;
 
   private HbckChore hbckChore;
   CatalogJanitor catalogJanitorChore;
@@ -450,9 +457,6 @@ public class HMaster extends HRegionServer implements MasterServices {
 
   private long splitPlanCount;
   private long mergePlanCount;
-
-  /* Handle favored nodes information */
-  private FavoredNodesManager favoredNodesManager;
 
   /** jetty server for master to redirect requests to regionserver infoServer */
   private Server masterJettyServer;
@@ -758,7 +762,8 @@ public class HMaster extends HRegionServer implements MasterServices {
   @VisibleForTesting
   protected void initializeZKBasedSystemTrackers()
       throws IOException, InterruptedException, KeeperException, ReplicationException {
-    this.balancer = LoadBalancerFactory.getLoadBalancer(conf);
+    this.balancer = new RSGroupBasedLoadBalancer();
+    this.balancer.setConf(conf);
     this.normalizer = RegionNormalizerFactory.getRegionNormalizer(conf);
     this.normalizer.setMasterServices(this);
     this.normalizer.setMasterRpcServices((MasterRpcServices)rpcServices);
@@ -770,6 +775,19 @@ public class HMaster extends HRegionServer implements MasterServices {
 
     this.splitOrMergeTracker = new SplitOrMergeTracker(zooKeeper, conf, this);
     this.splitOrMergeTracker.start();
+
+    // This is for backwards compatible. We do not need the CP for rs group now but if user want to
+    // load it, we need to enable rs group.
+    String[] cpClasses = conf.getStrings(MasterCoprocessorHost.MASTER_COPROCESSOR_CONF_KEY);
+    if (cpClasses != null) {
+      for (String cpClass : cpClasses) {
+        if (RSGroupAdminEndpoint.class.getName().equals(cpClass)) {
+          RSGroupUtil.enableRSGroup(conf);
+          break;
+        }
+      }
+    }
+    this.rsGroupInfoManager = RSGroupInfoManager.create(this);
 
     this.replicationPeerManager = ReplicationPeerManager.create(zooKeeper, conf);
 
@@ -1000,9 +1018,6 @@ public class HMaster extends HRegionServer implements MasterServices {
         return temp;
       });
     }
-    if (this.balancer instanceof FavoredNodesPromoter) {
-      favoredNodesManager = new FavoredNodesManager(this);
-    }
 
     // initialize load balancer
     this.balancer.setMasterServices(this);
@@ -1052,11 +1067,11 @@ public class HMaster extends HRegionServer implements MasterServices {
     // table states messing up master launch (namespace table, etc., are not assigned).
     this.assignmentManager.processOfflineRegions();
     // Initialize after meta is up as below scans meta
-    if (favoredNodesManager != null) {
+    if (getFavoredNodesManager() != null) {
       SnapshotOfRegionAssignmentFromMeta snapshotOfRegionAssignment =
           new SnapshotOfRegionAssignmentFromMeta(getConnection());
       snapshotOfRegionAssignment.initialize();
-      favoredNodesManager.initialize(snapshotOfRegionAssignment);
+      getFavoredNodesManager().initialize(snapshotOfRegionAssignment);
     }
 
     // set cluster status again after user regions are assigned
@@ -1461,6 +1476,11 @@ public class HMaster extends HRegionServer implements MasterServices {
       }
     }
 
+    int rsgroupNormalizerPeriod = conf.getInt(RSGroupNormalizerChore.NORMALIZER_CHORE_PERIOD_KEY,
+        RSGroupNormalizerChore.NORMALIZER_CHORE_PERIOD_DEFAULT);
+    rsGroupNormalizerChore = new RSGroupNormalizerChore(this, rsgroupNormalizerPeriod);
+    getChoreService().scheduleChore(rsGroupNormalizerChore);
+
     serviceStarted = true;
     if (LOG.isTraceEnabled()) {
       LOG.trace("Started service threads");
@@ -1621,6 +1641,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       choreService.cancelChore(this.regionsRecoveryChore);
       choreService.cancelChore(this.snapshotCleanerChore);
       choreService.cancelChore(this.busyRegionDetector);
+      choreService.cancelChore(this.rsGroupNormalizerChore);
     }
   }
 
@@ -1985,7 +2006,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   // Replace with an async implementation from which you can get
   // a success/failure result.
   @VisibleForTesting
-  public void move(final byte[] encodedRegionName, byte[] destServerName) throws HBaseIOException {
+  public void move(final byte[] encodedRegionName, byte[] destServerName) throws IOException {
     RegionState regionState = assignmentManager.getRegionStates().
       getRegionState(Bytes.toString(encodedRegionName));
 
@@ -2022,14 +2043,13 @@ public class HMaster extends HRegionServer implements MasterServices {
         LOG.debug("Unable to determine a plan to assign " + hri);
         return;
       }
-      // TODO: What is this? I don't get it.
-      if (dest.equals(serverName) && balancer instanceof BaseLoadBalancer
-          && !((BaseLoadBalancer)balancer).shouldBeOnMaster(hri)) {
+      // TODO: deal with table on master for rs group.
+      if (dest.equals(serverName)) {
         // To avoid unnecessary region moving later by balancer. Don't put user
         // regions on master.
-        LOG.debug("Skipping move of region " + hri.getRegionNameAsString()
-          + " to avoid unnecessary region moving later by load balancer,"
-          + " because it should not be on master");
+        LOG.debug("Skipping move of region " + hri.getRegionNameAsString() +
+          " to avoid unnecessary region moving later by load balancer," +
+          " because it should not be on master");
         return;
       }
     }
@@ -3504,12 +3524,14 @@ public class HMaster extends HRegionServer implements MasterServices {
 
   /**
    * Fetch the configured {@link LoadBalancer} class name. If none is set, a default is returned.
-   *
+   * <p/>
+   * Notice that, the base load balancer will always be {@link RSGroupBasedLoadBalancer} now, so
+   * this method will return the balancer used inside each rs group.
    * @return The name of the {@link LoadBalancer} in use.
    */
   public String getLoadBalancerClassName() {
-    return conf.get(HConstants.HBASE_MASTER_LOADBALANCER_CLASS, LoadBalancerFactory
-        .getDefaultLoadBalancerClass().getName());
+    return conf.get(HConstants.HBASE_MASTER_LOADBALANCER_CLASS,
+      LoadBalancerFactory.getDefaultLoadBalancerClass().getName());
   }
 
   /**
@@ -3524,13 +3546,13 @@ public class HMaster extends HRegionServer implements MasterServices {
   }
 
   @Override
-  public LoadBalancer getLoadBalancer() {
+  public RSGroupBasedLoadBalancer getLoadBalancer() {
     return balancer;
   }
 
   @Override
   public FavoredNodesManager getFavoredNodesManager() {
-    return favoredNodesManager;
+    return balancer.getFavoredNodesManager();
   }
 
   private long executePeerProcedure(AbstractPeerProcedure<?> procedure) throws IOException {
@@ -3620,7 +3642,7 @@ public class HMaster extends HRegionServer implements MasterServices {
    * @param servers Region servers to decommission.
    */
   public void decommissionRegionServers(final List<ServerName> servers, final boolean offload)
-      throws HBaseIOException {
+      throws IOException {
     List<ServerName> serversAdded = new ArrayList<>(servers.size());
     // Place the decommission marker first.
     String parentZnode = getZooKeeper().getZNodePaths().drainingZNode;
@@ -3634,7 +3656,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       }
       if (this.serverManager.addServerToDrainList(server)) {
         serversAdded.add(server);
-      };
+      }
     }
     // Move the regions off the decommissioned servers.
     if (offload) {
@@ -3843,7 +3865,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   public static void decorateMasterConfiguration(Configuration conf) {
     String plugins = conf.get(HBASE_MASTER_LOGCLEANER_PLUGINS);
     String cleanerClass = ReplicationLogCleaner.class.getCanonicalName();
-    if (!plugins.contains(cleanerClass)) {
+    if (plugins == null || !plugins.contains(cleanerClass)) {
       conf.set(HBASE_MASTER_LOGCLEANER_PLUGINS, plugins + "," + cleanerClass);
     }
     if (ReplicationUtils.isReplicationForBulkLoadDataEnabled(conf)) {
@@ -3874,5 +3896,10 @@ public class HMaster extends HRegionServer implements MasterServices {
 
   public SnapshotQuotaObserverChore getSnapshotQuotaObserverChore() {
     return this.snapshotQuotaChore;
+  }
+
+  @Override
+  public RSGroupInfoManager getRSGroupInfoManager() {
+    return rsGroupInfoManager;
   }
 }

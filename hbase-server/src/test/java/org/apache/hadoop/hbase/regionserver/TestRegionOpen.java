@@ -59,7 +59,6 @@ public class TestRegionOpen {
   public static final HBaseClassTestRule CLASS_RULE =
       HBaseClassTestRule.forClass(TestRegionOpen.class);
 
-  @SuppressWarnings("unused")
   private static final Logger LOG = LoggerFactory.getLogger(TestRegionOpen.class);
   private static final int NB_SERVERS = 1;
 
