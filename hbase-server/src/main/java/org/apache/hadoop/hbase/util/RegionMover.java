@@ -84,9 +84,9 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
   private static final String MOVE_RETRIES_MAX_KEY = "hbase.move.retries.max";
   private static final String MOVE_WAIT_MAX_KEY = "hbase.move.wait.max";
   static final String SERVERSTART_WAIT_MAX_KEY = "hbase.serverstart.wait.max";
-  private static final int DEFAULT_MOVE_RETRIES_MAX = 5;
-  private static final int DEFAULT_MOVE_WAIT_MAX = 60;
-  private static final int DEFAULT_SERVERSTART_WAIT_MAX = 180;
+  private static final int DEFAULT_MOVE_RETRIES_MAX = 10;
+  private static final int DEFAULT_MOVE_WAIT_MAX = 600;
+  private static final int DEFAULT_SERVERSTART_WAIT_MAX = 1200;
 
   private static final Logger LOG = LoggerFactory.getLogger(RegionMover.class);
 
@@ -269,11 +269,11 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
       boolean sameServer = true;
       // Assert we can scan the region in its current location
       isSuccessfulScan(region);
-      LOG.info("Moving region:" + region.getEncodedName() + " from " + sourceServer + " to "
-          + targetServer);
+      LOG.info("Moving region:" + region.getEncodedName() + " from " + sourceServer
+        + (targetServer != null ? " to " + targetServer : ""));
       while (count < retries && sameServer) {
         if (count > 0) {
-          LOG.info("Retry " + Integer.toString(count) + " of maximum " + Integer.toString(retries));
+          LOG.info("Retry " + count + " of maximum " + retries);
         }
         count = count + 1;
         admin.move(region.getEncodedNameAsBytes(), targetServer);
@@ -288,14 +288,11 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
       }
       if (sameServer) {
         LOG.error("Region: " + region.getRegionNameAsString() + " stuck on " + this.sourceServer
-            + ",newServer=" + this.targetServer);
+            + (targetServer != null ? ",newServer=" + this.targetServer : ""));
       } else {
         isSuccessfulScan(region);
-        LOG.info("Moved Region "
-            + region.getRegionNameAsString()
-            + " cost:"
-            + String.format("%.3f",
-            (float) (EnvironmentEdgeManager.currentTime() - startTime) / 1000));
+        LOG.info("Moved Region " + region.getRegionNameAsString() + " cost:"
+            + (EnvironmentEdgeManager.currentTime() - startTime) + " ms");
         moved = true;
         movedRegions.add(region);
       }
@@ -324,11 +321,11 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
     @Override
     public Boolean call() {
       try {
-        LOG.info("Moving region:" + region.getEncodedName() + " from " + sourceServer + " to "
-            + targetServer);
+        LOG.info("Moving region:" + region.getEncodedName() + " from " + sourceServer
+          + (targetServer != null ? " to " + targetServer : " randomly"));
         admin.move(region.getEncodedNameAsBytes(), targetServer);
-        LOG.info("Moved " + region.getEncodedName() + " from " + sourceServer + " to "
-            + targetServer);
+        LOG.info("Moved " + region.getEncodedName() + " from " + sourceServer
+          + (targetServer != null ? " to " + targetServer : " randomly"));
       } catch (Exception e) {
         LOG.error("Error Moving Region:" + region.getEncodedName(), e);
       } finally {
@@ -373,31 +370,25 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
 
     ExecutorService moveRegionsPool = Executors.newFixedThreadPool(this.maxthreads);
     List<Future<Boolean>> taskList = new ArrayList<>();
-    int counter = 0;
-    while (counter < regionsToMove.size()) {
-      RegionInfo region = regionsToMove.get(counter);
+    for (RegionInfo region : regionsToMove) {
       ServerName currentServer = getServerNameForRegion(region);
       if (currentServer == null) {
         LOG.warn(
             "Could not get server for Region:" + region.getRegionNameAsString() + " moving on");
-        counter++;
         continue;
       } else if (server.equals(currentServer)) {
         LOG.info(
             "Region " + region.getRegionNameAsString() + " is already on target server=" + server);
-        counter++;
         continue;
       }
+      Callable<Boolean> moveCallable;
       if (ack) {
-        Future<Boolean> task =
-            moveRegionsPool.submit(new MoveWithAck(region, currentServer, server, movedRegions));
-        taskList.add(task);
+        moveCallable = new MoveWithAck(region, currentServer, server, movedRegions);
       } else {
-        Future<Boolean> task =
-            moveRegionsPool.submit(new MoveWithoutAck(region, currentServer, server, movedRegions));
-        taskList.add(task);
+        moveCallable = new MoveWithoutAck(region, currentServer, server, movedRegions);
       }
-      counter++;
+      Future<Boolean> task = moveRegionsPool.submit(moveCallable);
+      taskList.add(task);
     }
 
     moveRegionsPool.shutdown();
@@ -420,8 +411,7 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
       List<RegionInfo> movedRegions = Collections.synchronizedList(new ArrayList<>());
       try {
         // Get Online RegionServers
-        List<ServerName> regionServers = new ArrayList<>();
-        regionServers.addAll(admin.getRegionServers());
+        List<ServerName> regionServers = new ArrayList<>(admin.getRegionServers());
         // Remove the host Region server from target Region Servers list
         ServerName server = stripServer(regionServers, hostname, port);
         if (server == null) {
@@ -456,9 +446,7 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
         LOG.error("Error while unloading regions ", e);
         return false;
       } finally {
-        if (movedRegions != null) {
-          writeFile(filename, movedRegions);
-        }
+        writeFile(filename, movedRegions);
       }
       return true;
     });
@@ -474,27 +462,20 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
         LOG.info("No Regions to move....Quitting now");
         break;
       }
-      int counter = 0;
       LOG.info("Moving " + regionsToMove.size() + " regions from " + this.hostname + " to "
           + regionServers.size() + " servers using " + this.maxthreads + " threads .Ack Mode:"
           + ack);
       ExecutorService moveRegionsPool = Executors.newFixedThreadPool(this.maxthreads);
       List<Future<Boolean>> taskList = new ArrayList<>();
-      int serverIndex = 0;
-      while (counter < regionsToMove.size()) {
+      for (RegionInfo regionInfo : regionsToMove) {
+        Callable<Boolean> moveCallable;
         if (ack) {
-          Future<Boolean> task = moveRegionsPool.submit(
-              new MoveWithAck(regionsToMove.get(counter), server, regionServers.get(serverIndex),
-                  movedRegions));
-          taskList.add(task);
+          moveCallable = new MoveWithAck(regionInfo, server, null, movedRegions);
         } else {
-          Future<Boolean> task = moveRegionsPool.submit(
-              new MoveWithoutAck(regionsToMove.get(counter), server, regionServers.get(serverIndex),
-                  movedRegions));
-          taskList.add(task);
+          moveCallable = new MoveWithoutAck(regionInfo, server, null, movedRegions);
         }
-        counter++;
-        serverIndex = (serverIndex + 1) % regionServers.size();
+        Future<Boolean> task = moveRegionsPool.submit(moveCallable);
+        taskList.add(task);
       }
       moveRegionsPool.shutdown();
       long timeoutInSeconds = regionsToMove.size() * admin.getConfiguration()
@@ -507,7 +488,7 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
       throws TimeoutException, InterruptedException, ExecutionException {
     pool.shutdown();
     try {
-      if (!pool.awaitTermination((long) this.timeout, TimeUnit.SECONDS)) {
+      if (!pool.awaitTermination(this.timeout, TimeUnit.SECONDS)) {
         LOG.warn(
             "Timed out before finishing the " + operation + " operation. Timeout: " + this.timeout
                 + "sec");
@@ -566,25 +547,21 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
     long maxWait = EnvironmentEdgeManager.currentTime() + maxWaitInSeconds * 1000;
     while (EnvironmentEdgeManager.currentTime() < maxWait) {
       try {
-        List<ServerName> regionServers = new ArrayList<>();
-        regionServers.addAll(admin.getRegionServers());
+        List<ServerName> regionServers = new ArrayList<>(admin.getRegionServers());
         // Remove the host Region server from target Region Servers list
         server = stripServer(regionServers, hostname, port);
         if (server != null) {
-          break;
-        } else {
-          LOG.warn("Server " + hostname + ":" + port + " is not up yet, waiting");
+          return server;
         }
+        LOG.warn("Server " + hostname + ":" + port + " is not up yet, waiting");
       } catch (IOException e) {
         LOG.warn("Could not get list of region servers", e);
       }
       Thread.sleep(500);
     }
-    if (server == null) {
-      LOG.error("Server " + hostname + ":" + port + " is not up. Giving up.");
-      throw new Exception("Server " + hostname + ":" + port + " to load regions not online");
-    }
-    return server;
+
+    LOG.error("Server " + hostname + ":" + port + " is not up. Giving up.");
+    throw new Exception("Server " + hostname + ":" + port + " to load regions not online");
   }
 
   private List<RegionInfo> readRegionsFromFile(String filename) throws IOException {
@@ -721,10 +698,7 @@ public class RegionMover extends AbstractHBaseTool implements Closeable {
   private boolean isSameServer(RegionInfo region, ServerName serverName)
       throws IOException {
     ServerName serverForRegion = getServerNameForRegion(region);
-    if (serverForRegion != null && serverForRegion.equals(serverName)) {
-      return true;
-    }
-    return false;
+    return serverForRegion != null && serverForRegion.equals(serverName);
   }
 
   /**
