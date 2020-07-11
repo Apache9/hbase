@@ -173,6 +173,11 @@ public class TestLogRolling extends AbstractTestLogRolling {
         public long getLength() {
           return oldWriter1.getLength();
         }
+
+        @Override
+        public long getSyncedLength() {
+          return oldWriter1.getSyncedLength();
+        }
       };
       log.setWriter(newWriter1);
 
@@ -229,6 +234,11 @@ public class TestLogRolling extends AbstractTestLogRolling {
         @Override
         public long getLength() {
           return oldWriter2.getLength();
+        }
+
+        @Override
+        public long getSyncedLength() {
+          return oldWriter2.getSyncedLength();
         }
       };
       log.setWriter(newWriter2);

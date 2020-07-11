@@ -579,4 +579,9 @@ public class FanOutOneBlockAsyncDFSOutput implements AsyncFSOutput {
   public boolean isBroken() {
     return state == State.BROKEN;
   }
+
+  @Override
+  public long getSyncedLength() {
+    return this.ackedBlockLength;
+  }
 }
