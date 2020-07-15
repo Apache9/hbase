@@ -233,6 +233,7 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
         master.getMasterCoprocessorHost()
             .postCompletedSnapshotAction(ProtobufUtil.createSnapshotDesc(snapshot), this.htd);
       }
+      finished = true;
     } catch (Exception e) { // FindBugs: REC_CATCH_EXCEPTION
       status.abort("Failed to complete snapshot " + snapshot.getName() + " on table " +
           snapshotTable + " because " + e.getMessage());
@@ -291,7 +292,6 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
       throw new SnapshotCreationException("Failed to copy working directory(" + workingDir
           + ") to completed directory(" + snapshotDir + ").");
     }
-    finished = true;
   }
 
   /**
