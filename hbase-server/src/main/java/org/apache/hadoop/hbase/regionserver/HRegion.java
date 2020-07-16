@@ -8395,12 +8395,12 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         case INCREMENT:
           NumberCodecType type = ((Increment) mutation).getNumberCodecType(
             store.getColumnFamilyDescriptor().getName(), CellUtil.cloneQualifier(delta));
-          Number deltaAmount = getDeltaAmount(delta, type);
+          Pair<Number, Cell> amountAndDelta = getAmountAndDelta(delta, type);
           byte[] newValue;
           if (currentValue != null) {
             try {
               newValue = type.add(currentValue.getValueArray(), currentValue.getValueOffset(),
-                currentValue.getValueLength(), deltaAmount);
+                currentValue.getValueLength(), amountAndDelta.getFirst());
             } catch (IllegalArgumentException e) {
               throw new DoNotRetryIOException(
                 "Error while incrementing with type " + type + ", wrong type specified?", e);
@@ -8412,7 +8412,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
             newValue = null;
           }
           newCell =
-            reckonDelta(delta, currentValue, columnFamily, now, mutation, oldCell -> newValue);
+            reckonDelta(amountAndDelta.getSecond(), currentValue, columnFamily, now, mutation,
+              oldCell -> newValue);
           break;
         case APPEND:
           newCell = reckonDelta(delta, currentValue, columnFamily, now, mutation,
@@ -8473,13 +8474,17 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     }
   }
 
-  private Number getDeltaAmount(Cell delta, NumberCodecType type) {
+  private Pair<Number, Cell> getAmountAndDelta(Cell delta, NumberCodecType type) {
     // Used for keep compatibility with 0.98 mdh version
     if (RpcServer.getCurrentCall().map(VersionInfoUtil::is98MDHClientRpcCall).orElse(false)) {
-      return NumberCodecType.RAW_LONG
-          .decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
+      Number amount = NumberCodecType.RAW_LONG
+        .decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
+      return Pair.newPair(amount,
+        PrivateCellUtil.createCell(delta, type.encode(amount), CellUtil.cloneTags(delta)));
     } else {
-      return type.decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
+      return Pair
+        .newPair(type.decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength()),
+          delta);
     }
   }
 
