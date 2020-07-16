@@ -22,6 +22,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.ClusterStatus;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
@@ -43,6 +45,7 @@ import org.apache.zookeeper.data.Id;
 import java.io.IOException;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -125,7 +128,16 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
 
   public void downgradeAllPeersTo98() throws Exception {
     try (HBaseAdmin admin = new HBaseAdmin(conf)) {
-      List<ReplicationPeerDescription> peers = admin.listReplicationPeersForBranch2();
+      String version = admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.HBASE_VERSION))
+          .convert().getHbaseVersion().getVersion();
+      List<ReplicationPeerDescription> peers;
+      if (version.startsWith("0.98.11")) {
+        peers = admin.listReplicationPeers();
+      } else if (version.startsWith("2.")) {
+        peers = admin.listReplicationPeersForBranch2();
+      } else {
+        throw new DoNotRetryIOException("Unknown HBase version: " + version);
+      }
       peers.forEach(peer -> {
         downgradePeerTo98(peer.getPeerId());
       });
