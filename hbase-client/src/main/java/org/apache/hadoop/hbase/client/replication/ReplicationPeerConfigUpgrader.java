@@ -125,7 +125,7 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
 
   public void downgradeAllPeersTo98() throws Exception {
     try (HBaseAdmin admin = new HBaseAdmin(conf)) {
-      List<ReplicationPeerDescription> peers = admin.listReplicationPeers();
+      List<ReplicationPeerDescription> peers = admin.listReplicationPeersForBranch2();
       peers.forEach(peer -> {
         downgradePeerTo98(peer.getPeerId());
       });
