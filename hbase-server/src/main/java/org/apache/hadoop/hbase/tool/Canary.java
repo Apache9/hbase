@@ -330,6 +330,9 @@ public final class Canary implements Tool {
   private static final String EXCLUDE_NAMESPACE = "hbase.canary.exclude.namespace";
   private String excludeNamespaceConfig;
   private Set<String> excludeNamespaces = new HashSet<>();
+  private static final String EXCLUDE_TABLE = "hbase.canary.exclude.table";
+  private String excludeTableConfig;
+  private Set<String> excludeTables = new HashSet<>();
 
   public static final String CANARY = "canary";
   public static final String CANARY_CONF = "canary_conf";
@@ -550,6 +553,12 @@ public final class Canary implements Tool {
       excludeNamespaces.add(namespace);
     }
     sink.setConnection(conn);
+
+    excludeTableConfig = conf.get(EXCLUDE_TABLE, "");
+    for (String table : excludeTableConfig.split(",")) {
+      excludeTables.add(table);
+    }
+
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
     // lets the canary monitor the cluster
@@ -708,6 +717,9 @@ public final class Canary implements Tool {
       return new ArrayList<>();
     }
     List<RegionTask> tasks = cachedTasks.get(tableDesc.getTableName().getNameAsString());
+    if (excludeTables.contains(tableDesc.getTableName().getNameAsString())) {
+      return new ArrayList<>();
+    }
     if (tasks != null) {
       return tasks;
     }
