@@ -67,6 +67,10 @@ runDevTests:
     refs:
      - branch-2-mdh3
      - merge_requests
+  artifacts:
+    reports:
+      junit:
+        - ./**/target/surefire-reports/TEST-*.xml
 
 runAllTests:
   stage: runAllTests
@@ -76,6 +80,10 @@ runAllTests:
   only:
     refs:
      - branch-2-mdh3
+  artifacts:
+    reports:
+      junit:
+        - ./**/target/surefire-reports/TEST-*.xml
 
 release:
   stage: release
