@@ -83,6 +83,7 @@ import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.Triple;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -356,6 +357,8 @@ public final class Canary implements Tool {
 
   private static final long DEFAULT_TIMEOUT = 600000; // 10 mins
 
+  private static final int DEFAULT_MAX_RECORD_FAILURES = 10;
+
   private static final Log LOG = LogFactory.getLog(Canary.class);
 
   private final Sink sink;
@@ -366,12 +369,15 @@ public final class Canary implements Tool {
   private long interval;
   private long timeout;
   private int maxConcurrency;
+  private int maxRecordFailures;
   private List<RegionTask> tasks;
   private final ConcurrentMap<String, List<RegionTask>> cachedTasks = new ConcurrentHashMap<>();
   private FileSystem fs;
   private Path rootdir;
   private ConcurrentMap<ServerName, Integer> failuresByServer;
   private ConcurrentMap<TableName, Integer> failuresByTable;
+  private ConcurrentMap<ServerName, Integer> totalFailuresByServer;
+  private ConcurrentMap<TableName, Integer> totalFailuresByTable;
   private ConcurrentMap<ServerName, Integer> totalRequestByServer;
   private ConcurrentMap<TableName, Integer> totalRequestByTable;
   private InfoServer infoServer;
@@ -380,6 +386,8 @@ public final class Canary implements Tool {
     this.sink = sink;
     this.failuresByServer = new ConcurrentHashMap<>();
     this.failuresByTable = new ConcurrentHashMap<>();
+    this.totalFailuresByServer = new ConcurrentHashMap<>();
+    this.totalFailuresByTable = new ConcurrentHashMap<>();
     this.totalRequestByServer = new ConcurrentHashMap<>();
     this.totalRequestByTable = new ConcurrentHashMap<>();
   }
@@ -544,6 +552,7 @@ public final class Canary implements Tool {
     // initialize HBase conf and admin
     maxConcurrency = conf.getInt("hbase.canary.concurrency.max", DEFAULT_MAX_CONCURRENCY);
     timeout = conf.getLong("hbase.canary.executor.timeout", DEFAULT_TIMEOUT);
+    maxRecordFailures = conf.getInt("hbase.canary.max.record.failures" , DEFAULT_MAX_RECORD_FAILURES);
     conn = HConnectionManager.createConnection(conf);
     admin = new HBaseAdmin(conn);
     asyncConn = HConnectionManager.createAsyncConnection(conf).get();
@@ -588,6 +597,26 @@ public final class Canary implements Tool {
   public List<Entry<TableName, Integer>> getFailuresByTable() {
     return failuresByTable.entrySet().stream()
         .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).collect(Collectors.toList());
+  }
+
+
+  public List<Entry<ServerName, Integer>> getTotalFailuresByServer() {
+    return totalFailuresByServer.entrySet().stream()
+        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).limit(maxRecordFailures).collect(Collectors.toList());
+  }
+
+  public List<Entry<TableName, Integer>> getTotalFailuresByTable() {
+    return totalFailuresByTable.entrySet().stream()
+        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).limit(maxRecordFailures).collect(Collectors.toList());
+  }
+
+  public Triple<Integer, Integer, Integer> getTotalFailuresInfo() {
+    Integer failSum = 0;
+    for (Integer failure : totalFailuresByServer.values()) {
+      failSum += failure;
+    }
+    return new Triple<>(totalFailuresByServer.keySet().size(), totalFailuresByTable.keySet().size(),
+        failSum);
   }
 
   public double getReadAvailability() {
@@ -652,6 +681,8 @@ public final class Canary implements Tool {
   protected void recordFailure(ServerName server, TableName table) {
     failuresByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
     failuresByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
+    totalFailuresByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
+    totalFailuresByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
   }
 
   protected void caclTotalRequest(ServerName server, TableName table) {

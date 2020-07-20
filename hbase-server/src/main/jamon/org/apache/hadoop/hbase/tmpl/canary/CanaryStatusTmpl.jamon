@@ -27,6 +27,7 @@ java.util.Map.Entry;
 org.apache.hadoop.hbase.tool.Canary;
 org.apache.hadoop.hbase.ServerName;
 org.apache.hadoop.hbase.TableName;
+org.apache.hadoop.hbase.util.Triple;
 </%import>
 
 <!--[if IE]>
@@ -108,6 +109,66 @@ org.apache.hadoop.hbase.TableName;
 				</%for>
 				</%if>
 				<tr><td>Total Failed Tables: <% (tableFailures != null) ? tableFailures.size() : 0 %></td></tr>
+			</table>
+		</section>
+		<section>
+			<h2>Failed Servers Since Startup</h2>
+			<%java>
+			   List<Entry<ServerName, Integer>> totalFailures = canary.getTotalFailuresByServer();
+			</%java>
+			<table class="table table-striped">
+				<tr>
+				    <th>Server</th>
+				    <th>Failures Count</th>
+				</tr>
+				<%if (totalFailures != null && totalFailures.size() > 0)%>
+				<%for Entry<ServerName, Integer> entry : totalFailures%>
+				<tr>
+				    <td><& serverNameLink; serverName=entry.getKey(); &></td>
+				    <td><% entry.getValue() %></td>
+				</tr>
+				</%for>
+				</%if>
+			</table>
+		</section>
+		<section>
+			<h2>Failed Tables Since Startup</h2>
+			<%java>
+			   List<Entry<TableName, Integer>> totalTableFailures = canary.getTotalFailuresByTable();
+			</%java>
+			<table class="table table-striped">
+				<tr>
+				    <th>Table</th>
+				    <th>Failures Count</th>
+				</tr>
+				<%if (totalTableFailures != null && totalTableFailures.size() > 0)%>
+				<%for Entry<TableName, Integer> entry : totalTableFailures%>
+				<tr>
+				    <td><% entry.getKey() %></td>
+				    <td><% entry.getValue() %></td>
+				</tr>
+				</%for>
+				</%if>
+			</table>
+		</section>
+		<section>
+			<h2>Total Failures Since Startup</h2>
+			<%java>
+			   Triple<Integer, Integer, Integer> totalFailureInfo = canary.getTotalFailuresInfo();
+			</%java>
+			<table class="table table-striped">
+				<tr>
+				    <td>Total Failure Server Count:</td>
+				    <td><% totalFailureInfo.getFirst() %></td>
+				</tr>
+				<tr>
+				    <td>Total Failure Table Count:</td>
+				    <td><% totalFailureInfo.getSecond() %></td>
+				</tr>
+				<tr>
+				    <td>Total Failure Count:</td>
+				    <td><% totalFailureInfo.getThird() %></td>
+				</tr>
 			</table>
 		</section>
 
