@@ -141,12 +141,13 @@ class NettyRpcConnection extends RpcConnection {
     p.fireUserEventTriggered(BufferCallEvent.success());
   }
 
-  private boolean reloginInProgress;
+  private volatile boolean reloginInProgress;
 
   private void scheduleRelogin(Throwable error) {
     if (error instanceof FallbackDisallowedException) {
       return;
     }
+    LOG.info("Try scheduleRelogin.");
     synchronized (this) {
       if (reloginInProgress) {
         return;
@@ -160,7 +161,7 @@ class NettyRpcConnection extends RpcConnection {
             if (shouldAuthenticateOverKrb()) {
               relogin();
             }
-          } catch (IOException e) {
+          } catch (Throwable e) {
             LOG.warn("relogin failed", e);
           }
           synchronized (this) {

@@ -178,8 +178,10 @@ abstract class RpcConnection {
 
   protected void relogin() throws IOException {
     if (UserGroupInformation.isLoginKerberosKeyBased()) {
+      LOG.info("relogin from KerberosKey");
       UserGroupInformation.getLoginUser().reloginFromKerberosKey();
     } else {
+      LOG.info("relogin from TicketCache");
       UserGroupInformation.getLoginUser().reloginFromTicketCache();
     }
   }
