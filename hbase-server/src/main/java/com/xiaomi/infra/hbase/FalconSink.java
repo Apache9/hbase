@@ -42,11 +42,13 @@ import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.tool.Canary.Sink;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -77,7 +79,10 @@ public class FalconSink implements Sink, Configurable {
   private Connection connection;
   private Admin admin;
 
-  private final CloseableHttpClient client = HttpClients.createDefault();
+  private final RequestConfig requestConfig = RequestConfig.custom()
+      .setConnectionRequestTimeout(1000).setConnectTimeout(1000).setSocketTimeout(1000).build();
+  private final CloseableHttpClient client = HttpClientBuilder.create()
+      .setDefaultRequestConfig(requestConfig).build();
   private final AtomicLong failedReadCounter = new AtomicLong(0);
   private final AtomicLong totalReadCounter = new AtomicLong(0);
   private final AtomicLong failedWriteCounter = new AtomicLong(0);
@@ -104,10 +109,7 @@ public class FalconSink implements Sink, Configurable {
   private String clusterName;
   private Map<String, Long> lastReplicationLags = new HashMap<>();
 
-  private FalconSink() {
-    client.setTimeout(1000);
-    client.setConnectionTimeout(1000);
-  }
+  private FalconSink() {}
 
   public void publishOldWalsFilesCount(long count) {
     oldWalsFilesCount = count;
