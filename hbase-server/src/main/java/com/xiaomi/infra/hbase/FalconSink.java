@@ -105,6 +105,8 @@ public class FalconSink implements Sink, Configurable {
   private Map<String, Long> lastReplicationLags = new HashMap<>();
 
   private FalconSink() {
+    client.setTimeout(1000);
+    client.setConnectionTimeout(1000);
   }
 
   public void publishOldWalsFilesCount(long count) {
