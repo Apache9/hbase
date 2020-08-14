@@ -139,8 +139,6 @@ public class TestInfoServersACL {
 
     // ACL lists work only when "hadoop.security.authorization" is set to true
     conf.setBoolean(CommonConfigurationKeys.HADOOP_SECURITY_AUTHORIZATION, true);
-    // only user admin will have acl access
-    conf.set(HttpServer.HTTP_SPNEGO_AUTHENTICATION_ADMIN_USERS_KEY, USER_ADMIN_STR);
     //conf.set(HttpServer.FILTER_INITIALIZERS_PROPERTY, "");
 
     CLUSTER = new LocalHBaseCluster(conf, 1);

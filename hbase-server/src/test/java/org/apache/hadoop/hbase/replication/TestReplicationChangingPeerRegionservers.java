@@ -120,7 +120,7 @@ public class TestReplicationChangingPeerRegionservers extends TestReplicationBas
   }
 
   @Test
-  public void testChangingNumberOfPeerRegionServers() throws IOException, InterruptedException {
+  public void testChangingNumberOfPeerRegionServers() throws Exception {
     LOG.info("testSimplePutDelete");
     MiniHBaseCluster peerCluster = UTIL2.getMiniHBaseCluster();
     // This test wants two RS's up. We only run one generally so add one.

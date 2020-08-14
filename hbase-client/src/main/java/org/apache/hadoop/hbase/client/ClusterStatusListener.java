@@ -52,7 +52,7 @@ import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramChannel;
 import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramPacket;
 import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioDatagramChannel;
 
-import org.apache.hbase.shaded.protobuf.generated.ClusterStatusProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos;
 
 /**
  * A class that receives the cluster status, and provide it as a set of service to the client.
