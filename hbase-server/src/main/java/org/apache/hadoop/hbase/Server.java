@@ -23,6 +23,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.client.AsyncClusterConnection;
 import org.apache.hadoop.hbase.client.AsyncConnection;
 import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.replication.ReplicationFactoryConfig;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.yetus.audience.InterfaceAudience;
 
@@ -32,15 +33,18 @@ import org.apache.yetus.audience.InterfaceAudience;
  * through the code base.
  */
 @InterfaceAudience.Private
-public interface Server extends Abortable, Stoppable {
+public interface Server extends Abortable, Stoppable, ReplicationFactoryConfig {
+
   /**
    * Gets the configuration object for this server.
    */
+  @Override
   Configuration getConfiguration();
 
   /**
    * Gets the ZooKeeper instance for this server.
    */
+  @Override
   ZKWatcher getZooKeeper();
 
   /**
@@ -49,6 +53,7 @@ public interface Server extends Abortable, Stoppable {
    * Important note: this method returns a reference to Connection which is managed
    * by Server itself, so callers must NOT attempt to close connection obtained.
    */
+  @Override
   Connection getConnection();
 
   Connection createConnection(Configuration conf) throws IOException;

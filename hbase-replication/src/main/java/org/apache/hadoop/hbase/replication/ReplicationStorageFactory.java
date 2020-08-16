@@ -18,16 +18,17 @@
 package org.apache.hadoop.hbase.replication;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
  * Used to create replication storage(peer, queue) classes.
- * <p>
- * For now we only have zk based implementation.
  */
 @InterfaceAudience.Private
 public final class ReplicationStorageFactory {
+
+  public static final String PEER_STORAGE_IMPL = "hbase.replication.peer.storage.impl";
 
   private ReplicationStorageFactory() {
   }
@@ -35,15 +36,18 @@ public final class ReplicationStorageFactory {
   /**
    * Create a new {@link ReplicationPeerStorage}.
    */
-  public static ReplicationPeerStorage getReplicationPeerStorage(ZKWatcher zk, Configuration conf) {
-    return new ZKReplicationPeerStorage(zk, conf);
+  public static ReplicationPeerStorage getReplicationPeerStorage(ReplicationFactoryConfig config) {
+    Configuration conf = config.getConfiguration();
+    Class<? extends ReplicationPeerStorage> clazz = conf.getClass(PEER_STORAGE_IMPL,
+      TableReplicationPeerStorage.class, ReplicationPeerStorage.class);
+    return ReflectionUtils.newInstance(clazz, config);
   }
 
   /**
    * Create a new {@link ReplicationQueueStorage}.
    */
   public static ReplicationQueueStorage getReplicationQueueStorage(ZKWatcher zk,
-      Configuration conf) {
+    Configuration conf) {
     return new ZKReplicationQueueStorage(zk, conf);
   }
 }

@@ -18,31 +18,31 @@
 package org.apache.hadoop.hbase.replication;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
-import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
- * This is a base class for maintaining replication related data,for example, peer, queue, etc, in
- * zookeeper.
+ * Provide the instance needed by {@link ReplicationFactory}.
  */
 @InterfaceAudience.Private
-public abstract class ZKReplicationStorageBase {
+public interface ReplicationFactoryConfig {
 
-  public static final String REPLICATION_ZNODE = "zookeeper.znode.replication";
-  public static final String REPLICATION_ZNODE_DEFAULT = "replication";
+  /**
+   * Gets the configuration object.
+   */
+  Configuration getConfiguration();
 
-  /** The name of the base znode that contains all replication state. */
-  protected final String replicationZNode;
+  /**
+   * Gets the ZooKeeper instance.
+   */
+  ZKWatcher getZooKeeper();
 
-  protected final ZKWatcher zookeeper;
-  protected final Configuration conf;
-
-  protected ZKReplicationStorageBase(ZKWatcher zookeeper, Configuration conf) {
-    this.zookeeper = zookeeper;
-    this.conf = conf;
-
-    this.replicationZNode = ZNodePaths.joinZNode(this.zookeeper.getZNodePaths().baseZNode,
-      conf.get(REPLICATION_ZNODE, REPLICATION_ZNODE_DEFAULT));
-  }
+  /**
+   * Returns a connection.
+   * </p>
+   * Important note: this method returns a reference to Connection which is managed by Server
+   * itself, so callers must NOT attempt to close connection obtained.
+   */
+  Connection getConnection();
 }

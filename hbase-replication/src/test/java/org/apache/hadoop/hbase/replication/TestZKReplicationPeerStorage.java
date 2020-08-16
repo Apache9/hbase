@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -34,12 +35,15 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseZKTestingUtility;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.ReplicationTests;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
+import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.zookeeper.KeeperException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -52,7 +56,7 @@ public class TestZKReplicationPeerStorage {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-      HBaseClassTestRule.forClass(TestZKReplicationPeerStorage.class);
+    HBaseClassTestRule.forClass(TestZKReplicationPeerStorage.class);
 
   private static final HBaseZKTestingUtility UTIL = new HBaseZKTestingUtility();
 
@@ -61,7 +65,27 @@ public class TestZKReplicationPeerStorage {
   @BeforeClass
   public static void setUp() throws Exception {
     UTIL.startMiniZKCluster();
-    STORAGE = new ZKReplicationPeerStorage(UTIL.getZooKeeperWatcher(), UTIL.getConfiguration());
+    STORAGE = new ZKReplicationPeerStorage(new ReplicationFactoryConfig() {
+
+      @Override
+      public ZKWatcher getZooKeeper() {
+        try {
+          return UTIL.getZooKeeperWatcher();
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      }
+
+      @Override
+      public Connection getConnection() {
+        return null;
+      }
+
+      @Override
+      public Configuration getConfiguration() {
+        return UTIL.getConfiguration();
+      }
+    });
   }
 
   @AfterClass
@@ -71,7 +95,7 @@ public class TestZKReplicationPeerStorage {
 
   private Set<String> randNamespaces(Random rand) {
     return Stream.generate(() -> Long.toHexString(rand.nextLong())).limit(rand.nextInt(5))
-        .collect(toSet());
+      .collect(toSet());
   }
 
   private Map<TableName, List<String>> randTableCFs(Random rand) {
@@ -80,7 +104,7 @@ public class TestZKReplicationPeerStorage {
     for (int i = 0; i < size; i++) {
       TableName tn = TableName.valueOf(Long.toHexString(rand.nextLong()));
       List<String> cfs = Stream.generate(() -> Long.toHexString(rand.nextLong()))
-          .limit(rand.nextInt(5)).collect(toList());
+        .limit(rand.nextInt(5)).collect(toList());
       map.put(tn, cfs);
     }
     return map;
@@ -89,11 +113,11 @@ public class TestZKReplicationPeerStorage {
   private ReplicationPeerConfig getConfig(int seed) {
     Random rand = new Random(seed);
     return ReplicationPeerConfig.newBuilder().setClusterKey(Long.toHexString(rand.nextLong()))
-        .setReplicationEndpointImpl(Long.toHexString(rand.nextLong()))
-        .setRemoteWALDir(Long.toHexString(rand.nextLong())).setNamespaces(randNamespaces(rand))
-        .setExcludeNamespaces(randNamespaces(rand)).setTableCFsMap(randTableCFs(rand))
-        .setExcludeTableCFsMap(randTableCFs(rand)).setReplicateAllUserTables(rand.nextBoolean())
-        .setBandwidth(rand.nextInt(1000)).build();
+      .setReplicationEndpointImpl(Long.toHexString(rand.nextLong()))
+      .setRemoteWALDir(Long.toHexString(rand.nextLong())).setNamespaces(randNamespaces(rand))
+      .setExcludeNamespaces(randNamespaces(rand)).setTableCFsMap(randTableCFs(rand))
+      .setExcludeTableCFsMap(randTableCFs(rand)).setReplicateAllUserTables(rand.nextBoolean())
+      .setBandwidth(rand.nextInt(1000)).build();
   }
 
   private void assertSetEquals(Set<String> expected, Set<String> actual) {
@@ -106,7 +130,7 @@ public class TestZKReplicationPeerStorage {
   }
 
   private void assertMapEquals(Map<TableName, List<String>> expected,
-      Map<TableName, List<String>> actual) {
+    Map<TableName, List<String>> actual) {
     if (expected == null || expected.size() == 0) {
       assertTrue(actual == null || actual.size() == 0);
       return;
@@ -120,8 +144,8 @@ public class TestZKReplicationPeerStorage {
       } else {
         assertNotNull(actualCFs);
         assertEquals(expectedCFs.size(), actualCFs.size());
-        for (Iterator<String> expectedIt = expectedCFs.iterator(), actualIt = actualCFs.iterator();
-          expectedIt.hasNext();) {
+        for (Iterator<String> expectedIt = expectedCFs.iterator(), actualIt =
+          actualCFs.iterator(); expectedIt.hasNext();) {
           assertEquals(expectedIt.next(), actualIt.next());
         }
       }
@@ -187,7 +211,7 @@ public class TestZKReplicationPeerStorage {
 
   @Test
   public void testNoSyncReplicationState()
-      throws ReplicationException, KeeperException, IOException {
+    throws ReplicationException, KeeperException, IOException {
     // This could happen for a peer created before we introduce sync replication.
     String peerId = "testNoSyncReplicationState";
     try {

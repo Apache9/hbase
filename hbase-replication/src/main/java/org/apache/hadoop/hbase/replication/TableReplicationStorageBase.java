@@ -17,24 +17,34 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import org.apache.hadoop.hbase.Abortable;
-import org.apache.hadoop.hbase.Stoppable;
+import java.io.IOException;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
-/**
- * A factory class for instantiating replication objects that deal with replication state.
- */
 @InterfaceAudience.Private
-public final class ReplicationFactory {
-  private ReplicationFactory() {
+public class TableReplicationStorageBase {
+
+  protected static final String PREFIX = HConstants.SPECIAL_META_ROW_PREFIX + "rep:";
+
+  protected final Connection conn;
+
+  protected TableReplicationStorageBase(Connection conn) {
+    this.conn = conn;
   }
 
-  public static ReplicationPeers getReplicationPeers(ReplicationFactoryConfig config) {
-    return new ReplicationPeers(config);
+  protected byte[] appendPrefix(String row) {
+    return Bytes.toBytes(PREFIX + row);
   }
 
-  public static ReplicationTracker getReplicationTracker(ReplicationFactoryConfig config,
-    Abortable abortable, Stoppable stopper) {
-    return new ReplicationTrackerZKImpl(config.getZooKeeper(), abortable, stopper);
+  protected String removePrefix(byte[] row) {
+    return Bytes.toString(row).substring(PREFIX.length());
+  }
+
+  protected Table getTable() throws IOException {
+    return conn.getTable(TableName.META_TABLE_NAME);
   }
 }

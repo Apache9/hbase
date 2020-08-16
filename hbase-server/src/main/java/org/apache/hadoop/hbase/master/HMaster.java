@@ -85,7 +85,6 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
-import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.client.Put;
@@ -198,7 +197,6 @@ import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
 import org.apache.hadoop.hbase.replication.master.ReplicationHFileCleaner;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
-import org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationStatus;
 import org.apache.hadoop.hbase.rsgroup.RSGroupAdminEndpoint;
 import org.apache.hadoop.hbase.rsgroup.RSGroupBasedLoadBalancer;
@@ -797,16 +795,10 @@ public class HMaster extends HRegionServer implements MasterServices {
   }
 
   /**
-   * <p>
    * Initialize all ZK based system trackers. But do not include {@link RegionServerTracker}, it
    * should have already been initialized along with {@link ServerManager}.
-   * </p>
-   * <p>
-   * Will be overridden in tests.
-   * </p>
    */
-  @VisibleForTesting
-  protected void initializeZKBasedSystemTrackers()
+  private void initializeZKBasedSystemTrackers()
       throws IOException, InterruptedException, KeeperException, ReplicationException {
     this.balancer = new RSGroupBasedLoadBalancer();
     this.balancer.setConf(conf);
@@ -833,8 +825,6 @@ public class HMaster extends HRegionServer implements MasterServices {
       }
     }
     this.rsGroupInfoManager = RSGroupInfoManager.create(this);
-
-    this.replicationPeerManager = ReplicationPeerManager.create(zooKeeper, conf, clusterId);
 
     this.drainingServerTracker = new DrainingServerTracker(zooKeeper, this, this.serverManager);
     this.drainingServerTracker.start();
@@ -876,6 +866,14 @@ public class HMaster extends HRegionServer implements MasterServices {
     this.mpmHost.register(new MasterFlushTableProcedureManager());
     this.mpmHost.loadProcedures(conf);
     this.mpmHost.initialize(this, this.metricsMaster);
+  }
+
+  private void initializeReplicationSystem() throws ReplicationException {
+    // TODO: alter meta table if no replication peer and queues related families
+    this.replicationPeerManager = ReplicationPeerManager.create(this, clusterId);
+    replicationBarrierCleaner = new ReplicationBarrierCleaner(conf, this, getConnection(),
+      replicationPeerManager);
+    getChoreService().scheduleChore(replicationBarrierCleaner);
   }
 
   // Will be overriden in test to inject customized AssignmentManager
@@ -1106,13 +1104,6 @@ public class HMaster extends HRegionServer implements MasterServices {
     zombieDetector.setDaemon(true);
     zombieDetector.start();
 
-    // This is for backwards compatibility
-    // See HBASE-11393
-    status.setStatus("Update TableCFs node in ZNode");
-    ReplicationPeerConfigUpgrader tableCFsUpdater =
-        new ReplicationPeerConfigUpgrader(zooKeeper, conf);
-    tableCFsUpdater.copyTableCFs();
-
     if (!maintenanceMode) {
       // Add the Observer to delete quotas on table deletion before starting all CPs by
       // default with quota support, avoiding if user specifically asks to not load this Observer.
@@ -1150,6 +1141,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     if (initMetaProc != null) {
       initMetaProc.await();
     }
+    initializeReplicationSystem();
     // Wake up this server to check in
     sleeper.skipSleepCycle();
 
@@ -1574,10 +1566,6 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
 
     this.regionsRecoveryConfigManager = new RegionsRecoveryConfigManager(this);
-
-    replicationBarrierCleaner = new ReplicationBarrierCleaner(conf, this, getConnection(),
-      replicationPeerManager);
-    getChoreService().scheduleChore(replicationBarrierCleaner);
 
     final boolean isSnapshotChoreEnabled = this.snapshotCleanupTracker
         .isSnapshotCleanupEnabled();

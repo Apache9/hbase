@@ -64,6 +64,7 @@ import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+import org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUtil;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
@@ -75,7 +76,6 @@ import org.apache.hadoop.hbase.replication.ReplicationSourceDummy;
 import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
-import org.apache.hadoop.hbase.replication.ZKReplicationPeerStorage;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager.NodeFailoverWorker;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.ReplicationTests;
@@ -177,15 +177,16 @@ public abstract class TestReplicationSourceManager {
             + conf.get(HConstants.ZOOKEEPER_CLIENT_PORT) + ":/1"));
     ZKUtil.createWithParents(zkw, "/hbase/replication/peers/1/peer-state");
     ZKUtil.setData(zkw, "/hbase/replication/peers/1/peer-state",
-      ZKReplicationPeerStorage.ENABLED_ZNODE_BYTES);
+      ReplicationPeerConfigUtil.getEnabledBytes(true));
     ZKUtil.createWithParents(zkw, "/hbase/replication/peers/1/sync-rep-state");
     ZKUtil.setData(zkw, "/hbase/replication/peers/1/sync-rep-state",
-      ZKReplicationPeerStorage.NONE_STATE_ZNODE_BYTES);
+      ReplicationPeerConfigUtil.NONE_SYNC_STATE_BYTES);
     ZKUtil.createWithParents(zkw, "/hbase/replication/peers/1/new-sync-rep-state");
     ZKUtil.setData(zkw, "/hbase/replication/peers/1/new-sync-rep-state",
-      ZKReplicationPeerStorage.NONE_STATE_ZNODE_BYTES);
+      ReplicationPeerConfigUtil.NONE_SYNC_STATE_BYTES);
     ZKUtil.createWithParents(zkw, "/hbase/replication/state");
-    ZKUtil.setData(zkw, "/hbase/replication/state", ZKReplicationPeerStorage.ENABLED_ZNODE_BYTES);
+    ZKUtil.setData(zkw, "/hbase/replication/state",
+      ReplicationPeerConfigUtil.getEnabledBytes(true));
 
     ZKClusterId.setClusterId(zkw, new ClusterId());
     CommonFSUtils.setRootDir(utility.getConfiguration(), utility.getDataTestDir());
@@ -399,8 +400,7 @@ public abstract class TestReplicationSourceManager {
       rq.addWAL(server.getServerName(), "1", file);
     }
     Server s1 = new DummyServer("dummyserver1.example.org");
-    ReplicationPeers rp1 =
-        ReplicationFactory.getReplicationPeers(s1.getZooKeeper(), s1.getConfiguration());
+    ReplicationPeers rp1 = ReplicationFactory.getReplicationPeers(s1);
     rp1.init();
     NodeFailoverWorker w1 =
         manager.new NodeFailoverWorker(server.getServerName());

@@ -19,11 +19,16 @@ package org.apache.hadoop.hbase.util;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.stream.Stream;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.replication.ReplicationFactoryConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerStorage;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
@@ -33,6 +38,7 @@ import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.ReplicationTests;
 import org.apache.hadoop.hbase.util.HbckErrorReporter.ERROR_CODE;
 import org.apache.hadoop.hbase.util.hbck.HbckTestingUtil;
+import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -62,7 +68,31 @@ public class TestHBaseFsckReplication {
   @Test
   public void test() throws Exception {
     ReplicationPeerStorage peerStorage = ReplicationStorageFactory
-        .getReplicationPeerStorage(UTIL.getZooKeeperWatcher(), UTIL.getConfiguration());
+        .getReplicationPeerStorage(new ReplicationFactoryConfig() {
+          
+          @Override
+          public ZKWatcher getZooKeeper() {
+            try {
+              return UTIL.getZooKeeperWatcher();
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          }
+          
+          @Override
+          public Connection getConnection() {
+            try {
+              return UTIL.getConnection();
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          }
+          
+          @Override
+          public Configuration getConfiguration() {
+            return UTIL.getConfiguration();
+          }
+        });
     ReplicationQueueStorage queueStorage = ReplicationStorageFactory
         .getReplicationQueueStorage(UTIL.getZooKeeperWatcher(), UTIL.getConfiguration());
 

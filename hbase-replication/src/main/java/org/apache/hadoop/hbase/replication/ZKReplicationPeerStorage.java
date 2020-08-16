@@ -17,23 +17,22 @@
  */
 package org.apache.hadoop.hbase.replication;
 
+import static org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUtil.NONE_SYNC_STATE_BYTES;
+import static org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUtil.getEnabledBytes;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUtil;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil.ZKUtilOp;
-import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.zookeeper.KeeperException;
 
 import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
-
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos;
 
 /**
  * ZK based replication peer storage.
@@ -48,17 +47,9 @@ public class ZKReplicationPeerStorage extends ZKReplicationStorageBase
   public static final String PEERS_STATE_ZNODE = "zookeeper.znode.replication.peers.state";
   public static final String PEERS_STATE_ZNODE_DEFAULT = "peer-state";
 
-  public static final byte[] ENABLED_ZNODE_BYTES =
-    toByteArray(ReplicationProtos.ReplicationState.State.ENABLED);
-  public static final byte[] DISABLED_ZNODE_BYTES =
-    toByteArray(ReplicationProtos.ReplicationState.State.DISABLED);
-
   public static final String SYNC_REPLICATION_STATE_ZNODE = "sync-rep-state";
 
   public static final String NEW_SYNC_REPLICATION_STATE_ZNODE = "new-sync-rep-state";
-
-  public static final byte[] NONE_STATE_ZNODE_BYTES =
-    SyncReplicationState.toByteArray(SyncReplicationState.NONE);
 
   /**
    * The name of the znode that contains the replication status of a remote slave (i.e. peer)
@@ -71,8 +62,8 @@ public class ZKReplicationPeerStorage extends ZKReplicationStorageBase
    */
   private final String peersZNode;
 
-  public ZKReplicationPeerStorage(ZKWatcher zookeeper, Configuration conf) {
-    super(zookeeper, conf);
+  public ZKReplicationPeerStorage(ReplicationFactoryConfig config) {
+    super(config.getZooKeeper(), config.getConfiguration());
     this.peerStateNodeName = conf.get(PEERS_STATE_ZNODE, PEERS_STATE_ZNODE_DEFAULT);
     String peersZNodeName = conf.get(PEERS_ZNODE, PEERS_ZNODE_DEFAULT);
     this.peersZNode = ZNodePaths.joinZNode(replicationZNode, peersZNodeName);
@@ -105,10 +96,10 @@ public class ZKReplicationPeerStorage extends ZKReplicationStorageBase
       ZKUtilOp.createAndFailSilent(getPeerNode(peerId),
         ReplicationPeerConfigUtil.toByteArray(peerConfig)),
       ZKUtilOp.createAndFailSilent(getPeerStateNode(peerId),
-        enabled ? ENABLED_ZNODE_BYTES : DISABLED_ZNODE_BYTES),
+        getEnabledBytes(enabled)),
       ZKUtilOp.createAndFailSilent(getSyncReplicationStateNode(peerId),
         SyncReplicationState.toByteArray(syncReplicationState)),
-      ZKUtilOp.createAndFailSilent(getNewSyncReplicationStateNode(peerId), NONE_STATE_ZNODE_BYTES));
+      ZKUtilOp.createAndFailSilent(getNewSyncReplicationStateNode(peerId), NONE_SYNC_STATE_BYTES));
     try {
       ZKUtil.createWithParents(zookeeper, peersZNode);
       ZKUtil.multiOrSequential(zookeeper, multiOps, false);
@@ -131,7 +122,7 @@ public class ZKReplicationPeerStorage extends ZKReplicationStorageBase
 
   @Override
   public void setPeerState(String peerId, boolean enabled) throws ReplicationException {
-    byte[] stateBytes = enabled ? ENABLED_ZNODE_BYTES : DISABLED_ZNODE_BYTES;
+    byte[] stateBytes = getEnabledBytes(enabled);
     try {
       ZKUtil.setData(zookeeper, getPeerStateNode(peerId), stateBytes);
     } catch (KeeperException e) {
@@ -164,7 +155,7 @@ public class ZKReplicationPeerStorage extends ZKReplicationStorageBase
   @Override
   public boolean isPeerEnabled(String peerId) throws ReplicationException {
     try {
-      return Arrays.equals(ENABLED_ZNODE_BYTES,
+      return Arrays.equals(getEnabledBytes(true),
         ZKUtil.getData(zookeeper, getPeerStateNode(peerId)));
     } catch (KeeperException | InterruptedException e) {
       throw new ReplicationException("Unable to get status of the peer with id=" + peerId, e);
@@ -209,7 +200,7 @@ public class ZKReplicationPeerStorage extends ZKReplicationStorageBase
     try {
       byte[] data = ZKUtil.getData(zookeeper, newStateNode);
       ZKUtil.multiOrSequential(zookeeper,
-        Arrays.asList(ZKUtilOp.setData(newStateNode, NONE_STATE_ZNODE_BYTES),
+        Arrays.asList(ZKUtilOp.setData(newStateNode, NONE_SYNC_STATE_BYTES),
           ZKUtilOp.setData(getSyncReplicationStateNode(peerId), data)),
         false);
     } catch (KeeperException | InterruptedException e) {
@@ -225,7 +216,7 @@ public class ZKReplicationPeerStorage extends ZKReplicationStorageBase
       if (data == null || data.length == 0) {
         if (ZKUtil.checkExists(zookeeper, getPeerNode(peerId)) != -1) {
           // should be a peer from previous version, set the sync replication state for it.
-          ZKUtil.createSetData(zookeeper, path, NONE_STATE_ZNODE_BYTES);
+          ZKUtil.createSetData(zookeeper, path, NONE_SYNC_STATE_BYTES);
           return SyncReplicationState.NONE;
         } else {
           throw new ReplicationException(

@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.client.replication.TableCFs;
 import org.apache.hadoop.hbase.io.WALLink;
 import org.apache.hadoop.hbase.procedure2.util.StringUtils;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
+import org.apache.hadoop.hbase.replication.ReplicationFactoryConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
@@ -306,7 +307,23 @@ public class DumpReplicationQueues extends Configured implements Tool {
     StringBuilder sb = new StringBuilder();
 
     queueStorage = ReplicationStorageFactory.getReplicationQueueStorage(zkw, getConf());
-    replicationTracker = ReplicationFactory.getReplicationTracker(zkw, new WarnOnlyAbortable(),
+    replicationTracker = ReplicationFactory.getReplicationTracker(new ReplicationFactoryConfig() {
+      
+      @Override
+      public ZKWatcher getZooKeeper() {
+        return zkw;
+      }
+      
+      @Override
+      public Connection getConnection() {
+        return null;
+      }
+      
+      @Override
+      public Configuration getConfiguration() {
+        return getConf();
+      }
+    }, new WarnOnlyAbortable(),
       new WarnOnlyStoppable());
     Set<String> liveRegionServers = new HashSet<>(replicationTracker.getListOfRegionServers());
 

@@ -91,11 +91,28 @@ public class TestReplicationTrackerZKImpl {
     zkw = HBaseTestingUtility.getZooKeeperWatcher(utility);
     String fakeRs1 = ZNodePaths.joinZNode(zkw.getZNodePaths().rsZNode,
             "hostname1.example.org:1234");
+    ReplicationFactoryConfig config = new ReplicationFactoryConfig() {
+      
+      @Override
+      public ZKWatcher getZooKeeper() {
+        return zkw;
+      }
+      
+      @Override
+      public Connection getConnection() {
+        return null;
+      }
+      
+      @Override
+      public Configuration getConfiguration() {
+        return conf;
+      }
+    };
     try {
       ZKClusterId.setClusterId(zkw, new ClusterId());
-      rp = ReplicationFactory.getReplicationPeers(zkw, conf);
+      rp = ReplicationFactory.getReplicationPeers(config);
       rp.init();
-      rt = ReplicationFactory.getReplicationTracker(zkw, new DummyServer(fakeRs1),
+      rt = ReplicationFactory.getReplicationTracker(config, new DummyServer(fakeRs1),
         new DummyServer(fakeRs1));
     } catch (Exception e) {
       fail("Exception during test setup: " + e);

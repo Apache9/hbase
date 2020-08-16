@@ -18,13 +18,14 @@
 package org.apache.hadoop.hbase.replication;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
@@ -40,6 +41,7 @@ import org.apache.hadoop.hbase.Waiter.ExplainingPredicate;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.AsyncClusterConnection;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
@@ -53,6 +55,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.hadoop.hbase.wal.WALKeyImpl;
+import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.ipc.RemoteException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -231,7 +234,31 @@ public class SyncReplicationTestBase {
   protected final void verifyRemovedPeer(String peerId, Path remoteWALDir,
       HBaseTestingUtility utility) throws Exception {
     ReplicationPeerStorage rps = ReplicationStorageFactory
-      .getReplicationPeerStorage(utility.getZooKeeperWatcher(), utility.getConfiguration());
+      .getReplicationPeerStorage(new ReplicationFactoryConfig() {
+        
+        @Override
+        public ZKWatcher getZooKeeper() {
+          try {
+            return utility.getZooKeeperWatcher();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+        
+        @Override
+        public Connection getConnection() {
+          try {
+            return utility.getConnection();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+        
+        @Override
+        public Configuration getConfiguration() {
+          return utility.getConfiguration();
+        }
+      });
     try {
       rps.getPeerSyncReplicationState(peerId);
       fail("Should throw exception when get the sync replication state of a removed peer.");

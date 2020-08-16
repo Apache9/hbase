@@ -567,6 +567,14 @@ public final class HConstants {
   public static final byte[] REPLICATION_BARRIER_FAMILY =
       Bytes.toBytes(REPLICATION_BARRIER_FAMILY_STR);
 
+  public static final String REPLICATION_PEER_FAMILY_STR = "rep_peer";
+
+  public static final byte[] REPLICATION_PEER_FAMILY = Bytes.toBytes(REPLICATION_PEER_FAMILY_STR);
+
+  public static final String REPLICATION_QUEUE_FAMILY_STR = "rep_queue";
+
+  public static final byte[] REPLICATION_QUEUE_FAMILY = Bytes.toBytes(REPLICATION_QUEUE_FAMILY_STR);
+
   /** The namespace family as a string */
   public static final String NAMESPACE_FAMILY_STR = "ns";
 
@@ -1604,6 +1612,8 @@ public final class HConstants {
    * Default value of {@link #BATCH_ROWS_THRESHOLD_NAME}
    */
   public static final int BATCH_ROWS_THRESHOLD_DEFAULT = 5000;
+
+  public static final String SPECIAL_META_ROW_PREFIX = ":";
 
   private HConstants() {
     // Can't be instantiated with this ctor.

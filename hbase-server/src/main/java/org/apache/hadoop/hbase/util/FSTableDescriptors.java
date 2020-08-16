@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
+import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.regionserver.MetaRegionSplitPolicy;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -162,7 +163,7 @@ public class FSTableDescriptors implements TableDescriptors {
                 HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
         .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
         .setBloomFilterType(BloomType.ROWCOL)
-        .setDataBlockEncoding(org.apache.hadoop.hbase.io.encoding.DataBlockEncoding.ROW_INDEX_V1)
+        .setDataBlockEncoding(DataBlockEncoding.ROW_INDEX_V1)
         .build())
       .setColumnFamily(ColumnFamilyDescriptorBuilder.newBuilder(HConstants.TABLE_FAMILY)
         .setMaxVersions(conf.getInt(HConstants.HBASE_META_VERSIONS,
@@ -170,7 +171,7 @@ public class FSTableDescriptors implements TableDescriptors {
         .setInMemory(true)
         .setBlocksize(8 * 1024)
         .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
-        .setDataBlockEncoding(org.apache.hadoop.hbase.io.encoding.DataBlockEncoding.ROW_INDEX_V1)
+        .setDataBlockEncoding(DataBlockEncoding.ROW_INDEX_V1)
         .setBloomFilterType(BloomType.ROWCOL)
         .build())
       .setColumnFamily(ColumnFamilyDescriptorBuilder
@@ -178,7 +179,7 @@ public class FSTableDescriptors implements TableDescriptors {
         .setMaxVersions(HConstants.ALL_VERSIONS)
         .setInMemory(true)
         .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
-        .setDataBlockEncoding(org.apache.hadoop.hbase.io.encoding.DataBlockEncoding.ROW_INDEX_V1)
+        .setDataBlockEncoding(DataBlockEncoding.ROW_INDEX_V1)
         .setBloomFilterType(BloomType.ROWCOL)
         .build())
       .setColumnFamily(ColumnFamilyDescriptorBuilder
@@ -189,7 +190,18 @@ public class FSTableDescriptors implements TableDescriptors {
         .setBlocksize(conf.getInt(HConstants.HBASE_META_BLOCK_SIZE,
                 HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
         .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
-        .setDataBlockEncoding(org.apache.hadoop.hbase.io.encoding.DataBlockEncoding.ROW_INDEX_V1)
+        .setDataBlockEncoding(DataBlockEncoding.ROW_INDEX_V1)
+        .setBloomFilterType(BloomType.ROWCOL)
+        .build())
+      .setColumnFamily(ColumnFamilyDescriptorBuilder
+        .newBuilder(HConstants.REPLICATION_PEER_FAMILY)
+        .setMaxVersions(conf.getInt(HConstants.HBASE_META_VERSIONS,
+                HConstants.DEFAULT_HBASE_META_VERSIONS))
+        .setInMemory(true)
+        .setBlocksize(conf.getInt(HConstants.HBASE_META_BLOCK_SIZE,
+                HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
+        .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
+        .setDataBlockEncoding(DataBlockEncoding.ROW_INDEX_V1)
         .setBloomFilterType(BloomType.ROWCOL)
         .build())
       .setCoprocessor(

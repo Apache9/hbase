@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableSplit;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationFactoryConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerStorage;
 import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
@@ -339,30 +340,40 @@ public class VerifyReplication extends Configured implements Tool {
 
   private static Pair<ReplicationPeerConfig, Configuration> getPeerQuorumConfig(
       final Configuration conf, String peerId) throws IOException {
-    ZKWatcher localZKW = null;
-    try {
-      localZKW = new ZKWatcher(conf, "VerifyReplication", new Abortable() {
-        @Override
-        public void abort(String why, Throwable e) {
-        }
+    try (ZKWatcher localZKW = new ZKWatcher(conf, "VerifyReplication", new Abortable() {
+      @Override
+      public void abort(String why, Throwable e) {
+      }
 
-        @Override
-        public boolean isAborted() {
-          return false;
-        }
-      });
+      @Override
+      public boolean isAborted() {
+        return false;
+      }
+    })) {
       ReplicationPeerStorage storage =
-        ReplicationStorageFactory.getReplicationPeerStorage(localZKW, conf);
+        ReplicationStorageFactory.getReplicationPeerStorage(new ReplicationFactoryConfig() {
+          
+          @Override
+          public ZKWatcher getZooKeeper() {
+            return localZKW;
+          }
+          
+          @Override
+          public Connection getConnection() {
+            return null;
+          }
+          
+          @Override
+          public Configuration getConfiguration() {
+            return conf;
+          }
+        });
       ReplicationPeerConfig peerConfig = storage.getPeerConfig(peerId);
       return Pair.newPair(peerConfig,
         ReplicationUtils.getPeerClusterConfiguration(peerConfig, conf));
     } catch (ReplicationException e) {
       throw new IOException("An error occurred while trying to connect to the remote peer cluster",
           e);
-    } finally {
-      if (localZKW != null) {
-        localZKW.close();
-      }
     }
   }
 

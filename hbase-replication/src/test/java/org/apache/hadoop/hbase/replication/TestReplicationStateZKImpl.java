@@ -23,6 +23,7 @@ import org.apache.hadoop.hbase.ClusterId;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseZKTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.ReplicationTests;
 import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
@@ -43,7 +44,7 @@ public class TestReplicationStateZKImpl extends TestReplicationStateBasic {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-      HBaseClassTestRule.forClass(TestReplicationStateZKImpl.class);
+    HBaseClassTestRule.forClass(TestReplicationStateZKImpl.class);
 
   private static Configuration conf;
   private static HBaseZKTestingUtility utility;
@@ -64,13 +65,13 @@ public class TestReplicationStateZKImpl extends TestReplicationStateBasic {
   }
 
   private static String initPeerClusterState(String baseZKNode)
-      throws IOException, KeeperException {
+    throws IOException, KeeperException {
     // Add a dummy region server and set up the cluster id
     Configuration testConf = new Configuration(conf);
     testConf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, baseZKNode);
     ZKWatcher zkw1 = new ZKWatcher(testConf, "test1", null);
-    String fakeRs = ZNodePaths.joinZNode(zkw1.getZNodePaths().rsZNode,
-            "hostname1.example.org:1234");
+    String fakeRs =
+      ZNodePaths.joinZNode(zkw1.getZNodePaths().rsZNode, "hostname1.example.org:1234");
     ZKUtil.createWithParents(zkw1, fakeRs);
     ZKClusterId.setClusterId(zkw1, new ClusterId());
     return ZKConfig.getZooKeeperClusterKey(testConf);
@@ -80,7 +81,23 @@ public class TestReplicationStateZKImpl extends TestReplicationStateBasic {
   public void setUp() {
     zkTimeoutCount = 0;
     rqs = ReplicationStorageFactory.getReplicationQueueStorage(zkw, conf);
-    rp = ReplicationFactory.getReplicationPeers(zkw, conf);
+    rp = ReplicationFactory.getReplicationPeers(new ReplicationFactoryConfig() {
+
+      @Override
+      public ZKWatcher getZooKeeper() {
+        return zkw;
+      }
+
+      @Override
+      public Connection getConnection() {
+        return null;
+      }
+
+      @Override
+      public Configuration getConfiguration() {
+        return conf;
+      }
+    });
     OUR_KEY = ZKConfig.getZooKeeperClusterKey(conf);
   }
 

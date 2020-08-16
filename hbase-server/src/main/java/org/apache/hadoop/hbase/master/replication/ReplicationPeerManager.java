@@ -36,6 +36,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.replication.BaseReplicationEndpoint;
@@ -539,10 +540,10 @@ public class ReplicationPeerManager {
     return queueStorage;
   }
 
-  public static ReplicationPeerManager create(ZKWatcher zk, Configuration conf, String clusterId)
-      throws ReplicationException {
+  public static ReplicationPeerManager create(Server server, String clusterId)
+    throws ReplicationException {
     ReplicationPeerStorage peerStorage =
-      ReplicationStorageFactory.getReplicationPeerStorage(zk, conf);
+      ReplicationStorageFactory.getReplicationPeerStorage(server);
     ConcurrentMap<String, ReplicationPeerDescription> peers = new ConcurrentHashMap<>();
     for (String peerId : peerStorage.listPeerIds()) {
       ReplicationPeerConfig peerConfig = peerStorage.getPeerConfig(peerId);
@@ -550,8 +551,9 @@ public class ReplicationPeerManager {
       SyncReplicationState state = peerStorage.getPeerSyncReplicationState(peerId);
       peers.put(peerId, new ReplicationPeerDescription(peerId, enabled, peerConfig, state));
     }
-    return new ReplicationPeerManager(peerStorage,
-      ReplicationStorageFactory.getReplicationQueueStorage(zk, conf), peers, conf, clusterId);
+    return new ReplicationPeerManager(peerStorage, ReplicationStorageFactory
+      .getReplicationQueueStorage(server.getZooKeeper(), server.getConfiguration()), peers,
+      server.getConfiguration(), clusterId);
   }
 
   /**

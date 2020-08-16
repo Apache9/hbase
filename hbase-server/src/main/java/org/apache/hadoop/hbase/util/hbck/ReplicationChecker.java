@@ -25,7 +25,9 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationFactoryConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerStorage;
 import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
@@ -54,7 +56,23 @@ public class ReplicationChecker {
   private final ReplicationQueueStorage queueStorage;
 
   public ReplicationChecker(Configuration conf, ZKWatcher zkw, HbckErrorReporter errorReporter) {
-    this.peerStorage = ReplicationStorageFactory.getReplicationPeerStorage(zkw, conf);
+    this.peerStorage = ReplicationStorageFactory.getReplicationPeerStorage(new ReplicationFactoryConfig() {
+      
+      @Override
+      public ZKWatcher getZooKeeper() {
+        return zkw;
+      }
+      
+      @Override
+      public Connection getConnection() {
+        return null;
+      }
+      
+      @Override
+      public Configuration getConfiguration() {
+        return conf;
+      }
+    });
     this.queueStorage = ReplicationStorageFactory.getReplicationQueueStorage(zkw, conf);
     this.errorReporter = errorReporter;
   }
