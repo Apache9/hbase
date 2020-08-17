@@ -624,6 +624,7 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
     calls.put(call.id, call); // We put first as we don't want the connection to become idle.
     // from here, we do not throw any exception to upper layer as the call has been tracked in the
     // pending calls map.
+    LOG.debug("Sending ipc call id=" + call.id);
     try {
       write(this.out, requestHeader, call.param, cellBlock);
     } catch (IOException e) {

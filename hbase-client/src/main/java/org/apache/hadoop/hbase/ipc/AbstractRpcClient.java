@@ -390,7 +390,7 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
     }
     if (callTime > this.clientWarnIpcResponseTime) {
       LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time=" + callTime +
-          ", remote address:" + addr);
+          ", remote address:" + addr + ", call id=" + call.id + ", call param: " + call.param);
     }
     if (call.error != null) {
       if (call.error instanceof RemoteException) {

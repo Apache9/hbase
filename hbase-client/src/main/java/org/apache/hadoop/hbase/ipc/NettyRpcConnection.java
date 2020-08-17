@@ -301,6 +301,7 @@ class NettyRpcConnection extends RpcConnection {
           // write method of BufferCallBeforeInitHandler.
           // This may be considered as a bug of netty, but anyway there is a work around so let's
           // fix it by ourselves first.
+          LOG.debug("Sending ipc call id=" + call.id);
           if (ch.eventLoop().inEventLoop()) {
             write(ch, call);
           } else {
