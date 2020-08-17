@@ -21,7 +21,7 @@ stages:
 build:
   stage: build
   script:
-    - mvn -DskipTests clean install && mvn -DskipTests package assembly:single
+    - mvn --threads=2 -DskipTests clean install && mvn --threads=2 -DskipTests package assembly:single
     - cd $CI_PROJECT_DIR
     - tag=$(grep -e '^  <version>' pom.xml | awk -F'[><]' '{print $3}')
     - mkdir /hbase
@@ -37,7 +37,7 @@ build:
 buildWithHadoop3:
   stage: buildWithHadoop3
   script:
-    - mvn clean install -DskipTests -Dhadoop.profile=3.0 && mvn package assembly:single -DskipTests -Dhadoop.profile=3.0
+    - mvn --threads=2 clean install -DskipTests -Dhadoop.profile=3.0 && mvn --threads=2 package assembly:single -DskipTests -Dhadoop.profile=3.0
     - tag=$(grep -e '^  <version>' pom.xml | awk -F'[><]' '{print $3}')
     - mkdir /hbase-hadoop3
     - tar -xvzf ${CI_PROJECT_DIR}/hbase-assembly/target/hbase-${tag}.tar.gz  --strip-components 1 -C /hbase-hadoop3
@@ -62,7 +62,7 @@ runDevTests:
   stage: runDevTests
   timeout: 2 hours
   script:
-    - mvn --threads=2 test -PrunDevTests -Dtest.exclude.pattern=**/snapshot.TestExportSnapshotWithTemporaryDirectory.java,**/snapshot.TestExportSnapshotNoCluster.java,**/snapshot.TestSecureExportSnapshotRetry.java,**/snapshot.TestMobSecureExportSnapshotRetry.java,**/snapshot.TestExportSnapshotRetry.java,org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java
+    - mvn --threads=2 -Dsurefire.firstPartForkCount=0.5C -Dsurefire.secondPartForkCount=0.5C test -PrunDevTests -Dtest.exclude.pattern=**/snapshot.TestExportSnapshotWithTemporaryDirectory.java,**/snapshot.TestExportSnapshotNoCluster.java,**/snapshot.TestSecureExportSnapshotRetry.java,**/snapshot.TestMobSecureExportSnapshotRetry.java,**/snapshot.TestExportSnapshotRetry.java,org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java
   only:
     refs:
      - branch-2-mdh3
@@ -76,7 +76,7 @@ runAllTests:
   stage: runAllTests
   timeout: 4 hours
   script:
-    - mvn --threads=2 test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java -fn
+    - mvn --threads=2 -Dsurefire.firstPartForkCount=0.5C -Dsurefire.secondPartForkCount=0.5C test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java -fn
   only:
     refs:
      - branch-2-mdh3
