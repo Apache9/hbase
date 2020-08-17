@@ -62,7 +62,7 @@ runDevTests:
   stage: runDevTests
   timeout: 2 hours
   script:
-    - mvn test -PrunDevTests -Dtest.exclude.pattern=**/snapshot.TestExportSnapshotWithTemporaryDirectory.java,**/snapshot.TestExportSnapshotNoCluster.java,**/snapshot.TestSecureExportSnapshotRetry.java,**/snapshot.TestMobSecureExportSnapshotRetry.java,**/snapshot.TestExportSnapshotRetry.java,org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java
+    - mvn --threads=2 test -PrunDevTests -Dtest.exclude.pattern=**/snapshot.TestExportSnapshotWithTemporaryDirectory.java,**/snapshot.TestExportSnapshotNoCluster.java,**/snapshot.TestSecureExportSnapshotRetry.java,**/snapshot.TestMobSecureExportSnapshotRetry.java,**/snapshot.TestExportSnapshotRetry.java,org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java
   only:
     refs:
      - branch-2-mdh3
@@ -76,7 +76,7 @@ runAllTests:
   stage: runAllTests
   timeout: 4 hours
   script:
-    - mvn test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java -fn
+    - mvn --threads=2 test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java -fn
   only:
     refs:
      - branch-2-mdh3
