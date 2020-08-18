@@ -4,7 +4,7 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   KUBERNETES_CPU_REQUEST: 10
   KUBERNETES_CPU_LIMIT: 10
-  KUBERNETES_MEMORY_REQUEST: 10Gi
+  KUBERNETES_MEMORY_REQUEST: 16Gi
 
 cache:
   paths:
@@ -15,7 +15,7 @@ stages:
   - buildWithHadoop3
   - findbugs
   - runDevTests
-  - runAllTests
+  - runLargeTests
   - release
 
 build:
@@ -72,11 +72,11 @@ runDevTests:
       junit:
         - ./**/target/surefire-reports/TEST-*.xml
 
-runAllTests:
-  stage: runAllTests
+runLargeTests:
+  stage: runLargeTests
   timeout: 4 hours
   script:
-    - mvn --threads=2 -Dsurefire.firstPartForkCount=0.5C -Dsurefire.secondPartForkCount=0.5C test -PrunAllTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java -fn
+    - mvn --threads=2 -Dsurefire.firstPartForkCount=0.5C -Dsurefire.secondPartForkCount=0.5C test -PrunLargeTests -Dtest.exclude.pattern=org/apache/hadoop/hbase/mapreduce/*.java,org/apache/hadoop/hbase/mapred/*.java,org/apache/hadoop/hbase/mapreduce/salted/*.java -fn
   only:
     refs:
      - branch-2-mdh3
