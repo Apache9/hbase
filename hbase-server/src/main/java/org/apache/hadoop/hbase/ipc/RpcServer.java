@@ -2075,7 +2075,7 @@ public class RpcServer implements RpcServerInterface {
       long responseSize = result.getSerializedSize();
       // log any RPC responses that are slower than the configured warn
       // response time or larger than configured warning size
-      boolean tooSlow = (processingTime > warnResponseTime && warnResponseTime > -1);
+      boolean tooSlow = ((processingTime + qTime) > warnResponseTime && warnResponseTime > -1);
       boolean tooLarge = (responseSize > warnResponseSize && warnResponseSize > -1);
       if (tooSlow || tooLarge) {
         logResponse(ProtobufUtil.getOperationDetail(param, cellScanner),
