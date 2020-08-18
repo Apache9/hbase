@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.mapreduce.replication;
 
+import static org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormatImpl.RESTORE_DIR_KEY;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -594,6 +596,7 @@ public class VerifyReplication extends Configured implements Tool {
       scan.setTimeRange(startTime, Long.MAX_VALUE);
       TableMapReduceUtil.initTableSnapshotMapperJob(sourceSnapshotName, scan, Verifier.class, null,
         null, job, true, snapshotTempPath);
+      conf.set(RESTORE_DIR_KEY, job.getConfiguration().get(RESTORE_DIR_KEY));
       restoreSnapshotForPeerCluster(conf, peerQuorumAddress);
     } else {
       scan.setTimeRange(startTime, endTime);
@@ -832,11 +835,35 @@ public class VerifyReplication extends Configured implements Tool {
   @Override
   public int run(String[] args) throws Exception {
     Configuration conf = this.getConf();
-    Job job = createSubmittableJob(conf, args);
-    if (job != null) {
-      return job.waitForCompletion(true) ? 0 : 1;
+    try {
+      Job job = createSubmittableJob(conf, args);
+      if (job != null) {
+        return job.waitForCompletion(true) ? 0 : 1;
+      }
+      return 1;
+    } finally {
+      deleteRestoreDirectory(conf);
     }
-    return 1;
+  }
+
+  private void deleteRestoreDirectory(Configuration conf) {
+    deleteRestoreDirectory(conf, conf.get(RESTORE_DIR_KEY));
+    deleteRestoreDirectory(conf, peerSnapshotTmpDir);
+  }
+
+  private void deleteRestoreDirectory(Configuration conf, String directory) {
+    try {
+      if (directory != null) {
+        Path path = new Path(directory);
+        FileSystem fs = FileSystem.get(path.toUri(), conf);
+        if (fs.exists(path)) {
+          LOG.info("Delete restore directory " + path);
+          fs.delete(path, true);
+        }
+      }
+    } catch (Throwable e) {
+      LOG.warn("Delete restore directory error", e);
+    }
   }
 
   /**
