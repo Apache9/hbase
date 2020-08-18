@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -182,6 +183,7 @@ public class TableSnapshotScanner extends AbstractClientScanner {
 
     this.regionManifests = regionManifests.stream()
         .filter(rmf -> isValidRegion(HRegionInfo.convert(rmf.getRegionInfo())))
+        .sorted(Comparator.comparing(s -> HRegionInfo.convert(s.getRegionInfo())))
         .collect(Collectors.toList());
     htd = manifest.getTableDescriptor();
   }
