@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -445,22 +444,6 @@ public class TestQuotaAdmin {
     }
     assertNumResults(0, null);
     assertNumResults(0, new QuotaFilter().setNamespaceFilter("NS0"));
-  }
-
-  @Test
-  public void testMachineQuotaTooSmall() throws Exception {
-    final HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
-    final String userName = User.getCurrent().getShortName();
-    try {
-      admin.setQuota(QuotaSettingsFactory.throttleNamespace(TABLE_NAMES[0].getNamespaceAsString(),
-        ThrottleType.READ_NUMBER, 10, TimeUnit.SECONDS));
-      admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
-        ThrottleType.READ_NUMBER, 1, TimeUnit.SECONDS));
-      fail("Should have thrown exception ");
-    } catch (IOException e) {
-      admin.setQuota(
-        QuotaSettingsFactory.unthrottleNamespace(TABLE_NAMES[0].getNamespaceAsString()));
-    }
   }
 
   @Test

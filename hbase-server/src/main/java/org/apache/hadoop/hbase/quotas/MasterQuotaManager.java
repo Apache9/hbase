@@ -215,7 +215,7 @@ public class MasterQuotaManager implements RegionStateListener {
       long reqLimit = getSoftLimitFromRequest(req);
       ThrottleType type = req.getThrottle().getType();
       checkNamespaceQuota(userName, table, reqLimit, type);
-      checkRegionServerQuota(userName, table, reqLimit, type, computeLocalFactorForTable(table));
+      // checkRegionServerQuota(userName, table, reqLimit, type, computeLocalFactorForTable(table));
     }
     setQuota(req, new SetQuotaOperations() {
       @Override
