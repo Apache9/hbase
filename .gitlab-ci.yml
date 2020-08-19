@@ -24,8 +24,8 @@ build:
     - mvn --threads=2 -DskipTests clean install && mvn --threads=2 -DskipTests package assembly:single
     - cd $CI_PROJECT_DIR
     - tag=$(grep -e '^  <version>' pom.xml | awk -F'[><]' '{print $3}')
-    - mkdir /hbase
-    - tar -xvzf ${CI_PROJECT_DIR}/hbase-assembly/target/hbase-${tag}.tar.gz --strip-components 1 -C /hbase
+    - tar -xvzf ${CI_PROJECT_DIR}/hbase-assembly/target/hbase-${tag}.tar.gz
+    - mv hbase-${tag} hbase
   artifacts:
     paths:
       - hbase
@@ -39,8 +39,8 @@ buildWithHadoop3:
   script:
     - mvn --threads=2 clean install -DskipTests -Dhadoop.profile=3.0 && mvn --threads=2 package assembly:single -DskipTests -Dhadoop.profile=3.0
     - tag=$(grep -e '^  <version>' pom.xml | awk -F'[><]' '{print $3}')
-    - mkdir /hbase-hadoop3
-    - tar -xvzf ${CI_PROJECT_DIR}/hbase-assembly/target/hbase-${tag}.tar.gz  --strip-components 1 -C /hbase-hadoop3
+    - tar -xvzf ${CI_PROJECT_DIR}/hbase-assembly/target/hbase-${tag}.tar.gz
+    - mv hbase-${tag} hbase-hadoop3
   artifacts:
     paths:
       - hbase-hadoop3
