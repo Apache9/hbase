@@ -104,6 +104,7 @@ public class VerifyReplication extends Configured implements Tool {
   String logTable = null;
   int sleepToReCompare = 0;
   boolean repairPeer = false;
+  boolean skipVerifyByGet = false;
 
   // Source table snapshot name
   String sourceSnapshotName = null;
@@ -139,6 +140,7 @@ public class VerifyReplication extends Configured implements Tool {
     private HTable peerTable;
     private int sleepToReCompare;
     private boolean repairPeer = false;
+    private boolean skipVerifyByGet = false;
 
     private HTable logTable;
     private String peerId;
@@ -153,6 +155,7 @@ public class VerifyReplication extends Configured implements Tool {
       scanRateLimit = conf.getInt(TableMapper.SCAN_RATE_LIMIT, -1);
       sleepToReCompare = conf.getInt(NAME +".sleepToReCompare", 0);
       repairPeer = conf.getBoolean(NAME + ".repairPeer", false);
+      skipVerifyByGet = conf.getBoolean(NAME + ".skipVerifyByGet", false);
       LOG.info("The scan rate limit for verify is " + scanRateLimit
           + " rows per second, sleepToReCompare=" + sleepToReCompare);
     }
@@ -357,15 +360,17 @@ public class VerifyReplication extends Configured implements Tool {
     private void handleBadRow(Context context, Counters counter, Result row)
         throws IOException {
       boolean isResultDiff = true;
-      boolean isScanSnapshot = isVerifySnapshot(context);
-      if (isScanSnapshot) {
-        // verify replication by scanning the snapshot.
-        isResultDiff = !verifyResultByGet(row.getRow(), true);
-      } else {
-        // verify replication by scanning the region server.
-        if (sleepToReCompare > 0) {
-          Threads.sleep(sleepToReCompare);
-          isResultDiff = !verifyResultByGet(row.getRow(), false);
+      if (!skipVerifyByGet) {
+        boolean isScanSnapshot = isVerifySnapshot(context);
+        if (isScanSnapshot) {
+          // verify replication by scanning the snapshot.
+          isResultDiff = !verifyResultByGet(row.getRow(), true);
+        } else {
+          // verify replication by scanning the region server.
+          if (sleepToReCompare > 0) {
+            Threads.sleep(sleepToReCompare);
+            isResultDiff = !verifyResultByGet(row.getRow(), false);
+          }
         }
       }
 
@@ -540,6 +545,7 @@ public class VerifyReplication extends Configured implements Tool {
       conf.set(NAME + ".logTable", logTable);
     }
     conf.setBoolean(NAME + ".repairPeer", repairPeer);
+    conf.setBoolean(NAME + ".skipVerifyByGet", skipVerifyByGet);
 
     String peerQuorumAddress = getPeerQuorumAddress(conf);
     conf.set(NAME + ".peerQuorumAddress", peerQuorumAddress);
@@ -698,6 +704,12 @@ public class VerifyReplication extends Configured implements Tool {
           continue;
         }
 
+        final String skipVerifyByGetKey  = "--skipVerifyByGet";
+        if (cmd.startsWith(skipVerifyByGetKey)) {
+          skipVerifyByGet = true;
+          continue;
+        }
+
         final String sourceSnapshotNameArgKey = "--sourceSnapshotName=";
         if (cmd.startsWith(sourceSnapshotNameArgKey)) {
           sourceSnapshotName = cmd.substring(sourceSnapshotNameArgKey.length());
@@ -796,7 +808,7 @@ public class VerifyReplication extends Configured implements Tool {
     System.err.println("Usage: verifyrep [--login] [--starttime=X] \n"
         + " [--endtime=Y] [--families=A] [--logtable=TB] [--repairPeer] \n"
         + " [--sourceSnapshotName=P] [--sourceSnapshotTmpDir=Q] [--peerSnapshotName=R] \n"
-        + " [--peerSnapshotTmpDir=S] [--peerFSAddress=T] [--peerHBaseRootAddress=U] <peerid> <tablename>");
+        + " [--skipVerifyByGet] [--peerSnapshotTmpDir=S] [--peerFSAddress=T] [--peerHBaseRootAddress=U] <peerid> <tablename>");
     System.err.println();
     System.err.println("Options:");
     System.err.println(" login                  login the kerberos by using config keys: hadoop"
@@ -820,6 +832,7 @@ public class VerifyReplication extends Configured implements Tool {
     System.err.println(" peerFSAddress          Peer cluster Hadoop FS address");
     System.err.println(" peerHBaseRootAddress   Peer cluster HBase root location");
     System.err.println(" bandwidth              Max bandwidth for scan hfile of snapshot, unit: KB");
+    System.err.println(" skipVerifyByGet        If verify bad rows by get again, false by default");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid                 Id of the peer used for verification, must match the one given for replication");
