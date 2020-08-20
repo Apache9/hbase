@@ -92,6 +92,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BalanceRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BulkAssignRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BulkAssignRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.DeleteColumnRequest;
@@ -1120,6 +1122,24 @@ public final class RequestConverter {
     builder.setRegion(buildRegionSpecifier(RegionSpecifierType.REGION_NAME, regionName));
     return builder.build();
   }
+
+  /**
+   * Create a protocol buffer BulkAssignRegionRequest
+   * @param regionInfoList
+   * @return an BulkAssignRegionResponse
+   */
+  public static BulkAssignRegionRequest buildBulkAssignRegionRequest(
+      List<HRegionInfo> regionInfoList) {
+    BulkAssignRegionRequest.Builder builder = MasterProtos.BulkAssignRegionRequest.newBuilder();
+    for (int i = 0; i < regionInfoList.size(); ++i) {
+      builder.addRegion(buildRegionSpecifier(RegionSpecifierType.REGION_NAME,
+          regionInfoList.get(i).getRegionName()));
+    }
+    return builder.build();
+  }
+
+
+
 
   /**
    * Creates a protocol buffer UnassignRegionRequest

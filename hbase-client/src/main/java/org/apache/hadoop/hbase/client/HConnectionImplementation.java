@@ -72,6 +72,7 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
@@ -1516,6 +1517,12 @@ public class HConnectionImplementation implements HConnection, Closeable {
       public AssignRegionResponse assignRegion(RpcController controller,
           AssignRegionRequest request) throws ServiceException {
         return stub.assignRegion(controller, request);
+      }
+
+      @Override
+      public MasterProtos.BulkAssignRegionResponse bulkAssignRegion(RpcController controller,
+          MasterProtos.BulkAssignRegionRequest request) throws ServiceException {
+        return stub.bulkAssignRegion(controller, request);
       }
 
       @Override

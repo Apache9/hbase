@@ -83,7 +83,7 @@ public class RegionStateStore {
    * @param r Result to pull the region state from
    * @return the region state, or OPEN if there's no value written.
    */
-  static State getRegionState(final Result r) {
+  public static State getRegionState(final Result r) {
     Cell cell = r.getColumnLatestCell(HConstants.CATALOG_FAMILY, HConstants.STATE_QUALIFIER);
     if (cell == null || cell.getValueLength() == 0) return State.OPEN;
     return State.valueOf(Bytes.toString(cell.getValueArray(),

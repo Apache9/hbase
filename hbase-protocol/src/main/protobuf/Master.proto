@@ -59,6 +59,13 @@ message ModifyColumnRequest {
 message ModifyColumnResponse {
 }
 
+message BulkAssignRegionRequest {
+  repeated RegionSpecifier region = 1;
+}
+
+message BulkAssignRegionResponse {
+}
+
 /* Region-level Protos */
 
 message MoveRegionRequest {
@@ -467,6 +474,10 @@ service MasterService {
  /** Master dispatch merging the regions */
   rpc DispatchMergingRegions(DispatchMergingRegionsRequest)
     returns(DispatchMergingRegionsResponse);
+
+  /** Bulk assign regions to servers chosen at random */
+  rpc BulkAssignRegion(BulkAssignRegionRequest)
+    returns(BulkAssignRegionResponse);
 
   /** Assign a region to a server chosen at random. */
   rpc AssignRegion(AssignRegionRequest)

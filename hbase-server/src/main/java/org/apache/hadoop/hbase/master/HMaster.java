@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.management.ObjectName;
 
@@ -154,6 +155,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionReque
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BalanceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BalanceResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BulkAssignRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BulkAssignRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateNamespaceResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateTableRequest;
@@ -3344,6 +3347,57 @@ MasterServices, Server {
 
   public void assignRegion(HRegionInfo hri) {
     assignmentManager.assign(hri, true);
+  }
+
+  public BulkAssignRegionResponse bulkAssignRegion(RpcController controller,
+      MasterProtos.BulkAssignRegionRequest req)
+      throws ServiceException {
+    List<HRegionInfo> regionInfoList = new ArrayList<>();
+    BulkAssignRegionResponse barr = BulkAssignRegionResponse
+        .newBuilder().build();
+    if (req.getRegionList() == null || req.getRegionList().isEmpty()) {
+      LOG.info("The RegionInfoList is null " + (req.getRegionList() == null)
+          + ", regionList size=" + req.getRegionList().isEmpty());
+      return barr;
+    }
+    try {
+      checkInitialized();
+      LOG.info("The bulkAssign regionInfoList length is " + req.getRegionList().size());
+      for (HBaseProtos.RegionSpecifier regionSpecifier : req.getRegionList()) {
+        final byte [] regionName = regionSpecifier.getValue().toByteArray();
+        RegionSpecifierType type = regionSpecifier.getType();
+        if (type != RegionSpecifierType.REGION_NAME) {
+          LOG.warn("assignRegion specifier type: expected: " + RegionSpecifierType.REGION_NAME
+              + " actual: " + type);
+          continue;
+        }
+
+        HRegionInfo regionInfo = getAssignmentManager().getRegionStates().getRegionInfo(regionName);
+        if (regionInfo == null) {
+          LOG.error("Bulk assign unknown region=" + Bytes.toString(regionName));
+          continue;
+        }
+        if (cpHost != null) {
+          if (cpHost.preAssign(regionInfo)) {
+            LOG.info("Bypass region " + regionInfo.getRegionNameAsString());
+            continue;
+          }
+        }
+        regionInfoList.add(regionInfo);
+      }
+      LOG.info("Bulk assign region " + regionInfoList.stream()
+          .map(HRegionInfo::getRegionNameAsString).collect(Collectors.joining(","))
+      + " size = " + regionInfoList.size());
+      getAssignmentManager().assign(regionInfoList);
+      if (cpHost != null) {
+        for (HRegionInfo regionInfo : regionInfoList) {
+          cpHost.postAssign(regionInfo);
+        }
+      }
+      return barr;
+    } catch (IOException | InterruptedException ioe) {
+      throw new ServiceException(ioe);
+    }
   }
 
   @Override
