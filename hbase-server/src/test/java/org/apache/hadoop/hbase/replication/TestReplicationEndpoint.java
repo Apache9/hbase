@@ -243,7 +243,7 @@ public class TestReplicationEndpoint extends TestReplicationBase {
 
     final int numEdits = totEdits;
     LOG.info("Waiting on replication of {}", numEdits);
-    Waiter.waitFor(CONF1, 30000, new Waiter.ExplainingPredicate<Exception>() {
+    Waiter.waitFor(CONF1, 60000, new Waiter.ExplainingPredicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
         return InterClusterReplicationEndpointForTest.replicateCount.get() == numEdits;
