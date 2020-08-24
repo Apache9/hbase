@@ -253,7 +253,7 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
           LOG.error("Couldn't delete snapshot working directory:" + workingDir);
         }
       } catch (IOException e) {
-        LOG.error("Couldn't delete snapshot working directory:" + workingDir);
+        LOG.error("Couldn't delete snapshot working directory:" + workingDir, e);
       }
       tableLockToRelease.release();
     }
