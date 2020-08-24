@@ -59,6 +59,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.constraint.ConstraintException;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
@@ -1123,19 +1124,33 @@ public final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     return rit;
   }
 
-  private Map<TableName, Map<ServerName, List<RegionInfo>>> getRSGroupAssignmentsByTable(
-      String groupName) throws IOException {
+  /**
+   * This is an EXPENSIVE clone. Cloning though is the safest thing to do. Can't let out original
+   * since it can change and at least the load balancer wants to iterate this exported list. Load
+   * balancer should iterate over this list because cloned list will ignore disabled table and split
+   * parent region cases. This method is invoked by {@link #balanceRSGroup}
+   * @return A clone of current assignments for this group.
+   */
+  @VisibleForTesting
+  Map<TableName, Map<ServerName, List<RegionInfo>>> getRSGroupAssignmentsByTable(
+    TableStateManager tableStateManager, String groupName) throws IOException {
     Map<TableName, Map<ServerName, List<RegionInfo>>> result = Maps.newHashMap();
     Set<TableName> tablesInGroupCache = new HashSet<>();
-    for (Map.Entry<RegionInfo, ServerName> entry :
-        masterServices.getAssignmentManager().getRegionStates()
-        .getRegionAssignments().entrySet()) {
+    for (Map.Entry<RegionInfo, ServerName> entry : masterServices.getAssignmentManager()
+      .getRegionStates().getRegionAssignments().entrySet()) {
       RegionInfo region = entry.getKey();
       TableName tn = region.getTable();
       ServerName server = entry.getValue();
       if (isTableInGroup(tn, groupName, tablesInGroupCache)) {
+        if (tableStateManager
+          .isTableState(tn, TableState.State.DISABLED, TableState.State.DISABLING)) {
+          continue;
+        }
+        if (region.isSplitParent()) {
+          continue;
+        }
         result.computeIfAbsent(tn, k -> new HashMap<>())
-            .computeIfAbsent(server, k -> new ArrayList<>()).add(region);
+          .computeIfAbsent(server, k -> new ArrayList<>()).add(region);
       }
     }
     RSGroupInfo rsGroupInfo = getRSGroupInfo(groupName);
@@ -1146,7 +1161,6 @@ public final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
         }
       }
     }
-
     return result;
   }
 
@@ -1178,7 +1192,7 @@ public final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
 
       // We balance per group instead of per table
       Map<TableName, Map<ServerName, List<RegionInfo>>> assignmentsByTable =
-          getRSGroupAssignmentsByTable(groupName);
+          getRSGroupAssignmentsByTable(masterServices.getTableStateManager(), groupName);
       List<RegionPlan> plans = balancer.balanceCluster(assignmentsByTable);
       boolean balancerRan = !plans.isEmpty();
       if (balancerRan) {
