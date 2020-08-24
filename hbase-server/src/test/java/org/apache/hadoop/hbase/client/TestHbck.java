@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,8 +18,8 @@
 package org.apache.hadoop.hbase.client;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,13 +28,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
-
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.coprocessor.MasterCoprocessor;
+import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
+import org.apache.hadoop.hbase.coprocessor.MasterObserver;
+import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.master.assignment.AssignmentManager;
@@ -84,7 +87,7 @@ public class TestHbck {
   @Rule
   public TestName name = new TestName();
 
-  @Parameter
+  @SuppressWarnings("checkstyle:VisibilityModifier") @Parameter
   public boolean async;
 
   private static final TableName TABLE_NAME = TableName.valueOf(TestHbck.class.getSimpleName());
@@ -219,6 +222,26 @@ public class TestHbck {
       List<Long> pids =
         hbck.unassigns(regions.stream().map(r -> r.getEncodedName()).collect(Collectors.toList()));
       waitOnPids(pids);
+      // Rerun the unassign. Should fail for all Regions since they already unassigned; failed
+      // unassign will manifest as all pids being -1 (ever since HBASE-24885).
+      pids =
+        hbck.unassigns(regions.stream().map(r -> r.getEncodedName()).collect(Collectors.toList()));
+      waitOnPids(pids);
+      for (long pid: pids) {
+        assertEquals(Procedure.NO_PROC_ID, pid);
+      }
+      // If we pass override, then we should be able to unassign EVEN THOUGH Regions already
+      // unassigned.... makes for a mess but operator might want to do this at an extreme when
+      // doing fixup of broke cluster.
+      pids =
+        hbck.unassigns(regions.stream().map(r -> r.getEncodedName()).collect(Collectors.toList()),
+          true);
+      waitOnPids(pids);
+      for (long pid: pids) {
+        assertNotEquals(Procedure.NO_PROC_ID, pid);
+      }
+      // Clean-up by bypassing all the unassigns we just made so tests can continue.
+      hbck.bypassProcedure(pids, 10000, true, true);
       for (RegionInfo ri : regions) {
         RegionState rs = TEST_UTIL.getHBaseCluster().getMaster().getAssignmentManager()
           .getRegionStates().getRegionState(ri.getEncodedName());
@@ -228,6 +251,13 @@ public class TestHbck {
       pids =
         hbck.assigns(regions.stream().map(r -> r.getEncodedName()).collect(Collectors.toList()));
       waitOnPids(pids);
+      // Rerun the assign. Should fail for all Regions since they already assigned; failed
+      // assign will manifest as all pids being -1 (ever since HBASE-24885).
+      pids =
+        hbck.assigns(regions.stream().map(r -> r.getEncodedName()).collect(Collectors.toList()));
+      for (long pid: pids) {
+        assertEquals(Procedure.NO_PROC_ID, pid);
+      }
       for (RegionInfo ri : regions) {
         RegionState rs = TEST_UTIL.getHBaseCluster().getMaster().getAssignmentManager()
           .getRegionStates().getRegionState(ri.getEncodedName());
@@ -238,7 +268,7 @@ public class TestHbck {
       pids = hbck.assigns(
         Arrays.stream(new String[] { "a", "some rubbish name" }).collect(Collectors.toList()));
       for (long pid : pids) {
-        assertEquals(org.apache.hadoop.hbase.procedure2.Procedure.NO_PROC_ID, pid);
+        assertEquals(Procedure.NO_PROC_ID, pid);
       }
     }
   }
@@ -273,6 +303,60 @@ public class TestHbck {
       if (ran) {
         assertTrue(master.getHbckChore().getCheckingEndTimestamp() > endTimestamp);
       }
+    }
+  }
+
+  public static class FailingSplitAfterMetaUpdatedMasterObserver
+      implements MasterCoprocessor, MasterObserver {
+    @SuppressWarnings("checkstyle:VisibilityModifier") public volatile CountDownLatch latch;
+
+    @Override
+    public void start(CoprocessorEnvironment e) throws IOException {
+      resetLatch();
+    }
+
+    @Override
+    public Optional<MasterObserver> getMasterObserver() {
+      return Optional.of(this);
+    }
+
+    @Override
+    public void preSplitRegionAfterMETAAction(ObserverContext<MasterCoprocessorEnvironment> ctx)
+        throws IOException {
+      LOG.info("I'm here");
+      latch.countDown();
+      throw new IOException("this procedure will fail at here forever");
+    }
+
+    public void resetLatch() {
+      this.latch = new CountDownLatch(1);
+    }
+  }
+
+  public static class FailingMergeAfterMetaUpdatedMasterObserver
+      implements MasterCoprocessor, MasterObserver {
+    @SuppressWarnings("checkstyle:VisibilityModifier") public volatile CountDownLatch latch;
+
+    @Override
+    public void start(CoprocessorEnvironment e) throws IOException {
+      resetLatch();
+    }
+
+    @Override
+    public Optional<MasterObserver> getMasterObserver() {
+      return Optional.of(this);
+    }
+
+    public void resetLatch() {
+      this.latch = new CountDownLatch(1);
+    }
+
+    @Override
+    public void postMergeRegionsCommitAction(
+        final ObserverContext<MasterCoprocessorEnvironment> ctx, final RegionInfo[] regionsToMerge,
+        final RegionInfo mergedRegion) throws IOException {
+      latch.countDown();
+      throw new IOException("this procedure will fail at here forever");
     }
   }
 
