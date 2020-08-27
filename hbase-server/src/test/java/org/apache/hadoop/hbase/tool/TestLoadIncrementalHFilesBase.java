@@ -44,7 +44,7 @@ import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.security.HadoopSecurityEnabledUserProviderForTesting;
 import org.apache.hadoop.hbase.security.UserProvider;
-import org.apache.hadoop.hbase.security.access.AccessControlLists;
+import org.apache.hadoop.hbase.security.access.PermissionStorage;
 import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -54,7 +54,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestName;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
 /**
  * Base class for TestLoadIncrementalHFiles.
@@ -112,7 +112,7 @@ public class TestLoadIncrementalHFilesBase {
     util.startMiniCluster();
 
     // Wait for the ACL table to become available
-    util.waitTableEnabled(AccessControlLists.ACL_TABLE_NAME);
+    util.waitTableEnabled(PermissionStorage.ACL_TABLE_NAME);
 
     setupNamespace();
   }

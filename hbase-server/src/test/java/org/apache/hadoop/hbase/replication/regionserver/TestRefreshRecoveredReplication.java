@@ -50,7 +50,7 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.CollectionUtils;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.CollectionUtils;
 
 /**
  * Testcase for HBASE-24871.
