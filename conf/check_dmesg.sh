@@ -39,6 +39,10 @@ function set_mem_error() {
   ERRORS=`dmesg | grep 'MCE MEMORY ERROR'`
 }
 
+function set_network_error() {
+  ERRORS=`dmesg | grep 'Fake Tx hang detected with timeout'`
+}
+
 function set_latest_offset() {
   LATEST_OFFSET=`echo "${ERRORS}" | awk -F '[][]' 'BEGIN {max=0} { if($2 + 0 > max + 0) max=$2 } END { print max }'`
 }
@@ -78,6 +82,13 @@ function check_mem_error() {
   process_error
 }
 
+function check_network_error() {
+  set_network_error
+  METRIC='dmesg.error.network'
+  process_error
+}
+
 check_io_error
 check_mem_error
-echo "Finished to check io & memory status."
+check_network_error
+echo "Finished to check io & memory & network status."
