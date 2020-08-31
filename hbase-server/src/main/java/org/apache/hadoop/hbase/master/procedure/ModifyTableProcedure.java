@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -417,8 +418,10 @@ public class ModifyTableProcedure
     if (newReplicaCount > oldReplicaCount) {
       Connection connection = env.getMasterServices().getConnection();
       // Get the existing table regions
-      List<RegionInfo> existingTableRegions =
-          MetaTableAccessor.getTableRegions(connection, getTableName());
+      List<RegionInfo> existingTableRegions;
+      try (RegionLocator locator = connection.getRegionLocator(getTableName())) {
+        existingTableRegions = locator.getAllRegions();
+      }
       // add all the new entries to the meta table
       addRegionsToMeta(env, newTableDescriptor, existingTableRegions);
       if (oldReplicaCount <= 1) {

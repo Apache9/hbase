@@ -133,7 +133,7 @@ public class TestMasterOperationsForRegionReplicas {
       TEST_UTIL.waitUntilNoRegionsInTransition();
 
       validateNumberOfRowsInMeta(tableName, numRegions, ADMIN.getConnection());
-      List<RegionInfo> hris = MetaTableAccessor.getTableRegions(ADMIN.getConnection(), tableName);
+      List<RegionInfo> hris = ADMIN.getRegions(tableName);
       assertEquals(numRegions * numReplica, hris.size());
     } finally {
       ADMIN.disableTable(tableName);
@@ -155,7 +155,7 @@ public class TestMasterOperationsForRegionReplicas {
       TEST_UTIL.waitUntilNoRegionsInTransition();
       validateNumberOfRowsInMeta(tableName, numRegions, ADMIN.getConnection());
 
-      List<RegionInfo> hris = MetaTableAccessor.getTableRegions(ADMIN.getConnection(), tableName);
+      List<RegionInfo> hris = ADMIN.getRegions(tableName);
       assertEquals(numRegions * numReplica, hris.size());
       assertRegionStateNotNull(hris, numRegions, numReplica);
 
@@ -250,7 +250,7 @@ public class TestMasterOperationsForRegionReplicas {
         .getRegionsOfTable(tableName);
       assertEquals(numRegions * numReplica, regions.size());
       // also make sure the meta table has the replica locations removed
-      hris = MetaTableAccessor.getTableRegions(ADMIN.getConnection(), tableName);
+      hris = ADMIN.getRegions(tableName);
       assertEquals(numRegions * numReplica, hris.size());
       // just check that the number of default replica regions in the meta table are the same
       // as the number of regions the table was created with, and the count of the
@@ -299,7 +299,7 @@ public class TestMasterOperationsForRegionReplicas {
       TEST_UTIL.waitUntilAllRegionsAssigned(tableName);
       TEST_UTIL.waitUntilNoRegionsInTransition();
       Set<byte[]> tableRows = new HashSet<>();
-      List<RegionInfo> hris = MetaTableAccessor.getTableRegions(ADMIN.getConnection(), tableName);
+      List<RegionInfo> hris = ADMIN.getRegions(tableName);
       for (RegionInfo hri : hris) {
         tableRows.add(hri.getRegionName());
       }

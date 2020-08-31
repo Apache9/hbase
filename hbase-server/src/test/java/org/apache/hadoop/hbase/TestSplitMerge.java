@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.client.AsyncConnection;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -134,8 +135,10 @@ public class TestSplitMerge {
 
     UTIL.getAdmin().mergeRegionsAsync(regionNames, false).get(60, TimeUnit.SECONDS);
 
-    List<RegionInfo> mergedRegions =
-        MetaTableAccessor.getTableRegions(UTIL.getConnection(), tableName);
+    List<RegionInfo> mergedRegions;
+    try (RegionLocator locator = UTIL.getConnection().getRegionLocator(tableName)) {
+      mergedRegions = locator.getAllRegions();
+    }
 
     assertEquals(1, mergedRegions.size());
 

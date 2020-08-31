@@ -22,12 +22,10 @@ import static org.junit.Assert.fail;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.Admin;
@@ -36,6 +34,7 @@ import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
@@ -245,8 +244,10 @@ public class TestSpaceQuotaBasicFunctioning {
       @Override
       public boolean evaluate() throws Exception {
         Map<RegionInfo, Long> regionSizes = quotaManager.snapshotRegionSizes();
-        List<RegionInfo> tableRegions =
-            MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), tableName);
+        List<RegionInfo> tableRegions;
+        try (RegionLocator locator = TEST_UTIL.getConnection().getRegionLocator(tableName)) {
+          tableRegions = locator.getAllRegions();
+        }
         return regionSizes.containsKey(tableRegions.get(0));
       }
     });

@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
@@ -163,7 +164,7 @@ public class TestMergeTableRegionsProcedure {
   }
 
   private void testMerge(TableName tableName, int mergeCount) throws IOException {
-    List<RegionInfo> ris = MetaTableAccessor.getTableRegions(UTIL.getConnection(), tableName);
+    List<RegionInfo> ris = getTableRegions(tableName);
     int originalRegionCount = ris.size();
     assertTrue(originalRegionCount > mergeCount);
     RegionInfo[] regionsToMerge = ris.subList(0, mergeCount).toArray(new RegionInfo [] {});
@@ -182,8 +183,7 @@ public class TestMergeTableRegionsProcedure {
     ProcedureTestingUtility.waitProcedure(procExec, procId);
     ProcedureTestingUtility.assertProcNotFailed(procExec, procId);
     MetaTableAccessor.fullScanMetaAndPrint(UTIL.getConnection());
-    assertEquals(originalRegionCount - mergeCount + 1,
-        MetaTableAccessor.getTableRegions(UTIL.getConnection(), tableName).size());
+    assertEquals(originalRegionCount - mergeCount + 1, getTableRegions(tableName).size());
 
     assertEquals(mergeSubmittedCount + 1, mergeProcMetrics.getSubmittedCounter().getCount());
     assertEquals(mergeFailedCount, mergeProcMetrics.getFailedCounter().getCount());
@@ -212,6 +212,12 @@ public class TestMergeTableRegionsProcedure {
       Threads.sleep(1000);
     }
     assertEquals(countOfRowsLoaded, UTIL.countRows(tableName));
+  }
+
+  private static List<RegionInfo> getTableRegions(TableName tn) throws IOException {
+    try (RegionLocator locator = UTIL.getConnection().getRegionLocator(tn)) {
+      return locator.getAllRegions();
+    }
   }
 
   /**

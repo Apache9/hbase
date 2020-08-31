@@ -18,15 +18,14 @@ package org.apache.hadoop.hbase.quotas;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -108,8 +107,10 @@ public class TestSpaceQuotaDropTable {
       @Override
       public boolean evaluate() throws Exception {
         Map<RegionInfo, Long> regionSizes = quotaManager.snapshotRegionSizes();
-        List<RegionInfo> tableRegions =
-            MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), tn);
+        List<RegionInfo> tableRegions;
+        try (RegionLocator locator = TEST_UTIL.getConnection().getRegionLocator(tn)) {
+          tableRegions = locator.getAllRegions();
+        }
         return regionSizes.containsKey(tableRegions.get(0));
       }
     });

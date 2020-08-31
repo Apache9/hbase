@@ -87,20 +87,23 @@ public class TestMetaWithReplicasShutdownHandling extends MetaWithReplicasTestBa
     ServerName primary = ProtobufUtil.toServerName(data);
     LOG.info("Primary=" + primary.toString());
 
-    TableName TABLE = TableName.valueOf("testShutdownHandling");
-    byte[][] FAMILIES = new byte[][] { Bytes.toBytes("foo") };
-    if (util.getAdmin().tableExists(TABLE)) {
-      util.getAdmin().disableTable(TABLE);
-      util.getAdmin().deleteTable(TABLE);
+    TableName table = TableName.valueOf("testShutdownHandling");
+    byte[][] families = new byte[][] { Bytes.toBytes("foo") };
+    if (util.getAdmin().tableExists(table)) {
+      util.getAdmin().disableTable(table);
+      util.getAdmin().deleteTable(table);
     }
     byte[] row = Bytes.toBytes("test");
     ServerName master = null;
     try (Connection c = ConnectionFactory.createConnection(util.getConfiguration())) {
-      try (Table htable = util.createTable(TABLE, FAMILIES)) {
+      try (Table htable = util.createTable(table, families)) {
         util.getAdmin().flush(TableName.META_TABLE_NAME);
         Thread.sleep(
           conf.getInt(StorefileRefresherChore.REGIONSERVER_STOREFILE_REFRESH_PERIOD, 30000) * 6);
-        List<RegionInfo> regions = MetaTableAccessor.getTableRegions(c, TABLE);
+        List<RegionInfo> regions;
+        try (RegionLocator locator = c.getRegionLocator(table)) {
+          regions = locator.getAllRegions();
+        }
         HRegionLocation hrl = MetaTableAccessor.getRegionLocation(c, regions.get(0));
         // Ensure that the primary server for test table is not the same one as the primary
         // of the meta region since we will be killing the srv holding the meta's primary...
@@ -134,10 +137,10 @@ public class TestMetaWithReplicasShutdownHandling extends MetaWithReplicasTestBa
         c.clearRegionLocationCache();
       }
       LOG.info("Running GETs");
-      try (Table htable = c.getTable(TABLE)) {
+      try (Table htable = c.getTable(table)) {
         Put put = new Put(row);
         put.addColumn(Bytes.toBytes("foo"), row, row);
-        BufferedMutator m = c.getBufferedMutator(TABLE);
+        BufferedMutator m = c.getBufferedMutator(table);
         m.mutate(put);
         m.flush();
         // Try to do a get of the row that was just put
@@ -156,7 +159,7 @@ public class TestMetaWithReplicasShutdownHandling extends MetaWithReplicasTestBa
     conf.setBoolean(HConstants.USE_META_REPLICAS, false);
     LOG.info("Running GETs no replicas");
     try (Connection c = ConnectionFactory.createConnection(conf);
-      Table htable = c.getTable(TABLE)) {
+      Table htable = c.getTable(table)) {
       Result r = htable.get(new Get(row));
       assertArrayEquals(row, r.getRow());
     }

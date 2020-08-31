@@ -110,8 +110,22 @@ public interface AsyncTableRegionLocator {
    * Usually we will go to meta table directly in this method so there is no {@code reload}
    * parameter.
    * <p/>
-   * Notice that the location for region replicas other than the default replica are also returned.
+   * Notice that the region replicas other than the default replica are also returned.
    * @return a {@link List} of all regions associated with this table.
+   */
+  default CompletableFuture<List<RegionInfo>> getAllRegions() {
+    return getAllRegionLocations().thenApply(
+      locs -> locs.stream().map(HRegionLocation::getRegion).collect(Collectors.toList()));
+  }
+
+  /**
+   * Retrieves all of the regions and their locations associated with this table.
+   * <p/>
+   * Usually we will go to meta table directly in this method so there is no {@code reload}
+   * parameter.
+   * <p/>
+   * Notice that the location for region replicas other than the default replica are also returned.
+   * @return a {@link List} of all regions and their locations associated with this table.
    */
   CompletableFuture<List<HRegionLocation>> getAllRegionLocations();
 

@@ -146,7 +146,7 @@ public final class BackupUtils {
         LOG.debug("Attempting to copy table info for:" + table + " target: " + target +
           " descriptor: " + orig);
         LOG.debug("Finished copying tableinfo.");
-        List<RegionInfo> regions = MetaTableAccessor.getTableRegions(conn, table);
+        List<RegionInfo> regions = MetaTableAccessor.getTableRegions(conn, table, false);
         // For each region, write the region info to disk
         LOG.debug("Starting to write region info for table " + table);
         for (RegionInfo regionInfo : regions) {

@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.TableNamespaceManager;
 import org.apache.hadoop.hbase.quotas.QuotaExceededException;
@@ -221,8 +222,10 @@ class NamespaceStateManager {
         if (table.isSystemTable()) {
           continue;
         }
-        List<RegionInfo> regions =
-            MetaTableAccessor.getTableRegions(this.master.getConnection(), table, true);
+        List<RegionInfo> regions;
+        try (RegionLocator locator = master.getConnection().getRegionLocator(table)) {
+          regions = locator.getAllRegions();
+        }
         addTable(table, regions.size());
       }
     }

@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
+import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -112,7 +113,7 @@ public class TestCatalogJanitorCluster {
     // Assert no problems.
     assertTrue(report.isEmpty());
     // Now remove first region in table t2 to see if catalogjanitor scan notices.
-    List<RegionInfo> t2Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T2);
+    List<RegionInfo> t2Ris = getTableRegions(T2);
     MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), t2Ris.get(0));
     gc = janitor.scan();
     report = janitor.getLastReport();
@@ -123,7 +124,7 @@ public class TestCatalogJanitorCluster {
     assertTrue(report.getHoles().get(0).getSecond().getTable().equals(T2));
     assertEquals(0, report.getOverlaps().size());
     // Next, add overlaps to first row in t3
-    List<RegionInfo> t3Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T3);
+    List<RegionInfo> t3Ris = getTableRegions(T3);
     RegionInfo ri = t3Ris.get(0);
     RegionInfo newRi1 = RegionInfoBuilder.newBuilder(ri.getTable()).
         setStartKey(incrementRow(ri.getStartKey())).
@@ -145,7 +146,7 @@ public class TestCatalogJanitorCluster {
     assertTrue(report.getEmptyRegionInfo().isEmpty());
     assertTrue(report.getUnknownServers().isEmpty());
     // Now make bad server in t1.
-    List<RegionInfo> t1Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T1);
+    List<RegionInfo> t1Ris = getTableRegions(T1);
     RegionInfo t1Ri1 = t1Ris.get(1);
     Put pServer = new Put(t1Ri1.getRegionName());
     pServer.addColumn(HConstants.CATALOG_FAMILY,
@@ -182,7 +183,7 @@ public class TestCatalogJanitorCluster {
     // Test the case for T4
     //    r1: [aa, bb), r2: [cc, dd), r3: [a, cc)
     // Make sure only overlaps and no holes are reported.
-    List<RegionInfo> t4Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T4);
+    List<RegionInfo> t4Ris = getTableRegions(T4);
     // delete the region [bb, cc)
     MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), t4Ris.get(2));
 
@@ -205,7 +206,7 @@ public class TestCatalogJanitorCluster {
     // Test the case for T5
     //    r0: [, bb), r1: [a, g), r2: [bb, cc), r3: [dd, )
     // Make sure only overlaps and no holes are reported.
-    List<RegionInfo> t5Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T5);
+    List<RegionInfo> t5Ris = getTableRegions(T5);
     // delete the region [cc, dd)
     MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), t5Ris.get(2));
 
@@ -222,6 +223,12 @@ public class TestCatalogJanitorCluster {
     // ([a, g), [, bb)), ([a, g), [bb, cc)), ([a, g), [dd, ))
     assertEquals(holesReported, report.getHoles().size());
     assertEquals(overlapsReported + 3, report.getOverlaps().size());
+  }
+
+  private static List<RegionInfo> getTableRegions(TableName tn) throws IOException {
+    try (RegionLocator locator = TEST_UTIL.getConnection().getRegionLocator(tn)) {
+      return locator.getAllRegions();
+    }
   }
 
   /**
