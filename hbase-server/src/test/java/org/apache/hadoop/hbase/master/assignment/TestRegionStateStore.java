@@ -173,10 +173,12 @@ public class TestRegionStateStore {
       .setEndKey(HConstants.EMPTY_END_ROW).setSplit(false).setRegionId(regionId + 1).setReplicaId(0)
       .build();
     List<RegionInfo> regionInfos = Lists.newArrayList(parent);
-    MetaTableAccessor.addRegionsToMeta(UTIL.getConnection(), regionInfos, 3);
     final RegionStateStore regionStateStore =
       UTIL.getHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore();
-    regionStateStore.splitRegion(parent, splitA, splitB, serverName0,
+    regionStateStore.addRegions(regionInfos, 3);
+
+    regionStateStore.splitRegion(parent, splitA,
+      splitB, serverName0,
       TableDescriptorBuilder.newBuilder(tableName).setRegionReplication(3).build());
     try (Table meta = MetaTableAccessor.getMetaHTable(UTIL.getConnection())) {
       assertEmptyMetaLocation(meta, splitA.getRegionName(), 1);
@@ -202,9 +204,9 @@ public class TestRegionStateStore {
       .setEndKey(HConstants.EMPTY_END_ROW).setSplit(false).setRegionId(regionId + 1).setReplicaId(0)
       .build();
     List<RegionInfo> regionInfos = Lists.newArrayList(parent);
-    MetaTableAccessor.addRegionsToMeta(UTIL.getConnection(), regionInfos, 3);
     final RegionStateStore regionStateStore =
       UTIL.getHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore();
+    regionStateStore.addRegions(regionInfos, 3);
     regionStateStore.splitRegion(parent, splitA, splitB, serverName0,
       TableDescriptorBuilder.newBuilder(tableName).setRegionReplication(3).build());
     try (Table meta = MetaTableAccessor.getMetaHTable(UTIL.getConnection())) {
@@ -251,7 +253,7 @@ public class TestRegionStateStore {
 
     try (Table meta = MetaTableAccessor.getMetaHTable(UTIL.getConnection())) {
       List<RegionInfo> regionInfos = Lists.newArrayList(parentA, parentB);
-      MetaTableAccessor.addRegionsToMeta(UTIL.getConnection(), regionInfos, 3);
+      regionStateStore.addRegions(regionInfos, 3);
       regionStateStore.mergeRegions(merged, new RegionInfo[] { parentA, parentB }, serverName0,
         TableDescriptorBuilder.newBuilder(tableName).setRegionReplication(3).build());
       assertEmptyMetaLocation(meta, merged.getRegionName(), 1);
@@ -275,10 +277,13 @@ public class TestRegionStateStore {
       .setStartKey(HConstants.EMPTY_START_ROW).setEndKey(HConstants.EMPTY_END_ROW).setSplit(false)
       .setRegionId(regionId).setReplicaId(0).build();
 
+    final RegionStateStore regionStateStore =
+      UTIL.getHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore();
+
     ServerName sn = ServerName.valueOf("bar", 0, 0);
     try (Table meta = MetaTableAccessor.getMetaHTable(UTIL.getConnection())) {
       List<RegionInfo> regionInfos = Lists.newArrayList(regionInfoA, regionInfoB);
-      MetaTableAccessor.addRegionsToMeta(UTIL.getConnection(), regionInfos, 1);
+      regionStateStore.addRegions(regionInfos, 1);
 
       // write the serverName column with a big current time, but set the masters time as even
       // bigger. When region merge deletes the rows for regionA and regionB, the serverName columns
@@ -298,8 +303,7 @@ public class TestRegionStateStore {
       assertNotNull(serverCell);
       assertEquals(serverNameTime, serverCell.getTimestamp());
 
-      final RegionStateStore regionStateStore =
-        UTIL.getHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore();
+      
 
       ManualEnvironmentEdge edge = new ManualEnvironmentEdge();
       edge.setValue(masterSystemTime);

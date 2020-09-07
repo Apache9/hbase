@@ -1976,20 +1976,7 @@ public class HBaseFsck extends Configured implements Closeable {
    * Reset the split parent region info in meta table
    */
   private void resetSplitParent(HbckRegionInfo hi) throws IOException {
-    RowMutations mutations = new RowMutations(hi.getMetaEntry().getRegionInfo().getRegionName());
-    Delete d = new Delete(hi.getMetaEntry().getRegionInfo().getRegionName());
-    d.addColumn(HConstants.CATALOG_FAMILY, HConstants.SPLITA_QUALIFIER);
-    d.addColumn(HConstants.CATALOG_FAMILY, HConstants.SPLITB_QUALIFIER);
-    mutations.add(d);
-
-    RegionInfo hri = RegionInfoBuilder.newBuilder(hi.getMetaEntry().getRegionInfo())
-      .setOffline(false).setSplit(false).build();
-    Put p = MetaTableAccessor.makePutFromRegionInfo(hri, EnvironmentEdgeManager.currentTime());
-    mutations.add(p);
-
-    meta.mutateRow(mutations);
-    LOG.info("Reset split parent " + hi.getMetaEntry().getRegionInfo().getRegionNameAsString() +
-      " in META");
+    throw new UnsupportedOperationException("hbck1 is readonly now, use hbck2 instead");
   }
 
   /**
@@ -2775,7 +2762,7 @@ public class HBaseFsck extends Configured implements Closeable {
               || hri.isMetaRegion())) {
             return true;
           }
-          PairOfSameType<RegionInfo> daughters = MetaTableAccessor.getDaughterRegions(result);
+          PairOfSameType<RegionInfo> daughters = CatalogFamilyFormat.getDaughterRegions(result);
           for (HRegionLocation h : rl.getRegionLocations()) {
             if (h == null || h.getRegion() == null) {
               continue;

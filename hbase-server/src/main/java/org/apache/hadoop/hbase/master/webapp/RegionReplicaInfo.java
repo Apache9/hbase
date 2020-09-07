@@ -72,7 +72,7 @@ public final class RegionReplicaInfo {
       : null;
 
     if (result != null) {
-      PairOfSameType<RegionInfo> daughterRegions = MetaTableAccessor.getDaughterRegions(result);
+      PairOfSameType<RegionInfo> daughterRegions = CatalogFamilyFormat.getDaughterRegions(result);
       this.splitRegionInfo = new LinkedHashMap<>();
       if (daughterRegions.getFirst() != null) {
         splitRegionInfo.put(HConstants.SPLITA_QUALIFIER_STR, daughterRegions.getFirst());

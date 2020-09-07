@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.PairOfSameType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -311,8 +312,7 @@ public class CatalogFamilyFormat {
    * @param replicaId the replicaId of the region
    * @return a byte[] for state qualifier
    */
-  @VisibleForTesting
-  static byte[] getRegionStateColumn(int replicaId) {
+  public static byte[] getRegionStateColumn(int replicaId) {
     return replicaId == 0 ? HConstants.STATE_QUALIFIER :
       Bytes.toBytes(HConstants.STATE_QUALIFIER_STR + META_REPLICA_ID_DELIMITER +
         String.format(RegionInfo.REPLICA_ID_FORMAT, replicaId));
@@ -405,5 +405,16 @@ public class CatalogFamilyFormat {
     // Check to see if has family and that qualifier starts with the merge qualifier 'merge'
     return CellUtil.matchingFamily(cell, HConstants.CATALOG_FAMILY) &&
       PrivateCellUtil.qualifierStartsWith(cell, HConstants.MERGE_QUALIFIER_PREFIX);
+  }
+
+  /**
+   * Returns the daughter regions by reading the corresponding columns of the catalog table Result.
+   * @param data a Result object from the catalog table scan
+   * @return pair of RegionInfo or PairOfSameType(null, null) if region is not a split parent
+   */
+  public static PairOfSameType<RegionInfo> getDaughterRegions(Result data) {
+    RegionInfo splitA = getRegionInfo(data, HConstants.SPLITA_QUALIFIER);
+    RegionInfo splitB = getRegionInfo(data, HConstants.SPLITB_QUALIFIER);
+    return new PairOfSameType<>(splitA, splitB);
   }
 }

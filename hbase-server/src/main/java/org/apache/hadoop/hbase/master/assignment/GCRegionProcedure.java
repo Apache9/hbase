@@ -115,7 +115,7 @@ public class GCRegionProcedure extends AbstractStateMachineRegionProcedure<GCReg
               am.getRegionStates().deleteRegion(getRegion());
             }
           }
-          MetaTableAccessor.deleteRegionInfo(masterServices.getConnection(), getRegion());
+          env.getAssignmentManager().getRegionStateStore().deleteRegion(getRegion());
           masterServices.getServerManager().removeRegion(getRegion());
           FavoredNodesManager fnm = masterServices.getFavoredNodesManager();
           if (fnm != null) {

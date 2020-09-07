@@ -184,24 +184,23 @@ class MetaFixer {
 
           // Add replicas if needed
           // we need to create regions with replicaIds starting from 1
-          List<RegionInfo> newRegions = RegionReplicaUtil.addReplicas(
-            Collections.singletonList(regionInfo), 1, td.getRegionReplication());
+          List<RegionInfo> newRegions = RegionReplicaUtil
+            .addReplicas(Collections.singletonList(regionInfo), 1, td.getRegionReplication());
 
           // Add regions to META
-          MetaTableAccessor.addRegionsToMeta(masterServices.getConnection(), newRegions,
+          masterServices.getAssignmentManager().getRegionStateStore().addRegions(newRegions,
             td.getRegionReplication());
 
           // Setup replication for region replicas if needed
           if (td.getRegionReplication() > 1) {
-            ServerRegionReplicaUtil.setupRegionReplicaReplication(
-              masterServices.getConfiguration());
+            ServerRegionReplicaUtil
+              .setupRegionReplicaReplication(masterServices.getConfiguration());
           }
-          return Either.<List<RegionInfo>, IOException>ofLeft(newRegions);
+          return Either.<List<RegionInfo>, IOException> ofLeft(newRegions);
         } catch (IOException e) {
-          return Either.<List<RegionInfo>, IOException>ofRight(e);
+          return Either.<List<RegionInfo>, IOException> ofRight(e);
         }
-      })
-      .collect(Collectors.toList());
+      }).collect(Collectors.toList());
     final List<RegionInfo> createMetaEntriesSuccesses = addMetaEntriesResults.stream()
       .filter(Either::hasLeft)
       .map(Either::getLeft)

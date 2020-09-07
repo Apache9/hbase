@@ -121,6 +121,7 @@ import org.apache.hadoop.hbase.security.visibility.VisibilityLabelsCache;
 import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.MasterThread;
@@ -2465,31 +2466,24 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
   };
 
   /**
-   * Create rows in hbase:meta for regions of the specified table with the specified
-   * start keys.  The first startKey should be a 0 length byte array if you
-   * want to form a proper range of regions.
-   * @param conf
-   * @param htd
-   * @param startKeys
+   * Create rows in hbase:meta for regions of the specified table with the specified start keys. The
+   * first startKey should be a 0 length byte array if you want to form a proper range of regions.
    * @return list of region info for regions added to meta
-   * @throws IOException
    */
   public List<RegionInfo> createMultiRegionsInMeta(final Configuration conf,
-      final TableDescriptor htd, byte [][] startKeys)
-  throws IOException {
+    final TableDescriptor htd, byte[][] startKeys) throws IOException {
     Table meta = getConnection().getTable(TableName.META_TABLE_NAME);
     Arrays.sort(startKeys, Bytes.BYTES_COMPARATOR);
     List<RegionInfo> newRegions = new ArrayList<>(startKeys.length);
-    MetaTableAccessor
-        .updateTableState(getConnection(), htd.getTableName(), TableState.State.ENABLED);
+    MetaTableAccessor.updateTableState(getConnection(), htd.getTableName(),
+      TableState.State.ENABLED);
     // add custom ones
     for (int i = 0; i < startKeys.length; i++) {
       int j = (i + 1) % startKeys.length;
-      RegionInfo hri = RegionInfoBuilder.newBuilder(htd.getTableName())
-          .setStartKey(startKeys[i])
-          .setEndKey(startKeys[j])
-          .build();
-      MetaTableAccessor.addRegionToMeta(getConnection(), hri);
+      RegionInfo hri = RegionInfoBuilder.newBuilder(htd.getTableName()).setStartKey(startKeys[i])
+        .setEndKey(startKeys[j]).build();
+      RegionStateStore.addRegionsToMeta(getConnection(), Arrays.asList(hri), 1,
+        EnvironmentEdgeManager.currentTime());
       newRegions.add(hri);
     }
 

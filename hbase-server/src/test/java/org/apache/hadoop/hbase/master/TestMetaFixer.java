@@ -80,7 +80,7 @@ public class TestMetaFixer {
   }
 
   private void deleteRegion(MasterServices services, RegionInfo ri) throws IOException {
-    MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), ri);
+    services.getAssignmentManager().getRegionStateStore().deleteRegion(ri);
     // Delete it from Master context too else it sticks around.
     services.getAssignmentManager().getRegionStates().deleteRegion(ri);
   }
@@ -168,7 +168,7 @@ public class TestMetaFixer {
         setEndKey(b.getEndKey()).
         build();
     MetaTableAccessor.putsToMetaTable(services.getConnection(),
-        Collections.singletonList(MetaTableAccessor.makePutFromRegionInfo(overlapRegion,
+        Collections.singletonList(RegionStateStore.makePutFromRegionInfo(overlapRegion,
             System.currentTimeMillis())));
     // TODO: Add checks at assign time to PREVENT being able to assign over existing assign.
     services.getAssignmentManager().assign(overlapRegion);
@@ -354,7 +354,7 @@ public class TestMetaFixer {
       build();
 
     Table meta = MetaTableAccessor.getMetaHTable(TEST_UTIL.getConnection());
-    Put putOfMerged = MetaTableAccessor.makePutFromRegionInfo(overlapRegion,
+    Put putOfMerged = RegionStateStore.makePutFromRegionInfo(overlapRegion,
       HConstants.LATEST_TIMESTAMP);
     String qualifier = String.format(HConstants.MERGE_QUALIFIER_PREFIX_STR + "%04d", 0);
     putOfMerged.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(

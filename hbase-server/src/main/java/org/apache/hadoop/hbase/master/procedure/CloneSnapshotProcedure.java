@@ -507,8 +507,6 @@ public class CloneSnapshotProcedure
 
   /**
    * Add regions to hbase:meta table.
-   * @param env MasterProcedureEnv
-   * @throws IOException
    */
   private void addRegionsToMeta(final MasterProcedureEnv env) throws IOException {
     newRegions = CreateTableProcedure.addTableToMeta(env, tableDescriptor, newRegions);
@@ -516,9 +514,9 @@ public class CloneSnapshotProcedure
     // TODO: parentsToChildrenPairMap is always empty, which makes updateMetaParentRegions()
     // a no-op. This part seems unnecessary. Figure out. - Appy 12/21/17
     RestoreSnapshotHelper.RestoreMetaChanges metaChanges =
-        new RestoreSnapshotHelper.RestoreMetaChanges(
-                tableDescriptor, parentsToChildrenPairMap);
-    metaChanges.updateMetaParentRegions(env.getMasterServices().getConnection(), newRegions);
+      new RestoreSnapshotHelper.RestoreMetaChanges(tableDescriptor, parentsToChildrenPairMap);
+    metaChanges.updateMetaParentRegions(env.getAssignmentManager().getRegionStateStore(),
+      newRegions);
   }
 
 }

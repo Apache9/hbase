@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
+import org.apache.hadoop.hbase.master.assignment.RegionStateStore;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RSRpcServices;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -122,11 +123,11 @@ public class TestMetaUpdatesGoToPriorityQueue {
     SpyingRpcScheduler scheduler = (SpyingRpcScheduler) rs.getRpcServer().getScheduler();
     long prevCalls = scheduler.numPriorityCalls;
     long time = System.currentTimeMillis();
-    Put putParent = MetaTableAccessor.makePutFromRegionInfo(
+    Put putParent = RegionStateStore.makePutFromRegionInfo(
       RegionInfoBuilder.newBuilder(parent).setOffline(true).setSplit(true).build(), time);
-    MetaTableAccessor.addDaughtersToPut(putParent, splitA, splitB);
-    Put putA = MetaTableAccessor.makePutFromRegionInfo(splitA, time);
-    Put putB = MetaTableAccessor.makePutFromRegionInfo(splitB, time);
+    RegionStateStore.addDaughtersToPut(putParent, splitA, splitB);
+    Put putA = RegionStateStore.makePutFromRegionInfo(splitA, time);
+    Put putB = RegionStateStore.makePutFromRegionInfo(splitB, time);
     multiMutate(putParent.getRow(), Arrays.asList(putParent, putA, putB));
 
     assertTrue(prevCalls < scheduler.numPriorityCalls);

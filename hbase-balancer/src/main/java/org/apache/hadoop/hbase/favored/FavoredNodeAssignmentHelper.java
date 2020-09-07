@@ -30,9 +30,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.CatalogFamilyFormat;
 import org.apache.hadoop.hbase.Cell.Type;
 import org.apache.hadoop.hbase.CellBuilderFactory;
 import org.apache.hadoop.hbase.CellBuilderType;
@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionReplicaUtil;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.RackManager;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -55,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
 import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.FavoredNodes;
@@ -174,13 +176,20 @@ public class FavoredNodeAssignmentHelper {
     Put put = null;
     if (favoredNodeList != null) {
       long time = EnvironmentEdgeManager.currentTime();
-      put = MetaTableAccessor.makePutFromRegionInfo(regionInfo, time);
+      byte[] row = CatalogFamilyFormat.getMetaKeyForRegion(regionInfo);
+      put = new Put(row).add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(row)
+        .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.REGIONINFO_QUALIFIER)
+        .setTimestamp(time).setType(Type.Put)
+        // Serialize the Default Replica HRI otherwise scan of hbase:meta
+        // shows an info:regioninfo value with encoded name and region
+        // name that differs from that of the hbase;meta row.
+        .setValue(
+          RegionInfo.toByteArray(RegionReplicaUtil.getRegionInfoForDefaultReplica(regionInfo)))
+        .build());
       byte[] favoredNodes = getFavoredNodes(favoredNodeList);
-      put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY)
-          .setRow(put.getRow())
-          .setFamily(HConstants.CATALOG_FAMILY)
-          .setQualifier(FAVOREDNODES_QUALIFIER)
-          .setTimestamp(time)
+      put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
+        .setFamily(HConstants.CATALOG_FAMILY).setQualifier(FAVOREDNODES_QUALIFIER)
+        .setTimestamp(time)
           .setType(Type.Put)
           .setValue(favoredNodes)
           .build());

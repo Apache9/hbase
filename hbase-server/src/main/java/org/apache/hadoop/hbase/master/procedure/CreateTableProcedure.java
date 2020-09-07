@@ -25,7 +25,6 @@ import java.util.function.Supplier;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
-import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
@@ -404,8 +403,8 @@ public class CreateTableProcedure
   private static void addRegionsToMeta(final MasterProcedureEnv env,
       final TableDescriptor tableDescriptor,
       final List<RegionInfo> regionInfos) throws IOException {
-    MetaTableAccessor.addRegionsToMeta(env.getMasterServices().getConnection(),
-      regionInfos, tableDescriptor.getRegionReplication());
+    env.getAssignmentManager().getRegionStateStore().addRegions(regionInfos,
+      tableDescriptor.getRegionReplication());
   }
 
   @Override

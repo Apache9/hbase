@@ -22,22 +22,16 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.ClusterMetrics.Option;
-import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.AsyncClusterConnection;
 import org.apache.hadoop.hbase.client.ClusterConnectionFactory;
 import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
-import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.master.ServerManager;
@@ -161,26 +155,9 @@ public class HBaseFsckRepair {
   /**
    * Puts the specified RegionInfo into META with replica related columns
    */
-  public static void fixMetaHoleOnlineAndAddReplicas(Configuration conf,
-      RegionInfo hri, Collection<ServerName> servers, int numReplicas) throws IOException {
-    Connection conn = ConnectionFactory.createConnection(conf);
-    Table meta = conn.getTable(TableName.META_TABLE_NAME);
-    Put put = MetaTableAccessor.makePutFromRegionInfo(hri, EnvironmentEdgeManager.currentTime());
-    if (numReplicas > 1) {
-      Random r = new Random();
-      ServerName[] serversArr = servers.toArray(new ServerName[servers.size()]);
-      for (int i = 1; i < numReplicas; i++) {
-        ServerName sn = serversArr[r.nextInt(serversArr.length)];
-        // the column added here is just to make sure the master is able to
-        // see the additional replicas when it is asked to assign. The
-        // final value of these columns will be different and will be updated
-        // by the actual regionservers that start hosting the respective replicas
-        MetaTableAccessor.addLocation(put, sn, sn.getStartcode(), i);
-      }
-    }
-    meta.put(put);
-    meta.close();
-    conn.close();
+  public static void fixMetaHoleOnlineAndAddReplicas(Configuration conf, RegionInfo hri,
+    Collection<ServerName> servers, int numReplicas) throws IOException {
+    throw new UnsupportedOperationException("hbck1 is readonly now, use hbck2 instead");
   }
 
   /**
@@ -201,7 +178,6 @@ public class HBaseFsckRepair {
    * Remove parent
    */
   public static void removeParentInMeta(Configuration conf, RegionInfo hri) throws IOException {
-    Connection conn = ConnectionFactory.createConnection(conf);
-    MetaTableAccessor.deleteRegionInfo(conn, hri);
+    throw new UnsupportedOperationException("hbck1 is read only now, use hbck2 instead");
   }
 }

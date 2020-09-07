@@ -212,7 +212,7 @@ public class CatalogJanitor extends ScheduledChore {
           // We could not clean the parent, so it's daughters should not be
           // cleaned either (HBASE-6160)
           PairOfSameType<RegionInfo> daughters =
-              MetaTableAccessor.getDaughterRegions(e.getValue());
+              CatalogFamilyFormat.getDaughterRegions(e.getValue());
           parentNotCleaned.add(daughters.getFirst().getEncodedName());
           parentNotCleaned.add(daughters.getSecond().getEncodedName());
         }
@@ -328,7 +328,7 @@ public class CatalogJanitor extends ScheduledChore {
       return false;
     }
     // Run checks on each daughter split.
-    PairOfSameType<RegionInfo> daughters = MetaTableAccessor.getDaughterRegions(rowContent);
+    PairOfSameType<RegionInfo> daughters = CatalogFamilyFormat.getDaughterRegions(rowContent);
     Pair<Boolean, Boolean> a = checkDaughterInFs(parent, daughters.getFirst());
     Pair<Boolean, Boolean> b = checkDaughterInFs(parent, daughters.getSecond());
     if (hasNoReferences(a) && hasNoReferences(b)) {

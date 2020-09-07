@@ -23,11 +23,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.apache.hadoop.hbase.CatalogFamilyFormat;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.Cell.Type;
+import org.apache.hadoop.hbase.CellBuilder;
 import org.apache.hadoop.hbase.CellBuilderFactory;
 import org.apache.hadoop.hbase.CellBuilderType;
 import org.apache.hadoop.hbase.CellUtil;
@@ -40,6 +42,7 @@ import org.apache.hadoop.hbase.RegionLocations;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.AsyncTable;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Mutation;
@@ -196,20 +199,26 @@ public class RegionStateStore {
     }
   }
 
+  private Put addRegionState(Put put, State state, int replicaId) throws IOException {
+    return put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
+      .setFamily(HConstants.CATALOG_FAMILY).setQualifier(getStateColumn(replicaId))
+      .setTimestamp(put.getTimestamp()).setType(Cell.Type.Put).setValue(Bytes.toBytes(state.name()))
+      .build());
+  }
+
   private void updateUserRegionLocation(RegionInfo regionInfo, State state,
-      ServerName regionLocation, long openSeqNum,
-       long pid) throws IOException {
+    ServerName regionLocation, long openSeqNum, long pid) throws IOException {
     long time = EnvironmentEdgeManager.currentTime();
     final int replicaId = regionInfo.getReplicaId();
     final Put put = new Put(CatalogFamilyFormat.getMetaKeyForRegion(regionInfo), time);
-    MetaTableAccessor.addRegionInfo(put, regionInfo);
+    addRegionInfo(put, regionInfo);
     final StringBuilder info =
       new StringBuilder("pid=").append(pid).append(" updating hbase:meta row=")
         .append(regionInfo.getEncodedName()).append(", regionState=").append(state);
     if (openSeqNum >= 0) {
       Preconditions.checkArgument(state == State.OPEN && regionLocation != null,
           "Open region should be on a server");
-      MetaTableAccessor.addLocation(put, regionLocation, openSeqNum, replicaId);
+      addLocation(put, regionLocation, openSeqNum, replicaId);
       // only update replication barrier for default replica
       if (regionInfo.getReplicaId() == RegionInfo.DEFAULT_REPLICA_ID &&
         hasGlobalReplicationScope(regionInfo.getTable())) {
@@ -231,14 +240,8 @@ public class RegionStateStore {
           .build());
       info.append(", regionLocation=").append(regionLocation);
     }
-    put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY)
-        .setRow(put.getRow())
-        .setFamily(HConstants.CATALOG_FAMILY)
-        .setQualifier(getStateColumn(replicaId))
-        .setTimestamp(put.getTimestamp())
-        .setType(Cell.Type.Put)
-        .setValue(Bytes.toBytes(state.name()))
-        .build());
+    addRegionState(put, state, replicaId);
+    info.append(", state=").append(state);
     LOG.info(info.toString());
     updateRegionLocation(regionInfo, state, put);
   }
@@ -256,6 +259,18 @@ public class RegionStateStore {
       master.abort(msg, e);
       throw e;
     }
+  }
+
+  public static Put addRegionInfo(final Put p, final RegionInfo hri) throws IOException {
+    p.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(p.getRow())
+      .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.REGIONINFO_QUALIFIER)
+      .setTimestamp(p.getTimestamp()).setType(Type.Put)
+      // Serialize the Default Replica HRI otherwise scan of hbase:meta
+      // shows an info:regioninfo value with encoded name and region
+      // name that differs from that of the hbase;meta row.
+      .setValue(RegionInfo.toByteArray(RegionReplicaUtil.getRegionInfoForDefaultReplica(hri)))
+      .build());
+    return p;
   }
 
   private long getOpenSeqNumForParentRegion(RegionInfo region) throws IOException {
@@ -300,7 +315,7 @@ public class RegionStateStore {
   private Result getRegionCatalogResult(RegionInfo region) throws IOException {
     Get get =
       new Get(CatalogFamilyFormat.getMetaKeyForRegion(region)).addFamily(HConstants.CATALOG_FAMILY);
-    try (Table table = master.getConnection().getTable(TableName.META_TABLE_NAME)) {
+    try (Table table = getMetaTable()) {
       return table.get(get);
     }
   }
@@ -311,6 +326,58 @@ public class RegionStateStore {
       .setFamily(HConstants.CATALOG_FAMILY)
       .setQualifier(CatalogFamilyFormat.getSeqNumColumn(replicaId)).setTimestamp(p.getTimestamp())
       .setType(Type.Put).setValue(Bytes.toBytes(openSeqNum)).build());
+  }
+
+  private Table getMetaTable() throws IOException {
+    return master.getConnection().getTable(TableName.META_TABLE_NAME);
+  }
+
+  /**
+   * Generates and returns a Put containing the region into for the catalog table
+   */
+  @VisibleForTesting
+  public static Put makePutFromRegionInfo(RegionInfo regionInfo, long ts) throws IOException {
+    return addRegionInfo(new Put(CatalogFamilyFormat.getMetaKeyForRegion(regionInfo), ts),
+      regionInfo);
+  }
+
+  /**
+   * Generates and returns a Delete containing the region info for the catalog table
+   */
+  private static Delete makeDeleteFromRegionInfo(RegionInfo regionInfo, long ts) {
+    Delete delete = new Delete(CatalogFamilyFormat.getMetaKeyForRegion(regionInfo));
+    delete.addFamily(HConstants.CATALOG_FAMILY, ts);
+    return delete;
+  }
+
+  private static Put addLocation(Put p, ServerName sn, long openSeqNum, int replicaId)
+    throws IOException {
+    CellBuilder builder = CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY);
+    return p
+      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
+        .setQualifier(CatalogFamilyFormat.getServerColumn(replicaId)).setTimestamp(p.getTimestamp())
+        .setType(Cell.Type.Put).setValue(Bytes.toBytes(sn.getAddress().toString())).build())
+      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
+        .setQualifier(CatalogFamilyFormat.getStartCodeColumn(replicaId))
+        .setTimestamp(p.getTimestamp()).setType(Cell.Type.Put)
+        .setValue(Bytes.toBytes(sn.getStartcode())).build())
+      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
+        .setQualifier(CatalogFamilyFormat.getSeqNumColumn(replicaId)).setTimestamp(p.getTimestamp())
+        .setType(Type.Put).setValue(Bytes.toBytes(openSeqNum)).build());
+  }
+
+  private static Put addEmptyLocation(Put p, int replicaId) throws IOException {
+    CellBuilder builder = CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY);
+    return p
+      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
+        .setQualifier(CatalogFamilyFormat.getServerColumn(replicaId)).setTimestamp(p.getTimestamp())
+        .setType(Type.Put).build())
+      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
+        .setQualifier(CatalogFamilyFormat.getStartCodeColumn(replicaId))
+        .setTimestamp(p.getTimestamp()).setType(Cell.Type.Put).build())
+      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
+        .setQualifier(CatalogFamilyFormat.getSeqNumColumn(replicaId)).setTimestamp(p.getTimestamp())
+        .setType(Cell.Type.Put).build());
   }
 
   // ============================================================================================
@@ -329,13 +396,13 @@ public class RegionStateStore {
     }
     long time = EnvironmentEdgeManager.currentTime();
     // Put for parent
-    Put putParent = MetaTableAccessor.makePutFromRegionInfo(
+    Put putParent = makePutFromRegionInfo(
       RegionInfoBuilder.newBuilder(parent).setOffline(true).setSplit(true).build(), time);
-    MetaTableAccessor.addDaughtersToPut(putParent, splitA, splitB);
+    addDaughtersToPut(putParent, splitA, splitB);
 
     // Puts for daughters
-    Put putA = MetaTableAccessor.makePutFromRegionInfo(splitA, time);
-    Put putB = MetaTableAccessor.makePutFromRegionInfo(splitB, time);
+    Put putA = makePutFromRegionInfo(splitA, time);
+    Put putB = makePutFromRegionInfo(splitB, time);
     if (parentOpenSeqNum > 0) {
       ReplicationBarrierFamilyFormat.addReplicationBarrier(putParent, parentOpenSeqNum);
       ReplicationBarrierFamilyFormat.addReplicationParent(putA, Collections.singletonList(parent));
@@ -357,11 +424,54 @@ public class RegionStateStore {
     // cached whenever the primary region is looked up from meta
     int regionReplication = getRegionReplication(htd);
     for (int i = 1; i < regionReplication; i++) {
-      MetaTableAccessor.addEmptyLocation(putA, i);
-      MetaTableAccessor.addEmptyLocation(putB, i);
+      addEmptyLocation(putA, i);
+      addEmptyLocation(putB, i);
     }
 
     multiMutate(parent, Arrays.asList(putParent, putA, putB));
+  }
+
+  /**
+   * Adds daughter region infos to hbase:meta row for the specified region. Note that this does not
+   * add its daughter's as different rows, but adds information about the daughters in the same row
+   * as the parent. Use
+   * {@link #splitRegion(RegionInfo, RegionInfo, RegionInfo, ServerName, TableDescriptor)} if you
+   * want to do that.
+   * @param regionInfo RegionInfo of parent region
+   * @param splitA first split daughter of the parent regionInfo
+   * @param splitB second split daughter of the parent regionInfo
+   * @throws IOException if problem connecting or updating meta
+   */
+  public void addSplitsToParent(RegionInfo regionInfo,
+    RegionInfo splitA, RegionInfo splitB) throws IOException {
+    try (Table meta = getMetaTable()) {
+      Put put = makePutFromRegionInfo(regionInfo, EnvironmentEdgeManager.currentTime());
+      addDaughtersToPut(put, splitA, splitB);
+      meta.put(put);
+      debugLogMutation(put);
+      LOG.debug("Added region {}", regionInfo.getRegionNameAsString());
+    }
+  }
+
+  /**
+   * Adds split daughters to the Put
+   */
+  @VisibleForTesting
+  public static Put addDaughtersToPut(Put put, RegionInfo splitA, RegionInfo splitB)
+    throws IOException {
+    if (splitA != null) {
+      put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
+        .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.SPLITA_QUALIFIER)
+        .setTimestamp(put.getTimestamp()).setType(Type.Put).setValue(RegionInfo.toByteArray(splitA))
+        .build());
+    }
+    if (splitB != null) {
+      put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
+        .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.SPLITB_QUALIFIER)
+        .setTimestamp(put.getTimestamp()).setType(Type.Put).setValue(RegionInfo.toByteArray(splitB))
+        .build());
+    }
+    return put;
   }
 
   // ============================================================================================
@@ -376,7 +486,7 @@ public class RegionStateStore {
     for (RegionInfo ri: parents) {
       long seqNum = globalScope ? getOpenSeqNumForParentRegion(ri) : -1;
       // Deletes for merging regions
-      mutations.add(MetaTableAccessor.makeDeleteFromRegionInfo(ri, time));
+      mutations.add(makeDeleteFromRegionInfo(ri, time));
       if (seqNum > 0) {
         mutations
           .add(ReplicationBarrierFamilyFormat.makePutForReplicationBarrier(ri, seqNum, time));
@@ -384,7 +494,7 @@ public class RegionStateStore {
       }
     }
     // Put for parent
-    Put putOfMerged = MetaTableAccessor.makePutFromRegionInfo(child, time);
+    Put putOfMerged = makePutFromRegionInfo(child, time);
     putOfMerged = addMergeRegions(putOfMerged, Arrays.asList(parents));
     // Set initial state to CLOSED.
     // NOTE: If initial state is not set to CLOSED then merged region gets added with the
@@ -398,14 +508,14 @@ public class RegionStateStore {
     // locations of offlined merged, now-closed, regions is lost. Should be ok. We
     // assign the merged region later.
     if (serverName != null) {
-      MetaTableAccessor.addLocation(putOfMerged, serverName, 1, child.getReplicaId());
+      addLocation(putOfMerged, serverName, 1, child.getReplicaId());
     }
 
     // Add empty locations for region replicas of the merged region so that number of replicas
     // can be cached whenever the primary region is looked up from meta
     int regionReplication = getRegionReplication(htd);
     for (int i = 1; i < regionReplication; i++) {
-      MetaTableAccessor.addEmptyLocation(putOfMerged, i);
+      addEmptyLocation(putOfMerged, i);
     }
     // add parent reference for serial replication
     if (!replicationParents.isEmpty()) {
@@ -490,12 +600,157 @@ public class RegionStateStore {
   // ============================================================================================
   //  Delete Region State helpers
   // ============================================================================================
+  /**
+   * Deletes the specified region from META.
+   */
   public void deleteRegion(final RegionInfo regionInfo) throws IOException {
     deleteRegions(Collections.singletonList(regionInfo));
   }
 
+  /**
+   * Deletes the specified regions from META.
+   */
   public void deleteRegions(final List<RegionInfo> regions) throws IOException {
-    MetaTableAccessor.deleteRegionInfos(master.getConnection(), regions);
+    deleteRegions(regions, EnvironmentEdgeManager.currentTime());
+  }
+
+  private void deleteRegions(List<RegionInfo> regions, long ts) throws IOException {
+    List<Delete> deletes = new ArrayList<>(regions.size());
+    for (RegionInfo hri : regions) {
+      Delete e = new Delete(hri.getRegionName());
+      e.addFamily(HConstants.CATALOG_FAMILY, ts);
+      deletes.add(e);
+    }
+    try (Table table = master.getConnection().getTable(TableName.META_TABLE_NAME)) {
+      debugLogMutations(deletes);
+      table.delete(deletes);
+    }
+    LOG.info("Deleted {} regions from META", regions.size());
+    LOG.debug("Deleted regions: {}", regions);
+  }
+
+  /**
+   * Overwrites the specified regions from hbase:meta. Deletes old rows for the given regions and
+   * adds new ones. Regions added back have state CLOSED.
+   * @param regionInfos list of regions to be added to META
+   */
+  public void overwriteRegions(List<RegionInfo> regionInfos, int regionReplication)
+    throws IOException {
+    // use master time for delete marker and the Put
+    long now = EnvironmentEdgeManager.currentTime();
+    deleteRegions(regionInfos, now);
+    // Why sleep? This is the easiest way to ensure that the previous deletes does not
+    // eclipse the following puts, that might happen in the same ts from the server.
+    // See HBASE-9906, and HBASE-9879. Once either HBASE-9879, HBASE-8770 is fixed,
+    // or HBASE-9905 is fixed and meta uses seqIds, we do not need the sleep.
+    //
+    // HBASE-13875 uses master timestamp for the mutations. The 20ms sleep is not needed
+    addRegions(regionInfos, regionReplication, now + 1);
+    LOG.info("Overwritten " + regionInfos.size() + " regions to Meta");
+    LOG.debug("Overwritten regions: {} ", regionInfos);
+  }
+
+  /**
+   * Deletes some replica columns corresponding to replicas for the passed rows
+   * @param metaRows rows in hbase:meta
+   * @param replicaIndexToDeleteFrom the replica ID we would start deleting from
+   * @param numReplicasToRemove how many replicas to remove
+   * @param connection connection we're using to access meta table
+   */
+  public void removeRegionReplicas(Set<byte[]> metaRows, int replicaIndexToDeleteFrom,
+    int numReplicasToRemove) throws IOException {
+    int absoluteIndex = replicaIndexToDeleteFrom + numReplicasToRemove;
+    try (Table table = getMetaTable()) {
+      for (byte[] row : metaRows) {
+        long now = EnvironmentEdgeManager.currentTime();
+        Delete deleteReplicaLocations = new Delete(row);
+        for (int i = replicaIndexToDeleteFrom; i < absoluteIndex; i++) {
+          deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
+            CatalogFamilyFormat.getServerColumn(i), now);
+          deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
+            CatalogFamilyFormat.getSeqNumColumn(i), now);
+          deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
+            CatalogFamilyFormat.getStartCodeColumn(i), now);
+          deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
+            CatalogFamilyFormat.getServerNameColumn(i), now);
+          deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
+            CatalogFamilyFormat.getRegionStateColumn(i), now);
+        }
+        debugLogMutation(deleteReplicaLocations);
+        table.delete(deleteReplicaLocations);
+      }
+    }
+  }
+
+  /**
+   * Adds a (single) hbase:meta row for the specified new region and its daughters. Note that this
+   * does not add its daughter's as different rows, but adds information about the daughters in the
+   * same row as the parent. Use
+   * {@link #splitRegion(Connection, RegionInfo, long, RegionInfo, RegionInfo, ServerName, int)} if
+   * you want to do that.
+   * @param regionInfo region information
+   * @throws IOException if problem connecting or updating meta
+   */
+  public void addRegion(RegionInfo regionInfo, int regionReplication) throws IOException {
+    addRegions(Collections.singletonList(regionInfo), regionReplication);
+  }
+
+  /**
+   * Adds a hbase:meta row for each of the specified new regions. Initial state for new regions is
+   * CLOSED.
+   * @param regionInfos region information list
+   * @param ts desired timestamp
+   * @throws IOException if problem connecting or updating meta
+   */
+  public void addRegions(List<RegionInfo> regionInfos, int regionReplication) throws IOException {
+    addRegions(regionInfos, regionReplication, EnvironmentEdgeManager.currentTime());
+  }
+
+  /**
+   * Adds a hbase:meta row for each of the specified new regions. Initial state for new regions is
+   * CLOSED.
+   * @param regionInfos region information list
+   * @param ts desired timestamp
+   * @throws IOException if problem connecting or updating meta
+   */
+  public void addRegions(List<RegionInfo> regionInfos, int regionReplication, long ts)
+    throws IOException {
+    addRegionsToMeta(master.getConnection(), regionInfos, regionReplication, ts);
+  }
+
+  /**
+   * Adds a hbase:meta row for each of the specified new regions. Initial state for new regions is
+   * CLOSED.
+   * @param connection connection we're using
+   * @param regionInfos region information list
+   * @param ts desired timestamp
+   * @throws IOException if problem connecting or updating meta
+   */
+  @VisibleForTesting
+  public static void addRegionsToMeta(Connection conn, List<RegionInfo> regionInfos,
+    int regionReplication, long ts) throws IOException {
+    List<Put> puts = new ArrayList<>();
+    for (RegionInfo regionInfo : regionInfos) {
+      if (RegionReplicaUtil.isDefaultReplica(regionInfo)) {
+        Put put = makePutFromRegionInfo(regionInfo, ts);
+        // New regions are added with initial state of CLOSED.
+        MetaTableAccessor.addRegionStateToPut(put, RegionState.State.CLOSED);
+        // Add empty locations for region replicas so that number of replicas can be cached
+        // whenever the primary region is looked up from meta
+        for (int i = 1; i < regionReplication; i++) {
+          addEmptyLocation(put, i);
+        }
+        puts.add(put);
+      }
+    }
+    try (Table t = conn.getTable(TableName.META_TABLE_NAME)) {
+      if (puts.size() == 1) {
+        t.put(puts.get(0));
+      } else {
+        t.put(puts);
+      }
+    }
+    LOG.info("Added {} regions to meta.", puts.size());
   }
 
   // ==========================================================================
@@ -549,6 +804,15 @@ public class RegionStateStore {
         ? HConstants.STATE_QUALIFIER
         : Bytes.toBytes(HConstants.STATE_QUALIFIER_STR + META_REPLICA_ID_DELIMITER
           + String.format(RegionInfo.REPLICA_ID_FORMAT, replicaId));
+  }
+
+  public void setRegionState(RegionInfo region, State state) throws IOException {
+    Put put = makePutFromRegionInfo(region, EnvironmentEdgeManager.currentTime());
+    addRegionState(put, state, region.getReplicaId());
+    debugLogMutation(put);
+    try (Table table = getMetaTable()) {
+      table.put(put);
+    }
   }
 
   private static void debugLogMutations(List<? extends Mutation> mutations) throws IOException {

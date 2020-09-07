@@ -51,7 +51,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.util.PairOfSameType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -570,17 +569,6 @@ public final class MetaTableAccessor {
   }
 
   /**
-   * Returns the daughter regions by reading the corresponding columns of the catalog table Result.
-   * @param data a Result object from the catalog table scan
-   * @return pair of RegionInfo or PairOfSameType(null, null) if region is not a split parent
-   */
-  public static PairOfSameType<RegionInfo> getDaughterRegions(Result data) {
-    RegionInfo splitA = CatalogFamilyFormat.getRegionInfo(data, HConstants.SPLITA_QUALIFIER);
-    RegionInfo splitB = CatalogFamilyFormat.getRegionInfo(data, HConstants.SPLITB_QUALIFIER);
-    return new PairOfSameType<>(splitA, splitB);
-  }
-
-  /**
    * Fetch table state for given table from META table
    * @param conn connection to use
    * @param tableName table to fetch state for
@@ -628,45 +616,6 @@ public final class MetaTableAccessor {
   ////////////////////////
   // Editing operations //
   ////////////////////////
-  /**
-   * Generates and returns a Put containing the region into for the catalog table
-   */
-  public static Put makePutFromRegionInfo(RegionInfo regionInfo, long ts) throws IOException {
-    return addRegionInfo(new Put(regionInfo.getRegionName(), ts), regionInfo);
-  }
-
-  /**
-   * Generates and returns a Delete containing the region info for the catalog table
-   */
-  public static Delete makeDeleteFromRegionInfo(RegionInfo regionInfo, long ts) {
-    if (regionInfo == null) {
-      throw new IllegalArgumentException("Can't make a delete for null region");
-    }
-    Delete delete = new Delete(regionInfo.getRegionName());
-    delete.addFamily(HConstants.CATALOG_FAMILY, ts);
-    return delete;
-  }
-
-  /**
-   * Adds split daughters to the Put
-   */
-  public static Put addDaughtersToPut(Put put, RegionInfo splitA, RegionInfo splitB)
-    throws IOException {
-    if (splitA != null) {
-      put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
-        .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.SPLITA_QUALIFIER)
-        .setTimestamp(put.getTimestamp()).setType(Type.Put).setValue(RegionInfo.toByteArray(splitA))
-        .build());
-    }
-    if (splitB != null) {
-      put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
-        .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.SPLITB_QUALIFIER)
-        .setTimestamp(put.getTimestamp()).setType(Type.Put).setValue(RegionInfo.toByteArray(splitB))
-        .build());
-    }
-    return put;
-  }
-
   /**
    * Put the passed <code>p</code> to the <code>hbase:meta</code> table.
    * @param connection connection we're using
@@ -733,37 +682,6 @@ public final class MetaTableAccessor {
     }
   }
 
-  /**
-   * Deletes some replica columns corresponding to replicas for the passed rows
-   * @param metaRows rows in hbase:meta
-   * @param replicaIndexToDeleteFrom the replica ID we would start deleting from
-   * @param numReplicasToRemove how many replicas to remove
-   * @param connection connection we're using to access meta table
-   */
-  public static void removeRegionReplicasFromMeta(Set<byte[]> metaRows,
-    int replicaIndexToDeleteFrom, int numReplicasToRemove, Connection connection)
-    throws IOException {
-    int absoluteIndex = replicaIndexToDeleteFrom + numReplicasToRemove;
-    for (byte[] row : metaRows) {
-      long now = EnvironmentEdgeManager.currentTime();
-      Delete deleteReplicaLocations = new Delete(row);
-      for (int i = replicaIndexToDeleteFrom; i < absoluteIndex; i++) {
-        deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
-          CatalogFamilyFormat.getServerColumn(i), now);
-        deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
-          CatalogFamilyFormat.getSeqNumColumn(i), now);
-        deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
-          CatalogFamilyFormat.getStartCodeColumn(i), now);
-        deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
-          CatalogFamilyFormat.getServerNameColumn(i), now);
-        deleteReplicaLocations.addColumns(HConstants.CATALOG_FAMILY,
-          CatalogFamilyFormat.getRegionStateColumn(i), now);
-      }
-
-      deleteFromMetaTable(connection, deleteReplicaLocations);
-    }
-  }
-
   public static Put addRegionStateToPut(Put put, RegionState.State state) throws IOException {
     put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
       .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.STATE_QUALIFIER)
@@ -779,86 +697,6 @@ public final class MetaTableAccessor {
     RegionState.State state) throws IOException {
     Put put = new Put(RegionReplicaUtil.getRegionInfoForDefaultReplica(ri).getRegionName());
     putsToMetaTable(connection, Collections.singletonList(addRegionStateToPut(put, state)));
-  }
-
-  /**
-   * Adds daughter region infos to hbase:meta row for the specified region. Note that this does not
-   * add its daughter's as different rows, but adds information about the daughters in the same row
-   * as the parent. Use
-   * {@link #splitRegion(Connection, RegionInfo, long, RegionInfo, RegionInfo, ServerName, int)} if
-   * you want to do that.
-   * @param connection connection we're using
-   * @param regionInfo RegionInfo of parent region
-   * @param splitA first split daughter of the parent regionInfo
-   * @param splitB second split daughter of the parent regionInfo
-   * @throws IOException if problem connecting or updating meta
-   */
-  public static void addSplitsToParent(Connection connection, RegionInfo regionInfo,
-    RegionInfo splitA, RegionInfo splitB) throws IOException {
-    try (Table meta = getMetaHTable(connection)) {
-      Put put = makePutFromRegionInfo(regionInfo, EnvironmentEdgeManager.currentTime());
-      addDaughtersToPut(put, splitA, splitB);
-      meta.put(put);
-      debugLogMutation(put);
-      LOG.debug("Added region {}", regionInfo.getRegionNameAsString());
-    }
-  }
-
-  /**
-   * Adds a (single) hbase:meta row for the specified new region and its daughters. Note that this
-   * does not add its daughter's as different rows, but adds information about the daughters in the
-   * same row as the parent. Use
-   * {@link #splitRegion(Connection, RegionInfo, long, RegionInfo, RegionInfo, ServerName, int)} if
-   * you want to do that.
-   * @param connection connection we're using
-   * @param regionInfo region information
-   * @throws IOException if problem connecting or updating meta
-   */
-  @VisibleForTesting
-  public static void addRegionToMeta(Connection connection, RegionInfo regionInfo)
-    throws IOException {
-    addRegionsToMeta(connection, Collections.singletonList(regionInfo), 1);
-  }
-
-  /**
-   * Adds a hbase:meta row for each of the specified new regions. Initial state for new regions is
-   * CLOSED.
-   * @param connection connection we're using
-   * @param regionInfos region information list
-   * @throws IOException if problem connecting or updating meta
-   */
-  public static void addRegionsToMeta(Connection connection, List<RegionInfo> regionInfos,
-    int regionReplication) throws IOException {
-    addRegionsToMeta(connection, regionInfos, regionReplication,
-      EnvironmentEdgeManager.currentTime());
-  }
-
-  /**
-   * Adds a hbase:meta row for each of the specified new regions. Initial state for new regions is
-   * CLOSED.
-   * @param connection connection we're using
-   * @param regionInfos region information list
-   * @param ts desired timestamp
-   * @throws IOException if problem connecting or updating meta
-   */
-  private static void addRegionsToMeta(Connection connection, List<RegionInfo> regionInfos,
-    int regionReplication, long ts) throws IOException {
-    List<Put> puts = new ArrayList<>();
-    for (RegionInfo regionInfo : regionInfos) {
-      if (RegionReplicaUtil.isDefaultReplica(regionInfo)) {
-        Put put = makePutFromRegionInfo(regionInfo, ts);
-        // New regions are added with initial state of CLOSED.
-        addRegionStateToPut(put, RegionState.State.CLOSED);
-        // Add empty locations for region replicas so that number of replicas can be cached
-        // whenever the primary region is looked up from meta
-        for (int i = 1; i < regionReplication; i++) {
-          addEmptyLocation(put, i);
-        }
-        puts.add(put);
-      }
-    }
-    putsToMetaTable(connection, puts);
-    LOG.info("Added {} regions to meta.", puts.size());
   }
 
   /**
@@ -936,113 +774,6 @@ public final class MetaTableAccessor {
     putToMetaTable(connection, put);
     LOG.info("Updated row {} with server=", regionInfo.getRegionNameAsString(), sn);
   }
-
-  /**
-   * Deletes the specified region from META.
-   * @param connection connection we're using
-   * @param regionInfo region to be deleted from META
-   */
-  public static void deleteRegionInfo(Connection connection, RegionInfo regionInfo)
-    throws IOException {
-    Delete delete = new Delete(regionInfo.getRegionName());
-    delete.addFamily(HConstants.CATALOG_FAMILY, HConstants.LATEST_TIMESTAMP);
-    deleteFromMetaTable(connection, delete);
-    LOG.info("Deleted " + regionInfo.getRegionNameAsString());
-  }
-
-  /**
-   * Deletes the specified regions from META.
-   * @param connection connection we're using
-   * @param regionsInfo list of regions to be deleted from META
-   */
-  public static void deleteRegionInfos(Connection connection, List<RegionInfo> regionsInfo)
-    throws IOException {
-    deleteRegionInfos(connection, regionsInfo, EnvironmentEdgeManager.currentTime());
-  }
-
-  /**
-   * Deletes the specified regions from META.
-   * @param connection connection we're using
-   * @param regionsInfo list of regions to be deleted from META
-   */
-  private static void deleteRegionInfos(Connection connection, List<RegionInfo> regionsInfo,
-    long ts) throws IOException {
-    List<Delete> deletes = new ArrayList<>(regionsInfo.size());
-    for (RegionInfo hri : regionsInfo) {
-      Delete e = new Delete(hri.getRegionName());
-      e.addFamily(HConstants.CATALOG_FAMILY, ts);
-      deletes.add(e);
-    }
-    deleteFromMetaTable(connection, deletes);
-    LOG.info("Deleted {} regions from META", regionsInfo.size());
-    LOG.debug("Deleted regions: {}", regionsInfo);
-  }
-
-  /**
-   * Overwrites the specified regions from hbase:meta. Deletes old rows for the given regions and
-   * adds new ones. Regions added back have state CLOSED.
-   * @param connection connection we're using
-   * @param regionInfos list of regions to be added to META
-   */
-  public static void overwriteRegions(Connection connection, List<RegionInfo> regionInfos,
-    int regionReplication) throws IOException {
-    // use master time for delete marker and the Put
-    long now = EnvironmentEdgeManager.currentTime();
-    deleteRegionInfos(connection, regionInfos, now);
-    // Why sleep? This is the easiest way to ensure that the previous deletes does not
-    // eclipse the following puts, that might happen in the same ts from the server.
-    // See HBASE-9906, and HBASE-9879. Once either HBASE-9879, HBASE-8770 is fixed,
-    // or HBASE-9905 is fixed and meta uses seqIds, we do not need the sleep.
-    //
-    // HBASE-13875 uses master timestamp for the mutations. The 20ms sleep is not needed
-    addRegionsToMeta(connection, regionInfos, regionReplication, now + 1);
-    LOG.info("Overwritten " + regionInfos.size() + " regions to Meta");
-    LOG.debug("Overwritten regions: {} ", regionInfos);
-  }
-
-
-  public static Put addRegionInfo(final Put p, final RegionInfo hri) throws IOException {
-    p.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(p.getRow())
-      .setFamily(HConstants.CATALOG_FAMILY).setQualifier(HConstants.REGIONINFO_QUALIFIER)
-      .setTimestamp(p.getTimestamp()).setType(Type.Put)
-      // Serialize the Default Replica HRI otherwise scan of hbase:meta
-      // shows an info:regioninfo value with encoded name and region
-      // name that differs from that of the hbase;meta row.
-      .setValue(RegionInfo.toByteArray(RegionReplicaUtil.getRegionInfoForDefaultReplica(hri)))
-      .build());
-    return p;
-  }
-
-  public static Put addLocation(Put p, ServerName sn, long openSeqNum, int replicaId)
-    throws IOException {
-    CellBuilder builder = CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY);
-    return p
-      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
-        .setQualifier(CatalogFamilyFormat.getServerColumn(replicaId)).setTimestamp(p.getTimestamp())
-        .setType(Cell.Type.Put).setValue(Bytes.toBytes(sn.getAddress().toString())).build())
-      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
-        .setQualifier(CatalogFamilyFormat.getStartCodeColumn(replicaId))
-        .setTimestamp(p.getTimestamp()).setType(Cell.Type.Put)
-        .setValue(Bytes.toBytes(sn.getStartcode())).build())
-      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
-        .setQualifier(CatalogFamilyFormat.getSeqNumColumn(replicaId)).setTimestamp(p.getTimestamp())
-        .setType(Type.Put).setValue(Bytes.toBytes(openSeqNum)).build());
-  }
-
-  public static Put addEmptyLocation(Put p, int replicaId) throws IOException {
-    CellBuilder builder = CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY);
-    return p
-      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
-        .setQualifier(CatalogFamilyFormat.getServerColumn(replicaId)).setTimestamp(p.getTimestamp())
-        .setType(Type.Put).build())
-      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
-        .setQualifier(CatalogFamilyFormat.getStartCodeColumn(replicaId))
-        .setTimestamp(p.getTimestamp()).setType(Cell.Type.Put).build())
-      .add(builder.clear().setRow(p.getRow()).setFamily(HConstants.CATALOG_FAMILY)
-        .setQualifier(CatalogFamilyFormat.getSeqNumColumn(replicaId)).setTimestamp(p.getTimestamp())
-        .setType(Cell.Type.Put).build());
-  }
-
 
   private static void debugLogMutations(List<? extends Mutation> mutations) throws IOException {
     if (!METALOG.isDebugEnabled()) {

@@ -448,7 +448,7 @@ public class TestEndToEndSplitTransaction {
         region = CatalogFamilyFormat.getRegionInfo(result);
         if (region.isSplitParent()) {
           log("found parent region: " + region.toString());
-          PairOfSameType<RegionInfo> pair = MetaTableAccessor.getDaughterRegions(result);
+          PairOfSameType<RegionInfo> pair = CatalogFamilyFormat.getDaughterRegions(result);
           daughterA = pair.getFirst();
           daughterB = pair.getSecond();
           break;

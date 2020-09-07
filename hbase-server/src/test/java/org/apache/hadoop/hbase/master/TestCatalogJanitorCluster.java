@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
+import org.apache.hadoop.hbase.master.assignment.RegionStateStore;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -113,7 +114,9 @@ public class TestCatalogJanitorCluster {
     assertTrue(report.isEmpty());
     // Now remove first region in table t2 to see if catalogjanitor scan notices.
     List<RegionInfo> t2Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T2);
-    MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), t2Ris.get(0));
+
+    TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore()
+      .deleteRegion(t2Ris.get(0));
     gc = janitor.scan();
     report = janitor.getLastReport();
     assertFalse(report.isEmpty());
@@ -128,11 +131,11 @@ public class TestCatalogJanitorCluster {
     RegionInfo newRi1 = RegionInfoBuilder.newBuilder(ri.getTable()).
         setStartKey(incrementRow(ri.getStartKey())).
         setEndKey(incrementRow(ri.getEndKey())).build();
-    Put p1 = MetaTableAccessor.makePutFromRegionInfo(newRi1, System.currentTimeMillis());
+    Put p1 = RegionStateStore.makePutFromRegionInfo(newRi1, System.currentTimeMillis());
     RegionInfo newRi2 = RegionInfoBuilder.newBuilder(newRi1.getTable()).
         setStartKey(incrementRow(newRi1.getStartKey())).
         setEndKey(incrementRow(newRi1.getEndKey())).build();
-    Put p2 = MetaTableAccessor.makePutFromRegionInfo(newRi2, System.currentTimeMillis());
+    Put p2 = RegionStateStore.makePutFromRegionInfo(newRi2, System.currentTimeMillis());
     MetaTableAccessor.putsToMetaTable(TEST_UTIL.getConnection(), Arrays.asList(p1, p2));
     gc = janitor.scan();
     report = janitor.getLastReport();
@@ -184,13 +187,14 @@ public class TestCatalogJanitorCluster {
     // Make sure only overlaps and no holes are reported.
     List<RegionInfo> t4Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T4);
     // delete the region [bb, cc)
-    MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), t4Ris.get(2));
+    TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore()
+      .deleteRegion(t4Ris.get(2));
 
     // add a new region [a, cc)
     RegionInfo newRiT4 = RegionInfoBuilder.newBuilder(T4).
       setStartKey("a".getBytes()).
       setEndKey("cc".getBytes()).build();
-    Put putForT4 = MetaTableAccessor.makePutFromRegionInfo(newRiT4, System.currentTimeMillis());
+    Put putForT4 = RegionStateStore.makePutFromRegionInfo(newRiT4, System.currentTimeMillis());
     MetaTableAccessor.putsToMetaTable(TEST_UTIL.getConnection(), Arrays.asList(putForT4));
 
     janitor.scan();
@@ -207,13 +211,14 @@ public class TestCatalogJanitorCluster {
     // Make sure only overlaps and no holes are reported.
     List<RegionInfo> t5Ris = MetaTableAccessor.getTableRegions(TEST_UTIL.getConnection(), T5);
     // delete the region [cc, dd)
-    MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), t5Ris.get(2));
+    TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore()
+      .deleteRegion(t5Ris.get(2));
 
     // add a new region [a, g)
     RegionInfo newRiT5 = RegionInfoBuilder.newBuilder(T5).
       setStartKey("a".getBytes()).
       setEndKey("g".getBytes()).build();
-    Put putForT5 = MetaTableAccessor.makePutFromRegionInfo(newRiT5, System.currentTimeMillis());
+    Put putForT5 = RegionStateStore.makePutFromRegionInfo(newRiT5, System.currentTimeMillis());
     MetaTableAccessor.putsToMetaTable(TEST_UTIL.getConnection(), Arrays.asList(putForT5));
 
     janitor.scan();
@@ -268,7 +273,8 @@ public class TestCatalogJanitorCluster {
     RegionInfo firstRegion = getRegionInfo(T3, "".getBytes());
     RegionInfo secondRegion = getRegionInfo(T3, "bbb".getBytes());
     RegionInfo thirdRegion = getRegionInfo(T3, "ccc".getBytes());
-    MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), secondRegion);
+    TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore()
+      .deleteRegion(secondRegion);
     LinkedList<Pair<RegionInfo, RegionInfo>> holes = getHoles(janitor, T3);
     Pair<RegionInfo, RegionInfo> regionInfoRegionInfoPair = holes.getFirst();
     assertTrue(regionInfoRegionInfoPair.getFirst().getTable().equals(T3));
@@ -282,7 +288,8 @@ public class TestCatalogJanitorCluster {
   private void verifyCornerHoles(CatalogJanitor janitor, TableName tableName) throws IOException {
     RegionInfo firstRegion = getRegionInfo(tableName, "".getBytes());
     RegionInfo secondRegion = getRegionInfo(tableName, "bbb".getBytes());
-    MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), firstRegion);
+    TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore()
+      .deleteRegion(firstRegion);
     LinkedList<Pair<RegionInfo, RegionInfo>> holes = getHoles(janitor, tableName);
 
     assertEquals(1, holes.size());
@@ -295,7 +302,8 @@ public class TestCatalogJanitorCluster {
 
     RegionInfo lastRegion = getRegionInfo(tableName, "zzz".getBytes());
     RegionInfo secondLastRegion = getRegionInfo(tableName, "yyy".getBytes());
-    MetaTableAccessor.deleteRegionInfo(TEST_UTIL.getConnection(), lastRegion);
+    TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager().getRegionStateStore()
+      .deleteRegion(lastRegion);
     holes = getHoles(janitor, tableName);
     assertEquals(2, holes.size());
     regionInfoRegionInfoPair = holes.get(1);

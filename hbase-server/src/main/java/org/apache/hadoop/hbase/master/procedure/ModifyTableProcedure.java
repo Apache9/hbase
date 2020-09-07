@@ -386,8 +386,6 @@ public class ModifyTableProcedure
 
   /**
    * update replica column families if necessary.
-   * @param env MasterProcedureEnv
-   * @throws IOException
    */
   private void updateReplicaColumnsIfNeeded(
     final MasterProcedureEnv env,
@@ -407,11 +405,8 @@ public class ModifyTableProcedure
         for (Result result : resScanner) {
           tableRows.add(result.getRow());
         }
-        MetaTableAccessor.removeRegionReplicasFromMeta(
-          tableRows,
-          newReplicaCount,
-          oldReplicaCount - newReplicaCount,
-          connection);
+        env.getAssignmentManager().getRegionStateStore().removeRegionReplicas(tableRows,
+          newReplicaCount, oldReplicaCount - newReplicaCount);
       }
     }
     if (newReplicaCount > oldReplicaCount) {
@@ -430,11 +425,11 @@ public class ModifyTableProcedure
   }
 
   private static void addRegionsToMeta(final MasterProcedureEnv env,
-      final TableDescriptor tableDescriptor, final List<RegionInfo> regionInfos)
-      throws IOException {
-    MetaTableAccessor.addRegionsToMeta(env.getMasterServices().getConnection(), regionInfos,
+    final TableDescriptor tableDescriptor, final List<RegionInfo> regionInfos) throws IOException {
+    env.getAssignmentManager().getRegionStateStore().addRegions(regionInfos,
       tableDescriptor.getRegionReplication());
   }
+
   /**
    * Action after modifying table.
    * @param env MasterProcedureEnv
