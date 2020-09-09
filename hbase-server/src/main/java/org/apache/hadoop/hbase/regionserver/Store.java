@@ -189,7 +189,8 @@ public interface Store extends HeapSize, StoreConfigInformation {
     boolean isCompaction,
     boolean includeMVCCReadpoint,
     boolean includesTags,
-    boolean shouldDropBehind
+    boolean shouldDropBehind,
+    String storagePolicy
   ) throws IOException;
 
 

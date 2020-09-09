@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -96,7 +97,8 @@ public class DefaultCompactor extends Compactor {
         // Create the writer even if no kv(Empty store file is also ok),
         // because we need record the max seq id for the store file, see HBASE-6059
         writer = store.createWriterInTmp(fd.maxKeyCount, this.compactionCompression, true,
-          true, fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()));
+          true, fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()),
+            HConstants.EMPTY_STRING);
 
         boolean finished =
             performCompaction(scanner, writer, smallestReadPoint, throughputController);

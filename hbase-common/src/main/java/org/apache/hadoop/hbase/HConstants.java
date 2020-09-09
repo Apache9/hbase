@@ -17,7 +17,12 @@
  */
 package org.apache.hadoop.hbase;
 
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import static org.apache.hadoop.hbase.io.hfile.BlockType.MAGIC_LENGTH;
+import org.apache.hadoop.hbase.util.Bytes;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -26,11 +31,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * HConstants holds a bunch of HBase-related constants
@@ -59,6 +59,11 @@ public final class HConstants {
      * splitting code, one per region
      */
   public static final String RECOVERED_EDITS_DIR = "recovered.edits";
+  /**
+   * Date Tiered Compaction tmp dir prefix name if use storage policy
+   */
+  public static final String STORAGE_POLICY_PREFIX = "storage_policy_";
+
   /**
    * The first four bytes of Hadoop RPC connections
    */
@@ -1082,6 +1087,14 @@ public final class HConstants {
   public static final String ENABLE_DATA_FILE_UMASK = "hbase.data.umask.enable";
   /** File permission umask to use when creating hbase data files */
   public static final String DATA_FILE_UMASK_KEY = "hbase.data.umask";
+
+  /**
+   * "NONE" is not a valid storage policy and means we defer the policy to HDFS. @see
+   * <a href="https://issues.apache.org/jira/browse/HBASE-20691">HBASE-20691</a>
+   */
+  public static final String DEFER_TO_HDFS_STORAGE_POLICY = "NONE";
+
+  public static final String EMPTY_STRING = "";
 
   /** Configuration name of HLog Compression */
   public static final String ENABLE_WAL_COMPRESSION =

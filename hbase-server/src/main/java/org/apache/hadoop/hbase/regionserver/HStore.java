@@ -68,7 +68,6 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Tag;
 import org.apache.hadoop.hbase.TagType;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.conf.PropagatingConfigurationObserver;
@@ -99,8 +98,8 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.ClassSize;
+import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.util.StringUtils;
 
 /**
@@ -909,7 +908,7 @@ public class HStore implements Store, PropagatingConfigurationObserver {
                                             boolean includesTag)
       throws IOException {
     return createWriterInTmp(maxKeyCount, compression, isCompaction, includeMVCCReadpoint,
-        includesTag, false);
+        includesTag, false, HConstants.EMPTY_STRING);
   }
 
   /*
@@ -923,7 +922,7 @@ public class HStore implements Store, PropagatingConfigurationObserver {
   @Override
   public StoreFile.Writer createWriterInTmp(long maxKeyCount, Compression.Algorithm compression,
       boolean isCompaction, boolean includeMVCCReadpoint, boolean includesTag,
-      boolean shouldDropBehind)
+      boolean shouldDropBehind, String storagePolicy)
   throws IOException {
     final CacheConfig writerCacheConf;
     if (isCompaction) {
@@ -949,6 +948,7 @@ public class HStore implements Store, PropagatingConfigurationObserver {
             .withFavoredNodes(favoredNodes)
             .withFileContext(hFileContext)
             .withShouldDropCacheBehind(shouldDropBehind)
+            .withFileStoragePolicy(storagePolicy)
             .build();
     return w;
   }
@@ -1161,6 +1161,7 @@ public class HStore implements Store, PropagatingConfigurationObserver {
         }
         return sfs;
       }
+      setStoragePolicyFromFileName(newFiles);
       // Do the steps necessary to complete the compaction.
       sfs = moveCompatedFilesIntoPlace(cr, newFiles);
       writeCompactionWalRecord(filesToCompact, sfs);
@@ -1195,6 +1196,18 @@ public class HStore implements Store, PropagatingConfigurationObserver {
       sfs.add(sf);
     }
     return sfs;
+  }
+
+  // Set correct storage policy from the file name of DTCP.
+  // Rename file will not change the storage policy.
+  private void setStoragePolicyFromFileName(List<Path> newFiles) throws IOException {
+    String prefix = HConstants.STORAGE_POLICY_PREFIX;
+    for (Path newFile : newFiles) {
+      if (newFile.getParent().getName().startsWith(prefix)) {
+        CommonFSUtils.setStoragePolicy(fs.getFileSystem(), newFile,
+            newFile.getParent().getName().substring(prefix.length()));
+      }
+    }
   }
 
   // Package-visible for tests

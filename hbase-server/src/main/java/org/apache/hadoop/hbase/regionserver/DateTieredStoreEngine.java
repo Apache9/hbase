@@ -97,8 +97,9 @@ public class DateTieredStoreEngine extends
     public List<Path> compact(CompactionThroughputController throughputController, User user)
         throws IOException {
       if (request instanceof DateTieredCompactionRequest) {
-        return compactor.compact(request, ((DateTieredCompactionRequest) request).getBoundaries(), 
-          throughputController);
+        DateTieredCompactionRequest compactionRequest = (DateTieredCompactionRequest) request;
+        return compactor.compact(request, compactionRequest.getBoundaries(),
+            compactionRequest.getBoundariesPolicies(), throughputController);
       } else {
         throw new IllegalArgumentException("DateTieredCompactionRequest is expected. Actual: "
           + request.getClass().getCanonicalName());

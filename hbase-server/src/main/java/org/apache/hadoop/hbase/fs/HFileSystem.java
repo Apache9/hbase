@@ -41,6 +41,8 @@ import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
+import org.apache.hadoop.hbase.util.CommonFSUtils;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
@@ -152,6 +154,18 @@ public class HFileSystem extends FilterFileSystem {
    */
   public FileSystem getBackingFs() {
     return fs;
+  }
+
+  /**
+   * Set the source path (directory/file) to the specified storage policy.
+   *
+   * @param path The source path (directory/file).
+   * @param policyName The name of the storage policy: 'HOT', 'COLD', etc.
+   * See see hadoop 2.6+ org.apache.hadoop.hdfs.protocol.HdfsConstants for possible list e.g
+   * 'COLD', 'WARM', 'HOT', 'ONE_SSD', 'ALL_SSD', 'LAZY_PERSIST'.
+   */
+  public void setStoragePolicy(Path path, String policyName) {
+    CommonFSUtils.setStoragePolicy(this.fs, path, policyName);
   }
 
   /**

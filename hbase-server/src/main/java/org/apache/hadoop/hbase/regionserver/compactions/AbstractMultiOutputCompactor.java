@@ -29,6 +29,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.AbstractMultiFileWriter;
 import org.apache.hadoop.hbase.regionserver.AbstractMultiFileWriter.WriterFactory;
@@ -107,8 +108,16 @@ public abstract class AbstractMultiOutputCompactor<T extends AbstractMultiFileWr
         @Override
         public Writer createWriter() throws IOException {
           return store.createWriterInTmp(fd.maxKeyCount, compactionCompression, true, true,
-            fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()));
+            fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()), HConstants.EMPTY_STRING);
         }
+
+        @Override
+        public Writer createWriterWithStoragePolicy(String fileStoragePolicy)
+            throws IOException {
+          return store.createWriterInTmp(fd.maxKeyCount, compactionCompression, true, true,
+              fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()),fileStoragePolicy);
+        }
+
       };
       // Prepare multi-writer, and perform the compaction using scanner and writer.
       // It is ok here if storeScanner is null.

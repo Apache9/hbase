@@ -24,12 +24,14 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
@@ -100,7 +102,7 @@ public class TestDateTieredCompactor {
     when(store.getFileSystem()).thenReturn(mock(FileSystem.class));
     when(store.getRegionInfo()).thenReturn(new HRegionInfo(TABLE_NAME));
     when(store.createWriterInTmp(anyLong(), any(Compression.Algorithm.class), anyBoolean(),
-      anyBoolean(), anyBoolean(), anyBoolean())).thenAnswer(writers);
+      anyBoolean(), anyBoolean(), anyBoolean(), anyString())).thenAnswer(writers);
     when(store.getComparator()).thenReturn(new KVComparator());
     long maxSequenceId = StoreFile.getMaxSequenceIdInList(storefiles);
     when(store.getMaxSequenceId()).thenReturn(maxSequenceId);
@@ -128,7 +130,8 @@ public class TestDateTieredCompactor {
     StoreFile sf2 = createDummyStoreFile(2L);
     DateTieredCompactor dtc = createCompactor(writers, input, Arrays.asList(sf1, sf2));
     List<Path> paths = dtc.compact(new CompactionRequest(Arrays.asList(sf1)),
-      boundaries.subList(0, boundaries.size() - 1), NoLimitCompactionThroughputController.INSTANCE);
+      boundaries.subList(0, boundaries.size() - 1),new HashMap<Long, String>(),
+        NoLimitCompactionThroughputController.INSTANCE);
     writers.verifyKvs(output, allFiles, boundaries);
     if (allFiles) {
       assertEquals(output.length, paths.size());
@@ -156,6 +159,7 @@ public class TestDateTieredCompactor {
     DateTieredCompactor dtc = createCompactor(writers, new KeyValue[0],
       new ArrayList<StoreFile>(request.getFiles()));
     List<Path> paths = dtc.compact(request, Arrays.asList(Long.MIN_VALUE, Long.MAX_VALUE),
+        new HashMap<Long, String>(),
       NoLimitCompactionThroughputController.INSTANCE);
     assertEquals(1, paths.size());
     List<StoreFileWritersCapture.Writer> dummyWriters = writers.getWriters();

@@ -20,27 +20,15 @@ package org.apache.hadoop.hbase.regionserver;
 
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
-
-import java.io.DataInput;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.KeyValue;
@@ -61,8 +49,23 @@ import org.apache.hadoop.hbase.util.BloomFilterFactory;
 import org.apache.hadoop.hbase.util.BloomFilterWriter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ChecksumType;
+import org.apache.hadoop.hbase.util.CommonFSUtils;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Writables;
 import org.apache.hadoop.io.WritableUtils;
+
+import java.io.DataInput;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A Store data file.  Stores usually have one or more of these files.  They
@@ -571,6 +574,7 @@ public class StoreFile {
     private InetSocketAddress[] favoredNodes;
     private HFileContext fileContext;
     private boolean shouldDropCacheBehind = false;
+    private String fileStoragePolicy;
 
     public WriterBuilder(Configuration conf, CacheConfig cacheConf,
         FileSystem fs) {
@@ -642,6 +646,13 @@ public class StoreFile {
       this.shouldDropCacheBehind = shouldDropCacheBehind;
       return this;
     }
+
+    public WriterBuilder withFileStoragePolicy(String fileStoragePolicy) {
+      this.fileStoragePolicy = fileStoragePolicy;
+      return this;
+    }
+
+
     /**
      * Create a store file writer. Client is responsible for closing file when
      * done. If metadata, add BEFORE closing using
@@ -667,6 +678,26 @@ public class StoreFile {
           bloomType = BloomType.NONE;
         }
       }
+
+      // Backport HBASE-24289, we only use fileStoragePolicy in 0.98 when compaction
+      if (!Strings.isNullOrEmpty(fileStoragePolicy)) {
+        dir = new Path(dir, HConstants.STORAGE_POLICY_PREFIX + fileStoragePolicy);
+        if (!fs.exists(dir)) {
+          if (fs.isDistributedFileSystem() || !conf
+              .getBoolean(HConstants.ENABLE_DATA_FILE_UMASK, false)) {
+            fs.mkdirs(dir);
+          } else {
+            FsPermission perms =
+                FSUtils.getFilePermissions(fs, conf, HConstants.DATA_FILE_UMASK_KEY);
+            fs.mkdirs(dir, perms);
+          }
+          LOG.info(
+              "Create tmp dir " + dir.toString() + " with storage policy: " + fileStoragePolicy);
+        }
+        CommonFSUtils.setStoragePolicy(this.fs, dir, fileStoragePolicy);
+        filePath = new Path(dir, filePath.getName());
+      }
+
 
       if (comparator == null) {
         comparator = KeyValue.COMPARATOR;
@@ -761,6 +792,7 @@ public class StoreFile {
     private long deleteKvCnt = 0;
     private long rowCnt = 0;
     private byte[] lastRow = null;
+    private String fileStoragePolicy;
 
     /** Checksum type */
     protected ChecksumType checksumType;

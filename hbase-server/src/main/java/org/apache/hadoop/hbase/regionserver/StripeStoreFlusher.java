@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import org.apache.hadoop.hbase.HConstants;
 import static org.apache.hadoop.hbase.regionserver.StripeStoreFileManager.OPEN_KEY;
 
 import java.io.IOException;
@@ -119,7 +120,7 @@ public class StripeStoreFlusher extends StoreFlusher {
             /* isCompaction = */ false,
             /* includeMVCCReadpoint = */ true,
             /* includesTags = */ true,
-            /* shouldDropBehind = */ false);
+            /* shouldDropBehind = */ false, HConstants.EMPTY_STRING);
         writer.setTimeRangeTracker(tracker);
         return writer;
       }

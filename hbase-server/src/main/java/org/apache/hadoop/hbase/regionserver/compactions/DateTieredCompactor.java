@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.regionserver.compactions;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -52,6 +53,7 @@ public class DateTieredCompactor extends AbstractMultiOutputCompactor<DateTiered
   }
 
   public List<Path> compact(final CompactionRequest request, List<Long> lowerBoundaries,
+      final Map<Long, String> lowerBoundariesPolicies,
       CompactionThroughputController throughputController) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Executing compaction with " + lowerBoundaries.size()
@@ -59,6 +61,7 @@ public class DateTieredCompactor extends AbstractMultiOutputCompactor<DateTiered
     }
 
     DateTieredMultiFileWriter writer = new DateTieredMultiFileWriter(lowerBoundaries,
+        lowerBoundariesPolicies,
         needEmptyFile(request));
     return compact(writer, request, new InternalScannerFactory() {
 

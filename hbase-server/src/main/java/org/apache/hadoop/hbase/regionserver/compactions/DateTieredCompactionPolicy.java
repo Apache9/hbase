@@ -30,9 +30,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
@@ -177,9 +181,11 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
 
   public CompactionRequest selectMajorCompaction(ArrayList<StoreFile> candidateSelection) {
     long now = EnvironmentEdgeManager.currentTimeMillis();
-    long oldestToCompact = getOldestToCompact(comConf.getMaxStoreFileAgeMillis(), now);    
-    return new DateTieredCompactionRequest(candidateSelection,
-      this.getCompactBoundariesForMajor(candidateSelection, oldestToCompact, now));
+    long oldestToCompact = getOldestToCompact(comConf.getMaxStoreFileAgeMillis(), now);
+    List<Long> boundaries =
+        this.getCompactBoundariesForMajor(candidateSelection, oldestToCompact, now);
+    Map<Long, String> boundariesPolicies = getBoundariesStoragePolicyForMajor(boundaries, now);
+    return new DateTieredCompactionRequest(candidateSelection, boundaries, boundariesPolicies);
   }
   
   /**
@@ -233,8 +239,9 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
         }
         if (!fileList.isEmpty()) {
           if (fileList.size() >= minThreshold) {
-            DateTieredCompactionRequest request = generateCompactionRequest(fileList, window, 
-              mayUseOffPeak, mayBeStuck, minThreshold);
+            DateTieredCompactionRequest request =
+                generateCompactionRequest(fileList, window, mayUseOffPeak, mayBeStuck, minThreshold,
+                    now);
             if (request != null) {
               return request;
             }
@@ -246,8 +253,8 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
     return new CompactionRequest(Collections.<StoreFile> emptyList());
   }
 
-  private DateTieredCompactionRequest generateCompactionRequest(ArrayList<StoreFile> storeFiles, 
-      Window window, boolean mayUseOffPeak, boolean mayBeStuck, int minThreshold) 
+  private DateTieredCompactionRequest generateCompactionRequest(ArrayList<StoreFile> storeFiles,
+      Window window, boolean mayUseOffPeak, boolean mayBeStuck, int minThreshold, long now)
     throws IOException {
     // The files has to be in ascending order for ratio-based compaction to work right
     // and removeExcessFile to exclude youngest files.
@@ -260,11 +267,14 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
     if (storeFileSelection != null && !storeFileSelection.isEmpty()) {
       // If there is any file in the window excluded from compaction,
       // only one file will be output from compaction.
-      boolean singleOutput = storeFiles.size() != storeFileSelection.size() ||
-        comConf.useSingleOutputForMinorCompaction();
+      boolean singleOutput = storeFiles.size() != storeFileSelection.size() || comConf
+          .useSingleOutputForMinorCompaction();
       List<Long> boundaries = getCompactionBoundariesForMinor(window, singleOutput);
-      DateTieredCompactionRequest result = new DateTieredCompactionRequest(storeFileSelection,
-        boundaries);
+      // we want to generate policy to boundaries for minor compaction
+      Map<Long, String> boundaryPolicyMap =
+          getBoundariesStoragePolicyForMinor(singleOutput, window, now);
+      DateTieredCompactionRequest result =
+          new DateTieredCompactionRequest(storeFileSelection, boundaries, boundaryPolicyMap);
       return result;
     }
     return null; 
@@ -338,11 +348,46 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
       return LongMath.checkedSubtract(now, maxAgeMillis);
     } catch (ArithmeticException ae) {
       LOG.warn("Value for " + CompactionConfiguration.MAX_AGE_MILLIS_KEY + ": " + maxAgeMillis
-        + ". All the files will be eligible for minor compaction.");
+          + ". All the files will be eligible for minor compaction.");
       return Long.MIN_VALUE;
     }
   }
-  
+
+  private Map<Long, String> getBoundariesStoragePolicyForMinor(boolean singleOutput, Window window,
+      long now) {
+    Map<Long, String> boundariesPolicy = new HashMap<>();
+    if (!comConf.isDateTieredStoragePolicyEnable()) {
+      return boundariesPolicy;
+    }
+    String windowStoragePolicy = getWindowStoragePolicy(now, window.startMillis());
+    if (singleOutput) {
+      boundariesPolicy.put(Long.MIN_VALUE, windowStoragePolicy);
+    } else {
+      boundariesPolicy.put(window.startMillis(), windowStoragePolicy);
+    }
+    return boundariesPolicy;
+  }
+
+  private Map<Long, String> getBoundariesStoragePolicyForMajor(List<Long> boundaries, long now) {
+    Map<Long, String> boundariesPolicy = new HashMap<>();
+    if (!comConf.isDateTieredStoragePolicyEnable()) {
+      return boundariesPolicy;
+    }
+    for (Long startTs : boundaries) {
+      boundariesPolicy.put(startTs, getWindowStoragePolicy(now, startTs));
+    }
+    return boundariesPolicy;
+  }
+
+  private String getWindowStoragePolicy(long now, long windowStartMillis) {
+    if (windowStartMillis >= (now - comConf.getHotWindowAgeMillis())) {
+      return comConf.getHotWindowStoragePolicy();
+    } else if (windowStartMillis >= (now - comConf.getWarmWindowAgeMillis())) {
+      return comConf.getWarmWindowStoragePolicy();
+    }
+    return comConf.getColdWindowStoragePolicy();
+  }
+
   /**
    * This is the class we use to partition from epoch time to now into tiers of exponential sizes of
    * windows.

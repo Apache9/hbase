@@ -45,6 +45,11 @@ public abstract class AbstractMultiFileWriter implements CellSink {
 
   public interface WriterFactory {
     public StoreFile.Writer createWriter() throws IOException;
+
+    default StoreFile.Writer createWriterWithStoragePolicy(String fileStoragePolicy)
+        throws IOException {
+      return createWriter();
+    }
   }
 
   /**

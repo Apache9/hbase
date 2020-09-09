@@ -17,26 +17,36 @@
  */
 package org.apache.hadoop.hbase.regionserver.compactions;
 
+import org.apache.hadoop.hbase.regionserver.StoreFile;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-
-import org.apache.hadoop.hbase.regionserver.StoreFile;
+import java.util.Map;
 
 public class DateTieredCompactionRequest extends CompactionRequest {
   private List<Long> boundaries;
-  
-  public DateTieredCompactionRequest(Collection<StoreFile> files, List<Long> boundaryList) {
+  /** window start boundary to window storage policy map **/
+  private Map<Long, String> boundariesPolicies;
+
+  public DateTieredCompactionRequest(Collection<StoreFile> files, List<Long> boundaryList,
+      Map<Long, String> boundaryPolicyMap) {
     super(files);
     boundaries = boundaryList;
+    boundariesPolicies = boundaryPolicyMap;
   }
-  
+
   public List<Long> getBoundaries() {
     return boundaries;
   }
-  
+
+  public Map<Long, String> getBoundariesPolicies() {
+    return boundariesPolicies;
+  }
+
   @Override
   public String toString() {
-    return super.toString() + " boundaries=" + Arrays.toString(boundaries.toArray());
+    return super.toString() + " boundaries=" + Arrays.toString(boundaries.toArray())
+        + " boundariesPolicies=" + boundariesPolicies.toString();
   }
 }

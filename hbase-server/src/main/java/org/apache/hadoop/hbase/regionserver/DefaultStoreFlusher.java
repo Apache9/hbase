@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -71,7 +72,7 @@ public class DefaultStoreFlusher extends StoreFlusher {
             /* isCompaction = */ false,
             /* includeMVCCReadpoint = */ true,
             /* includesTags = */ true,
-            /* shouldDropBehind = */ false);
+            /* shouldDropBehind = */ false, HConstants.EMPTY_STRING);
         writer.setTimeRangeTracker(snapshotTimeRangeTracker);
         IOException e = null;
         try {

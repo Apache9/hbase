@@ -68,6 +68,20 @@ public class CompactionConfiguration {
       CONFIG_PREFIX + "date.tiered.window.policy.class";
   public static final String SINGLE_OUTPUT_FOR_MINOR_COMPACTION_KEY =
       CONFIG_PREFIX + "date.tiered.single.output.for.minor.compaction";
+  public static final String DATE_TIERED_STORAGE_POLICY_ENABLE_KEY =
+      "hbase.hstore.compaction.date.tiered.storage.policy.enable";
+  public static final String DATE_TIERED_HOT_WINDOW_AGE_MILLIS_KEY =
+      "hbase.hstore.compaction.date.tiered.hot.window.age.millis";
+  public static final String DATE_TIERED_HOT_WINDOW_STORAGE_POLICY_KEY =
+      "hbase.hstore.compaction.date.tiered.hot.window.storage.policy";
+  public static final String DATE_TIERED_WARM_WINDOW_AGE_MILLIS_KEY =
+      "hbase.hstore.compaction.date.tiered.warm.window.age.millis";
+  public static final String DATE_TIERED_WARM_WINDOW_STORAGE_POLICY_KEY =
+      "hbase.hstore.compaction.date.tiered.warm.window.storage.policy";
+  /** Windows older than warm age belong to COLD_WINDOW **/
+  public static final String DATE_TIERED_COLD_WINDOW_STORAGE_POLICY_KEY =
+      "hbase.hstore.compaction.date.tiered.cold.window.storage.policy";
+
 
   private static final Class<? extends RatioBasedCompactionPolicy>
     DEFAULT_TIER_COMPACTION_POLICY_CLASS = ExploringCompactionPolicy.class;
@@ -93,6 +107,12 @@ public class CompactionConfiguration {
   private final int incomingWindowMin;
   private final String compactionPolicyForTieredWindow;
   private final boolean singleOutputForMinorCompaction;
+  private final boolean dateTieredStoragePolicyEnable;
+  private long hotWindowAgeMillis;
+  private long warmWindowAgeMillis;
+  private String hotWindowStoragePolicy;
+  private String warmWindowStoragePolicy;
+  private String coldWindowStoragePolicy;
   
   CompactionConfiguration(Configuration conf, StoreConfigInformation storeConfigInfo) {
     this.conf = conf;
@@ -124,6 +144,15 @@ public class CompactionConfiguration {
       true);
     deleteRatioCompactionEnable = conf.getBoolean(HConstants.DELETE_RATIO_COMPACTION_ENABLE, false);
     deleteRatioCompactionThreshold = conf.getDouble(HConstants.DELETE_RATIO_THRESHOLD_KEY, 0.45F);
+
+    // for Heterogeneous Storage
+    dateTieredStoragePolicyEnable = conf.getBoolean(DATE_TIERED_STORAGE_POLICY_ENABLE_KEY, false);
+    hotWindowAgeMillis = conf.getLong(DATE_TIERED_HOT_WINDOW_AGE_MILLIS_KEY, 86400000L);
+    hotWindowStoragePolicy = conf.get(DATE_TIERED_HOT_WINDOW_STORAGE_POLICY_KEY, "ALL_SSD");
+    warmWindowAgeMillis = conf.getLong(DATE_TIERED_WARM_WINDOW_AGE_MILLIS_KEY, 604800000L);
+    warmWindowStoragePolicy = conf.get(DATE_TIERED_WARM_WINDOW_STORAGE_POLICY_KEY, "ONE_SSD");
+    coldWindowStoragePolicy = conf.get(DATE_TIERED_COLD_WINDOW_STORAGE_POLICY_KEY, "HOT");
+
     LOG.info(this);
   }
 
@@ -273,4 +302,30 @@ public class CompactionConfiguration {
   public double getDeleteRatioCompactionThreshold() {
     return deleteRatioCompactionThreshold;
   }
+
+
+  public boolean isDateTieredStoragePolicyEnable() {
+    return dateTieredStoragePolicyEnable;
+  }
+
+  public long getHotWindowAgeMillis() {
+    return hotWindowAgeMillis;
+  }
+
+  public long getWarmWindowAgeMillis() {
+    return warmWindowAgeMillis;
+  }
+
+  public String getHotWindowStoragePolicy() {
+    return hotWindowStoragePolicy.trim().toUpperCase();
+  }
+
+  public String getWarmWindowStoragePolicy() {
+    return warmWindowStoragePolicy.trim().toUpperCase();
+  }
+
+  public String getColdWindowStoragePolicy() {
+    return coldWindowStoragePolicy.trim().toUpperCase();
+  }
+
 }
