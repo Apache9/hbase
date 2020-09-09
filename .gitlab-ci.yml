@@ -4,7 +4,7 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   KUBERNETES_CPU_REQUEST: 10
   KUBERNETES_CPU_LIMIT: 10
-  KUBERNETES_MEMORY_REQUEST: 10Gi
+  KUBERNETES_MEMORY_REQUEST: 16Gi
 
 cache:
   paths:
