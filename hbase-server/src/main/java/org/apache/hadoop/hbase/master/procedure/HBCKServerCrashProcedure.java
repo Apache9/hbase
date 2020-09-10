@@ -90,25 +90,23 @@ public class HBCKServerCrashProcedure extends ServerCrashProcedure {
     if (!ris.isEmpty()) {
       return ris;
     }
-    // Nothing in in-master context. Check for Unknown Server! in hbase:meta.
+    // Nothing in in-master context. Check for Unknown Server! in catalog table.
     // If super list is empty, then allow that an operator scheduled an SCP because they are trying
     // to purge 'Unknown Servers' -- servers that are neither online nor in dead servers
     // list but that ARE in hbase:meta and so showing as unknown in places like 'HBCK Report'.
     // This mis-accounting does not happen in normal circumstance but may arise in-extremis
     // when cluster has been damaged in operation.
     UnknownServerVisitor visitor =
-        new UnknownServerVisitor(env.getMasterServices().getConnection(), getServerName());
+      new UnknownServerVisitor(env.getAssignmentManager().getRegionStateStore(), getServerName());
     try {
-      MetaTableAccessor.scanMetaForTableRegions(env.getMasterServices().getConnection(),
-          visitor, null);
+      env.getAssignmentManager().getRegionStateStore().scanCatalog(visitor);
     } catch (IOException ioe) {
-      LOG.warn("Failed scan of hbase:meta for 'Unknown Servers'", ioe);
+      LOG.warn("Failed scan of catalog for 'Unknown Servers'", ioe);
       return ris;
     }
-    LOG.info("Found {} mentions of {} in hbase:meta of OPEN/OPENING Regions: {}",
-        visitor.getReassigns().size(), getServerName(),
-        visitor.getReassigns().stream().map(RegionInfo::getEncodedName).
-            collect(Collectors.joining(",")));
+    LOG.info("Found {} mentions of {} in catalog of OPEN/OPENING Regions: {}",
+      visitor.getReassigns().size(), getServerName(), visitor.getReassigns().stream()
+        .map(RegionInfo::getEncodedName).collect(Collectors.joining(",")));
     return visitor.getReassigns();
   }
 
@@ -119,10 +117,10 @@ public class HBCKServerCrashProcedure extends ServerCrashProcedure {
   private static final class UnknownServerVisitor implements ClientMetaTableAccessor.Visitor {
     private final List<RegionInfo> reassigns = new ArrayList<>();
     private final ServerName unknownServerName;
-    private final Connection connection;
+    private final RegionStateStore regionStateStore;
 
-    private UnknownServerVisitor(Connection connection, ServerName unknownServerName) {
-      this.connection = connection;
+    private UnknownServerVisitor(RegionStateStore regionStateStore, ServerName unknownServerName) {
+      this.regionStateStore = regionStateStore;
       this.unknownServerName = unknownServerName;
     }
 
@@ -150,10 +148,9 @@ public class HBCKServerCrashProcedure extends ServerCrashProcedure {
         if (rs.isClosing()) {
           // Move region to CLOSED in hbase:meta.
           LOG.info("Moving {} from CLOSING to CLOSED in hbase:meta",
-              hrl.getRegion().getRegionNameAsString());
+            hrl.getRegion().getRegionNameAsString());
           try {
-            MetaTableAccessor.updateRegionState(this.connection, hrl.getRegion(),
-                RegionState.State.CLOSED);
+            regionStateStore.updateRegionState(hrl.getRegion(), RegionState.State.CLOSED);
           } catch (IOException ioe) {
             LOG.warn("Failed moving {} from CLOSING to CLOSED",
               hrl.getRegion().getRegionNameAsString(), ioe);

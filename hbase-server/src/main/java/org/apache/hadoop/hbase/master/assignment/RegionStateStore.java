@@ -338,7 +338,8 @@ public class RegionStateStore {
     return master.getConnection().getTable(TableName.META_TABLE_NAME);
   }
 
-  private Result getRegionCatalogResult(RegionInfo region) throws IOException {
+  @VisibleForTesting
+  public Result getRegionCatalogResult(RegionInfo region) throws IOException {
     Get get =
       new Get(CatalogFamilyFormat.getMetaKeyForRegion(region)).addFamily(HConstants.CATALOG_FAMILY);
     if (region.isMetaRegion()) {
@@ -355,6 +356,22 @@ public class RegionStateStore {
       .setFamily(HConstants.CATALOG_FAMILY)
       .setQualifier(CatalogFamilyFormat.getSeqNumColumn(replicaId)).setTimestamp(p.getTimestamp())
       .setType(Type.Put).setValue(Bytes.toBytes(openSeqNum)).build());
+  }
+
+  /**
+   * Update state column in catalog table.
+   */
+  public void updateRegionState(RegionInfo ri, State state) throws IOException {
+    Put put = new Put(CatalogFamilyFormat.getMetaKeyForRegion(ri));
+    MetaTableAccessor.addRegionStateToPut(put, state);
+    debugLogMutation(put);
+    if (ri.isMetaRegion()) {
+      masterRegion.update(r -> r.put(put));
+    } else {
+      try (Table table = getMetaTable()) {
+        table.put(put);
+      }
+    }
   }
 
   // ============================================================================================

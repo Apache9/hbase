@@ -773,15 +773,6 @@ public final class MetaTableAccessor {
   }
 
   /**
-   * Update state column in hbase:meta.
-   */
-  public static void updateRegionState(Connection connection, RegionInfo ri,
-    RegionState.State state) throws IOException {
-    Put put = new Put(RegionReplicaUtil.getRegionInfoForDefaultReplica(ri).getRegionName());
-    putsToMetaTable(connection, Collections.singletonList(addRegionStateToPut(put, state)));
-  }
-
-  /**
    * Adds daughter region infos to hbase:meta row for the specified region. Note that this does not
    * add its daughter's as different rows, but adds information about the daughters in the same row
    * as the parent.
