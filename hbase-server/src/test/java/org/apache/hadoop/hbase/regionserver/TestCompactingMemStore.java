@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -126,6 +127,29 @@ public class TestCompactingMemStore extends TestDefaultMemStore {
         globalMemStoreLimit, 0.4f, MemStoreLAB.POOL_INITIAL_SIZE_DEFAULT,
             null);
     assertTrue(chunkCreator != null);
+  }
+
+  /**
+   * A simple test which flush in memory affect timeOfOldestEdit
+   */
+  @Test
+  public void testTimeOfOldestEdit() {
+    assertEquals(Long.MAX_VALUE,  memstore.timeOfOldestEdit());
+    final byte[] r = Bytes.toBytes("r");
+    final byte[] f = Bytes.toBytes("f");
+    final byte[] q = Bytes.toBytes("q");
+    final byte[] v = Bytes.toBytes("v");
+    final KeyValue kv = new KeyValue(r, f, q, v);
+    memstore.add(kv, null);
+    long timeOfOldestEdit = memstore.timeOfOldestEdit();
+    assertNotEquals(Long.MAX_VALUE, timeOfOldestEdit);
+
+    ((CompactingMemStore)memstore).flushInMemory();
+    assertEquals(timeOfOldestEdit, memstore.timeOfOldestEdit());
+    memstore.add(kv, null);
+    assertEquals(timeOfOldestEdit, memstore.timeOfOldestEdit());
+    memstore.snapshot();
+    assertEquals(Long.MAX_VALUE, memstore.timeOfOldestEdit());
   }
 
   /**

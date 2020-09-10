@@ -110,6 +110,7 @@ public class DefaultMemStore extends AbstractMemStore {
         }
         this.snapshot = immutableSegment;
         resetActive();
+        resetTimeOfOldestEdit();
       }
     }
     return new MemStoreSnapshot(this.snapshotId, this.snapshot);

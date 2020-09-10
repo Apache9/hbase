@@ -80,6 +80,7 @@ public abstract class AbstractMemStore implements MemStore {
     this.comparator = c;
     this.regionServices = regionServices;
     resetActive();
+    resetTimeOfOldestEdit();
     this.snapshot = SegmentFactory.instance().createImmutableSegment(c);
     this.snapshotId = NO_SNAPSHOT_ID;
   }
@@ -96,6 +97,9 @@ public abstract class AbstractMemStore implements MemStore {
         memstoreAccounting.getHeapSize(), memstoreAccounting.getOffHeapSize(),
         memstoreAccounting.getCellsCount());
     }
+  }
+
+  protected void resetTimeOfOldestEdit() {
     this.timeOfOldestEdit = Long.MAX_VALUE;
   }
 
