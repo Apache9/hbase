@@ -361,6 +361,9 @@ public class HFileReaderV2 extends AbstractHFileReader {
           lockEntry = offsetLock.getLockEntry(dataBlockOffset);
         }
 
+        if (Trace.isTracing()) {
+          traceScope.getSpan().addTimelineAnnotation("getblockLock");
+        }
         // Check cache for block. If found return.
         if (cacheConf.isBlockCacheEnabled()) {
           // Try and get the block from the block cache. If the useLock variable is true then this
