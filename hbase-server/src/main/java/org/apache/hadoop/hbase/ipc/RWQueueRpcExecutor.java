@@ -220,10 +220,7 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   protected boolean isHeavyReadRequest(final Message param) {
     if (param instanceof ScanRequest) {
       ScanRequest scanRequest = (ScanRequest) param;
-      Scan scan = scanRequest.getScan();
-      if (scan.hasFilter() && !isScanFromCanary(scanRequest)) {
-        return true;
-      }
+      return !isScanFromCanary(scanRequest);
     }
     if (param instanceof MultiRequest) {
       MultiRequest multi = (MultiRequest) param;
@@ -239,7 +236,8 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   }
 
   private boolean isScanFromCanary(ScanRequest scanRequest) {
-    return scanRequest.hasLimitOfRows() && scanRequest.getLimitOfRows() == 1;
+    return scanRequest.getScan().hasFilter() && scanRequest.hasLimitOfRows()
+        && scanRequest.getLimitOfRows() == 1;
   }
 
   @Override

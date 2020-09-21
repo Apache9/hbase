@@ -112,7 +112,7 @@ public class TestRWQueueRpcExecutor {
     RWQueueRpcExecutor rwQueueRpcExecutor =
         new RWQueueRpcExecutor("test", 100, 4, 0.5f, 100, conf, null);
     // scan without filter
-    assertFalse(rwQueueRpcExecutor.isHeavyReadRequest(scanWithoutFilter));
+    assertTrue(rwQueueRpcExecutor.isHeavyReadRequest(scanWithoutFilter));
     // scan with filter
     assertTrue(rwQueueRpcExecutor.isHeavyReadRequest(scanWithFilter));
     // scan with filter and limit one row (like Canary scan request)
@@ -142,15 +142,15 @@ public class TestRWQueueRpcExecutor {
     rpcExecutor.dispatch(createMockCall(scanWithFilter));
     checkQueueCounters(rpcExecutor, 0, 1, 1);
     rpcExecutor.dispatch(createMockCall(scanWithoutFilter));
-    checkQueueCounters(rpcExecutor, 0, 2, 1);
+    checkQueueCounters(rpcExecutor, 0, 1, 2);
     rpcExecutor.dispatch(createMockCall(mutateRequest));
-    checkQueueCounters(rpcExecutor, 1, 2, 1);
+    checkQueueCounters(rpcExecutor, 1, 1, 2);
     rpcExecutor.dispatch(createMockCall(multiPutRequest));
-    checkQueueCounters(rpcExecutor, 2, 2, 1);
+    checkQueueCounters(rpcExecutor, 2, 1, 2);
     rpcExecutor.dispatch(createMockCall(smallMultiGetRequest));
-    checkQueueCounters(rpcExecutor, 2, 3, 1);
+    checkQueueCounters(rpcExecutor, 2, 2, 2);
     rpcExecutor.dispatch(createMockCall(bigMultiGetRequest));
-    checkQueueCounters(rpcExecutor, 2, 3, 2);
+    checkQueueCounters(rpcExecutor, 2, 2, 3);
     rpcExecutor.stop();
   }
 
@@ -168,9 +168,9 @@ public class TestRWQueueRpcExecutor {
     rpcExecutor.dispatch(createMockCall(scanWithFilter));
     checkQueueCounters(rpcExecutor, 0, 1, 1);
     rpcExecutor.dispatch(createMockCall(scanWithoutFilter));
-    checkQueueCounters(rpcExecutor, 0, 2, 1);
+    checkQueueCounters(rpcExecutor, 0, 1, 2);
     rpcExecutor.dispatch(createMockCall(mutateRequest));
-    checkQueueCounters(rpcExecutor, 1, 2, 1);
+    checkQueueCounters(rpcExecutor, 1, 1, 2);
     rpcExecutor.stop();
   }
 
