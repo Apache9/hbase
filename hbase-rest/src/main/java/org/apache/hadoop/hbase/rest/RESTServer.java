@@ -19,6 +19,12 @@
 package org.apache.hadoop.hbase.rest;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.HelpFormatter;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.ParseException;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.PosixParser;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -27,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import javax.servlet.DispatcherType;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
@@ -35,6 +42,7 @@ import org.apache.hadoop.hbase.http.InfoServer;
 import org.apache.hadoop.hbase.log.HBaseMarkers;
 import org.apache.hadoop.hbase.rest.filter.AuthFilter;
 import org.apache.hadoop.hbase.rest.filter.GzipFilter;
+import org.apache.hadoop.hbase.rest.filter.NamespaceAuthFilter;
 import org.apache.hadoop.hbase.rest.filter.RestCsrfPreventionFilter;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.DNS;
@@ -60,13 +68,6 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
-import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
-import com.xiaomi.infra.thirdparty.org.apache.commons.cli.HelpFormatter;
-import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
-import com.xiaomi.infra.thirdparty.org.apache.commons.cli.ParseException;
-import com.xiaomi.infra.thirdparty.org.apache.commons.cli.PosixParser;
 
 /**
  * Main class for launching REST gateway as a servlet hosted by Jetty.
@@ -130,6 +131,16 @@ public class RESTServer implements Constants {
       holder.setClassName(RestCsrfPreventionFilter.class.getName());
       holder.setInitParameters(restCsrfParams);
       ctxHandler.addFilter(holder, PATH_SPEC_ANY, EnumSet.allOf(DispatcherType.class));
+    }
+  }
+
+  void addNamespaceAuthFilter(ServletContextHandler ctxHandler, Configuration conf){
+    if (StringUtils.isNotEmpty(conf.get(NamespaceAuthFilter.NAMESPACE_AUTH_KEY))){
+      FilterHolder holder = new FilterHolder();
+      holder.setName("namespace auth filter");
+      holder.setClassName(NamespaceAuthFilter.class.getName());
+      holder.setInitParameter(NamespaceAuthFilter.NAMESPACE_PARAM_KEY, conf.get(NamespaceAuthFilter.NAMESPACE_AUTH_KEY));
+      ctxHandler.addFilter(holder, PATH_SPEC_ANY, EnumSet.of(DispatcherType.REQUEST));
     }
   }
 
@@ -345,6 +356,8 @@ public class RESTServer implements Constants {
       ctxHandler.addFilter(filter, PATH_SPEC_ANY, EnumSet.of(DispatcherType.REQUEST));
     }
     addCSRFFilter(ctxHandler, conf);
+    addNamespaceAuthFilter(ctxHandler, conf);
+
     HttpServerUtil.constrainHttpMethods(ctxHandler, servlet.getConfiguration()
         .getBoolean(REST_HTTP_ALLOW_OPTIONS_METHOD, REST_HTTP_ALLOW_OPTIONS_METHOD_DEFAULT));
 
