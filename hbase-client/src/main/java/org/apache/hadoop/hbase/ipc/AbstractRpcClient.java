@@ -152,6 +152,7 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
           });
 
   private final int clientWarnIpcResponseTime;
+  private final boolean isClientSlowIpcLogDetailEnabled;
 
   /**
    * Construct an IPC client for the cluster <code>clusterId</code>
@@ -187,6 +188,8 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
           HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
     this.clientWarnIpcResponseTime =
         conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME, DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
+    this.isClientSlowIpcLogDetailEnabled = conf.getBoolean(CLIENT_SLOW_IPC_LOG_DETAIL_ENABLE,
+        DEFAULT_CLIENT_SLOW_IPC_LOG_DETAIL_ENABLE);
     this.connections = new PoolMap<>(getPoolType(conf), getPoolSize(conf));
 
     this.cleanupIdleConnectionTask = IDLE_CONN_SWEEPER.scheduleAtFixedRate(new Runnable() {
@@ -390,7 +393,8 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
     }
     if (callTime > this.clientWarnIpcResponseTime) {
       LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time=" + callTime +
-          ", remote address:" + addr + ", call id=" + call.id + ", call param: " + call.param);
+          ", remote address:" + addr + ", call id=" + call.id  +
+          (isClientSlowIpcLogDetailEnabled ? ", call param: " + call.param : ""));
     }
     if (call.error != null) {
       if (call.error instanceof RemoteException) {

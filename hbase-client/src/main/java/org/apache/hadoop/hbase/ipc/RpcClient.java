@@ -58,6 +58,8 @@ public interface RpcClient extends Closeable {
   int DEFAULT_PING_TIMEOUT = 10000; // 10 seconds
   int PING_CALL_ID = -1;
 
+  String CLIENT_SLOW_IPC_LOG_DETAIL_ENABLE = "hbase.client.slow.ipc.log.detail.enable";
+  boolean DEFAULT_CLIENT_SLOW_IPC_LOG_DETAIL_ENABLE = false;
   String CLIENT_WARN_IPC_RESPONSE_TIME = "hbase.client.ipc.warn.response.time";
   int DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME = 100; // milliseconds
 
