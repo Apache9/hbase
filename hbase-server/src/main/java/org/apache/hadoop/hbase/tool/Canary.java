@@ -385,7 +385,7 @@ public final class Canary implements Tool {
   private InfoServer infoServer;
   private int maxTaskCount;
   private int minTaskCount;
-
+  private int fetchTasksPeriod;
 
   public Canary(Sink sink) {
     this.sink = sink;
@@ -480,8 +480,8 @@ public final class Canary implements Tool {
       LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
     }
 
-    // clear cached tasks and check canary distribution for 10 minutes
-    if (EnvironmentEdgeManager.currentTimeMillis() - lastCheckTime > 10 * 60 * 1000) {
+    // clear cached tasks and check canary distribution
+    if (EnvironmentEdgeManager.currentTimeMillis() - lastCheckTime > fetchTasksPeriod) {
       clearCachedTasks();
       try {
         checkCanaryDistribution();
@@ -623,6 +623,7 @@ public final class Canary implements Tool {
     minTaskCount = conf.getInt("hbase.canary.task.count.min", 1000);
     minTaskCount = minTaskCount > 0 ? minTaskCount : 1000;
 
+    fetchTasksPeriod = conf.getInt("hbase.canary.fetch.tasks.period", 3600 * 1000);
 
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
