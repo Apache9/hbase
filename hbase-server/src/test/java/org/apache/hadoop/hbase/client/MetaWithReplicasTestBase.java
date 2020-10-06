@@ -26,9 +26,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.StartMiniClusterOption;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNameTestRule;
 import org.apache.hadoop.hbase.master.assignment.AssignmentManager;
 import org.apache.hadoop.hbase.master.assignment.AssignmentTestingUtil;
@@ -56,12 +56,15 @@ public class MetaWithReplicasTestBase {
 
   protected static void startCluster() throws Exception {
     TEST_UTIL.getConfiguration().setInt("zookeeper.session.timeout", 30000);
-    TEST_UTIL.getConfiguration().setInt(HConstants.META_REPLICAS_NUM, 3);
     TEST_UTIL.getConfiguration()
       .setInt(StorefileRefresherChore.REGIONSERVER_STOREFILE_REFRESH_PERIOD, 1000);
     StartMiniClusterOption option = StartMiniClusterOption.builder().numAlwaysStandByMasters(1)
       .numMasters(1).numRegionServers(REGIONSERVERS_COUNT).build();
     TEST_UTIL.startMiniCluster(option);
+    Admin admin = TEST_UTIL.getAdmin();
+    TableDescriptor metaWithReplicasDesc = TableDescriptorBuilder
+      .newBuilder(admin.getDescriptor(TableName.META_TABLE_NAME)).setRegionReplication(3).build();
+    admin.modifyTable(metaWithReplicasDesc);
     AssignmentManager am = TEST_UTIL.getMiniHBaseCluster().getMaster().getAssignmentManager();
     Set<ServerName> sns = new HashSet<ServerName>();
     ServerName hbaseMetaServerName =

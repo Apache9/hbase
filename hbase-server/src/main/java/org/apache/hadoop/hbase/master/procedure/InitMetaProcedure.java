@@ -83,9 +83,8 @@ public class InitMetaProcedure extends AbstractStateMachineTableProcedure<InitMe
     // created here in bootstrap and it'll need to be cleaned up. Better to
     // not make it in first place. Turn off block caching for bootstrap.
     // Enable after.
-    TableDescriptor metaDescriptor = FSTableDescriptors.tryUpdateAndGetMetaTableDescriptor(conf, fs,
-      rootDir, builder -> builder.setRegionReplication(
-        conf.getInt(HConstants.META_REPLICAS_NUM, HConstants.DEFAULT_META_REPLICA_NUM)));
+    TableDescriptor metaDescriptor =
+      FSTableDescriptors.tryUpdateAndGetMetaTableDescriptor(conf, fs, rootDir);
     HRegion
       .createHRegion(RegionInfoBuilder.FIRST_META_REGIONINFO, rootDir, conf, metaDescriptor, null)
       .close();
