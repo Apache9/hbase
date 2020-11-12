@@ -56,9 +56,8 @@ public class MasterAnnotationReadingPriorityFunction extends AnnotationReadingPr
     this(rpcServices, rpcServices.getClass());
   }
 
-
   public MasterAnnotationReadingPriorityFunction(RSRpcServices rpcServices,
-                                          Class<? extends RSRpcServices> clz) {
+    Class<? extends RSRpcServices> clz) {
     super(rpcServices, clz);
   }
 

@@ -110,7 +110,6 @@ import org.apache.hadoop.hbase.io.hfile.BlockCacheFactory;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.io.util.MemorySizeUtil;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
-import org.apache.hadoop.hbase.ipc.NettyRpcClientConfigHelper;
 import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
@@ -172,7 +171,6 @@ import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
-import org.apache.hadoop.hbase.wal.NettyAsyncFSWALConfigHelper;
 import org.apache.hadoop.hbase.wal.WAL;
 import org.apache.hadoop.hbase.wal.WALFactory;
 import org.apache.hadoop.hbase.wal.WALProvider;
@@ -591,7 +589,7 @@ public class HRegionServer extends Thread implements
       this.conf = conf;
       this.dataFsOk = true;
       this.masterless = conf.getBoolean(MASTERLESS_CONFIG_NAME, false);
-      this.eventLoopGroupConfig = setupNetty(this.conf);
+      this.eventLoopGroupConfig = NettyEventLoopGroupConfig.setup(this.conf, "RS-EventLoopGroup");
       MemorySizeUtil.checkForClusterFreeHeapMemoryLimit(this.conf);
       HFile.checkHFileVersion(this.conf);
       checkCodecs(this.conf);
@@ -620,10 +618,11 @@ public class HRegionServer extends Thread implements
       initNamedQueueRecorder(conf);
       rpcServices = createRpcServices();
       useThisHostnameInstead = getUseThisHostnameInstead(conf);
-      String hostName =
-          StringUtils.isBlank(useThisHostnameInstead) ? this.rpcServices.isa.getHostName()
-              : this.useThisHostnameInstead;
-      serverName = ServerName.valueOf(hostName, this.rpcServices.isa.getPort(), this.startcode);
+      String hostName = StringUtils.isBlank(useThisHostnameInstead) ?
+        this.rpcServices.getSocketAddress().getHostName() :
+        this.useThisHostnameInstead;
+      serverName =
+        ServerName.valueOf(hostName, this.rpcServices.getSocketAddress().getPort(), this.startcode);
 
       // login the zookeeper client principal (if using security)
       ZKUtil.loginClient(this.conf, HConstants.ZK_CLIENT_KEYTAB_FILE,
@@ -635,14 +634,8 @@ public class HRegionServer extends Thread implements
       Superusers.initialize(conf);
       regionServerAccounting = new RegionServerAccounting(conf);
 
-      boolean isMasterNotCarryTable =
-          this instanceof HMaster && !LoadBalancer.isTablesOnMaster(conf);
-
-      // no need to instantiate block cache and mob file cache when master not carry table
-      if (!isMasterNotCarryTable) {
-        blockCache = BlockCacheFactory.createBlockCache(conf);
-        mobFileCache = new MobFileCache(conf);
-      }
+      blockCache = BlockCacheFactory.createBlockCache(conf);
+      mobFileCache = new MobFileCache(conf);
 
       uncaughtExceptionHandler =
         (t, e) -> abort("Uncaught exception in executorService thread " + t.getName(), e);
@@ -655,8 +648,9 @@ public class HRegionServer extends Thread implements
 
       // Some unit tests don't need a cluster, so no zookeeper at all
       // Open connection to zookeeper and set primary watcher
-      zooKeeper = new ZKWatcher(conf, getProcessName() + ":" + rpcServices.isa.getPort(), this,
-        canCreateBaseZNode());
+      zooKeeper =
+        new ZKWatcher(conf, getProcessName() + ":" + rpcServices.getSocketAddress().getPort(), this,
+          canCreateBaseZNode());
       // If no master in cluster, skip trying to track one or look for a cluster status.
       if (!this.masterless) {
         if (conf.getBoolean(HBASE_SPLIT_WAL_COORDINATED_BY_ZK,
@@ -718,7 +712,7 @@ public class HRegionServer extends Thread implements
           " to true while " + UNSAFE_RS_HOSTNAME_KEY + " is used";
         throw new IOException(msg);
       } else {
-        return rpcServices.isa.getHostName();
+        return rpcServices.getSocketAddress().getHostName();
       }
     } else {
       return hostname;
@@ -735,15 +729,6 @@ public class HRegionServer extends Thread implements
         cm.notifyAllObservers(conf);
       });
     }
-  }
-
-  private static NettyEventLoopGroupConfig setupNetty(Configuration conf) {
-    // Initialize netty event loop group at start as we may use it for rpc server, rpc client & WAL.
-    NettyEventLoopGroupConfig nelgc =
-      new NettyEventLoopGroupConfig(conf, "RS-EventLoopGroup");
-    NettyRpcClientConfigHelper.setEventLoopConfig(conf, nelgc.group(), nelgc.clientChannelClass());
-    NettyAsyncFSWALConfigHelper.setEventLoopConfig(conf, nelgc.group(), nelgc.clientChannelClass());
-    return nelgc;
   }
 
   private void initializeFileSystem() throws IOException {
@@ -867,7 +852,8 @@ public class HRegionServer extends Thread implements
   protected final synchronized void setupClusterConnection() throws IOException {
     if (asyncClusterConnection == null) {
       Configuration conf = cleanupConfiguration();
-      InetSocketAddress localAddress = new InetSocketAddress(this.rpcServices.isa.getAddress(), 0);
+      InetSocketAddress localAddress =
+        new InetSocketAddress(this.rpcServices.getSocketAddress().getAddress(), 0);
       User user = userProvider.getCurrent();
       asyncClusterConnection =
         ClusterConnectionFactory.createAsyncClusterConnection(conf, localAddress, user);
@@ -1561,19 +1547,19 @@ public class HRegionServer extends Thread implements
         // The hostname the master sees us as.
         if (key.equals(HConstants.KEY_FOR_HOSTNAME_SEEN_BY_MASTER)) {
           String hostnameFromMasterPOV = e.getValue();
-          this.serverName = ServerName.valueOf(hostnameFromMasterPOV, rpcServices.isa.getPort(),
-              this.startcode);
+          this.serverName = ServerName.valueOf(hostnameFromMasterPOV,
+            rpcServices.getSocketAddress().getPort(), this.startcode);
           if (!StringUtils.isBlank(useThisHostnameInstead) &&
-              !hostnameFromMasterPOV.equals(useThisHostnameInstead)) {
+            !hostnameFromMasterPOV.equals(useThisHostnameInstead)) {
             String msg = "Master passed us a different hostname to use; was=" +
-                this.useThisHostnameInstead + ", but now=" + hostnameFromMasterPOV;
+              this.useThisHostnameInstead + ", but now=" + hostnameFromMasterPOV;
             LOG.error(msg);
             throw new IOException(msg);
           }
           if (StringUtils.isBlank(useThisHostnameInstead) &&
-              !hostnameFromMasterPOV.equals(rpcServices.isa.getHostName())) {
+            !hostnameFromMasterPOV.equals(rpcServices.getSocketAddress().getHostName())) {
             String msg = "Master passed us a different hostname to use; was=" +
-                rpcServices.isa.getHostName() + ", but now=" + hostnameFromMasterPOV;
+              rpcServices.getSocketAddress().getHostName() + ", but now=" + hostnameFromMasterPOV;
             LOG.error(msg);
           }
           continue;
@@ -1628,11 +1614,10 @@ public class HRegionServer extends Thread implements
       // or make sense of it.
       startReplicationService();
 
-
       // Set up ZK
-      LOG.info("Serving as " + this.serverName + ", RpcServer on " + rpcServices.isa +
-          ", sessionid=0x" +
-          Long.toHexString(this.zooKeeper.getRecoverableZooKeeper().getSessionId()));
+      LOG.info("Serving as " + this.serverName + ", RpcServer on " +
+        rpcServices.getSocketAddress() + ", sessionid=0x" +
+        Long.toHexString(this.zooKeeper.getRecoverableZooKeeper().getSessionId()));
 
       // Wake up anyone waiting for this server to online
       synchronized (online) {
@@ -2508,7 +2493,7 @@ public class HRegionServer extends Thread implements
 
   @Override
   public RpcServerInterface getRpcServer() {
-    return rpcServices.rpcServer;
+    return rpcServices.getRpcServer();
   }
 
   @VisibleForTesting
@@ -2809,9 +2794,9 @@ public class HRegionServer extends Thread implements
       rpcServices.rpcMultiRequestCount.reset();
       rpcServices.rpcMutateRequestCount.reset();
       LOG.info("reportForDuty to master=" + masterServerName + " with port="
-        + rpcServices.isa.getPort() + ", startcode=" + this.startcode);
+        + rpcServices.getSocketAddress().getPort() + ", startcode=" + this.startcode);
       long now = EnvironmentEdgeManager.currentTime();
-      int port = rpcServices.isa.getPort();
+      int port = rpcServices.getSocketAddress().getPort();
       RegionServerStartupRequest.Builder request = RegionServerStartupRequest.newBuilder();
       if (!StringUtils.isBlank(useThisHostnameInstead)) {
         request.setUseThisHostnameInstead(useThisHostnameInstead);

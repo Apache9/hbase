@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.ClusterId;
 import org.apache.hadoop.hbase.ClusterMetrics;
 import org.apache.hadoop.hbase.ClusterMetrics.Option;
 import org.apache.hadoop.hbase.ClusterMetricsBuilder;
+import org.apache.hadoop.hbase.CoordinatedStateManager;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
@@ -74,12 +75,15 @@ import org.apache.hadoop.hbase.RegionMetrics;
 import org.apache.hadoop.hbase.ReplicationPeerNotFoundException;
 import org.apache.hadoop.hbase.ServerMetrics;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
+import org.apache.hadoop.hbase.client.AsyncClusterConnection;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.CompactionState;
+import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.client.NormalizeTableFilterParams;
 import org.apache.hadoop.hbase.client.RegionInfo;
@@ -88,8 +92,10 @@ import org.apache.hadoop.hbase.client.RegionStatesCount;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.client.TableState;
+import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.exceptions.MasterStoppedException;
+import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.executor.ExecutorType;
 import org.apache.hadoop.hbase.favored.FavoredNodesManager;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
@@ -191,9 +197,12 @@ import org.apache.hadoop.hbase.rsgroup.RSGroupUtil;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.SecurityConstants;
 import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.security.access.AccessChecker;
+import org.apache.hadoop.hbase.security.access.ZKPermissionWatcher;
 import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.hadoop.hbase.util.HBaseFsck;
 import org.apache.hadoop.hbase.util.HFileArchiveUtil;
@@ -248,7 +257,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.SnapshotProtos.Snapshot
  */
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.TOOLS)
 @SuppressWarnings("deprecation")
-public class HMaster extends HRegionServer implements MasterServices {
+public class HMaster extends HRegionServer implements MasterServices, ConfigurationObserver {
 
   private static final Logger LOG = LoggerFactory.getLogger(HMaster.class);
 
@@ -433,9 +442,10 @@ public class HMaster extends HRegionServer implements MasterServices {
         maintenanceMode = false;
       }
       this.rsFatals = new MemoryBoundedLogMessageBuffer(
-          conf.getLong("hbase.master.buffer.for.rs.fatals", 1 * 1024 * 1024));
-      LOG.info("hbase.rootdir={}, hbase.cluster.distributed={}", getDataRootDir(),
-          this.conf.getBoolean(HConstants.CLUSTER_DISTRIBUTED, false));
+        conf.getLong("hbase.master.buffer.for.rs.fatals", 1 * 1024 * 1024));
+      LOG.info("hbase.rootdir={}, hbase.cluster.distributed={}",
+        CommonFSUtils.getRootDir(this.conf),
+        this.conf.getBoolean(HConstants.CLUSTER_DISTRIBUTED, false));
 
       // Disable usage of meta replicas in the master
       this.conf.setBoolean(HConstants.USE_META_REPLICAS, false);
@@ -651,7 +661,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   }
 
   @Override
-  protected RSRpcServices createRpcServices() throws IOException {
+  protected MasterRpcServices createRpcServices() throws IOException {
     return new MasterRpcServices(this);
   }
 
@@ -3748,5 +3758,89 @@ public class HMaster extends HRegionServer implements MasterServices {
   @Override
   public MetaLocationSyncer getMetaLocationSyncer() {
     return metaLocationSyncer;
+  }
+
+  @Override
+  public Configuration getConfiguration() {
+    // TODO Implement Server.getConfiguration
+    return null;
+  }
+
+  @Override
+  public Connection getConnection() {
+    // TODO Implement Server.getConnection
+    return null;
+  }
+
+  @Override
+  public Connection createConnection(Configuration conf) throws IOException {
+    // TODO Implement Server.createConnection
+    return null;
+  }
+
+  @Override
+  public AsyncClusterConnection getAsyncClusterConnection() {
+    // TODO Implement Server.getAsyncClusterConnection
+    return null;
+  }
+
+  @Override
+  public CoordinatedStateManager getCoordinatedStateManager() {
+    // TODO Implement Server.getCoordinatedStateManager
+    return null;
+  }
+
+  @Override
+  public ChoreService getChoreService() {
+    // TODO Implement Server.getChoreService
+    return null;
+  }
+
+  @Override
+  public boolean isAborted() {
+    // TODO Implement Abortable.isAborted
+    return false;
+  }
+
+  @Override
+  public boolean isStopped() {
+    // TODO Implement Stoppable.isStopped
+    return false;
+  }
+
+  @Override
+  public void onConfigurationChange(Configuration conf) {
+    // TODO Implement ConfigurationObserver.onConfigurationChange
+    
+  }
+
+  @Override
+  public ExecutorService getExecutorService() {
+    // TODO Implement MasterServices.getExecutorService
+    return null;
+  }
+
+  @Override
+  public TableDescriptors getTableDescriptors() {
+    // TODO Implement MasterServices.getTableDescriptors
+    return null;
+  }
+
+  @Override
+  public boolean isClusterUp() {
+    // TODO Implement MasterServices.isClusterUp
+    return false;
+  }
+
+  @Override
+  public AccessChecker getAccessChecker() {
+    // TODO Implement MasterServices.getAccessChecker
+    return null;
+  }
+
+  @Override
+  public ZKPermissionWatcher getZKPermissionWatcher() {
+    // TODO Implement MasterServices.getZKPermissionWatcher
+    return null;
   }
 }
