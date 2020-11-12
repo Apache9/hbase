@@ -101,7 +101,7 @@ public class NameServiceEntry {
     conf.set("hbase.regionserver.kerberos.principal", kerberosPrinciple);
 
     // Setting configuration for cluster entry address.
-    conf.set("hbase.zookeeper.quorum", zkClusterInfo.resolve());
+    conf.set("hbase.zookeeper.quorum", zkClusterInfo.resolve(conf));
     conf.setInt("hbase.zookeeper.property.clientPort", zkClusterInfo.getPort());
     conf.set("zookeeper.znode.parent", "/hbase/" + clusterInfo.getClusterName());
     

@@ -17,6 +17,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.apache.hadoop.conf.Configuration;
+
 public class ZkClusterInfo {
   private static final Log LOG = LogFactory.getLog(ZkClusterInfo.class);
 
@@ -84,8 +86,8 @@ public class ZkClusterInfo {
     return port;
   }
 
-  public String toDnsName() {
-    return clusterName + ".observer.zk.hadoop.srv";
+  private String toDnsName(String zkDomainSuffix) {
+    return clusterName + zkDomainSuffix;
   }
 
   /**
@@ -96,9 +98,13 @@ public class ZkClusterInfo {
    * @return The ip list of the dns name, separated by comma.
    * @throws IOException if dns name is illegal or failed to be resolved.
    */
-  public String resolve()
-      throws IOException {
-    String dnsName = toDnsName();
+  public String resolve() throws IOException {
+    return resolve(new Configuration());
+  }
+
+  public String resolve(Configuration configuration) throws IOException {
+    String dnsName =
+        toDnsName(configuration.get("zookeeper.domain.suffix", ".observer.zk.hadoop.srv"));
     try {
       InetAddress[] allAddresses = InetAddress.getAllByName(dnsName);
       String[] allIps = new String[allAddresses.length];
