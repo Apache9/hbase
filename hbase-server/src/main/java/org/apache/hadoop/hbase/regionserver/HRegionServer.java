@@ -230,6 +230,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion.Operation;
 import org.apache.hadoop.hbase.regionserver.Leases.LeaseStillHeldException;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
+import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
 import org.apache.hadoop.hbase.regionserver.handler.CloseMetaHandler;
 import org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler;
 import org.apache.hadoop.hbase.regionserver.handler.OpenMetaHandler;
@@ -1887,30 +1888,34 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Inner class that runs on a long period checking if regions need compaction.
    */
   private static class CompactionChecker extends Chore {
-    private final HRegionServer instance;
+    private final HRegionServer server;
     private final int majorCompactPriority;
     private final static int DEFAULT_PRIORITY = Integer.MAX_VALUE;
     private long iteration = 0;
+    private long metaCompactedTime = 0;
+    private final OffPeakHours offPeakHours;
 
     CompactionChecker(final HRegionServer h, final int sleepTime,
         final Stoppable stopper) {
       super("CompactionChecker", sleepTime, h);
-      this.instance = h;
+      this.server = h;
+      this.offPeakHours = OffPeakHours.getInstance(h.conf);
       LOG.info(this.getName() + " runs every " + StringUtils.formatTime(sleepTime));
 
       /* MajorCompactPriority is configurable.
        * If not set, the compaction will use default priority.
        */
-      this.majorCompactPriority = this.instance.conf.
+      this.majorCompactPriority = this.server.conf.
         getInt("hbase.regionserver.compactionChecker.majorCompactPriority",
         DEFAULT_PRIORITY);
     }
 
     @Override
     protected void chore() {
-      for (HRegion r : this.instance.onlineRegions.values()) {
-        if (r == null)
+      for (HRegion r : this.server.onlineRegions.values()) {
+        if (r == null) {
           continue;
+        }
         for (Store s : r.getStores().values()) {
           try {
             long multiplier = s.getCompactionCheckMultiplier();
@@ -1918,19 +1923,36 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             if (iteration % multiplier != 0) continue;
             if (s.needsCompaction()) {
               // Queue a compaction. Will recognize if major is needed.
-              this.instance.compactSplitThread.requestSystemCompaction(r, s, getName()
+              this.server.compactSplitThread.requestSystemCompaction(r, s, getName()
                   + " requests compaction");
             } else if (s.isMajorCompaction()) {
               if (majorCompactPriority == DEFAULT_PRIORITY
                   || majorCompactPriority > r.getCompactPriority()) {
-                this.instance.compactSplitThread.requestCompaction(r, s, getName()
+                this.server.compactSplitThread.requestCompaction(r, s, getName()
                     + " requests major compaction; use default priority", null);
               } else {
-                this.instance.compactSplitThread.requestCompaction(r, s, getName()
+                this.server.compactSplitThread.requestCompaction(r, s, getName()
                     + " requests major compaction; use configured priority",
                   this.majorCompactPriority, null);
               }
             }
+          } catch (IOException e) {
+            LOG.warn("Failed major compaction check on " + r, e);
+          }
+        }
+
+        // request major compaction for meta in every day's offpeak hour.
+        if (r.getTableDesc().isMetaTable() && offPeakHours.isOffPeakHour()) {
+          long now = System.currentTimeMillis();
+          if (now - metaCompactedTime < TimeUnit.DAYS.toMillis(1)) {
+            continue;
+          }
+          metaCompactedTime = now;
+          r.triggerMajorCompaction();
+          try {
+            this.server.compactSplitThread
+                .requestCompaction(r, getName() + " requests offpeak major compaction for meta",
+                    this.majorCompactPriority, null);
           } catch (IOException e) {
             LOG.warn("Failed major compaction check on " + r, e);
           }
