@@ -341,7 +341,7 @@ public class TestBlockReorder {
       boolean done;
       do {
         Assert.assertTrue("Can't get enouth replica.", System.currentTimeMillis() < max);
-        l = getNamenode(dfs.getClient()).getBlockLocations(src, 0, 1);
+        l = getNamenode(dfs.getClient()).getBlockLocations(src, 0, 1, "");
         Assert.assertNotNull("Can't get block locations for " + src, l);
         Assert.assertNotNull(l.getLocatedBlocks());
         Assert.assertTrue(l.getLocatedBlocks().size() > 0);
@@ -393,7 +393,7 @@ public class TestBlockReorder {
       LocatedBlocks l;
       final long max = System.currentTimeMillis() + 10000;
       do {
-        l = getNamenode(dfs.getClient()).getBlockLocations(fileName, 0, 1);
+        l = getNamenode(dfs.getClient()).getBlockLocations(fileName, 0, 1, "");
         Assert.assertNotNull(l.getLocatedBlocks());
         Assert.assertEquals(l.getLocatedBlocks().size(), 1);
         Assert.assertTrue("Expecting " + repCount + " , got " + l.get(0).getLocations().length,
