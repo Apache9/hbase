@@ -496,5 +496,34 @@ public class TestLoadIncrementalHFilesSplitRecovery {
 
     this.assertExpectedTable(tableName, ROWCOUNT, 2);
   }
+
+  @Test
+  public void testCorrectSplitPoint() throws Exception {
+    String tableName = "testCorrectSplitPoint";
+    byte[][] SPLIT_KEYS = new byte[][] { Bytes.toBytes("row_00000010"),
+        Bytes.toBytes("row_00000020"), Bytes.toBytes("row_00000030"), Bytes.toBytes("row_00000040"),
+        Bytes.toBytes("row_00000050"), Bytes.toBytes("row_00000060"),
+        Bytes.toBytes("row_00000070") };
+    setupTableWithSplitkeys(tableName, NUM_CFS, SPLIT_KEYS);
+    HTable table = new HTable(util.getConfiguration(), Bytes.toBytes(tableName));
+
+    final AtomicInteger bulkloadRpcTimes = new AtomicInteger();
+    LoadIncrementalHFiles loader = new LoadIncrementalHFiles(util.getConfiguration()) {
+
+      @Override
+      protected void bulkLoadPhase(final HTable table, final HConnection conn, ExecutorService pool,
+          Deque<LoadQueueItem> queue, final Multimap<ByteBuffer, LoadQueueItem> regionGroups)
+          throws IOException {
+        bulkloadRpcTimes.addAndGet(1);
+        super.bulkLoadPhase(table, conn, pool, queue, regionGroups);
+      }
+    };
+
+    Path dir = buildBulkFiles(tableName, 1);
+    loader.doBulkLoad(dir, table);
+    // before HBASE-25281 we need invoke bulkload rpc 8 times
+    assertEquals(4, bulkloadRpcTimes.get());
+  }
+
 }
 
