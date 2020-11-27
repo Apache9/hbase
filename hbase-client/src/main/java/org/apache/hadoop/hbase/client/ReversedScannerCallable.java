@@ -84,7 +84,7 @@ public class ReversedScannerCallable extends ScannerCallable {
         // the last one which is the previous region of last region scanner
         byte[] locateStartRow = createCloseRowBefore(getRow());
         List<HRegionLocation> locatedRegions = locateRegionsInRange(
-            locateStartRow, row, reload, callTimeout);
+            locateStartRow, row, false, callTimeout);
         if (locatedRegions.isEmpty()) {
           throw new DoNotRetryIOException(
               "Does hbase:meta exist hole? Couldn't get regions for the range from "
