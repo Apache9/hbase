@@ -230,6 +230,7 @@ public final class RequestConverter {
     columnBuilder.setFamily(ByteStringer.wrap(family));
     QualifierValue.Builder valueBuilder = QualifierValue.newBuilder();
     valueBuilder.setValue(ByteStringer.wrap(Bytes.toBytes(amount)));
+    valueBuilder.setTimestamp(HConstants.LATEST_TIMESTAMP);
     valueBuilder.setQualifier(ByteStringer.wrap(qualifier == null ? HConstants.EMPTY_BYTE_ARRAY
         : qualifier));
     columnBuilder.addQualifierValue(valueBuilder.build());
