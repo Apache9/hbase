@@ -156,7 +156,6 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
   @Override
   public void throwable(Throwable t, boolean retrying) {
     if (t instanceof SocketTimeoutException || t instanceof ConnectException ||
-        t instanceof RetriesExhaustedException ||
         (location != null && getConnection().isDeadServer(location.getServerName()))) {
       // if thrown these exceptions, we clear all the cache entries that
       // map to that slow/dead server; otherwise, let cache miss and ask
