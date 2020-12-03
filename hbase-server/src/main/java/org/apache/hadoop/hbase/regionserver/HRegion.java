@@ -2805,6 +2805,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver { // 
         MiniBatchOperationInProgress<Mutation> miniBatchOp =
           new MiniBatchOperationInProgress<Mutation>(batchOp.getMutationsForCoprocs(),
           batchOp.retCodeDetails, batchOp.walEditsFromCoprocessors, firstIndex, lastIndexExclusive);
+
+        //before entry must be readable after relase row lock
+        miniBatchOp.setWriteEntry(w);
         if (coprocessorHost.preBatchMutate(miniBatchOp)) return 0L;
       }
 

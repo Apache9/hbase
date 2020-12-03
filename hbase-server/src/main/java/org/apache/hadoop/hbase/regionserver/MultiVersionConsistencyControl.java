@@ -48,6 +48,10 @@ public class MultiVersionConsistencyControl {
     this.memstoreRead = this.memstoreWrite = 0;
   }
 
+  public LinkedList<WriteEntry> getWriteQueue() {
+    return writeQueue;
+  }
+
   /**
    * Initializes the memstoreRead/Write points appropriately.
    * @param startPoint
@@ -180,7 +184,7 @@ public class MultiVersionConsistencyControl {
     boolean isCompleted() {
       return this.completed;
     }
-    long getWriteNumber() {
+    public long getWriteNumber() {
       return this.writeNumber;
     }
   }
