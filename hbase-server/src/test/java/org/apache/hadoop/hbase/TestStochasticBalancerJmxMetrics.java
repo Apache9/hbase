@@ -97,6 +97,7 @@ public class TestStochasticBalancerJmxMetrics extends BalancerTestBase {
    */
   @Ignore
   @Test
+  @Ignore
   public void testJmxMetrics_EnsembleMode() throws Exception {
     loadBalancer = new StochasticLoadBalancer();
 
@@ -127,6 +128,7 @@ public class TestStochasticBalancerJmxMetrics extends BalancerTestBase {
    */
   @Ignore
   @Test
+  @Ignore
   public void testJmxMetrics_PerTableMode() throws Exception {
     loadBalancer = new StochasticLoadBalancer();
 
