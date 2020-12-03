@@ -37,6 +37,9 @@ public class MiniBatchOperationInProgress<T> {
   private final int firstIndex;
   private final int lastIndexExclusive;
 
+  //write entry should be done before do mini batch
+  private MultiVersionConsistencyControl.WriteEntry writeEntry;
+
   public MiniBatchOperationInProgress(T[] operations, OperationStatus[] retCodeDetails,
       WALEdit[] walEditsFromCoprocessors, int firstIndex, int lastIndexExclusive) {
     this.operations = operations;
@@ -44,6 +47,14 @@ public class MiniBatchOperationInProgress<T> {
     this.walEditsFromCoprocessors = walEditsFromCoprocessors;
     this.firstIndex = firstIndex;
     this.lastIndexExclusive = lastIndexExclusive;
+  }
+
+  public void setWriteEntry(MultiVersionConsistencyControl.WriteEntry writeEntry) {
+    this.writeEntry = writeEntry;
+  }
+
+  public MultiVersionConsistencyControl.WriteEntry getWriteEntry() {
+    return writeEntry;
   }
 
   /**

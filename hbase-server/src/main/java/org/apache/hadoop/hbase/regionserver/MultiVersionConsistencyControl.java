@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.io.IOException;
 import java.util.LinkedList;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -162,6 +163,27 @@ public class MultiVersionConsistencyControl {
     }
     if (interrupted) Thread.currentThread().interrupt();
   }
+
+  /**
+   * Take a example, if the write number of writeEntry is n, the method will
+   * block until the read point is n - 1, that is, the current write option can
+   * see(read) all the data input before this write operation
+   * @param writeEntry Wait WriteEntry that previous to the special entry to be seen
+   */
+  public void waitForPreviousEntry(WriteEntry writeEntry) throws IOException {
+    long currentWriteNumber = writeEntry.getWriteNumber();
+
+    synchronized (readWaiters) {
+      while (memstoreRead + 1 < currentWriteNumber) {
+        try {
+          readWaiters.wait(0);
+        } catch (InterruptedException e) {
+          throw new IOException(e);
+        }
+      }
+    }
+  }
+
 
   public long memstoreReadPoint() {
     return memstoreRead;
