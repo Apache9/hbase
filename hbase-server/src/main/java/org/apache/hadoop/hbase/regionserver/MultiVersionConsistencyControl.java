@@ -48,6 +48,10 @@ public class MultiVersionConsistencyControl {
     this.memstoreRead = this.memstoreWrite = 0;
   }
 
+  public Object getReadWaiters() {
+    return readWaiters;
+  }
+
   /**
    * Initializes the memstoreRead/Write points appropriately.
    * @param startPoint
