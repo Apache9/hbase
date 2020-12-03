@@ -44,6 +44,7 @@ import org.apache.hadoop.net.DNSToSwitchMapping;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.MethodSorters;
@@ -94,6 +95,7 @@ public class TestStochasticBalancerJmxMetrics extends BalancerTestBase {
   /**
    * In Ensemble mode, there should be only one ensemble table
    */
+  @Ignore
   @Test
   public void testJmxMetrics_EnsembleMode() throws Exception {
     loadBalancer = new StochasticLoadBalancer();
@@ -123,6 +125,7 @@ public class TestStochasticBalancerJmxMetrics extends BalancerTestBase {
   /**
    * In per-table mode, each table has a set of metrics
    */
+  @Ignore
   @Test
   public void testJmxMetrics_PerTableMode() throws Exception {
     loadBalancer = new StochasticLoadBalancer();

@@ -24,9 +24,11 @@ import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.BindException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -89,6 +92,9 @@ import org.apache.hadoop.hbase.util.Triple;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+
+import com.xiaomi.infra.hbase.falcon.DetectorFalconPusher;
+import com.xiaomi.infra.hbase.util.MailUtils;
 
 /**
  * HBase Canary Tool, that that can be used to do "canary monitoring" of a running HBase cluster.
@@ -348,6 +354,37 @@ public final class Canary implements Tool {
   private static final String EXCLUDE_TABLE = "hbase.canary.exclude.table";
   private String excludeTableConfig;
   private Set<String> excludeTables = new HashSet<>();
+  private boolean canaryStopRegionServerSwitch = false;
+  private double taskFailureRatioThreshold = CLUSTER_TASK_FAILURE_RATIO_THRESHOLD_DEFAULT;
+  private double clusterFailureByOneRegionServerRatioThreshold =
+      CLUSTER_FAILURE_BY_ONE_REGIONSERVER_RATIO_THRESHOLD_DEFAULT;
+  private double failedTaskRatioPerRegionServerThreshold =
+      FAILED_TASK_RATIO_PER_REGIONSERVER_THRESHOLD_DEFAULT;
+  private double stopRegionserverRatioLimit = STOP_REGIONSERVER_RATIO_LIMIT_DEFAULT;
+  private  int maxMoveRegionTime = MAX_MOVE_REGION_TIME_DEFAULT;
+  private String clusterName;
+
+  private static final String STOP_REGIONSERVER_CLUSTER_SWITCH = "hbase.canary.stop.regionserver.switch";
+  private static final boolean STOP_REGIONSERVER_CLUSTER_SWITCH_DEFAULT = false;
+
+  private static final String CLUSTER_TASK_FAILURE_RATIO_THRESHOLD =
+      "hbase.canary.cluster.task.failure.ratio.threshold";
+  private static final double CLUSTER_TASK_FAILURE_RATIO_THRESHOLD_DEFAULT = 0.005;
+
+  private static final String CLUSTER_FAILURE_BY_ONE_REGIONSERVER_RATIO_THRESHOLD =
+      "hbase.canary.cluster.failure.by.one.regionserver.ratio.threshold";
+  private static final double CLUSTER_FAILURE_BY_ONE_REGIONSERVER_RATIO_THRESHOLD_DEFAULT = 0.9;
+
+  private static final String FAILED_TASK_RATIO_PER_REGIONSERVER_THRESHOLD =
+      "hbase.canary.failed.task.ratio.per.regionserver.threshold";
+  private static final double FAILED_TASK_RATIO_PER_REGIONSERVER_THRESHOLD_DEFAULT = 0.5;
+  private static final String STOP_REGIONSERVER_RATIO_LIMIT = "hbase.canary.stop.regionserver.ratio.limit";
+  private static final double STOP_REGIONSERVER_RATIO_LIMIT_DEFAULT = 0.1;
+  private static final String MAX_MOVE_REGION_TIME = "hbase.canary.max.move.region.time";
+  private static final int MAX_MOVE_REGION_TIME_DEFAULT = (int)TimeUnit.MINUTES.toMillis(3);
+
+  // The stopped servers and the stop time.
+  private Map<ServerName, String> stoppedServers = new ConcurrentHashMap<>();
 
   public static final String CANARY = "canary";
   public static final String CANARY_CONF = "canary_conf";
@@ -383,6 +420,7 @@ public final class Canary implements Tool {
   private ConcurrentMap<ServerName, Integer> totalRequestByServer;
   private ConcurrentMap<TableName, Integer> totalRequestByTable;
   private InfoServer infoServer;
+  private DetectorFalconPusher detectorFalconPusher;
   private int maxTaskCount;
   private int minTaskCount;
   private int fetchTasksPeriod;
@@ -395,6 +433,64 @@ public final class Canary implements Tool {
     this.totalFailuresByTable = new ConcurrentHashMap<>();
     this.totalRequestByServer = new ConcurrentHashMap<>();
     this.totalRequestByTable = new ConcurrentHashMap<>();
+  }
+
+  private Pair<ServerName, String> getMaxFailureRegionServerInfo(
+      Map<ServerName, Integer> totalRequestByServer,
+      Map<ServerName, Integer> totalFailuresByServer) {
+    if (totalFailuresByServer.isEmpty()) {
+      return null;
+    }
+
+    int totalCount = totalRequestByServer.values().stream().mapToInt(i -> i).sum();
+    int totalFailureCount = totalFailuresByServer.values().stream().mapToInt(j -> j).sum();
+    double failedTaskRatio = 1.0 * totalFailureCount / totalCount;
+    if (failedTaskRatio < taskFailureRatioThreshold) {
+      return null;
+    }
+
+    ServerName maxFailureServerName = totalFailuresByServer.entrySet().stream().max(
+        Comparator.comparingInt(Map.Entry::getValue)).get().getKey();
+    int maxFailedCountByServer = totalFailuresByServer.get(maxFailureServerName);
+    double maxClusterFailureByOneRegionServerRatio =
+        1.0 * maxFailedCountByServer / totalFailureCount;
+    if (maxClusterFailureByOneRegionServerRatio < clusterFailureByOneRegionServerRatioThreshold) {
+      return null;
+    }
+
+    double failedTaskRatioPerRegionServer = 1.0 * maxFailedCountByServer /
+        totalRequestByServer.getOrDefault(maxFailureServerName,
+        1);
+    if (failedTaskRatioPerRegionServer < failedTaskRatioPerRegionServerThreshold) {
+      return null;
+    }
+    String detail = "failedTaskRatio=" + failedTaskRatio
+        + ",taskFailureRatioThreshold=" + taskFailureRatioThreshold
+        + ",maxClusterFailureByOneRegionServerRatio=" + maxClusterFailureByOneRegionServerRatio
+        + ",clusterFailureByOneRegionServerRatioThreshold="
+        + clusterFailureByOneRegionServerRatioThreshold
+        + ",failedTaskRatioPerRegionServer=" + failedTaskRatioPerRegionServer
+        + ",failedTaskRatioPerRegionServerThreshold=" + failedTaskRatioPerRegionServerThreshold;
+    return Pair.newPair(maxFailureServerName, detail);
+  }
+
+  private void postStopRegionServer(Pair<ServerName, String> stoppedServerInfo) {
+    ServerName stoppedServerName = stoppedServerInfo.getFirst();
+    DetectorFalconPusher.getInstance(conf, "stop-rs")
+        .resume(stoppedServerName.getHostAndPort());
+    publishToWebUI(stoppedServerName);
+    mailUs(stoppedServerInfo);
+  }
+
+  private void publishToWebUI(ServerName stoppedServerName) {
+    stoppedServers.put(stoppedServerName, LocalDateTime.now().toString());
+  }
+
+  private void mailUs(Pair<ServerName, String> stoppedServerInfo) {
+    MailUtils.sendMail(conf, HConstants.MAIL_TO,
+        "Stop RegionServer=" + stoppedServerInfo.getFirst()
+            + " in cluster=" + clusterName,
+        stoppedServerInfo.getSecond());
   }
 
   @Override
@@ -529,6 +625,10 @@ public final class Canary implements Tool {
         unfinishedTasks.countDown();
       });
     });
+
+    if (canaryStopRegionServerSwitch) {
+      startReportStopRegionServerStatistics();
+    }
     checkOldWalsFilesCount();
     unfinishedTasks.await();
     getReplicationLag();
@@ -543,6 +643,46 @@ public final class Canary implements Tool {
     logFailedServerAndTable();
     if (finishTime < startTime + interval) {
       Thread.sleep(startTime + interval - finishTime);
+    }
+  }
+
+  private void startReportStopRegionServerStatistics() {
+    Pair<ServerName, String> maxFailureServerInfo = getMaxFailureRegionServerInfo(totalRequestByServer,
+        totalFailuresByServer);
+
+    if (Objects.isNull(maxFailureServerInfo)) {
+      return;
+    }
+
+    try {
+      ClusterStatus clusterStatus = admin.getClusterStatus(EnumSet.of(ClusterStatus.Option.SERVERS_NAME,
+          ClusterStatus.Option.DEAD_SERVERS));
+      int deadServerCount = clusterStatus.getDeadServers();
+      int allServerCount = clusterStatus.getServersSize() + deadServerCount;
+      LOG.info("deadServerCount=" + deadServerCount + ",allServerCount=" + allServerCount +
+          ",stopServerRatioLimit=" + stopRegionserverRatioLimit);
+      if (1.0 * deadServerCount / allServerCount < stopRegionserverRatioLimit) {
+        ServerName serverName = maxFailureServerInfo.getFirst();
+        try {
+          List<HRegionInfo> regionInfoList = admin.getOnlineRegions(serverName);
+          for (HRegionInfo region : regionInfoList) {
+            admin.move(region.getEncodedNameAsBytes(), null);
+          }
+          long now = System.currentTimeMillis();
+          while ((now + maxMoveRegionTime > System.currentTimeMillis()) && !admin.getOnlineRegions(serverName).isEmpty()) {
+            Thread.sleep(100);
+          }
+          //todo
+          DetectorFalconPusher.getInstance(conf, "stop-rs").trigger(serverName.getHostAndPort());
+          admin.stopRegionServer(serverName.getHostAndPort());
+          LOG.info("Stop RS=" + serverName + " because of too many failures.");
+          postStopRegionServer(maxFailureServerInfo);
+        } catch (Exception e) {
+          LOG.warn("Failed to stop regionserver " + serverName, e);
+        }
+      }
+    } catch (IOException e) {
+      LOG.warn("Exception when get ClusterStatus", e);
     }
   }
 
@@ -618,6 +758,25 @@ public final class Canary implements Tool {
       excludeTables.add(table);
     }
     checkAllCF = conf.getBoolean(CHECK_ALL_COLUMN_FAMILY, true);
+    canaryStopRegionServerSwitch = conf.getBoolean(STOP_REGIONSERVER_CLUSTER_SWITCH,
+        STOP_REGIONSERVER_CLUSTER_SWITCH_DEFAULT);
+    if (canaryStopRegionServerSwitch) {
+      detectorFalconPusher = DetectorFalconPusher.getInstance(conf, "stop-rs");
+      taskFailureRatioThreshold = conf.getDouble(CLUSTER_TASK_FAILURE_RATIO_THRESHOLD,
+          CLUSTER_TASK_FAILURE_RATIO_THRESHOLD_DEFAULT);
+      clusterFailureByOneRegionServerRatioThreshold = conf.getDouble(
+          CLUSTER_FAILURE_BY_ONE_REGIONSERVER_RATIO_THRESHOLD,
+          CLUSTER_FAILURE_BY_ONE_REGIONSERVER_RATIO_THRESHOLD_DEFAULT);
+      failedTaskRatioPerRegionServerThreshold = conf.getDouble(
+          FAILED_TASK_RATIO_PER_REGIONSERVER_THRESHOLD,
+          FAILED_TASK_RATIO_PER_REGIONSERVER_THRESHOLD_DEFAULT);
+      stopRegionserverRatioLimit = conf.getDouble(STOP_REGIONSERVER_RATIO_LIMIT,
+          STOP_REGIONSERVER_RATIO_LIMIT_DEFAULT);
+      maxMoveRegionTime = conf.getInt(MAX_MOVE_REGION_TIME, MAX_MOVE_REGION_TIME_DEFAULT);
+      clusterName = conf.get(HConstants.CLUSTER_NAME, "");
+    }
+
+
     maxTaskCount = conf.getInt("hbase.canary.task.count.max", 10000);
     maxTaskCount = maxTaskCount > 0 ? maxTaskCount : 10000;
     minTaskCount = conf.getInt("hbase.canary.task.count.min", 1000);
@@ -673,6 +832,10 @@ public final class Canary implements Tool {
     }
     return new Triple<>(totalFailuresByServer.keySet().size(), totalFailuresByTable.keySet().size(),
         failSum);
+  }
+
+  public Map<ServerName, String> getStoppedRegionServers() {
+    return stoppedServers;
   }
 
   public double getReadAvailability() {

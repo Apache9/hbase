@@ -171,6 +171,29 @@ org.apache.hadoop.hbase.util.Triple;
 				</tr>
 			</table>
 		</section>
+		<section>
+			<h2>Stopped RegionServers</h2>
+			<table class="table table-striped">
+			    <tr>
+			        <th> Stopped RegionServer </th>
+			        <th> Stop Time </th>
+			    </tr>
+			    <%java>
+                   Map<ServerName, String> stopRegionServers = canary.getStoppedRegionServers();
+                </%java>
+			    <%for Map.Entry<ServerName, String> entry : stopRegionServers.entrySet() %>
+                <tr>
+                    <td><% entry.getKey() %></td>
+                    <td><% entry.getValue() %></td>
+                </tr>
+                </%for>
+				<tr>
+				    <td>Total Stopped RegionServers:</td>
+				    <td><% stopRegionServers.size() %></td>
+				</tr>
+
+			</table>
+		</section>
 
         <section>
             <h2>Software Attributes</h2>
