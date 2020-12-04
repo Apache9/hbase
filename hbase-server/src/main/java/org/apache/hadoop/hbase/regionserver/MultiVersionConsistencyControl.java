@@ -165,7 +165,9 @@ public class MultiVersionConsistencyControl {
   }
 
   /**
-   *
+   * Take a example, if the write number of writeEntry is n, the method will
+   * block until the read point is n - 1, that is, the current write option can
+   * see(read) all the data input before this write operation
    * @param writeEntry Wait WriteEntry that previous to the special entry to be seen
    */
   public void waitForPreviousEntry(WriteEntry writeEntry) throws IOException {
