@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.io.IOException;
 import java.util.LinkedList;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -46,10 +47,6 @@ public class MultiVersionConsistencyControl {
    */
   public MultiVersionConsistencyControl() {
     this.memstoreRead = this.memstoreWrite = 0;
-  }
-
-  public Object getReadWaiters() {
-    return readWaiters;
   }
 
   /**
@@ -167,6 +164,25 @@ public class MultiVersionConsistencyControl {
     if (interrupted) Thread.currentThread().interrupt();
   }
 
+  /**
+   *
+   * @param writeEntry Wait WriteEntry that previous to the special entry to be seen
+   */
+  public void waitForPreviousEntry(WriteEntry writeEntry) throws IOException {
+    long currentWriteNumber = writeEntry.getWriteNumber();
+
+    synchronized (readWaiters) {
+      while (memstoreRead + 1 < currentWriteNumber) {
+        try {
+          readWaiters.wait(0);
+        } catch (InterruptedException e) {
+          throw new IOException(e);
+        }
+      }
+    }
+  }
+
+
   public long memstoreReadPoint() {
     return memstoreRead;
   }
@@ -184,7 +200,7 @@ public class MultiVersionConsistencyControl {
     boolean isCompleted() {
       return this.completed;
     }
-    public long getWriteNumber() {
+    long getWriteNumber() {
       return this.writeNumber;
     }
   }
