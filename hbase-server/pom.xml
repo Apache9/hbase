@@ -409,8 +409,13 @@
     </dependency>
     <!-- tracing Dependencies -->
     <dependency>
-      <groupId>org.apache.htrace</groupId>
-      <artifactId>htrace-core4</artifactId>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.lmax</groupId>
