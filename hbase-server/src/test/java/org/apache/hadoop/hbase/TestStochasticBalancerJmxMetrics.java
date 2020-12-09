@@ -95,7 +95,6 @@ public class TestStochasticBalancerJmxMetrics extends BalancerTestBase {
   /**
    * In Ensemble mode, there should be only one ensemble table
    */
-  @Ignore
   @Test
   @Ignore
   public void testJmxMetrics_EnsembleMode() throws Exception {
@@ -126,7 +125,6 @@ public class TestStochasticBalancerJmxMetrics extends BalancerTestBase {
   /**
    * In per-table mode, each table has a set of metrics
    */
-  @Ignore
   @Test
   @Ignore
   public void testJmxMetrics_PerTableMode() throws Exception {
