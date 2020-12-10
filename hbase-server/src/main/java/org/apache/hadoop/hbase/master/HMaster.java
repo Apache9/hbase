@@ -155,7 +155,6 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionReque
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BalanceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BalanceResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BulkAssignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BulkAssignRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateNamespaceResponse;
@@ -2649,7 +2648,7 @@ MasterServices, Server {
       cpHost.preDeleteTable(tableName);
     }
     if (snapshotBeforeDelete) {
-      LOG.info("Take snaposhot for " + tableName + " before deleting");
+      LOG.info("Take snapshot for " + tableName + " before deleting");
       snapshotManager
           .takeSnapshot(SnapshotDescriptionUtils.getSnapshotNameForDeletedTable(tableName));
     }
@@ -2885,6 +2884,21 @@ MasterServices, Server {
     sanityCheckTableDescriptor(descriptor);
     if (cpHost != null) {
       cpHost.preModifyTable(tableName, descriptor);
+    }
+    if (snapshotBeforeDelete) {
+      HTableDescriptor oldTableDescriptor = getTableDescriptors().get(tableName);
+      if (oldTableDescriptor != null) {
+        Set<byte[]> oldFamilySet = oldTableDescriptor.getFamiliesKeys();
+        Set<byte[]> newFamilySet = descriptor.getFamiliesKeys();
+        if (!newFamilySet.containsAll(oldFamilySet)) {
+          LOG.info("Take snapshot for " + tableName + " before modifying, old families: "
+              + oldFamilySet.stream().map(f -> Bytes.toStringBinary(f)).collect(Collectors.toSet())
+              + ", new families: " + newFamilySet.stream().map(f -> Bytes.toStringBinary(f))
+                  .collect(Collectors.toSet()));
+          snapshotManager
+              .takeSnapshot(SnapshotDescriptionUtils.getSnapshotNameForDeletedColumn(tableName));
+        }
+      }
     }
     LOG.info(getClientIdAuditPrefix() + " modify " + tableName);
     new ModifyTableHandler(tableName, descriptor, this, this).prepare().process();

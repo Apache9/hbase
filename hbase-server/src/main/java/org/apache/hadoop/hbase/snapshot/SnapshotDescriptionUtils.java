@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.snapshot;
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
-import java.util.Map.Entry;
 
 import com.google.common.collect.ListMultimap;
 import org.apache.commons.logging.Log;
@@ -37,7 +36,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.security.access.AccessControlClient;
 import org.apache.hadoop.hbase.security.access.AccessControlLists;
 import org.apache.hadoop.hbase.security.access.TablePermission;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -136,7 +134,7 @@ public class SnapshotDescriptionUtils {
   public static final String SNAPSHOT_TIMEOUT_MILLIS_KEY = "hbase.snapshot.master.timeoutMillis";
 
   // prefix for snapshot of deleted table
-  public static final String SNAPSHOT_FOR_DELETED_TABLE_PREFIX = "__delete_";
+  public static final String SNAPSHOT_FOR_SOFT_DELETE_PREFIX = "__delete_";
 
   private SnapshotDescriptionUtils() {
     // private constructor for utility class
@@ -265,9 +263,9 @@ public class SnapshotDescriptionUtils {
       throw new IllegalArgumentException(
           "Descriptor doesn't apply to a table, so we can't build it.");
     }
-    if (snapshot.getName().startsWith(SNAPSHOT_FOR_DELETED_TABLE_PREFIX)) {
+    if (snapshot.getName().startsWith(SNAPSHOT_FOR_SOFT_DELETE_PREFIX)) {
       throw new IllegalArgumentException(
-          "The prefix " + SNAPSHOT_FOR_DELETED_TABLE_PREFIX + " should not be used.");
+          "The prefix " + SNAPSHOT_FOR_SOFT_DELETE_PREFIX + " should not be used.");
     }
     // set the creation time, if one hasn't been set
     long time = snapshot.getCreationTime();
@@ -379,15 +377,24 @@ public class SnapshotDescriptionUtils {
 
   public static SnapshotDescription getSnapshotNameForDeletedTable(TableName tableName) {
     long time = EnvironmentEdgeManager.currentTimeMillis();
-    String snapshotName = SNAPSHOT_FOR_DELETED_TABLE_PREFIX + tableName.getNamespaceAsString() +
+    String snapshotName = SNAPSHOT_FOR_SOFT_DELETE_PREFIX + tableName.getNamespaceAsString() +
         "_" + tableName.getQualifierAsString() + "_" + time;
     return SnapshotDescription.newBuilder().setTable(tableName.getNameAsString())
         .setName(snapshotName).setType(SnapshotDescription.Type.DISABLED).setCreationTime(time)
         .build();
   }
 
+  public static SnapshotDescription getSnapshotNameForDeletedColumn(TableName tableName) {
+    long time = EnvironmentEdgeManager.currentTimeMillis();
+    String snapshotName = SNAPSHOT_FOR_SOFT_DELETE_PREFIX + tableName.getNamespaceAsString() + "_"
+        + tableName.getQualifierAsString() + "_" + time;
+    return SnapshotDescription.newBuilder().setTable(tableName.getNameAsString())
+        .setName(snapshotName).setType(SnapshotDescription.Type.FLUSH).setCreationTime(time)
+        .build();
+  }
+
   public static boolean isSnapshotForDeletedTable(SnapshotDescription snapshot) {
-    return snapshot.getName().startsWith(SNAPSHOT_FOR_DELETED_TABLE_PREFIX);
+    return snapshot.getName().startsWith(SNAPSHOT_FOR_SOFT_DELETE_PREFIX);
   }
 
   public static boolean isSecurityAvailable(Configuration conf) throws IOException {

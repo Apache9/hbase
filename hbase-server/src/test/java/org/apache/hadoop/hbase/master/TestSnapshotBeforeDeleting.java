@@ -26,7 +26,9 @@ import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Get;
@@ -52,6 +54,8 @@ public class TestSnapshotBeforeDeleting {
   private static TableName TABLE_NAME = TableName.valueOf("TestSnapshotBeforeDeleting");
 
   private static byte[] FAMILY = Bytes.toBytes("cf");
+  private static byte[] FAMILY2 = Bytes.toBytes("cf2");
+  private static byte[] FAMILY3 = Bytes.toBytes("cf3");
 
   private static byte[] QUALIFIER = Bytes.toBytes("cq");
 
@@ -71,7 +75,7 @@ public class TestSnapshotBeforeDeleting {
   }
 
   @Test
-  public void test() throws IOException, InterruptedException {
+  public void testDeleteTable() throws IOException, InterruptedException {
     int count = 10;
     HTable table = TEST_UTIL.createTable(TABLE_NAME.getName(), FAMILY);
     for (int i = 0; i < count; i++) {
@@ -91,7 +95,7 @@ public class TestSnapshotBeforeDeleting {
     List<SnapshotDescription> snapshots = admin.listSnapshots();
     assertEquals(1, snapshots.size());
     assertTrue(snapshots.get(0).getName()
-        .startsWith(SnapshotDescriptionUtils.SNAPSHOT_FOR_DELETED_TABLE_PREFIX));
+        .startsWith(SnapshotDescriptionUtils.SNAPSHOT_FOR_SOFT_DELETE_PREFIX));
     assertTrue(snapshots.get(0).getName().contains(TABLE_NAME.getNameAsString()));
     admin.cloneSnapshot(snapshots.get(0).getName(), TABLE_NAME);
     // assert that the data is still there
@@ -103,5 +107,40 @@ public class TestSnapshotBeforeDeleting {
     Thread.sleep(25000 - (System.currentTimeMillis() - timeAfterDelete));
     // the expired snapshot should be removed.
     assertTrue(admin.listSnapshots().isEmpty());
+    admin.disableTable(TABLE_NAME);
+    admin.deleteTable(TABLE_NAME);
+    admin.deleteSnapshots(".*");
+  }
+
+  @Test
+  public void testDeleteColumn() throws IOException {
+    int count = 10;
+    HTable table = TEST_UTIL.createTable(TABLE_NAME.getName(), new byte[][]{FAMILY, FAMILY2});
+    for (int i = 0; i < count; i++) {
+      table.put(new Put(Bytes.toBytes(i)).add(FAMILY, QUALIFIER, Bytes.toBytes(i)));
+      table.put(new Put(Bytes.toBytes(i)).add(FAMILY2, QUALIFIER, Bytes.toBytes(i)));
+    }
+    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    // Add a column fa
+    HTableDescriptor htd = admin.getTableDescriptor(TABLE_NAME);
+    htd.addFamily(new HColumnDescriptor(FAMILY3));
+    admin.modifyTable(TABLE_NAME, htd);
+    htd = admin.getTableDescriptor(TABLE_NAME);
+    assertEquals(3, htd.getColumnFamilies().length);
+    assertEquals(0, admin.listSnapshots().size());
+
+    htd = admin.getTableDescriptor(TABLE_NAME);
+    htd.removeFamily(FAMILY2);
+    admin.modifyTable(TABLE_NAME, htd);
+    // we should have a snapshot for the deleted table
+    assertEquals(2, htd.getColumnFamilies().length);
+    List<SnapshotDescription> snapshots = admin.listSnapshots();
+    assertEquals(1, snapshots.size());
+    assertTrue(snapshots.get(0).getName()
+        .startsWith(SnapshotDescriptionUtils.SNAPSHOT_FOR_SOFT_DELETE_PREFIX));
+    assertTrue(snapshots.get(0).getName().contains(TABLE_NAME.getNameAsString()));
+    admin.disableTable(TABLE_NAME);
+    admin.deleteTable(TABLE_NAME);
+    admin.deleteSnapshots(".*");
   }
 }
