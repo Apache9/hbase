@@ -209,6 +209,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
         // when hadoop-1 is used
         continue;
       }
+      fs.setPermission(familyDir, FsPermission.valueOf("-rwxrwxrwx"));
       byte[] family = familyDir.getName().getBytes();
       FileStatus[] hfileStatuses = fs.listStatus(familyDir);
       for (FileStatus hfileStatus : hfileStatuses) {

@@ -26,6 +26,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -83,6 +84,9 @@ public class TestScannerWithBulkload {
     LOG.info("before bulk load");
     bulkload.doBulkLoad(hfilePath, table);
     LOG.info("after bulk load");
+    Assert.assertTrue(hfilePath.getFileSystem(TEST_UTIL.getConfiguration())
+        .getFileStatus(new Path("/temp/testBulkLoad/col")).getPermission().getOtherAction()
+        .implies(FsAction.ALL));
     ResultScanner scanner = table.getScanner(scan);
     Result result = scanner.next();
     result = scanAfterBulkLoad(scanner, result, "version1");
