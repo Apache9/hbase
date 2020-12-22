@@ -2013,4 +2013,14 @@ possible configurations would overwhelm and obscure the important.
       the ring buffer is indicated by config: hbase.master.balancer.decision.queue.size
     </description>
   </property>
+  <property>
+    <name>hbase.trace.enabled</name>
+    <value>false</value>
+    <description>
+      Whether to enable trace for hbase cluster. Notice that this is only for standalone hbase
+      processes, if you use hbase-client in your own application, set this to true will not enable
+      trace. You should set the global OpenTelemetrySdk by your own and hbae-client will use it
+      automatically
+    </description>
+  </property>
 </configuration>

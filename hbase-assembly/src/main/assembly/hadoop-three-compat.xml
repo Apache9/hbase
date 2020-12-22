@@ -140,6 +140,24 @@
         </dependencySets>
       </binaries>
     </moduleSet>
+    <!-- Include trace in their own directory -->
+    <moduleSet>
+      <useAllReactorProjects>true</useAllReactorProjects>
+      <includes>
+        <include>org.apache.hbase:hbase-trace-config</include>
+      </includes>
+      <binaries>
+        <outputDirectory>lib/trace</outputDirectory>
+        <unpack>false</unpack>
+        <dependencySets>
+          <dependencySet>
+            <includes>
+              <include>org.apache.hbase:hbase-trace-config</include>
+            </includes>
+          </dependencySet>
+        </dependencySets>
+      </binaries>
+    </moduleSet>
   </moduleSets>
   <!-- Include the generated LICENSE and NOTICE files -->
   <files>

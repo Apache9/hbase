@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -146,7 +147,10 @@ public abstract class ServerCommandLine extends Configured implements Tool {
    */
   public void doMain(String args[]) {
     try {
-      int ret = ToolRunner.run(HBaseConfiguration.create(), this, args);
+      Configuration conf = HBaseConfiguration.create();
+      // try enable tracing, it is just a no op if trace is not enabled
+      TraceUtil.initialize(conf);
+      int ret = ToolRunner.run(conf, this, args);
       if (ret != 0) {
         System.exit(ret);
       }

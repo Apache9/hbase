@@ -309,6 +309,10 @@ for f in "${HBASE_HOME}"/lib/client-facing-thirdparty/*.jar; do
   fi
 done
 
+for f in "${HBASE_HOME}"/lib/trace/*.jar; do
+  CLASSPATH="${CLASSPATH}:${f}"
+done
+
 # default log directory & file
 if [ "$HBASE_LOG_DIR" = "" ]; then
   HBASE_LOG_DIR="$HBASE_HOME/logs"

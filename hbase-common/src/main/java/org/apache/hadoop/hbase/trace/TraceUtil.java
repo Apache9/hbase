@@ -19,6 +19,8 @@ package org.apache.hadoop.hbase.trace;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
+import java.util.ServiceLoader;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.yetus.audience.InterfaceAudience;
 
 @InterfaceAudience.Private
@@ -31,5 +33,12 @@ public final class TraceUtil {
 
   public static Tracer getGlobalTracer() {
     return GlobalOpenTelemetry.getTracer(INSTRUMENTATION_NAME);
+  }
+
+  public static void initialize(Configuration conf) {
+    ServiceLoader<HBaseTraceInitializer> loader = ServiceLoader.load(HBaseTraceInitializer.class);
+    for (HBaseTraceInitializer initializer: loader) {
+      initializer.init(conf);
+    }
   }
 }
