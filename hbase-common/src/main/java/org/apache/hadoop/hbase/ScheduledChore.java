@@ -60,7 +60,7 @@ public abstract class ScheduledChore implements Runnable {
    * Interface to the ChoreService that this ScheduledChore is scheduled with. null if the chore is
    * not scheduled.
    */
-  private ChoreServicer choreServicer;
+  private ChoreService choreService;
 
   /**
    * Variables that encapsulate the meaningful state information
@@ -76,39 +76,6 @@ public abstract class ScheduledChore implements Runnable {
    * command can cause many chores to stop together.
    */
   private final Stoppable stopper;
-
-  interface ChoreServicer {
-    /**
-     * Cancel any ongoing schedules that this chore has with the implementer of this interface.
-     */
-    public void cancelChore(ScheduledChore chore);
-    public void cancelChore(ScheduledChore chore, boolean mayInterruptIfRunning);
-
-    /**
-     * @return true when the chore is scheduled with the implementer of this interface
-     */
-    public boolean isChoreScheduled(ScheduledChore chore);
-
-    /**
-     * This method tries to execute the chore immediately. If the chore is executing at the time of
-     * this call, the chore will begin another execution as soon as the current execution finishes
-     * <p>
-     * If the chore is not scheduled with a ChoreService, this call will fail.
-     * @return false when the chore could not be triggered immediately
-     */
-    public boolean triggerNow(ScheduledChore chore);
-
-    /**
-     * A callback that tells the implementer of this interface that one of the scheduled chores is
-     * missing its start time. The implication of a chore missing its start time is that the
-     * service's current means of scheduling may not be sufficient to handle the number of ongoing
-     * chores (the other explanation is that the chore's execution time is greater than its
-     * scheduled period). The service should try to increase its concurrency when this callback is
-     * received.
-     * @param chore The chore that missed its start time
-     */
-    public void onChoreMissedStartTime(ScheduledChore chore);
-  }
 
   /**
    * This constructor is for test only. It allows us to create an object and to call chore() on it.
@@ -169,7 +136,6 @@ public abstract class ScheduledChore implements Runnable {
       LOG.info("Chore: {} missed its start time", getName());
     } else if (stopper.isStopped() || !isScheduled()) {
       cancel(false);
-      cleanup();
       LOG.info("Chore: {} was stopped", getName());
     } else {
       try {
@@ -193,7 +159,6 @@ public abstract class ScheduledChore implements Runnable {
         LOG.error("Caught error", t);
         if (this.stopper.isStopped()) {
           cancel(false);
-          cleanup();
         }
       }
     }
@@ -214,7 +179,9 @@ public abstract class ScheduledChore implements Runnable {
    * pool threads
    */
   private synchronized void onChoreMissedStartTime() {
-    if (choreServicer != null) choreServicer.onChoreMissedStartTime(this);
+    if (choreService != null) {
+      choreService.onChoreMissedStartTime(this);
+    }
   }
 
   /**
@@ -253,20 +220,15 @@ public abstract class ScheduledChore implements Runnable {
    * @return false when the Chore is not currently scheduled with a ChoreService
    */
   public synchronized boolean triggerNow() {
-    if (choreServicer != null) {
-      return choreServicer.triggerNow(this);
+    if (choreService != null) {
+      return choreService.triggerNow(this);
     } else {
       return false;
     }
   }
 
-  synchronized void setChoreServicer(ChoreServicer service) {
-    // Chores should only ever be scheduled with a single ChoreService. If the choreServicer
-    // is changing, cancel any existing schedules of this chore.
-    if (choreServicer != null && choreServicer != service) {
-      choreServicer.cancelChore(this, false);
-    }
-    choreServicer = service;
+  synchronized void setChoreService(ChoreService service) {
+    choreService = service;
     timeOfThisRun = -1;
   }
 
@@ -275,9 +237,11 @@ public abstract class ScheduledChore implements Runnable {
   }
 
   public synchronized void cancel(boolean mayInterruptIfRunning) {
-    if (isScheduled()) choreServicer.cancelChore(this, mayInterruptIfRunning);
-
-    choreServicer = null;
+    if (isScheduled()) {
+      choreService.cancelChore(this, mayInterruptIfRunning);
+    }
+    cleanup();
+    choreService = null;
   }
 
   public String getName() {
@@ -310,17 +274,14 @@ public abstract class ScheduledChore implements Runnable {
     return initialChoreComplete;
   }
 
-  @InterfaceAudience.Private
-  synchronized ChoreServicer getChoreServicer() {
-    return choreServicer;
+  synchronized ChoreService getChoreService() {
+    return choreService;
   }
 
-  @InterfaceAudience.Private
   synchronized long getTimeOfLastRun() {
     return timeOfLastRun;
   }
 
-  @InterfaceAudience.Private
   synchronized long getTimeOfThisRun() {
     return timeOfThisRun;
   }
@@ -329,7 +290,7 @@ public abstract class ScheduledChore implements Runnable {
    * @return true when this Chore is scheduled with a ChoreService
    */
   public synchronized boolean isScheduled() {
-    return choreServicer != null && choreServicer.isChoreScheduled(this);
+    return choreService != null && choreService.isChoreScheduled(this);
   }
 
   @InterfaceAudience.Private

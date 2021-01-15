@@ -1528,25 +1528,22 @@ public class HMaster extends HRegionServer implements MasterServices {
   }
 
   private void stopChores() {
-    ChoreService choreService = getChoreService();
-    if (choreService != null) {
-      choreService.cancelChore(this.mobFileCleanerChore);
-      choreService.cancelChore(this.mobFileCompactionChore);
-      choreService.cancelChore(this.balancerChore);
-      if (regionNormalizerManager != null) {
-        choreService.cancelChore(regionNormalizerManager.getRegionNormalizerChore());
-      }
-      choreService.cancelChore(this.clusterStatusChore);
-      choreService.cancelChore(this.catalogJanitorChore);
-      choreService.cancelChore(this.clusterStatusPublisherChore);
-      choreService.cancelChore(this.snapshotQuotaChore);
-      choreService.cancelChore(this.logCleaner);
-      choreService.cancelChore(this.hfileCleaner);
-      choreService.cancelChore(this.replicationBarrierCleaner);
-      choreService.cancelChore(this.snapshotCleanerChore);
-      choreService.cancelChore(this.hbckChore);
-      choreService.cancelChore(this.regionsRecoveryChore);
+    this.mobFileCleanerChore.cancel();
+    this.mobFileCompactionChore.cancel();
+    this.balancerChore.cancel();
+    if (regionNormalizerManager != null) {
+      regionNormalizerManager.getRegionNormalizerChore().cancel();
     }
+    this.clusterStatusChore.cancel();
+    this.catalogJanitorChore.cancel();
+    this.clusterStatusPublisherChore.cancel();
+    this.snapshotQuotaChore.cancel();
+    this.logCleaner.cancel();
+    this.hfileCleaner.cancel();
+    this.replicationBarrierCleaner.cancel();
+    this.snapshotCleanerChore.cancel();
+    this.hbckChore.cancel();
+    this.regionsRecoveryChore.cancel();
   }
 
   /**
