@@ -2649,14 +2649,14 @@ public class HRegionServer extends Thread implements
   protected void stopServiceThreads() {
     // clean up the scheduled chores
     if (this.choreService != null) {
-      choreService.cancelChore(nonceManagerChore);
-      choreService.cancelChore(compactionChecker);
-      choreService.cancelChore(periodicFlusher);
-      choreService.cancelChore(healthCheckChore);
-      choreService.cancelChore(executorStatusChore);
-      choreService.cancelChore(storefileRefresher);
-      choreService.cancelChore(fsUtilizationChore);
-      choreService.cancelChore(slowLogTableOpsChore);
+      nonceManagerChore.cancel();
+      compactionChecker.cancel();
+      periodicFlusher.cancel();
+      healthCheckChore.cancel();
+      executorStatusChore.cancel();
+      storefileRefresher.cancel();
+      fsUtilizationChore.cancel();
+      slowLogTableOpsChore.cancel();
       // clean up the remaining scheduled chores (in case we missed out any)
       choreService.shutdown();
     }

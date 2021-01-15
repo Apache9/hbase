@@ -36,6 +36,7 @@ public class RegionsRecoveryConfigManager implements ConfigurationObserver {
   private static final Logger LOG = LoggerFactory.getLogger(RegionsRecoveryConfigManager.class);
 
   private final HMaster hMaster;
+  private RegionsRecoveryChore chore;
   private int prevMaxStoreFileRefCount;
   private int prevRegionsRecoveryInterval;
 
@@ -69,16 +70,15 @@ public class RegionsRecoveryConfigManager implements ConfigurationObserver {
 
     // Regions Reopen based on very high storeFileRefCount is considered enabled
     // only if hbase.regions.recovery.store.file.ref.count has value > 0
-
     synchronized (this) {
+      if (chore != null) {
+        chore.cancel();
+        chore = null;
+      }
       if (newMaxStoreFileRefCount > 0) {
-        // reschedule the chore
-        // provide mayInterruptIfRunning - false to take care of completion
-        // of in progress task if any
-        choreService.cancelChore(regionsRecoveryChore, false);
+        // schedule the new chore
         choreService.scheduleChore(regionsRecoveryChore);
-      } else {
-        choreService.cancelChore(regionsRecoveryChore, false);
+        chore = regionsRecoveryChore;
       }
       this.prevMaxStoreFileRefCount = newMaxStoreFileRefCount;
       this.prevRegionsRecoveryInterval = newRegionsRecoveryInterval;

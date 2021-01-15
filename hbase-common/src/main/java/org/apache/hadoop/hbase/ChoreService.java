@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase;
 
+import com.google.errorprone.annotations.RestrictedApi;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -26,8 +27,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.hadoop.hbase.ScheduledChore.ChoreServicer;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +51,7 @@ import org.slf4j.LoggerFactory;
  * Calling this method ensures that all scheduled chores are cancelled and cleaned up properly.
  */
 @InterfaceAudience.Public
-public class ChoreService implements ChoreServicer {
+public class ChoreService {
   private static final Logger LOG = LoggerFactory.getLogger(ChoreService.class);
 
   /**
@@ -147,12 +146,22 @@ public class ChoreService implements ChoreServicer {
     }
 
     try {
+      // Chores should only ever be scheduled with a single ChoreService. If the choreService
+      // is changing, cancel any existing schedules of this chore.
+      if (chore.getChoreService() == this) {
+        LOG.warn("Chore {} has already been scheduled with us", chore);
+        return false;
+      }
       if (chore.getPeriod() <= 0) {
         LOG.info("Chore {} is disabled because its period is not positive.", chore);
         return false;
       }
       LOG.info("Chore {} is enabled.", chore);
-      chore.setChoreServicer(this);
+      if (chore.getChoreService() != null) {
+        LOG.info("Cancel chore {} from its previous service", chore);
+        chore.getChoreService().cancelChore(chore);
+      }
+      chore.setChoreService(this);
       ScheduledFuture<?> future =
           scheduler.scheduleAtFixedRate(chore, chore.getInitialDelay(), chore.getPeriod(),
             chore.getTimeUnit());
@@ -178,15 +187,29 @@ public class ChoreService implements ChoreServicer {
     scheduleChore(chore);
   }
 
-  @InterfaceAudience.Private
-  @Override
-  public synchronized void cancelChore(ScheduledChore chore) {
+  /**
+   * Cancel any ongoing schedules that this chore has with the implementer of this interface.
+   * <p/>
+   * Call {@link ScheduledChore#cancel()} to cancel a {@link ScheduledChore}, in
+   * {@link ScheduledChore#cancel()} method we will call this method to remove the
+   * {@link ScheduledChore} from this {@link ChoreService}.
+   */
+  @RestrictedApi(explanation = "Should only be called in ScheduledChore", link = "",
+    allowedOnPath = ".*/org/apache/hadoop/hbase/(ScheduledChore|ChoreService).java")
+  synchronized void cancelChore(ScheduledChore chore) {
     cancelChore(chore, true);
   }
 
-  @InterfaceAudience.Private
-  @Override
-  public synchronized void cancelChore(ScheduledChore chore, boolean mayInterruptIfRunning) {
+  /**
+   * Cancel any ongoing schedules that this chore has with the implementer of this interface.
+   * <p/>
+   * Call {@link ScheduledChore#cancel(boolean)} to cancel a {@link ScheduledChore}, in
+   * {@link ScheduledChore#cancel(boolean)} method we will call this method to remove the
+   * {@link ScheduledChore} from this {@link ChoreService}.
+   */
+  @RestrictedApi(explanation = "Should only be called in ScheduledChore", link = "",
+    allowedOnPath = ".*/org/apache/hadoop/hbase/(ScheduledChore|ChoreService).java")
+  synchronized void cancelChore(ScheduledChore chore, boolean mayInterruptIfRunning) {
     if (chore != null && scheduledChores.containsKey(chore)) {
       ScheduledFuture<?> future = scheduledChores.get(chore);
       future.cancel(mayInterruptIfRunning);
@@ -201,16 +224,25 @@ public class ChoreService implements ChoreServicer {
     }
   }
 
+  /**
+   * @return true when the chore is scheduled with the implementer of this interface
+   */
   @InterfaceAudience.Private
-  @Override
   public synchronized boolean isChoreScheduled(ScheduledChore chore) {
     return chore != null && scheduledChores.containsKey(chore)
         && !scheduledChores.get(chore).isDone();
   }
 
-  @InterfaceAudience.Private
-  @Override
-  public synchronized boolean triggerNow(ScheduledChore chore) {
+  /**
+   * This method tries to execute the chore immediately. If the chore is executing at the time of
+   * this call, the chore will begin another execution as soon as the current execution finishes
+   * <p/>
+   * If the chore is not scheduled with a ChoreService, this call will fail.
+   * @return false when the chore could not be triggered immediately
+   */
+  @RestrictedApi(explanation = "Should only be called in ScheduledChore", link = "",
+    allowedOnPath = ".*/org/apache/hadoop/hbase/ScheduledChore.java")
+  synchronized boolean triggerNow(ScheduledChore chore) {
     if (chore != null) {
       rescheduleChore(chore);
       return true;
@@ -295,10 +327,18 @@ public class ChoreService implements ChoreServicer {
     }
   }
 
-  @InterfaceAudience.Private
-  @Override
-  public synchronized void onChoreMissedStartTime(ScheduledChore chore) {
-    if (chore == null || !scheduledChores.containsKey(chore)) return;
+  /**
+   * A callback that tells the implementer of this interface that one of the scheduled chores is
+   * missing its start time. The implication of a chore missing its start time is that the service's
+   * current means of scheduling may not be sufficient to handle the number of ongoing chores (the
+   * other explanation is that the chore's execution time is greater than its scheduled period). The
+   * service should try to increase its concurrency when this callback is received.
+   * @param chore The chore that missed its start time
+   */
+  synchronized void onChoreMissedStartTime(ScheduledChore chore) {
+    if (chore == null || !scheduledChores.containsKey(chore)) {
+      return;
+    }
 
     // If the chore has not caused an increase in the size of the core thread pool then request an
     // increase. This allows each chore missing its start time to increase the core pool size by

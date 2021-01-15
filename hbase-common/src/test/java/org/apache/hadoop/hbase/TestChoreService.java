@@ -678,27 +678,27 @@ public class TestChoreService {
       assertFalse(chore.isScheduled());
       assertFalse(service1.isChoreScheduled(chore));
       assertFalse(service2.isChoreScheduled(chore));
-      assertTrue(chore.getChoreServicer() == null);
+      assertTrue(chore.getChoreService() == null);
 
       service1.scheduleChore(chore);
       Thread.sleep(sleepTime);
       assertTrue(chore.isScheduled());
       assertTrue(service1.isChoreScheduled(chore));
       assertFalse(service2.isChoreScheduled(chore));
-      assertFalse(chore.getChoreServicer() == null);
+      assertFalse(chore.getChoreService() == null);
 
       service2.scheduleChore(chore);
       Thread.sleep(sleepTime);
       assertTrue(chore.isScheduled());
       assertFalse(service1.isChoreScheduled(chore));
       assertTrue(service2.isChoreScheduled(chore));
-      assertFalse(chore.getChoreServicer() == null);
+      assertFalse(chore.getChoreService() == null);
 
       chore.cancel();
       assertFalse(chore.isScheduled());
       assertFalse(service1.isChoreScheduled(chore));
       assertFalse(service2.isChoreScheduled(chore));
-      assertTrue(chore.getChoreServicer() == null);
+      assertTrue(chore.getChoreService() == null);
     } finally {
       shutdownService(service1);
       shutdownService(service2);
