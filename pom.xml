@@ -1013,12 +1013,12 @@
     <thrift.version>0.12.0</thrift.version>
     <shaded-thrift.version>2.0.2</shaded-thrift.version>
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
-    <hadoop-mdh.version>2.6.0-mdh3.12.34-jre8</hadoop-mdh.version>
+    <hadoop-mdh.version>2.6.0-mdh3.12.35-jre8</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
     <minikdc.version>${hadoop-mdh.version}</minikdc.version>
     <keycenter.version>2.1.10</keycenter.version>
     <rrd-on-hbase.version>1.0.11</rrd-on-hbase.version>
-    <galaxy-sds-core.version>2.5.18</galaxy-sds-core.version>
+    <galaxy-sds-core.version>2.5.28</galaxy-sds-core.version>
     <themis-coprocessor.version>2.4.2</themis-coprocessor.version>
     <slf4j.version>1.7.25</slf4j.version>
     <hadoop-snappy.version>0.0.1-SNAPSHOT</hadoop-snappy.version>
