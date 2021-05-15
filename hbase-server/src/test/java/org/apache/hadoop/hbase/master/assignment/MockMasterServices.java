@@ -148,7 +148,8 @@ public class MockMasterServices extends MockNoopMasterServices {
     this.assignmentManager.start();
     for (int i = 0; i < numServes; ++i) {
       ServerName sn = ServerName.valueOf("localhost", 100 + i, 1);
-      serverManager.regionServerReport(sn, ServerMetricsBuilder.of(sn));
+      serverManager.regionServerReport(sn, ServerMetricsBuilder.newBuilder(sn)
+        .setLastReportTimestamp(System.currentTimeMillis()).build());
     }
     this.procedureExecutor.getEnvironment().setEventReady(initialized, true);
   }
