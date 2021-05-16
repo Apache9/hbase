@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.master.procedure.ServerCrashProcedure;
 import org.apache.hadoop.hbase.net.Address;
+import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.RSGroupTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -262,15 +263,15 @@ public class TestRSGroupsKillRS extends TestRSGroupsBase {
     assertTrue(majorVersion >= 1);
     String lowerVersion = String.valueOf(majorVersion - 1) + originVersion.split("\\.")[1];
     setFinalStatic(Version.class.getField("version"), lowerVersion);
-    TEST_UTIL.getMiniHBaseCluster().startRegionServer(address.getHostname(), address.getPort());
+    TEST_UTIL.getMiniHBaseCluster().startRegionServer(address.getHostName(), address.getPort());
     assertEquals(NUM_SLAVES_BASE,
       TEST_UTIL.getMiniHBaseCluster().getLiveRegionServerThreads().size());
     assertTrue(VersionInfo.compareVersion(originVersion,
       MASTER.getRegionServerVersion(getServerName(servers.iterator().next()))) > 0);
     LOG.debug("wait for META assigned...");
     // SCP finished, which means all regions assigned too.
-    TEST_UTIL.waitFor(60000, () -> !TEST_UTIL.getHBaseCluster().getMaster().getProcedures().stream()
-        .filter(p -> (p instanceof ServerCrashProcedure)).findAny().isPresent());
+    TEST_UTIL.waitFor(60000, () -> TEST_UTIL.getHBaseCluster().getMaster().getProcedures().stream()
+      .filter(p -> (p instanceof ServerCrashProcedure)).allMatch(Procedure::isFinished));
   }
 
   private static void setFinalStatic(Field field, Object newValue) throws Exception {

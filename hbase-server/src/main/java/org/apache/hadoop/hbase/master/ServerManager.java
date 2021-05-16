@@ -971,6 +971,8 @@ public class ServerManager {
         // this server for region assignment. This is an optimization to avoid assigning regions to
         // an uninitialized server. See HBASE-25032 for more details.
         destServers.add(sn);
+      } else {
+        LOG.warn("==========filter out {}", sn);
       }
     });
 

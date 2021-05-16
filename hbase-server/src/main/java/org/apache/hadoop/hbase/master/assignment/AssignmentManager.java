@@ -2139,7 +2139,7 @@ public class AssignmentManager {
         hris.add(regionStateNode.getRegionInfo());
       }
     }
-
+    LOG.debug("=======retainMap {}", retainMap);
     // TODO: connect with the listener to invalidate the cache
 
     // TODO use events
@@ -2164,6 +2164,7 @@ public class AssignmentManager {
       final List<ServerName> excludeServers = getExcludedServersForSystemTable();
       List<ServerName> serversForSysTables = servers.stream()
           .filter(s -> !excludeServers.contains(s)).collect(Collectors.toList());
+      LOG.info("=============={} => {}, {}", excludeServers, serversForSysTables, servers);
       if (serversForSysTables.isEmpty()) {
         LOG.warn("Filtering old server versions and the excluded produced an empty set; " +
             "instead considering all candidate servers!");
@@ -2243,6 +2244,7 @@ public class AssignmentManager {
         final RegionStateNode regionNode = regions.get(hri);
         regionNode.setRegionLocation(server);
         if (server.equals(LoadBalancer.BOGUS_SERVER_NAME) && regionNode.isSystemTable()) {
+          LOG.debug("==============add back {}", regionNode.toDescriptiveString());
           assignQueueLock.lock();
           try {
             pendingAssignQueue.add(regionNode);
@@ -2250,6 +2252,9 @@ public class AssignmentManager {
             assignQueueLock.unlock();
           }
         }else {
+          if (regionNode.isSystemTable()) {
+            LOG.debug("========assigned {}", regionNode.toDescriptiveString(), new Exception());
+          }
           events[evcount++] = regionNode.getProcedureEvent();
         }
       }

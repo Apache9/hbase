@@ -182,6 +182,7 @@ public class RSGroupBasedLoadBalancer implements LoadBalancer {
       Map<ServerName, List<RegionInfo>> assignments = new TreeMap<>();
       List<Pair<List<RegionInfo>, List<ServerName>>> pairs =
           generateGroupAssignments(Lists.newArrayList(regions.keySet()), servers);
+      LOG.debug("===========pairs {}, {}, {}", pairs, regions, servers);
       for (Pair<List<RegionInfo>, List<ServerName>> pair : pairs) {
         List<RegionInfo> regionList = pair.getFirst();
         Map<RegionInfo, ServerName> currentAssignmentMap = Maps.newTreeMap();
