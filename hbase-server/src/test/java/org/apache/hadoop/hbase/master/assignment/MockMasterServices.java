@@ -175,7 +175,8 @@ public class MockMasterServices extends MockNoopMasterServices {
       return;
     }
     ServerName sn = ServerName.valueOf(serverName.getAddress().toString(), startCode);
-    serverManager.regionServerReport(sn, ServerMetricsBuilder.of(sn));
+    serverManager.regionServerReport(sn, ServerMetricsBuilder.newBuilder(sn)
+      .setLastReportTimestamp(System.currentTimeMillis()).build());
   }
 
   @Override
