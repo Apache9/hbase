@@ -29,36 +29,48 @@ abstract class CostFromRegionLoadFunction extends CostFunction {
 
   private double[] stats;
 
+  private double cost;
+
+  private double computeCostForRegionServer(int regionServerIndex) {
+    // Cost this server has from RegionLoad
+    double cost = 0;
+
+    // for every region on this server get the rl
+    for (int regionIndex : cluster.regionsPerServer[regionServerIndex]) {
+      Collection<BalancerRegionLoad> regionLoadList = cluster.regionLoads[regionIndex];
+
+      // Now if we found a region load get the type of cost that was requested.
+      if (regionLoadList != null) {
+        cost += getRegionLoadCost(regionLoadList);
+      }
+    }
+    return cost;
+  }
+
   @Override
   void prepare(BalancerClusterState cluster) {
     super.prepare(cluster);
     if (stats == null || stats.length != cluster.numServers) {
       stats = new double[cluster.numServers];
     }
+    for (int i = 0; i < stats.length; i++) {
+      stats[i] = computeCostForRegionServer(i);
+    }
+    // Now return the scaled cost from data held in the stats object.
+    this.cost = costFromArray(stats);
+  }
+
+  @Override
+  protected void regionMoved(int region, int oldServer, int newServer) {
+    // recompute the stat for the given two region servers
+    stats[oldServer] = computeCostForRegionServer(oldServer);
+    stats[newServer] = computeCostForRegionServer(newServer);
+    this.cost = costFromArray(stats);
   }
 
   @Override
   protected final double cost() {
-    for (int i = 0; i < stats.length; i++) {
-      // Cost this server has from RegionLoad
-      double cost = 0;
-
-      // for every region on this server get the rl
-      for (int regionIndex : cluster.regionsPerServer[i]) {
-        Collection<BalancerRegionLoad> regionLoadList = cluster.regionLoads[regionIndex];
-
-        // Now if we found a region load get the type of cost that was requested.
-        if (regionLoadList != null) {
-          cost += getRegionLoadCost(regionLoadList);
-        }
-      }
-
-      // Add the total cost to the stats.
-      stats[i] = cost;
-    }
-
-    // Now return the scaled cost from data held in the stats object.
-    return costFromArray(stats);
+    return cost;
   }
 
   protected double getRegionLoadCost(Collection<BalancerRegionLoad> regionLoadList) {
