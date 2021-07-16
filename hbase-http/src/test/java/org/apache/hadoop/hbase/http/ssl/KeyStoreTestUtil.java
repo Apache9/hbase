@@ -43,7 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.security.auth.x500.X500Principal;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseCommonTestingUtility;
+import org.apache.hadoop.hbase.testing.HBaseCommonTestingUtility;
 import org.apache.hadoop.security.ssl.FileBasedKeyStoresFactory;
 import org.apache.hadoop.security.ssl.SSLFactory;
 import org.bouncycastle.x509.X509V1CertificateGenerator;

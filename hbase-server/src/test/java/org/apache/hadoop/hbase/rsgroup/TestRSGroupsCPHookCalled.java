@@ -20,11 +20,11 @@ package org.apache.hadoop.hbase.rsgroup;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.RSGroupTests;
+import org.apache.hadoop.hbase.testing.MiniHBaseCluster;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

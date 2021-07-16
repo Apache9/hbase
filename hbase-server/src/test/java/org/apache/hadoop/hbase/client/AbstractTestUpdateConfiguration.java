@@ -22,7 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
 
 /**

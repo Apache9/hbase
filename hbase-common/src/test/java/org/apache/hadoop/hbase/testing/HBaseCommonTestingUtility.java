@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase;
+package org.apache.hadoop.hbase.testing;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +30,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.Waiter.Predicate;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -38,9 +41,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Common helpers for testing HBase that do not depend on specific server/etc. things.
- * @see org.apache.hadoop.hbase.HBaseCommonTestingUtility
+ * @see org.apache.hadoop.hbase.testing.HBaseCommonTestingUtility
  */
-@InterfaceAudience.Public
+@InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.PHOENIX) 
 public class HBaseCommonTestingUtility {
   protected static final Logger LOG = LoggerFactory.getLogger(HBaseCommonTestingUtility.class);
 
@@ -197,7 +200,7 @@ public class HBaseCommonTestingUtility {
    * @param subdir Test subdir name.
    * @return True if we removed the test dir
    */
-  boolean cleanupTestDir(final String subdir) {
+  public boolean cleanupTestDir(final String subdir) {
     if (this.dataTestDir == null) {
       return false;
     }

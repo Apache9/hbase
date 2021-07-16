@@ -19,9 +19,9 @@ package org.apache.hadoop.hbase.master.assignment;
 
 import static org.junit.Assert.fail;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;

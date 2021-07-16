@@ -20,10 +20,10 @@ package org.apache.hadoop.hbase.master;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;

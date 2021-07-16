@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.testing;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hbase.StartMiniClusterOption;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**

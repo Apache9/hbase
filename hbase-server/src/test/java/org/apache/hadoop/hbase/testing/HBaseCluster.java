@@ -15,12 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase;
+package org.apache.hadoop.hbase.testing;
 
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.ClusterMetrics;
+import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Threads;
@@ -52,7 +56,7 @@ import org.slf4j.LoggerFactory;
  * In that sense, this class does not abstract away <strong>every</strong> interface that
  * MiniHBaseCluster or DistributedHBaseCluster provide.
  */
-@InterfaceAudience.Public
+@InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.PHOENIX)
 public abstract class HBaseCluster implements Closeable, Configurable {
   // Log is being used in DistributedHBaseCluster class, hence keeping it as package scope
   static final Logger LOG = LoggerFactory.getLogger(HBaseCluster.class.getName());

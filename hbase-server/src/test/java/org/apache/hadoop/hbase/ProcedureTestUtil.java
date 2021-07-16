@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Optional;
 import org.apache.hadoop.hbase.procedure2.Procedure;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

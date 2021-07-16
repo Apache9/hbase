@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase;
 
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.testing.HBaseCluster;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.apache.hadoop.util.ReflectionUtils;
 
 /**

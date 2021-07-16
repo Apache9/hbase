@@ -30,6 +30,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.testing.HBaseCommonTestingUtility;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.ClassRule;

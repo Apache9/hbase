@@ -17,10 +17,10 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import static org.apache.hadoop.hbase.HBaseTestingUtility.countRows;
 import static org.apache.hadoop.hbase.replication.TestReplicationBase.NB_RETRIES;
 import static org.apache.hadoop.hbase.replication.TestReplicationBase.SLEEP_TIME;
 import static org.apache.hadoop.hbase.replication.TestReplicationBase.row;
+import static org.apache.hadoop.hbase.testing.HBaseTestingUtility.countRows;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;

@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.access.AccessController;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;

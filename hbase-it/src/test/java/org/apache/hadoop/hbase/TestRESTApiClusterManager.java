@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ClusterManager.ServiceType;
 import org.apache.hadoop.hbase.RESTApiClusterManager.Service;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.testing.HBaseCommonTestingUtility;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;

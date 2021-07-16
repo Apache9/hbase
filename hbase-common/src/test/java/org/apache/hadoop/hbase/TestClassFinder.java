@@ -41,6 +41,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.testing.HBaseCommonTestingUtility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;

@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.
 import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecResponse;
 import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecService;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;

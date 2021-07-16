@@ -26,6 +26,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.util.Locale;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;

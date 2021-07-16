@@ -20,10 +20,10 @@ package org.apache.hadoop.hbase.chaos.actions;
 
 import java.util.List;
 import org.apache.commons.lang3.RandomUtils;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.testing.HBaseTestingUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

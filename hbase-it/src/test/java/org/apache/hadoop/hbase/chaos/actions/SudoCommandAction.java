@@ -20,8 +20,8 @@ package org.apache.hadoop.hbase.chaos.actions;
 
 import java.io.IOException;
 import org.apache.hadoop.hbase.DistributedHBaseCluster;
-import org.apache.hadoop.hbase.HBaseCluster;
 import org.apache.hadoop.hbase.HBaseClusterManager;
+import org.apache.hadoop.hbase.testing.HBaseCluster;
 
 /**
  * Base class for performing Actions based on linux commands requiring sudo privileges

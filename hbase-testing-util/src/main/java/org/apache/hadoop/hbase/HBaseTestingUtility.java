@@ -17,11 +17,6 @@
  */
 package org.apache.hadoop.hbase;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -80,11 +75,11 @@ import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.client.Scan.ReadType;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.client.TableState;
+import org.apache.hadoop.hbase.client.Scan.ReadType;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
@@ -170,9 +165,11 @@ import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
  * avoiding port contention if another local HBase instance is already running).
  * <p>To preserve test data directories, pass the system property "hbase.testing.preserve.testdir"
  * setting it to true.
+ * @deprecated since 3.0.0, will be removed in 4.0.0. Use
+ *             {@link org.apache.hadoop.hbase.testing.TestingHBaseCluster} instead.
  */
 @InterfaceAudience.Public
-@SuppressWarnings("deprecation")
+@Deprecated
 public class HBaseTestingUtility extends HBaseZKTestingUtility {
 
   /**
@@ -316,7 +313,7 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
    *
    * @param conf The configuration to use for further operations
    */
-  public HBaseTestingUtility(@Nullable Configuration conf) {
+  public HBaseTestingUtility(Configuration conf) {
     super(conf);
 
     // a hbase checksum verification failure will cause unit tests to fail
@@ -2289,12 +2286,15 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
       get.setReplicaId(replicaId);
       get.setConsistency(Consistency.TIMELINE);
       Result result = table.get(get);
-      assertTrue(failMsg, result.containsColumn(f, null));
+      if (!result.containsColumn(f, null)) {
+        throw new AssertionError(failMsg);
+      }
       assertEquals(failMsg, 1, result.getColumnCells(f, null).size());
       Cell cell = result.getColumnLatestCell(f, null);
-      assertTrue(failMsg,
-        Bytes.equals(data, 0, data.length, cell.getValueArray(), cell.getValueOffset(),
-          cell.getValueLength()));
+      if (!Bytes.equals(data, 0, data.length, cell.getValueArray(), cell.getValueOffset(),
+        cell.getValueLength())) {
+        throw new AssertionError(failMsg);
+      }
     }
   }
 
@@ -2321,15 +2321,21 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
       Result result = region.get(new Get(data));
 
       boolean hasResult = result != null && !result.isEmpty();
-      assertEquals(failMsg + result, present, hasResult);
+      if (present != hasResult) {
+        throw new AssertionError(
+          failMsg + result + " expected:<" + present + "> but was:<" + hasResult + ">");
+      }
       if (!present) continue;
-
-      assertTrue(failMsg, result.containsColumn(f, null));
+      
+      if (!result.containsColumn(f, null)) {
+        throw new AssertionError(failMsg);
+      }
       assertEquals(failMsg, 1, result.getColumnCells(f, null).size());
       Cell cell = result.getColumnLatestCell(f, null);
-      assertTrue(failMsg,
-        Bytes.equals(data, 0, data.length, cell.getValueArray(), cell.getValueOffset(),
-          cell.getValueLength()));
+      if (!Bytes.equals(data, 0, data.length, cell.getValueArray(), cell.getValueOffset(),
+        cell.getValueLength())) {
+        throw new AssertionError(failMsg);
+      }
     }
   }
 
@@ -3237,7 +3243,6 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
     }
   }
 
-  @Nullable
   public TableState findLastTableState(final TableName table) throws IOException {
     final AtomicReference<TableState> lastTableState = new AtomicReference<>(null);
     ClientMetaTableAccessor.Visitor visitor = new ClientMetaTableAccessor.Visitor() {
@@ -3640,7 +3645,9 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
    * @return resulting split keys
    */
   public byte[][] getRegionSplitStartKeys(byte[] startKey, byte[] endKey, int numRegions){
-    assertTrue(numRegions>3);
+    if (numRegions <= 3) {
+      throw new AssertionError();
+    }
     byte [][] tmpSplitKeys = Bytes.split(startKey, endKey, numRegions - 3);
     byte [][] result = new byte[tmpSplitKeys.length+1][];
     System.arraycopy(tmpSplitKeys, 0, result, 1, tmpSplitKeys.length);
@@ -3966,14 +3973,11 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
   }
 
   /**
-   *  Due to async racing issue, a region may not be in
-   *  the online region list of a region server yet, after
-   *  the assignment znode is deleted and the new assignment
-   *  is recorded in master.
+   * Due to async racing issue, a region may not be in the online region list of a region server
+   * yet, after the assignment znode is deleted and the new assignment is recorded in master.
    */
-  public void assertRegionOnServer(
-      final RegionInfo hri, final ServerName server,
-      final long timeout) throws IOException, InterruptedException {
+  public void assertRegionOnServer(final RegionInfo hri, final ServerName server,
+    final long timeout) throws IOException, InterruptedException {
     long timeoutTime = EnvironmentEdgeManager.currentTime() + timeout;
     while (true) {
       List<RegionInfo> regions = getAdmin().getRegions(server);
@@ -3982,8 +3986,8 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
       if (now > timeoutTime) break;
       Thread.sleep(10);
     }
-    fail("Could not find region " + hri.getRegionNameAsString()
-      + " on server " + server);
+    throw new AssertionError(
+      "Could not find region " + hri.getRegionNameAsString() + " on server " + server);
   }
 
   /**
@@ -4006,8 +4010,9 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
           }
           Collection<HRegion> hrs = rs.getOnlineRegionsLocalContext();
           for (HRegion r: hrs) {
-            assertTrue("Region should not be double assigned",
-              r.getRegionInfo().getRegionId() != hri.getRegionId());
+            if (r.getRegionInfo().getRegionId() == hri.getRegionId()) {
+              throw new AssertionError("Region should not be double assigned");
+            }
           }
         }
         return; // good, we are happy
@@ -4016,8 +4021,8 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
       if (now > timeoutTime) break;
       Thread.sleep(10);
     }
-    fail("Could not find region " + hri.getRegionNameAsString()
-      + " on server " + server);
+    throw new AssertionError(
+      "Could not find region " + hri.getRegionNameAsString() + " on server " + server);
   }
 
   public HRegion createTestRegion(String tableName, ColumnFamilyDescriptor cd) throws IOException {
@@ -4313,15 +4318,28 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
     return numHFiles;
   }
 
+  private void assertEquals(String message, int expected, int actual) {
+    if (expected == actual) {
+      return;
+    }
+    String formatted = "";
+    if (message != null && !"".equals(message)) {
+      formatted = message + " ";
+    }
+    throw new AssertionError(formatted + "expected:<" + expected + "> but was:<" + actual + ">");
+  }
+
   public void verifyTableDescriptorIgnoreTableName(TableDescriptor ltd, TableDescriptor rtd) {
-    assertEquals(ltd.getValues().hashCode(), rtd.getValues().hashCode());
+    if (ltd.getValues().hashCode() != rtd.getValues().hashCode()) {
+      throw new AssertionError();
+    }
+    assertEquals("", ltd.getValues().hashCode(), rtd.getValues().hashCode());
     Collection<ColumnFamilyDescriptor> ltdFamilies = Arrays.asList(ltd.getColumnFamilies());
     Collection<ColumnFamilyDescriptor> rtdFamilies = Arrays.asList(rtd.getColumnFamilies());
-    assertEquals(ltdFamilies.size(), rtdFamilies.size());
-    for (Iterator<ColumnFamilyDescriptor> it = ltdFamilies.iterator(), it2 =
-         rtdFamilies.iterator(); it.hasNext();) {
-      assertEquals(0,
-          ColumnFamilyDescriptor.COMPARATOR.compare(it.next(), it2.next()));
+    assertEquals("", ltdFamilies.size(), rtdFamilies.size());
+    for (Iterator<ColumnFamilyDescriptor> it = ltdFamilies.iterator(),
+      it2 = rtdFamilies.iterator(); it.hasNext();) {
+      assertEquals("", 0, ColumnFamilyDescriptor.COMPARATOR.compare(it.next(), it2.next()));
     }
   }
 
