@@ -24,8 +24,6 @@ import static org.apache.hadoop.hbase.util.FutureUtils.addListener;
 
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
@@ -43,13 +41,16 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.RegionLocations;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
+import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.ipc.ServerRpcController;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.hadoop.ipc.RemoteException;
@@ -60,6 +61,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
 import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 import org.apache.hbase.thirdparty.io.netty.util.Timer;
@@ -198,11 +200,18 @@ public final class ConnectionUtils {
     return Bytes.equals(row, EMPTY_END_ROW);
   }
 
+  private static int nanosToMillis(long nanos) {
+    return toIntNoOverflow(TimeUnit.NANOSECONDS.toMillis(nanos));
+  }
+
+  private static int toIntNoOverflow(long value) {
+    return (int) Math.min(Integer.MAX_VALUE, value);
+  }
+
   static void resetController(HBaseRpcController controller, long timeoutNs, int priority) {
     controller.reset();
     if (timeoutNs >= 0) {
-      controller.setCallTimeout(
-        (int) Math.min(Integer.MAX_VALUE, TimeUnit.NANOSECONDS.toMillis(timeoutNs)));
+      controller.setCallTimeout(nanosToMillis(timeoutNs));
     }
     controller.setPriority(priority);
   }
@@ -663,5 +672,27 @@ public final class ConnectionUtils {
     } else {
       controller.setFailed(error.toString());
     }
+  }
+
+  public static <T> CompletableFuture<T> getMasterStub(ConnectionRegistry registry,
+    AtomicReference<T> stub, AtomicReference<CompletableFuture<T>> stubMakeFuture,
+    RpcClient rpcClient, User user, long rpcTimeout, TimeUnit unit,
+    Function<RpcChannel, T> stubMaker, String type) {
+    return getOrFetch(stub, stubMakeFuture, false, () -> {
+      CompletableFuture<T> future = new CompletableFuture<>();
+      addListener(registry.getActiveMaster(), (addr, error) -> {
+        if (error != null) {
+          future.completeExceptionally(error);
+        } else if (addr == null) {
+          future.completeExceptionally(new MasterNotRunningException(
+            "ZooKeeper available but no active master location found"));
+        } else {
+          LOG.debug("The fetched master address is {}", addr);
+          future.complete(stubMaker.apply(
+            rpcClient.createRpcChannel(addr, user, toIntNoOverflow(unit.toMillis(rpcTimeout)))));
+        }
+      });
+      return future;
+    }, s -> true, type);
   }
 }

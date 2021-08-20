@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.master;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.hadoop.hbase.MetaLocationCache;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableDescriptors;
@@ -577,4 +578,6 @@ public interface MasterServices extends Server {
    * We need to get this in MTP to tell the syncer the new meta replica count.
    */
   MetaLocationSyncer getMetaLocationSyncer();
+
+  MetaLocationCache getMetaLocationCache();
 }

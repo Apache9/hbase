@@ -24,6 +24,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.ChoreService;
 import org.apache.hadoop.hbase.CoordinatedStateManager;
+import org.apache.hadoop.hbase.MetaLocationCache;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
@@ -518,6 +519,11 @@ public class MockNoopMasterServices implements MasterServices {
 
   @Override
   public MetaLocationSyncer getMetaLocationSyncer() {
+    return null;
+  }
+
+  @Override
+  public MetaLocationCache getMetaLocationCache() {
     return null;
   }
 }

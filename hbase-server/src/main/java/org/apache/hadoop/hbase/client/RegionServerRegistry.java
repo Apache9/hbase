@@ -42,17 +42,11 @@ public class RegionServerRegistry implements ConnectionRegistry {
   @Override
   public CompletableFuture<RegionLocations> getMetaRegionLocations() {
     CompletableFuture<RegionLocations> future = new CompletableFuture<>();
-    Optional<List<HRegionLocation>> locs =
-      regionServer.getMetaRegionLocationCache().getMetaRegionLocations();
-    if (locs.isPresent()) {
-      List<HRegionLocation> list = locs.get();
-      if (list.isEmpty()) {
-        future.completeExceptionally(new IOException("no meta location available"));
-      } else {
-        future.complete(new RegionLocations(list));
-      }
-    } else {
+    List<HRegionLocation> locs = regionServer.getMetaLocations();
+    if (locs.isEmpty()) {
       future.completeExceptionally(new IOException("no meta location available"));
+    } else {
+      future.complete(new RegionLocations(locs));
     }
     return future;
   }

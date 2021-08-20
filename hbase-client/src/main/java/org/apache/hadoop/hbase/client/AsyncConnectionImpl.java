@@ -44,7 +44,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.AuthUtil;
 import org.apache.hadoop.hbase.ChoreService;
-import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicy;
@@ -86,11 +85,11 @@ class AsyncConnectionImpl implements AsyncConnection {
 
   final AsyncConnectionConfiguration connConf;
 
-  private final User user;
+  protected final User user;
 
   final ConnectionRegistry registry;
 
-  private final int rpcTimeout;
+  protected final int rpcTimeout;
 
   protected final RpcClient rpcClient;
 
@@ -290,26 +289,8 @@ class AsyncConnectionImpl implements AsyncConnection {
   }
 
   CompletableFuture<MasterService.Interface> getMasterStub() {
-    return ConnectionUtils.getOrFetch(masterStub, masterStubMakeFuture, false, () -> {
-      CompletableFuture<MasterService.Interface> future = new CompletableFuture<>();
-      addListener(registry.getActiveMaster(), (addr, error) -> {
-        if (error != null) {
-          future.completeExceptionally(error);
-        } else if (addr == null) {
-          future.completeExceptionally(new MasterNotRunningException(
-            "ZooKeeper available but no active master location found"));
-        } else {
-          LOG.debug("The fetched master address is {}", addr);
-          try {
-            future.complete(createMasterStub(addr));
-          } catch (IOException e) {
-            future.completeExceptionally(e);
-          }
-        }
-
-      });
-      return future;
-    }, stub -> true, "master stub");
+    return ConnectionUtils.getMasterStub(registry, masterStub, masterStubMakeFuture, rpcClient,
+      user, rpcTimeout, TimeUnit.MILLISECONDS, MasterService::newStub, "MasterService");
   }
 
   String getClusterId() {

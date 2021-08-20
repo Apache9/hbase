@@ -218,7 +218,9 @@ public class RegionStateStore {
       .build());
     LOG.info(info.toString());
     updateRegionLocation(regionInfo, state, put);
-    if (regionInfo.isMetaRegion() && regionInfo.isFirst()) {
+    if (regionInfo.isMetaRegion() && state == State.OPEN) {
+      master.getMetaLocationCache()
+        .updateRegionLocation(new HRegionLocation(regionInfo, regionLocation, openSeqNum));
       // mirror the meta location to zookeeper
       mirrorMetaLocation(regionInfo, regionLocation, state);
     }
@@ -609,6 +611,8 @@ public class RegionStateStore {
           r.delete(d);
         }
       });
+      master.getMetaLocationCache().removeRegionReplica(RegionInfoBuilder.FIRST_META_REGIONINFO,
+        newReplicaCount);
       // also delete the mirrored location on zk
       removeMirrorMetaLocation(oldReplicaCount, newReplicaCount);
     } else {

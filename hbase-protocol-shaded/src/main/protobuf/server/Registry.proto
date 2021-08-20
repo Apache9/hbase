@@ -106,3 +106,42 @@ service ClientMetaService {
    */
   rpc GetBootstrapNodes(GetBootstrapNodesRequest) returns (GetBootstrapNodesResponse);
 }
+
+message SyncMetaLocationRequest {
+  required int64 hash = 1;
+}
+message SyncMetaLocationResponse {
+  required int64 hash = 1;
+  repeated RegionLocation location = 2;
+}
+
+enum MetaLocationUpdateType {
+  UPDATE = 0;
+  REMOVE = 1;
+}
+
+message MetaLocationUpdate {
+  required MetaLocationUpdateType type = 1;
+  required RegionInfo region_info = 2;
+  /** for update **/
+  optional ServerName server_name = 3;
+  /** for update **/
+  optional int64 seq_num = 4;
+  /** for remove **/
+  optional uint32 replica_count = 5;
+}
+
+message PublishMetaLocationUpdateRequest {
+  required int64 hash = 1;
+  repeated MetaLocationUpdate update = 2;
+}
+
+message PublishMetaLocationUpdateResponse {
+}
+
+service SyncMetaLocationService {
+  rpc SyncMetaLocation(SyncMetaLocationRequest) returns(SyncMetaLocationResponse);
+
+  rpc PublishMetaLocationUpdate(PublishMetaLocationUpdateRequest)
+    returns(PublishMetaLocationUpdateResponse);
+}

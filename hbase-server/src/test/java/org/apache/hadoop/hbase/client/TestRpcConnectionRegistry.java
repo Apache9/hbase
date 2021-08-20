@@ -22,6 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -93,11 +94,32 @@ public class TestRpcConnectionRegistry {
     assertEquals(registry.getClusterId().get(), activeMaster.getClusterId());
     assertEquals(registry.getActiveMaster().get(), activeMaster.getServerName());
     List<HRegionLocation> metaLocations =
-      Arrays.asList(registry.getMetaRegionLocations().get().getRegionLocations());
-    List<HRegionLocation> actualMetaLocations =
-      activeMaster.getMetaRegionLocationCache().getMetaRegionLocations().get();
+      new ArrayList<>(Arrays.asList(registry.getMetaRegionLocations().get().getRegionLocations()));
+    List<HRegionLocation> actualMetaLocations = new ArrayList<>(activeMaster.getMetaLocations());
     Collections.sort(metaLocations);
     Collections.sort(actualMetaLocations);
     assertEquals(actualMetaLocations, metaLocations);
+
+    Admin admin = UTIL.getAdmin();
+    for (;;) {
+      admin.move(RegionInfoBuilder.FIRST_META_REGIONINFO.getEncodedNameAsBytes());
+      List<HRegionLocation> newActualMetaLocations =
+        new ArrayList<>(activeMaster.getMetaLocations());
+      Collections.sort(newActualMetaLocations);
+      if (!actualMetaLocations.equals(newActualMetaLocations)) {
+        break;
+      }
+      Thread.sleep(100);
+    }
+    // make sure we could get the modifications on region server
+    List<HRegionLocation> newActualMetaLocations = new ArrayList<>(activeMaster.getMetaLocations());
+    Collections.sort(newActualMetaLocations);
+    UTIL.waitFor(10000, () -> {
+      List<HRegionLocation> newMetaLocations = new ArrayList<>(
+        Arrays.asList(registry.getMetaRegionLocations().get().getRegionLocations()));
+      Collections.sort(newMetaLocations);
+      return newMetaLocations.equals(newActualMetaLocations);
+    });
+
   }
 }

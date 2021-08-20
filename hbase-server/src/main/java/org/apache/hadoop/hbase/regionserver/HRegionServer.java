@@ -75,8 +75,9 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HealthCheckChore;
-import org.apache.hadoop.hbase.MetaRegionLocationCache;
+import org.apache.hadoop.hbase.MetaLocationCache;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.PleaseHoldException;
@@ -240,6 +241,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProto
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.ReportRSFatalErrorRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.MetaLocationUpdate;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationResponse;
 
 /**
  * HRegionServer makes a set of HRegions available to clients. It checks in with
@@ -427,9 +430,9 @@ public class HRegionServer extends Thread implements
 
   /**
    * Cache for the meta region replica's locations. Also tracks their changes to avoid stale cache
-   * entries. Used for serving ClientMetaService.
+   * entries. Used for serving ClientMetaService and SyncMetaLocationService.
    */
-  private final MetaRegionLocationCache metaRegionLocationCache;
+  protected final MetaLocationCache metaLocationCache;
   /**
    * Cache for all the region servers in the cluster. Used for serving ClientMetaService.
    */
@@ -681,7 +684,7 @@ public class HRegionServer extends Thread implements
         clusterStatusTracker = null;
       }
       this.rpcServices.start(zooKeeper);
-      this.metaRegionLocationCache = new MetaRegionLocationCache(zooKeeper);
+      this.metaLocationCache = new MetaLocationCache(this);
       this.regionServerAddressTracker = new RegionServerAddressTracker(zooKeeper, this);
       // This violates 'no starting stuff in Constructor' but Master depends on the below chore
       // and executor being created and takes a different startup route. Lots of overlap between HRS
@@ -3995,8 +3998,16 @@ public class HRegionServer extends Thread implements
     return regionServerAddressTracker.getRegionServers();
   }
 
-  public MetaRegionLocationCache getMetaRegionLocationCache() {
-    return this.metaRegionLocationCache;
+  public List<HRegionLocation> getMetaLocations() {
+    return metaLocationCache.getMetaLocations();
+  }
+
+  public void applyMetaLocationUpdates(long hash, List<MetaLocationUpdate> updates) {
+    metaLocationCache.applyMetaLocationUpdate(hash, updates);
+  }
+
+  public SyncMetaLocationResponse syncMetaLocation() {
+    return metaLocationCache.syncMetaLocation();
   }
 
   public UserProvider getUserProvider() {

@@ -17,20 +17,30 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.util.FutureUtils.addListener;
+
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.RegionLocations;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.security.token.Token;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.common.cache.CacheBuilder;
+import org.apache.hbase.thirdparty.com.google.common.cache.CacheLoader;
+import org.apache.hbase.thirdparty.com.google.common.cache.LoadingCache;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
@@ -43,6 +53,12 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBul
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBulkLoadResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.RegionSpecifier;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.MetaLocationUpdate;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.PublishMetaLocationUpdateRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.PublishMetaLocationUpdateResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationService;
 
 /**
  * The implementation of AsyncClusterConnection.
@@ -50,8 +66,24 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.RegionSpeci
 @InterfaceAudience.Private
 class AsyncClusterConnectionImpl extends AsyncConnectionImpl implements AsyncClusterConnection {
 
+  private final AtomicReference<SyncMetaLocationService.Interface> syncStub =
+    new AtomicReference<>();
+
+  private final AtomicReference<CompletableFuture<SyncMetaLocationService.Interface>> syncStubMakeFuture =
+    new AtomicReference<>();
+
+  private final LoadingCache<ServerName, SyncMetaLocationService.Interface> publishStubs =
+    CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.MINUTES)
+      .build(new CacheLoader<ServerName, SyncMetaLocationService.Interface>() {
+
+        @Override
+        public SyncMetaLocationService.Interface load(ServerName sn) throws Exception {
+          return SyncMetaLocationService.newStub(rpcClient.createRpcChannel(sn, user, rpcTimeout));
+        }
+      });
+
   public AsyncClusterConnectionImpl(Configuration conf, ConnectionRegistry registry,
-      String clusterId, SocketAddress localAddress, User user) {
+    String clusterId, SocketAddress localAddress, User user) {
     super(conf, registry, clusterId, localAddress, user);
   }
 
@@ -72,14 +104,14 @@ class AsyncClusterConnectionImpl extends AsyncConnectionImpl implements AsyncClu
 
   @Override
   public CompletableFuture<FlushRegionResponse> flush(byte[] regionName,
-      boolean writeFlushWALMarker) {
+    boolean writeFlushWALMarker) {
     RawAsyncHBaseAdmin admin = (RawAsyncHBaseAdmin) getAdmin();
     return admin.flushRegionInternal(regionName, null, writeFlushWALMarker);
   }
 
   @Override
   public CompletableFuture<Long> replay(TableName tableName, byte[] encodedRegionName, byte[] row,
-      List<Entry> entries, int replicaId, int retries, long operationTimeoutNs) {
+    List<Entry> entries, int replicaId, int retries, long operationTimeoutNs) {
     return new AsyncRegionReplicaReplayRetryingCaller(RETRY_TIMER, this,
       ConnectionUtils.retries2Attempts(retries), operationTimeoutNs, tableName, encodedRegionName,
       row, entries, replicaId).call();
@@ -87,7 +119,7 @@ class AsyncClusterConnectionImpl extends AsyncConnectionImpl implements AsyncClu
 
   @Override
   public CompletableFuture<RegionLocations> getRegionLocations(TableName tableName, byte[] row,
-      boolean reload) {
+    boolean reload) {
     return getLocator().getRegionLocations(tableName, row, RegionLocateType.CURRENT, reload, -1L);
   }
 
@@ -131,5 +163,58 @@ class AsyncClusterConnectionImpl extends AsyncConnectionImpl implements AsyncClu
             return CleanupBulkLoadRequest.newBuilder().setRegion(region).setBulkToken(bt).build();
           }, (s, c, req, done) -> s.cleanupBulkLoad(c, req, done), (c, resp) -> null))
       .call();
+  }
+
+  private CompletableFuture<SyncMetaLocationService.Interface> getSyncStub() {
+    return ConnectionUtils.getMasterStub(registry, syncStub, syncStubMakeFuture, rpcClient, user,
+      rpcTimeout, TimeUnit.MILLISECONDS, SyncMetaLocationService::newStub, "RootSyncService");
+  }
+
+  @Override
+  public CompletableFuture<SyncMetaLocationResponse> syncMetaLocation(long hash) {
+    CompletableFuture<SyncMetaLocationResponse> future = new CompletableFuture<>();
+    addListener(getSyncStub(), (stub, error) -> {
+      if (error != null) {
+        future.completeExceptionally(error);
+        return;
+      }
+      HBaseRpcController controller = rpcControllerFactory.newController();
+      stub.syncMetaLocation(controller, SyncMetaLocationRequest.newBuilder().setHash(hash).build(),
+        resp -> {
+          if (controller.failed()) {
+            future.completeExceptionally(controller.getFailed());
+          } else {
+            future.complete(resp);
+          }
+        });
+    });
+    return future;
+  }
+
+  private CompletableFuture<PublishMetaLocationUpdateResponse>
+    publishMetaLocationUpdate(ServerName server, PublishMetaLocationUpdateRequest req) {
+    CompletableFuture<PublishMetaLocationUpdateResponse> future = new CompletableFuture<>();
+    HBaseRpcController controller = rpcControllerFactory.newController();
+    try {
+      publishStubs.get(server).publishMetaLocationUpdate(controller, req, resp -> {
+        if (controller.failed()) {
+          future.completeExceptionally(controller.getFailed());
+        } else {
+          future.complete(resp);
+        }
+      });
+    } catch (ExecutionException e) {
+      future.completeExceptionally(e.getCause());
+    }
+    return future;
+  }
+
+  @Override
+  public CompletableFuture<Void> publishMetaLocationUpdate(List<ServerName> servers, long hash,
+    List<MetaLocationUpdate> updates) {
+    PublishMetaLocationUpdateRequest req =
+      PublishMetaLocationUpdateRequest.newBuilder().setHash(hash).addAllUpdate(updates).build();
+    return CompletableFuture.allOf(servers.stream()
+      .map(server -> publishMetaLocationUpdate(server, req)).toArray(CompletableFuture<?>[]::new));
   }
 }

@@ -272,6 +272,11 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.GetMaste
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.GetMastersResponseEntry;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.GetMetaRegionLocationsRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.GetMetaRegionLocationsResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.PublishMetaLocationUpdateRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.PublishMetaLocationUpdateResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationService;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.TooSlowLog.SlowLogPayload;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.BulkLoadDescriptor;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.CompactionDescriptor;
@@ -283,9 +288,10 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.RegionEventDe
  */
 @InterfaceAudience.Private
 @SuppressWarnings("deprecation")
-public class RSRpcServices implements HBaseRPCErrorHandler,
-    AdminService.BlockingInterface, ClientService.BlockingInterface,
-    ClientMetaService.BlockingInterface, PriorityFunction, ConfigurationObserver {
+public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.BlockingInterface,
+  ClientService.BlockingInterface, ClientMetaService.BlockingInterface,
+  SyncMetaLocationService.BlockingInterface, PriorityFunction, ConfigurationObserver {
+
   private static final Logger LOG = LoggerFactory.getLogger(RSRpcServices.class);
 
   /** RPC scheduler to use for the region server. */
@@ -396,6 +402,8 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     "hbase.regionserver.client.executorService";
   public static final String REGIONSERVER_CLIENT_META_SERVICE_CONFIG =
     "hbase.regionserver.client.meta.executorService";
+  public static final String REGIONSERVER_SYNC_META_SERVICE_CONFIG =
+    "hbase.regionserver.sync.meta.executorService";
 
   /**
    * An Rpc callback for closing a RegionScanner.
@@ -1602,6 +1610,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     boolean client = getConfiguration().getBoolean(REGIONSERVER_CLIENT_SERVICE_CONFIG, true);
     boolean clientMeta =
       getConfiguration().getBoolean(REGIONSERVER_CLIENT_META_SERVICE_CONFIG, true);
+    boolean syncMeta = getConfiguration().getBoolean(REGIONSERVER_SYNC_META_SERVICE_CONFIG, true);
     List<BlockingServiceAndInterface> bssi = new ArrayList<>();
     if (client) {
       bssi.add(new BlockingServiceAndInterface(ClientService.newReflectiveBlockingService(this),
@@ -1614,6 +1623,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     if (clientMeta) {
       bssi.add(new BlockingServiceAndInterface(ClientMetaService.newReflectiveBlockingService(this),
         ClientMetaService.BlockingInterface.class));
+    }
+    if (syncMeta) {
+      bssi.add(
+        new BlockingServiceAndInterface(SyncMetaLocationService.newReflectiveBlockingService(this),
+          SyncMetaLocationService.BlockingInterface.class));
     }
     return new ImmutableList.Builder<BlockingServiceAndInterface>().addAll(bssi).build();
   }
@@ -4114,10 +4128,10 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
   public GetMetaRegionLocationsResponse getMetaRegionLocations(RpcController controller,
     GetMetaRegionLocationsRequest request) throws ServiceException {
     GetMetaRegionLocationsResponse.Builder builder = GetMetaRegionLocationsResponse.newBuilder();
-    Optional<List<HRegionLocation>> metaLocations =
-      regionServer.getMetaRegionLocationCache().getMetaRegionLocations();
-    metaLocations.ifPresent(hRegionLocations -> hRegionLocations
-      .forEach(location -> builder.addMetaLocations(ProtobufUtil.toRegionLocation(location))));
+    List<HRegionLocation> metaLocations = regionServer.getMetaLocations();
+    for (HRegionLocation loc : metaLocations) {
+      builder.addMetaLocations(ProtobufUtil.toRegionLocation(loc));
+    }
     return builder.build();
   }
 
@@ -4128,5 +4142,18 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     regionServer.getRegionServers().stream().map(ProtobufUtil::toServerName)
       .forEach(builder::addServerName);
     return builder.build();
+  }
+
+  @Override
+  public SyncMetaLocationResponse syncMetaLocation(RpcController controller,
+    SyncMetaLocationRequest request) throws ServiceException {
+    return regionServer.syncMetaLocation();
+  }
+
+  @Override
+  public PublishMetaLocationUpdateResponse publishMetaLocationUpdate(RpcController controller,
+    PublishMetaLocationUpdateRequest request) throws ServiceException {
+    regionServer.applyMetaLocationUpdates(request.getHash(), request.getUpdateList());
+    return PublishMetaLocationUpdateResponse.getDefaultInstance();
   }
 }

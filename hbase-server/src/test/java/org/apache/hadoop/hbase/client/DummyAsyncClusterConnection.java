@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.RegionLocations;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
@@ -31,6 +32,8 @@ import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.security.token.Token;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.FlushRegionResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.MetaLocationUpdate;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationResponse;
 
 /**
  * Can be overridden in UT if you only want to implement part of the methods in
@@ -155,6 +158,17 @@ public class DummyAsyncClusterConnection implements AsyncClusterConnection {
 
   @Override
   public Connection toConnection() {
+    return null;
+  }
+
+  @Override
+  public CompletableFuture<SyncMetaLocationResponse> syncMetaLocation(long hash) {
+    return null;
+  }
+
+  @Override
+  public CompletableFuture<Void> publishMetaLocationUpdate(List<ServerName> servers, long hash,
+    List<MetaLocationUpdate> updates) {
     return null;
   }
 }

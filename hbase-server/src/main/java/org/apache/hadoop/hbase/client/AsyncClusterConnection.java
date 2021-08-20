@@ -29,6 +29,8 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.FlushRegionResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.MetaLocationUpdate;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationResponse;
 
 /**
  * The asynchronous connection for internal usage.
@@ -98,4 +100,9 @@ public interface AsyncClusterConnection extends AsyncConnection {
    * Clean up after finishing bulk load, no matter success or not.
    */
   CompletableFuture<Void> cleanupBulkLoad(TableName tableName, String bulkToken);
+
+  CompletableFuture<SyncMetaLocationResponse> syncMetaLocation(long hash);
+
+  CompletableFuture<Void> publishMetaLocationUpdate(List<ServerName> servers, long hash,
+    List<MetaLocationUpdate> updates);
 }

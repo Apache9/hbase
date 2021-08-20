@@ -68,12 +68,15 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.InvalidFamilyOperationException;
 import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.MetaLocationCache;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.PleaseHoldException;
 import org.apache.hadoop.hbase.PleaseRestartMasterException;
+import org.apache.hadoop.hbase.RegionLocations;
 import org.apache.hadoop.hbase.RegionMetrics;
 import org.apache.hadoop.hbase.ReplicationPeerNotFoundException;
 import org.apache.hadoop.hbase.ServerMetrics;
@@ -808,6 +811,23 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
   }
 
+  private RegionLocations getMetaRegionLocations() {
+    Collection<RegionStateNode> metaStates =
+      this.assignmentManager.getRegionStates().getRegionStateNodes();
+    if (metaStates.isEmpty()) {
+      return new RegionLocations();
+    }
+    int maxReplicaId =
+      metaStates.stream().mapToInt(rn -> rn.getRegionInfo().getReplicaId()).max().getAsInt();
+    HRegionLocation[] locs = new HRegionLocation[maxReplicaId + 1];
+    for (RegionStateNode rn : metaStates) {
+      RegionInfo info = rn.getRegionInfo();
+      locs[info.getReplicaId()] =
+        new HRegionLocation(info, rn.getRegionLocation(), rn.getOpenSeqNum());
+    }
+    return new RegionLocations(locs);
+  }
+
   /**
    * Finish initialization of HMaster after becoming the primary master.
    * <p/>
@@ -914,6 +934,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     // Create Assignment Manager
     this.assignmentManager = createAssignmentManager(this, masterRegion);
     this.assignmentManager.start();
+    metaLocationCache.upgrade(getMetaRegionLocations(), serverManager::getOnlineServersList);
     // TODO: TRSP can perform as the sub procedure for other procedures, so even if it is marked as
     // completed, it could still be in the procedure list. This is a bit strange but is another
     // story, need to verify the implementation for ProcedureExecutor and ProcedureStore.
@@ -3924,5 +3945,10 @@ public class HMaster extends HRegionServer implements MasterServices {
     allowedOnPath = ".*/src/test/.*")
   MasterRegion getMasterRegion() {
     return masterRegion;
+  }
+
+  @Override
+  public MetaLocationCache getMetaLocationCache() {
+    return metaLocationCache;
   }
 }

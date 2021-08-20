@@ -371,6 +371,10 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProto
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.ClientMetaService;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.PublishMetaLocationUpdateRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.PublishMetaLocationUpdateResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos.SyncMetaLocationResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest;
@@ -3399,5 +3403,4 @@ public class MasterRpcServices extends RSRpcServices implements
     return MasterProtos.BalancerRejectionsResponse.newBuilder()
       .addAllBalancerRejection(balancerRejections).build();
   }
-
 }
