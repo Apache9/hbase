@@ -1,5 +1,4 @@
 /**
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,40 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase;
+package org.apache.hadoop.hbase.util;
 
+import org.apache.hadoop.hbase.log.HBaseMarkers;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Interface to support the aborting of a given server or client.
- * <p>
- * This is used primarily for ZooKeeper usage when we could get an unexpected
- * and fatal exception, requiring an abort.
- * <p>
- * Implemented by the Master, RegionServer, and TableServers (client).
+ *
  */
 @InterfaceAudience.Private
-public interface Abortable {
+public final class OOMEChecker {
 
-  /**
-   * Abort the server or client.
-   * @param why Why we're aborting.
-   * @see #abort(String, Throwable)
-   */
-  default void abort(String why) {
-    abort(why, null);
+  private static final Logger LOG = LoggerFactory.getLogger(OOMEChecker.class);
+
+  public static boolean exitIfOOME(Throwable e, String service) {
+    boolean stop = false;
+    try {
+      if (e instanceof OutOfMemoryError ||
+        (e.getCause() != null && e.getCause() instanceof OutOfMemoryError) ||
+        (e.getMessage() != null && e.getMessage().contains("java.lang.OutOfMemoryError"))) {
+        stop = true;
+        LOG.error(HBaseMarkers.FATAL, "Run out of memory; {} will abort itself immediately",
+          service, e);
+      }
+    } finally {
+      if (stop) {
+        Runtime.getRuntime().halt(1);
+      }
+    }
+    return stop;
   }
-
-  /**
-   * Abort the server or client.
-   * @param why Why we're aborting.
-   * @param e Throwable that caused abort. Can be null.
-   */
-  void abort(String why, Throwable e);
-
-  /**
-   * Check if the server or client was aborted.
-   * @return true if the server or client was aborted, false otherwise
-   */
-  boolean isAborted();
 }

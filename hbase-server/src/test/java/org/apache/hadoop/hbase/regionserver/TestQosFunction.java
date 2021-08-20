@@ -46,14 +46,14 @@ public class TestQosFunction extends QosTestHelper {
 
   private Configuration conf;
   private RSRpcServices rpcServices;
-  private AnnotationReadingPriorityFunction qosFunction;
+  private RSAnnotationReadingPriorityFunction qosFunction;
 
   @Before
   public void setUp() {
     conf = HBaseConfiguration.create();
     rpcServices = Mockito.mock(RSRpcServices.class);
     when(rpcServices.getConfiguration()).thenReturn(conf);
-    qosFunction = new AnnotationReadingPriorityFunction(rpcServices, RSRpcServices.class);
+    qosFunction = new RSAnnotationReadingPriorityFunction(rpcServices);
   }
 
   @Test

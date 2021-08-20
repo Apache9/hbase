@@ -3415,18 +3415,6 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
         // That's fine.
       }
     }
-    for (MasterThread mt : cluster.getLiveMasterThreads()) {
-      try {
-        for (RegionInfo region :
-            ProtobufUtil.getOnlineRegions(mt.getMaster().getRSRpcServices())) {
-          online.add(region.getRegionNameAsString());
-        }
-      } catch (RegionServerStoppedException e) {
-        // That's fine.
-      } catch (ServerNotRunningYetException e) {
-        // That's fine.
-      }
-    }
     return online;
   }
 

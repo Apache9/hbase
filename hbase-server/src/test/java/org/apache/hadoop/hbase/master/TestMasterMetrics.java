@@ -29,7 +29,6 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.SingleProcessHBaseCluster;
 import org.apache.hadoop.hbase.StartTestingClusterOption;
 import org.apache.hadoop.hbase.YouAreDeadException;
-import org.apache.hadoop.hbase.regionserver.RSRpcServices;
 import org.apache.hadoop.hbase.test.MetricsAssertHelper;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -79,7 +78,7 @@ public class TestMasterMetrics {
     }
 
     @Override
-    protected RSRpcServices createRpcServices() throws IOException {
+    protected MasterRpcServices createRpcServices() throws IOException {
       return new MasterRpcServices(this) {
 
         @Override

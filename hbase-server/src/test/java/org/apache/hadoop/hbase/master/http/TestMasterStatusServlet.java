@@ -116,10 +116,6 @@ public class TestMasterStatusServlet {
     Mockito.doReturn(tracker).when(master).getMasterAddressTracker();
     Mockito.doReturn(FAKE_HOST).when(tracker).getMasterAddress();
 
-    MetricsRegionServer rms = Mockito.mock(MetricsRegionServer.class);
-    Mockito.doReturn(new MetricsRegionServerWrapperStub()).when(rms).getRegionServerWrapper();
-    Mockito.doReturn(rms).when(master).getMetrics();
-
     // Mock admin
     admin = Mockito.mock(Admin.class);
   }

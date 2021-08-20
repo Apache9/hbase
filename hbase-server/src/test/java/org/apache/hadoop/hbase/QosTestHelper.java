@@ -20,7 +20,8 @@ package org.apache.hadoop.hbase;
 import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
-import org.apache.hadoop.hbase.regionserver.AnnotationReadingPriorityFunction;
+
+import org.apache.hadoop.hbase.ipc.AnnotationReadingPriorityFunction;
 import org.apache.hadoop.hbase.security.User;
 
 import static org.junit.Assert.assertEquals;

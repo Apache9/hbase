@@ -58,6 +58,7 @@ import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
 import org.apache.hadoop.hbase.replication.SystemTableWALEntryFilter;
 import org.apache.hadoop.hbase.replication.WALEntryFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.OOMEChecker;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
@@ -424,7 +425,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
   protected final void uncaughtException(Thread t, Throwable e,
       ReplicationSourceManager manager, String peerId) {
-    RSRpcServices.exitIfOOME(e);
+    OOMEChecker.exitIfOOME(e, getClass().getSimpleName());
     LOG.error("Unexpected exception in {} currentPath={}",
       t.getName(), getCurrentPath(), e);
     if(abortOnError){

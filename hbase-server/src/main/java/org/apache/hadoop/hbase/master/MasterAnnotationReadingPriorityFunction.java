@@ -19,16 +19,14 @@ package org.apache.hadoop.hbase.master;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.regionserver.AnnotationReadingPriorityFunction;
-import org.apache.hadoop.hbase.regionserver.RSRpcServices;
-import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.ipc.AnnotationReadingPriorityFunction;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.RequestHeader;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos;
 
 /**
@@ -48,35 +46,27 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProto
  * will be executed in priorityExecutor to prevent being mixed with normal requests
  */
 @InterfaceAudience.Private
-public class MasterAnnotationReadingPriorityFunction extends AnnotationReadingPriorityFunction {
+public class MasterAnnotationReadingPriorityFunction
+  extends AnnotationReadingPriorityFunction<MasterRpcServices> {
 
   public static final int META_TRANSITION_QOS = 300;
 
-  public MasterAnnotationReadingPriorityFunction(final RSRpcServices rpcServices) {
-    this(rpcServices, rpcServices.getClass());
-  }
-
-
-  public MasterAnnotationReadingPriorityFunction(RSRpcServices rpcServices,
-                                          Class<? extends RSRpcServices> clz) {
-    super(rpcServices, clz);
+  public MasterAnnotationReadingPriorityFunction(MasterRpcServices rpcServices) {
+    super(rpcServices);
   }
 
   @Override
-  public int getPriority(RPCProtos.RequestHeader header, Message param, User user) {
-    // Yes this is copy pasted from the base class but it keeps from having to look in the
-    // annotatedQos table twice something that could get costly since this is called for
-    // every single RPC request.
-    int priorityByAnnotation = getAnnotatedPriority(header);
-    if (priorityByAnnotation >= 0) {
-      // no one can have higher priority than meta transition.
-      if (priorityByAnnotation >= META_TRANSITION_QOS) {
-        return META_TRANSITION_QOS - 1;
-      } else {
-        return priorityByAnnotation;
-      }
+  protected int normalizePriority(int priority) {
+    // no one can have higher priority than meta transition.
+    if (priority >= META_TRANSITION_QOS) {
+      return META_TRANSITION_QOS - 1;
+    } else {
+      return priority;
     }
+  }
 
+  @Override
+  protected int getBasePriority(Message param) {
     // If meta is moving then all the other of reports of state transitions will be
     // un able to edit meta. Those blocked reports should not keep the report that opens meta from
     // running. Hence all reports of meta transition should always be in a different thread.
@@ -101,8 +91,11 @@ public class MasterAnnotationReadingPriorityFunction extends AnnotationReadingPr
     if (param instanceof RegionServerStatusProtos.RegionServerReportRequest) {
       return HConstants.HIGH_QOS;
     }
+    return HConstants.NORMAL_QOS;
+  }
 
-    // Handle the rest of the different reasons to change priority.
-    return getBasePriority(header, param);
+  @Override
+  public long getDeadline(RequestHeader header, Message param) {
+    return 0;
   }
 }
