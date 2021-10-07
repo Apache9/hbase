@@ -82,15 +82,11 @@ abstract class StoreFileTrackerBase implements StoreFileTracker {
     }
   }
 
-  @Override
-  public void persistConfiguration(TableDescriptorBuilder builder) {
+  protected static void persistStoreFileTrackerImpl(TableDescriptorBuilder builder,
+    Class<? extends StoreFileTracker> clazz) {
     if (StringUtils.isEmpty(builder.getValue(TRACKER_IMPL))) {
-      builder.setValue(TRACKER_IMPL, getTrackerName());
+      builder.setValue(TRACKER_IMPL, StoreFileTrackerFactory.getStoreFileTrackerName(clazz));
     }
-  }
-
-  protected final String getTrackerName() {
-    return StoreFileTrackerFactory.getStoreFileTrackerName(getClass());
   }
 
   private HFileContext createFileContext(Compression.Algorithm compression,

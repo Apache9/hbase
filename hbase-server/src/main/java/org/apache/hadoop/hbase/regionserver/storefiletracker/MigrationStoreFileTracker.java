@@ -88,14 +88,17 @@ class MigrationStoreFileTracker extends StoreFileTrackerBase {
       "Should not call this method on " + getClass().getSimpleName());
   }
 
-  @Override
-  public void persistConfiguration(TableDescriptorBuilder builder) {
-    super.persistConfiguration(builder);
+  public static void persistConfiguration(Configuration conf, TableDescriptorBuilder builder) {
+    StoreFileTrackerBase.persistStoreFileTrackerImpl(builder, MigrationStoreFileTracker.class);
     if (StringUtils.isEmpty(builder.getValue(SRC_IMPL))) {
-      builder.setValue(SRC_IMPL, src.getTrackerName());
+      Class<? extends StoreFileTracker> clazz =
+        StoreFileTrackerFactory.getStoreFileTrackerClassForMigration(conf, SRC_IMPL);
+      builder.setValue(SRC_IMPL, StoreFileTrackerFactory.getStoreFileTrackerName(clazz));
     }
     if (StringUtils.isEmpty(builder.getValue(DST_IMPL))) {
-      builder.setValue(DST_IMPL, dst.getTrackerName());
+      Class<? extends StoreFileTracker> clazz =
+        StoreFileTrackerFactory.getStoreFileTrackerClassForMigration(conf, DST_IMPL);
+      builder.setValue(DST_IMPL, StoreFileTrackerFactory.getStoreFileTrackerName(clazz));
     }
   }
 

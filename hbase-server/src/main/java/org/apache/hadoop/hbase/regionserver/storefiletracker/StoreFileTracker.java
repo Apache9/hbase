@@ -20,8 +20,6 @@ package org.apache.hadoop.hbase.regionserver.storefiletracker;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
-
-import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.regionserver.CreateStoreFileWriterParams;
 import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
 import org.apache.hadoop.hbase.regionserver.StoreFileWriter;
@@ -47,6 +45,13 @@ import org.apache.yetus.audience.InterfaceAudience;
  * and we could also do multiple compactions at the same time. As the implementation may choose to
  * persist the store file list to external storage, which could be slow, it is the duty for the
  * callers to not call it inside a lock which may block normal read/write requests.
+ * <p/>
+ * All implementation classes should have a static
+ * {@code persistConfiguration(Configuration, TableDescriptorBuilder)} method, for persisting
+ * specific configurations into the table descriptors.<br>
+ * This is used to avoid accidentally data loss when changing the cluster level store file tracker
+ * implementation, and also possible misconfiguration between master and region servers.<br>
+ * See HBASE-26246 for more details.
  */
 @InterfaceAudience.Private
 public interface StoreFileTracker {
@@ -73,15 +78,4 @@ public interface StoreFileTracker {
    * @return Writer for a new StoreFile
    */
   StoreFileWriter createWriter(CreateStoreFileWriterParams params) throws IOException;
-
-  /**
-   * Saves StoreFileTracker implementations specific configurations into the table descriptors.
-   * <p/>
-   * This is used to avoid accidentally data loss when changing the cluster level store file tracker
-   * implementation, and also possible misconfiguration between master and region servers.
-   * <p/>
-   * See HBASE-26246 for more details.
-   * @param builder The table descriptor builder for the given table.
-   */
-  void persistConfiguration(TableDescriptorBuilder builder);
 }

@@ -42,7 +42,7 @@ import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureEnv;
-import org.apache.hadoop.hbase.regionserver.storefiletracker.TestStoreFileTracker;
+import org.apache.hadoop.hbase.regionserver.storefiletracker.StoreFileTrackerForTest;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -74,7 +74,7 @@ public class TestMergesSplitsAddToTracker {
 
   @BeforeClass
   public static void setupClass() throws Exception {
-    TEST_UTIL.getConfiguration().set(TRACKER_IMPL, TestStoreFileTracker.class.getName());
+    TEST_UTIL.getConfiguration().set(TRACKER_IMPL, StoreFileTrackerForTest.class.getName());
     TEST_UTIL.startMiniCluster();
   }
 
@@ -85,7 +85,7 @@ public class TestMergesSplitsAddToTracker {
 
   @Before
   public void setup(){
-    TestStoreFileTracker.trackedFiles = new HashMap<>();
+    StoreFileTrackerForTest.trackedFiles = new HashMap<>();
   }
 
   @Test
@@ -234,7 +234,7 @@ public class TestMergesSplitsAddToTracker {
   private void verifyFilesAreTracked(Path regionDir, FileSystem fs) throws Exception {
     String storeId = regionDir.getName() + "-info";
     for(FileStatus f : fs.listStatus(new Path(regionDir, Bytes.toString(FAMILY_NAME)))){
-      assertTrue(TestStoreFileTracker.trackedFiles.get(storeId).stream().filter(s ->
+      assertTrue(StoreFileTrackerForTest.trackedFiles.get(storeId).stream().filter(s ->
         s.getPath().equals(f.getPath())).findFirst().isPresent());
     }
   }

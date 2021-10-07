@@ -16,10 +16,13 @@
 package org.apache.hadoop.hbase.regionserver.storefiletracker;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.CompoundConfiguration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptor;
@@ -53,6 +56,11 @@ public final class StoreFileTrackerFactory {
   private static final Logger LOG = LoggerFactory.getLogger(StoreFileTrackerFactory.class);
 
   public static final String TRACKER_IMPL = "hbase.store.file-tracker.impl";
+
+  static final String PERSIST_CONF_METHOD_NAME = "persistConfiguration";
+
+  static final Class<?>[] PERSIST_CONF_METHOD_PARAMS =
+    { Configuration.class, TableDescriptorBuilder.class };
 
   /**
    * Maps between configuration names for trackers and implementation classes.
@@ -158,12 +166,20 @@ public final class StoreFileTrackerFactory {
     return ReflectionUtils.newInstance(tracker, conf, isPrimaryReplica, ctx);
   }
 
-  public static void persistTrackerConfig(Configuration conf, TableDescriptorBuilder builder) {
-    TableDescriptor tableDescriptor = builder.build();
-    ColumnFamilyDescriptor cfDesc = tableDescriptor.getColumnFamilies()[0];
-    StoreContext context = StoreContext.getBuilder().withColumnFamilyDescriptor(cfDesc).build();
-    StoreFileTracker tracker = StoreFileTrackerFactory.create(conf, true, context);
-    tracker.persistConfiguration(builder);
+  public static TableDescriptor persistTrackerConfig(Configuration conf, TableDescriptor td) {
+    Configuration mergedConf = new CompoundConfiguration().add(conf).addBytesMap(td.getValues());
+    TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(td);
+    Class<? extends StoreFileTracker> trackerImpl = getTrackerClass(mergedConf);
+    Method persistConfMethod;
+    try {
+      persistConfMethod =
+        trackerImpl.getMethod(PERSIST_CONF_METHOD_NAME, PERSIST_CONF_METHOD_PARAMS);
+      persistConfMethod.invoke(null, mergedConf, builder);
+    } catch (NoSuchMethodException | SecurityException | IllegalAccessException
+      | InvocationTargetException e) {
+      throw new RuntimeException(e);
+    }
+    return builder.build();
   }
 
   // should not use MigrationStoreFileTracker for new family

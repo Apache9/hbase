@@ -18,55 +18,49 @@
 package org.apache.hadoop.hbase.regionserver.storefiletracker;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.regionserver.StoreContext;
 import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
-import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**
- * The default implementation for store file tracker, where we do not persist the store file list,
- * and use listing when loading store files.
- */
-@InterfaceAudience.Private
-class DefaultStoreFileTracker extends StoreFileTrackerBase {
+public class StoreFileTrackerForTest extends DefaultStoreFileTracker {
 
-  public DefaultStoreFileTracker(Configuration conf, boolean isPrimaryReplica, StoreContext ctx) {
+  private static final Logger LOG = LoggerFactory.getLogger(StoreFileTrackerForTest.class);
+  public static Map<String, List<StoreFileInfo>> trackedFiles = new HashMap<>();
+  private String storeId;
+
+  public StoreFileTrackerForTest(Configuration conf, boolean isPrimaryReplica, StoreContext ctx) {
     super(conf, isPrimaryReplica, ctx);
-  }
+    if (ctx.getRegionFileSystem() != null) {
+      this.storeId = ctx.getRegionInfo().getEncodedName() + "-" + ctx.getFamily().getNameAsString();
+      LOG.info("created storeId: {}", storeId);
+      trackedFiles.computeIfAbsent(storeId, v -> new ArrayList<>());
+    } else {
+      LOG.info("ctx.getRegionFileSystem() returned null. Leaving storeId null.");
+    }
 
-  @Override
-  public List<StoreFileInfo> load() throws IOException {
-    List<StoreFileInfo> files =
-      ctx.getRegionFileSystem().getStoreFiles(ctx.getFamily().getNameAsString());
-    return files != null ? files : Collections.emptyList();
-  }
-
-  @Override
-  public boolean requireWritingToTmpDirFirst() {
-    return true;
   }
 
   @Override
   protected void doAddNewStoreFiles(Collection<StoreFileInfo> newFiles) throws IOException {
-    // NOOP
+    LOG.info("adding to storeId: {}", storeId);
+    trackedFiles.get(storeId).addAll(newFiles);
+    trackedFiles.putIfAbsent(storeId, (List<StoreFileInfo>) newFiles);
   }
 
   @Override
-  protected void doAddCompactionResults(Collection<StoreFileInfo> compactedFiles,
-    Collection<StoreFileInfo> newFiles) throws IOException {
-    // NOOP
-  }
-
-  @Override
-  void set(List<StoreFileInfo> files) {
-    // NOOP
+  public List<StoreFileInfo> load() throws IOException {
+    return trackedFiles.get(storeId);
   }
 
   public static void persistConfiguration(Configuration conf, TableDescriptorBuilder builder) {
-    StoreFileTrackerBase.persistStoreFileTrackerImpl(builder, DefaultStoreFileTracker.class);
+    StoreFileTrackerBase.persistStoreFileTrackerImpl(builder, StoreFileTrackerForTest.class);
   }
 }

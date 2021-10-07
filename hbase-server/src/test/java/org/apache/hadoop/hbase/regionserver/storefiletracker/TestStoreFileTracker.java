@@ -17,48 +17,65 @@
  */
 package org.apache.hadoop.hbase.regionserver.storefiletracker;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import static org.junit.Assert.fail;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.regionserver.StoreContext;
-import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.CollectionUtils;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import org.apache.hadoop.hbase.ClassFinder;
+import org.apache.hadoop.hbase.HBaseClassTestRule;
+import org.apache.hadoop.hbase.testclassification.RegionServerTests;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestStoreFileTracker extends DefaultStoreFileTracker {
+@Category({ RegionServerTests.class, SmallTests.class })
+public class TestStoreFileTracker {
+
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+    HBaseClassTestRule.forClass(TestStoreFileTracker.class);
 
   private static final Logger LOG = LoggerFactory.getLogger(TestStoreFileTracker.class);
-  public static Map<String, List<StoreFileInfo>> trackedFiles = new HashMap<>();
-  private String storeId;
 
-  public TestStoreFileTracker(Configuration conf, boolean isPrimaryReplica, StoreContext ctx) {
-    super(conf, isPrimaryReplica, ctx);
-    if (ctx.getRegionFileSystem() != null) {
-      this.storeId = ctx.getRegionInfo().getEncodedName() + "-" + ctx.getFamily().getNameAsString();
-      LOG.info("created storeId: {}", storeId);
-      trackedFiles.computeIfAbsent(storeId, v -> new ArrayList<>());
-    } else {
-      LOG.info("ctx.getRegionFileSystem() returned null. Leaving storeId null.");
+  /**
+   * Assert that all StoreFileTracker implementation classes have the static persistConfiguration
+   * method.
+   */
+  @Test
+  public void testHasPersistConfiguration()
+    throws ClassNotFoundException, IOException, LinkageError {
+    ClassFinder cf = new ClassFinder(null, null, StoreFileTracker.class::isAssignableFrom);
+    StringWriter sw = new StringWriter();
+    try (PrintWriter pw = new PrintWriter(sw)) {
+      for (Class<?> c : cf.findClasses(false)) {
+        LOG.info("Checking {}", c.getName());
+        if (c.isInterface() || Modifier.isAbstract(c.getModifiers())) {
+          continue;
+        }
+        Method method;
+        try {
+          method = c.getMethod(StoreFileTrackerFactory.PERSIST_CONF_METHOD_NAME,
+            StoreFileTrackerFactory.PERSIST_CONF_METHOD_PARAMS);
+        } catch (NoSuchMethodException e) {
+          pw.println("Error checking " + c.getName() + ": " + e.toString());
+          continue;
+        }
+        if (!Modifier.isStatic(method.getModifiers())) {
+          pw.println(
+            "Error checking " + c.getName() + ": method " + method.getName() + " is not static");
+        }
+      }
     }
-
-  }
-
-  @Override
-  protected void doAddNewStoreFiles(Collection<StoreFileInfo> newFiles) throws IOException {
-    LOG.info("adding to storeId: {}", storeId);
-    trackedFiles.get(storeId).addAll(newFiles);
-    trackedFiles.putIfAbsent(storeId, (List<StoreFileInfo>)newFiles);
-  }
-
-  @Override
-  public List<StoreFileInfo> load() throws IOException {
-    return trackedFiles.get(storeId);
+    String error = sw.toString();
+    if (!error.isEmpty()) {
+      LOG.info(error);
+      fail("Checking fails, please see the above error message");
+    }
   }
 }

@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionReplicaUtil;
 import org.apache.hadoop.hbase.client.TableDescriptor;
-import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
@@ -283,21 +282,19 @@ public class CreateTableProcedure
     return true;
   }
 
-  private void preCreate(final MasterProcedureEnv env)
-      throws IOException, InterruptedException {
+  private void preCreate(final MasterProcedureEnv env) throws IOException {
     if (!getTableName().isSystemTable()) {
       ProcedureSyncWait.getMasterQuotaManager(env).checkNamespaceTableAndRegionQuota(getTableName(),
         (newRegions != null ? newRegions.size() : 0));
     }
 
-    TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(tableDescriptor);
-    StoreFileTrackerFactory.persistTrackerConfig(env.getMasterConfiguration(), builder);
-    tableDescriptor = builder.build();
+    tableDescriptor =
+      StoreFileTrackerFactory.persistTrackerConfig(env.getMasterConfiguration(), tableDescriptor);
 
     final MasterCoprocessorHost cpHost = env.getMasterCoprocessorHost();
     if (cpHost != null) {
-      final RegionInfo[] regions = newRegions == null ? null :
-        newRegions.toArray(new RegionInfo[newRegions.size()]);
+      final RegionInfo[] regions =
+        newRegions == null ? null : newRegions.toArray(new RegionInfo[newRegions.size()]);
       cpHost.preCreateTableAction(tableDescriptor, regions, getUser());
     }
   }
