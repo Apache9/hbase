@@ -169,4 +169,11 @@ public class DummyAsyncClusterConnection implements AsyncClusterConnection {
   public CompletableFuture<List<ServerName>> getAllBootstrapNodes(ServerName regionServer) {
     return null;
   }
+
+  @Override
+  public CompletableFuture<Void> replicate(RegionInfo replica,
+    List<Entry> entries, int numRetries, long rpcTimeoutNs,
+    long operationTimeoutNs) {
+    return null;
+  }
 }

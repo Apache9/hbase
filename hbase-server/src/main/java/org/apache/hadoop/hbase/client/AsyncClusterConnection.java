@@ -110,4 +110,10 @@ public interface AsyncClusterConnection extends AsyncConnection {
    * Get the bootstrap node list of another region server.
    */
   CompletableFuture<List<ServerName>> getAllBootstrapNodes(ServerName regionServer);
+
+  /**
+   * Replicate wal edits to a secondary replica.
+   */
+  CompletableFuture<Void> replicate(RegionInfo replica, List<Entry> entries, int numRetries,
+    long rpcTimeoutNs, long operationTimeoutNs);
 }

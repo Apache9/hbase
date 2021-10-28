@@ -176,4 +176,13 @@ class AsyncClusterConnectionImpl extends AsyncConnectionImpl implements AsyncClu
       });
     return future;
   }
+
+  @Override
+  public CompletableFuture<Void> replicate(RegionInfo replica,
+    List<Entry> entries, int retries, long rpcTimeoutNs,
+    long operationTimeoutNs) {
+    return new AsyncRegionReplicationRetryingCaller(RETRY_TIMER, this,
+      ConnectionUtils.retries2Attempts(retries), rpcTimeoutNs, operationTimeoutNs, replica, entries)
+        .call();
+  }
 }
