@@ -26,6 +26,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_SOCKET_TIMEOUT_KEY
 import static org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleState.READER_IDLE;
 import static org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleState.WRITER_IDLE;
 
+import com.google.errorprone.annotations.RestrictedApi;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
@@ -597,5 +598,11 @@ public class FanOutOneBlockAsyncDFSOutput implements AsyncFSOutput {
   @Override
   public long getSyncedLength() {
     return this.ackedBlockLength;
+  }
+
+  @RestrictedApi(explanation = "Should only be called in tests", link = "",
+    allowedOnPath = ".*/src/test/.*")
+  Map<Channel, DatanodeInfo> getDatanodeInfoMap() {
+    return datanodeInfoMap;
   }
 }
