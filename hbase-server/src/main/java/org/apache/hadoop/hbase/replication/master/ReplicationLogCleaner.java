@@ -19,17 +19,26 @@ package org.apache.hadoop.hbase.replication.master;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
+import org.apache.hadoop.hbase.master.ServerManager;
 import org.apache.hadoop.hbase.master.cleaner.BaseLogCleanerDelegate;
+import org.apache.hadoop.hbase.master.replication.ReplicationPeerManager;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationGroupOffset;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+import org.apache.hadoop.hbase.replication.ReplicationQueueData;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
 import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -46,23 +55,37 @@ import org.apache.hbase.thirdparty.org.apache.commons.collections4.MapUtils;
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.CONFIG)
 public class ReplicationLogCleaner extends BaseLogCleanerDelegate {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicationLogCleaner.class);
-  private ZKWatcher zkw = null;
-  private boolean shareZK = false;
+  private ServerManager serverManager;
+  private ReplicationPeerManager replicationPeerManager;
+  private List<String> peerIds;
   private ReplicationQueueStorage queueStorage;
   private boolean stopped = false;
-  private Set<String> wals;
-  private long readZKTimestamp = 0;
 
   @Override
   public void preClean() {
-    readZKTimestamp = EnvironmentEdgeManager.currentTime();
+    // server name -> peer Id -> group offsets
+    Map<ServerName, Map<String, Map<String, ReplicationGroupOffset>>> onlineServerOffsets =
+      new HashMap<>();
+    Map<ServerName, Map<String, Map<String, ReplicationGroupOffset>>> deadServerOffsets =
+      new HashMap<>();
     try {
-      // The concurrently created new WALs may not be included in the return list,
-      // but they won't be deleted because they're not in the checking set.
-      wals = queueStorage.getAllWALs();
+      for (ReplicationQueueData queue : queueStorage.listAllQueues()) {
+        ReplicationQueueId queueId = queue.getId();
+        if (queueId.isRecovered()) {
+          deadServerOffsets
+            .computeIfAbsent(queueId.getSourceServerName().get(), k -> new HashMap<>())
+            .put(queueId.getPeerId(), queue.getOffsets());
+        } else {
+          onlineServerOffsets
+            .computeIfAbsent(queueId.getSourceServerName().get(), k -> new HashMap<>())
+            .put(queueId.getPeerId(), queue.getOffsets());
+        }
+      }
+      peerIds = replicationPeerManager.listPeers(null).stream()
+        .map(ReplicationPeerDescription::getPeerId).collect(Collectors.toList());
     } catch (ReplicationException e) {
       LOG.warn("Failed to read zookeeper, skipping checking deletable files");
-      wals = null;
+      peerIds = null;
     }
   }
 
@@ -70,11 +93,11 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate {
   public Iterable<FileStatus> getDeletableFiles(Iterable<FileStatus> files) {
     // all members of this class are null if replication is disabled,
     // so we cannot filter the files
-    if (this.getConf() == null) {
+    if (this.getConf() == null || peerIds.isEmpty()) {
       return files;
     }
 
-    if (wals == null) {
+    if (peerIds == null) {
       return Collections.emptyList();
     }
     return Iterables.filter(files, new Predicate<FileStatus>() {
@@ -86,6 +109,7 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate {
           return false;
         }
         String wal = file.getPath().getName();
+        String walPrefix = AbstractFSWALProvider.getWALPrefixFromWALName(wal);
         boolean logInReplicationQueue = wals.contains(wal);
         if (logInReplicationQueue) {
           LOG.debug("Found up in ZooKeeper, NOT deleting={}", wal);

@@ -295,7 +295,7 @@ public class DumpReplicationQueues extends Configured implements Tool {
           deletedQueues.add(queueId.toString());
           sb.append(formatQueue(queueStorage, queueId, offsets, true));
         } else {
-          sb.append(formatQueue( queueStorage, queueId, offsets, false));
+          sb.append(formatQueue(queueStorage, queueId, offsets, false));
         }
       }
     }
@@ -305,7 +305,8 @@ public class DumpReplicationQueues extends Configured implements Tool {
   private String formatQueue(ReplicationQueueStorage queueStorage, ReplicationQueueId queueId,
     Map<String, ReplicationGroupOffset> offsets, boolean isDeleted) throws Exception {
     StringBuilder sb = new StringBuilder();
-    sb.append("Dumping replication queue info for RegionServer: [" + queueId.getServerName() + "]" + "\n");
+    sb.append(
+      "Dumping replication queue info for RegionServer: [" + queueId.getServerName() + "]" + "\n");
     sb.append("    Queue znode: " + queueId + "\n");
     sb.append("    PeerID: " + queueId.getPeerId() + "\n");
     sb.append("    Recovered: " + queueId.isRecovered() + "\n");

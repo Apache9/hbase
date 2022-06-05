@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.replication;
 
+import java.util.Comparator;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
@@ -31,6 +32,9 @@ import org.apache.yetus.audience.InterfaceAudience;
 public class ReplicationGroupOffset {
 
   public static final ReplicationGroupOffset BEGIN = new ReplicationGroupOffset("", 0L);
+
+  public static final Comparator<ReplicationGroupOffset> COMPARATOR = Comparator
+    .comparing(ReplicationGroupOffset::getWal).thenComparingLong(ReplicationGroupOffset::getOffset);
 
   private final String wal;
 

@@ -61,6 +61,11 @@ public interface ReplicationQueueStorage {
   List<ReplicationQueueId> listAllQueueIds(ServerName serverName) throws ReplicationException;
 
   /**
+   * Get a list of all queues and offsets.
+   */
+  List<ReplicationQueueData> listAllQueues() throws ReplicationException;
+
+  /**
    * Get a list of all region servers that have outstanding replication queues. These servers could
    * be alive, dead or from a previous run of the cluster.
    * @return a list of server names

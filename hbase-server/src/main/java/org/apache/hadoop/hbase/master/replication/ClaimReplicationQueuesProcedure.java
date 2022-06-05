@@ -98,14 +98,14 @@ public class ClaimReplicationQueuesProcedure extends Procedure<MasterProcedureEn
             + "skipping claiming and removing...", queueId);
           iter.remove();
           storage.removeQueue(queueId);
-        } else if (!queueId.isRecovered()){
+        } else if (!queueId.isRecovered()) {
           existQueuePeerIds.add(queueId.getPeerId());
         }
       }
       List<ReplicationPeerDescription> peers = env.getReplicationPeerManager().listPeers(null);
       for (ReplicationPeerDescription peer : peers) {
         if (!existQueuePeerIds.contains(peer.getPeerId())) {
-          // add a replication queue for this peer, this is because 
+          // add a replication queue for this peer, this is because
           ReplicationQueueId queueId = new ReplicationQueueId(crashedServer, peer.getPeerId());
           env.getReplicationPeerManager().getQueueStorage().setOffset(queueId,
             crashedServer.toString(), ReplicationGroupOffset.BEGIN, Collections.emptyMap());
@@ -123,8 +123,7 @@ public class ClaimReplicationQueuesProcedure extends Procedure<MasterProcedureEn
       ClaimReplicationQueueRemoteProcedure[] procs =
         new ClaimReplicationQueueRemoteProcedure[Math.min(queues.size(), targetServers.size())];
       for (int i = 0; i < procs.length; i++) {
-        procs[i] = new ClaimReplicationQueueRemoteProcedure(queues.get(i),
-          targetServers.get(i));
+        procs[i] = new ClaimReplicationQueueRemoteProcedure(queues.get(i), targetServers.get(i));
       }
       return procs;
     } catch (ReplicationException e) {
