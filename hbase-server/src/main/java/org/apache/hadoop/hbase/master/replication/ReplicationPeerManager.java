@@ -48,7 +48,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfigBuilder;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationPeerStorage;
-import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
 import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
@@ -106,11 +106,10 @@ public class ReplicationPeerManager {
 
   private void checkQueuesDeleted(String peerId)
     throws ReplicationException, DoNotRetryIOException {
-    for (ServerName replicator : queueStorage.getListOfReplicators()) {
-      List<String> queueIds = queueStorage.getAllQueues(replicator);
-      for (String queueId : queueIds) {
-        ReplicationQueueInfo queueInfo = new ReplicationQueueInfo(queueId);
-        if (queueInfo.getPeerId().equals(peerId)) {
+    for (ServerName replicator : queueStorage.listAllReplicators()) {
+      List<ReplicationQueueId> queueIds = queueStorage.listAllQueueIds(replicator);
+      for (ReplicationQueueId queueId : queueIds) {
+        if (queueId.getPeerId().equals(peerId)) {
           throw new DoNotRetryIOException("undeleted queue for peerId: " + peerId + ", replicator: "
             + replicator + ", queueId: " + queueId);
         }

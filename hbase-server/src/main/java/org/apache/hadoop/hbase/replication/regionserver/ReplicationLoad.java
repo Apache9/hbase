@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.replication.regionserver;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.yetus.audience.InterfaceAudience;
 
@@ -89,8 +90,9 @@ public class ReplicationLoad {
       rLoadSourceBuild.setOPsShipped(oPsShipped);
       if (source instanceof ReplicationSource) {
         ReplicationSource replSource = (ReplicationSource) source;
-        rLoadSourceBuild.setRecovered(replSource.getReplicationQueueInfo().isQueueRecovered());
-        rLoadSourceBuild.setQueueId(replSource.getReplicationQueueInfo().getQueueId());
+        ReplicationQueueId queueId = replSource.getQueueId();
+        rLoadSourceBuild.setRecovered(queueId.isRecovered());
+        rLoadSourceBuild.setQueueId(queueId.toString());
         rLoadSourceBuild.setRunning(replSource.isWorkerRunning());
         rLoadSourceBuild.setEditsSinceRestart(timeStampOfNextToReplicate > 0);
       }

@@ -27,8 +27,6 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class is for maintaining the various replication statistics for a source and publishing them
@@ -36,8 +34,6 @@ import org.slf4j.LoggerFactory;
  */
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.REPLICATION)
 public class MetricsSource implements BaseSource {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MetricsSource.class);
 
   // tracks last shipped timestamp for each wal group
   private Map<String, Long> lastShippedTimeStamps = new HashMap<String, Long>();

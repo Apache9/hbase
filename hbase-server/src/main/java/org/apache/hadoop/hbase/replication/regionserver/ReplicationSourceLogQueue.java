@@ -97,7 +97,7 @@ public class ReplicationSourceLogQueue {
    * @param walGroupId walGroupId
    */
   public int getQueueSize(String walGroupId) {
-    Queue queue = queues.get(walGroupId);
+    Queue<Path> queue = queues.get(walGroupId);
     if (queue == null) {
       return 0;
     }

@@ -313,10 +313,6 @@ public class ReplicationSourceShipper extends Thread {
     this.entryReader = entryReader;
   }
 
-  long getStartPosition() {
-    return 0;
-  }
-
   protected boolean isActive() {
     return source.isSourceActive() && state == WorkerState.RUNNING && !isInterrupted();
   }

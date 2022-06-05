@@ -65,9 +65,11 @@ import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
+import org.apache.hadoop.hbase.replication.ReplicationGroupOffset;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
 import org.apache.hadoop.hbase.replication.ReplicationSourceDummy;
 import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
@@ -477,45 +479,6 @@ public abstract class TestReplicationSourceManager {
       scopes.containsKey(f2));
   }
 
-  /**
-   * Test whether calling removePeer() on a ReplicationSourceManager that failed on initializing the
-   * corresponding ReplicationSourceInterface correctly cleans up the corresponding replication
-   * queue and ReplicationPeer. See HBASE-16096.
-   */
-  @Test
-  public void testPeerRemovalCleanup() throws Exception {
-    String replicationSourceImplName = conf.get("replication.replicationsource.implementation");
-    final String peerId = "FakePeer";
-    final ReplicationPeerConfig peerConfig = ReplicationPeerConfig.newBuilder()
-      .setClusterKey(utility.getZkCluster().getAddress().toString() + ":/hbase").build();
-    try {
-      DummyServer server = new DummyServer();
-      ReplicationQueueStorage rq = ReplicationStorageFactory
-        .getReplicationQueueStorage(server.getZooKeeper(), server.getConfiguration());
-      // Purposely fail ReplicationSourceManager.addSource() by causing ReplicationSourceInterface
-      // initialization to throw an exception.
-      conf.set("replication.replicationsource.implementation",
-        FailInitializeDummyReplicationSource.class.getName());
-      manager.getReplicationPeers();
-      // Set up the znode and ReplicationPeer for the fake peer
-      // Don't wait for replication source to initialize, we know it won't.
-      addPeerAndWait(peerId, peerConfig, false);
-
-      // Sanity check
-      assertNull(manager.getSource(peerId));
-
-      // Create a replication queue for the fake peer
-      rq.addWAL(server.getServerName(), peerId, "FakeFile");
-      // Unregister peer, this should remove the peer and clear all queues associated with it
-      // Need to wait for the ReplicationTracker to pick up the changes and notify listeners.
-      removePeerAndWait(peerId);
-      assertFalse(rq.getAllQueues(server.getServerName()).contains(peerId));
-    } finally {
-      conf.set("replication.replicationsource.implementation", replicationSourceImplName);
-      removePeerAndWait(peerId);
-    }
-  }
-
   private static MetricsReplicationSourceSource getGlobalSource() throws Exception {
     ReplicationSourceInterface source = manager.getSource(slaveId);
     // Retrieve the global replication metrics source
@@ -796,9 +759,9 @@ public abstract class TestReplicationSourceManager {
 
     @Override
     public void init(Configuration conf, FileSystem fs, ReplicationSourceManager manager,
-      ReplicationQueueStorage rq, ReplicationPeer rp, Server server, String peerClusterId,
-      UUID clusterId, WALFileLengthProvider walFileLengthProvider, MetricsSource metrics)
-      throws IOException {
+      ReplicationQueueStorage rq, ReplicationPeer rp, Server server, ReplicationQueueId queueId,
+      Map<String, ReplicationGroupOffset> startPositions, UUID clusterId,
+      WALFileLengthProvider walFileLengthProvider, MetricsSource metrics) throws IOException {
       throw new IOException("Failing deliberately");
     }
   }

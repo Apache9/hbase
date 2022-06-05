@@ -15,27 +15,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.replication.regionserver;
+package org.apache.hadoop.hbase.replication;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.yetus.audience.InterfaceAudience;
 
+import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
+
 /**
- * Used by a {@link RecoveredReplicationSource}.
+ * Representing all the information for a replication queue.
  */
 @InterfaceAudience.Private
-public class RecoveredReplicationSourceShipper extends ReplicationSourceShipper {
+public class ReplicationQueueData {
 
-  protected final RecoveredReplicationSource source;
+  private final ReplicationQueueId id;
 
-  public RecoveredReplicationSourceShipper(Configuration conf, String walGroupId,
-    ReplicationSourceLogQueue logQueue, RecoveredReplicationSource source) {
-    super(conf, walGroupId, logQueue, source);
-    this.source = source;
+  private final ImmutableMap<String, ReplicationGroupOffset> offsets;
+
+  public ReplicationQueueData(ReplicationQueueId id,
+    ImmutableMap<String, ReplicationGroupOffset> offsets) {
+    this.id = id;
+    this.offsets = offsets;
   }
 
-  @Override
-  protected void postFinish() {
-    source.tryFinish();
+  public ReplicationQueueId getId() {
+    return id;
+  }
+
+  public ImmutableMap<String, ReplicationGroupOffset> getOffsets() {
+    return offsets;
   }
 }

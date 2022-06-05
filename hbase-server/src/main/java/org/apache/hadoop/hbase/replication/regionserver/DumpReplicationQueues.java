@@ -17,11 +17,9 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +28,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.ServerName;
@@ -39,11 +35,10 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.replication.TableCFs;
-import org.apache.hadoop.hbase.io.WALLink;
-import org.apache.hadoop.hbase.procedure2.util.StringUtils;
+import org.apache.hadoop.hbase.replication.ReplicationGroupOffset;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
-import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
 import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -55,8 +50,6 @@ import org.apache.hadoop.util.ToolRunner;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.AtomicLongMap;
 
 /**
  * Provides information about the existing states of replication, replication peers and queues.
@@ -71,16 +64,10 @@ public class DumpReplicationQueues extends Configured implements Tool {
 
   private List<String> deadRegionServers;
   private List<String> deletedQueues;
-  private AtomicLongMap<String> peersQueueSize;
-  private long totalSizeOfWALs;
-  private long numWalsNotFound;
 
   public DumpReplicationQueues() {
     deadRegionServers = new ArrayList<>();
     deletedQueues = new ArrayList<>();
-    peersQueueSize = AtomicLongMap.create();
-    totalSizeOfWALs = 0;
-    numWalsNotFound = 0;
   }
 
   static class DumpOptions {
@@ -230,7 +217,7 @@ public class DumpReplicationQueues extends Configured implements Tool {
         LOG.info("Found [--distributed], will poll each RegionServer.");
         Set<String> peerIds =
           peers.stream().map((peer) -> peer.getPeerId()).collect(Collectors.toSet());
-        System.out.println(dumpQueues(zkw, peerIds, opts.isHdfs()));
+        System.out.println(dumpQueues(zkw, peerIds));
         System.out.println(dumpReplicationSummary());
       } else {
         // use ZK instead
@@ -261,17 +248,6 @@ public class DumpReplicationQueues extends Configured implements Tool {
         sb.append("    " + deadRs + "\n");
       }
     }
-    if (!peersQueueSize.isEmpty()) {
-      sb.append("Dumping all peers's number of WALs in replication queue\n");
-      for (Map.Entry<String, Long> entry : peersQueueSize.asMap().entrySet()) {
-        sb.append(
-          "    PeerId: " + entry.getKey() + " , sizeOfLogQueue: " + entry.getValue() + "\n");
-      }
-    }
-    sb.append("    Total size of WALs on HDFS: " + StringUtils.humanSize(totalSizeOfWALs) + "\n");
-    if (numWalsNotFound > 0) {
-      sb.append("    ERROR: There are " + numWalsNotFound + " WALs not found!!!\n");
-    }
     return sb.toString();
   }
 
@@ -295,7 +271,7 @@ public class DumpReplicationQueues extends Configured implements Tool {
     return sb.toString();
   }
 
-  public String dumpQueues(ZKWatcher zkw, Set<String> peerIds, boolean hdfs) throws Exception {
+  public String dumpQueues(ZKWatcher zkw, Set<String> peerIds) throws Exception {
     ReplicationQueueStorage queueStorage;
     StringBuilder sb = new StringBuilder();
 
@@ -304,90 +280,45 @@ public class DumpReplicationQueues extends Configured implements Tool {
       .stream().map(ServerName::parseServerName).collect(Collectors.toSet());
 
     // Loops each peer on each RS and dumps the queues
-    List<ServerName> regionservers = queueStorage.getListOfReplicators();
+    List<ServerName> regionservers = queueStorage.listAllReplicators();
     if (regionservers == null || regionservers.isEmpty()) {
       return sb.toString();
     }
     for (ServerName regionserver : regionservers) {
-      List<String> queueIds = queueStorage.getAllQueues(regionserver);
+      List<ReplicationQueueId> queueIds = queueStorage.listAllQueueIds(regionserver);
       if (!liveRegionServers.contains(regionserver)) {
         deadRegionServers.add(regionserver.getServerName());
       }
-      for (String queueId : queueIds) {
-        ReplicationQueueInfo queueInfo = new ReplicationQueueInfo(queueId);
-        List<String> wals = queueStorage.getWALsInQueue(regionserver, queueId);
-        Collections.sort(wals);
-        if (!peerIds.contains(queueInfo.getPeerId())) {
-          deletedQueues.add(regionserver + "/" + queueId);
-          sb.append(formatQueue(regionserver, queueStorage, queueInfo, queueId, wals, true, hdfs));
+      for (ReplicationQueueId queueId : queueIds) {
+        Map<String, ReplicationGroupOffset> offsets = queueStorage.getOffsets(queueId);
+        if (!peerIds.contains(queueId.getPeerId())) {
+          deletedQueues.add(queueId.toString());
+          sb.append(formatQueue(queueStorage, queueId, offsets, true));
         } else {
-          sb.append(formatQueue(regionserver, queueStorage, queueInfo, queueId, wals, false, hdfs));
+          sb.append(formatQueue( queueStorage, queueId, offsets, false));
         }
       }
     }
     return sb.toString();
   }
 
-  private String formatQueue(ServerName regionserver, ReplicationQueueStorage queueStorage,
-    ReplicationQueueInfo queueInfo, String queueId, List<String> wals, boolean isDeleted,
-    boolean hdfs) throws Exception {
+  private String formatQueue(ReplicationQueueStorage queueStorage, ReplicationQueueId queueId,
+    Map<String, ReplicationGroupOffset> offsets, boolean isDeleted) throws Exception {
     StringBuilder sb = new StringBuilder();
-
-    List<ServerName> deadServers;
-
-    sb.append("Dumping replication queue info for RegionServer: [" + regionserver + "]" + "\n");
+    sb.append("Dumping replication queue info for RegionServer: [" + queueId.getServerName() + "]" + "\n");
     sb.append("    Queue znode: " + queueId + "\n");
-    sb.append("    PeerID: " + queueInfo.getPeerId() + "\n");
-    sb.append("    Recovered: " + queueInfo.isQueueRecovered() + "\n");
-    deadServers = queueInfo.getDeadRegionServers();
-    if (deadServers.isEmpty()) {
-      sb.append("    No dead RegionServers found in this queue." + "\n");
-    } else {
-      sb.append("    Dead RegionServers: " + deadServers + "\n");
+    sb.append("    PeerID: " + queueId.getPeerId() + "\n");
+    sb.append("    Recovered: " + queueId.isRecovered() + "\n");
+    if (!queueId.isRecovered()) {
+      sb.append("    Source RegionServer: " + queueId.getSourceServerName().get() + "\n");
     }
     sb.append("    Was deleted: " + isDeleted + "\n");
-    sb.append("    Number of WALs in replication queue: " + wals.size() + "\n");
-    peersQueueSize.addAndGet(queueInfo.getPeerId(), wals.size());
+    sb.append("    Number of wal groups in replication queue: " + offsets.size() + "\n");
 
-    for (String wal : wals) {
-      long position = queueStorage.getWALPosition(regionserver, queueInfo.getPeerId(), wal);
-      sb.append("    Replication position for " + wal + ": "
-        + (position > 0 ? position : "0" + " (not started or nothing to replicate)") + "\n");
-    }
-
-    if (hdfs) {
-      FileSystem fs = FileSystem.get(getConf());
-      sb.append("    Total size of WALs on HDFS for this queue: "
-        + StringUtils.humanSize(getTotalWALSize(fs, wals, regionserver)) + "\n");
-    }
+    offsets.forEach((walGroup, offset) -> {
+      sb.append("    Replication position for " + walGroup + ": " + offset + "\n");
+    });
     return sb.toString();
-  }
-
-  /**
-   * return total size in bytes from a list of WALs
-   */
-  private long getTotalWALSize(FileSystem fs, List<String> wals, ServerName server)
-    throws IOException {
-    long size = 0;
-    FileStatus fileStatus;
-
-    for (String wal : wals) {
-      try {
-        fileStatus = (new WALLink(getConf(), server.getServerName(), wal)).getFileStatus(fs);
-      } catch (IOException e) {
-        if (e instanceof FileNotFoundException) {
-          numWalsNotFound++;
-          LOG.warn("WAL " + wal + " couldn't be found, skipping", e);
-        } else {
-          LOG.warn("Can't get file status of WAL " + wal + ", skipping", e);
-        }
-        continue;
-      }
-      size += fileStatus.getLen();
-    }
-
-    totalSizeOfWALs += size;
-    return size;
   }
 
   private static class WarnOnlyAbortable implements Abortable {

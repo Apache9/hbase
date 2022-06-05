@@ -83,15 +83,13 @@ public final class ReplicationUtils {
 
   public static void removeAllQueues(ReplicationQueueStorage queueStorage, String peerId)
     throws ReplicationException {
-    for (ServerName replicator : queueStorage.getListOfReplicators()) {
-      List<String> queueIds = queueStorage.getAllQueues(replicator);
-      for (String queueId : queueIds) {
-        ReplicationQueueInfo queueInfo = new ReplicationQueueInfo(queueId);
-        if (queueInfo.getPeerId().equals(peerId)) {
-          queueStorage.removeQueue(replicator, queueId);
+    for (ServerName replicator : queueStorage.listAllReplicators()) {
+      List<ReplicationQueueId> queueIds = queueStorage.listAllQueueIds(replicator);
+      for (ReplicationQueueId queueId : queueIds) {
+        if (queueId.getPeerId().equals(peerId)) {
+          queueStorage.removeQueue(queueId);
         }
       }
-      queueStorage.removeReplicatorIfQueueIsEmpty(replicator);
     }
   }
 

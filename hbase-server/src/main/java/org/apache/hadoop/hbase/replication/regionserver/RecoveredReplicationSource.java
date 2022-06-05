@@ -18,18 +18,16 @@
 package org.apache.hadoop.hbase.replication.regionserver;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.PriorityBlockingQueue;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Server;
-import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.replication.ReplicationGroupOffset;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
-import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -44,101 +42,34 @@ public class RecoveredReplicationSource extends ReplicationSource {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecoveredReplicationSource.class);
 
-  private String actualPeerId;
-
   @Override
   public void init(Configuration conf, FileSystem fs, ReplicationSourceManager manager,
     ReplicationQueueStorage queueStorage, ReplicationPeer replicationPeer, Server server,
-    String peerClusterZnode, UUID clusterId, WALFileLengthProvider walFileLengthProvider,
-    MetricsSource metrics) throws IOException {
-    super.init(conf, fs, manager, queueStorage, replicationPeer, server, peerClusterZnode,
+    ReplicationQueueId queueId, Map<String, ReplicationGroupOffset> startPositions, UUID clusterId,
+    WALFileLengthProvider walFileLengthProvider, MetricsSource metrics) throws IOException {
+    super.init(conf, fs, manager, queueStorage, replicationPeer, server, queueId, startPositions,
       clusterId, walFileLengthProvider, metrics);
-    this.actualPeerId = this.replicationQueueInfo.getPeerId();
+  }
+
+  @Override
+  public void enqueueLog(Path wal) {
+    String walPrefix = AbstractFSWALProvider.getWALPrefixFromWALName(wal.getName());
+    ReplicationGroupOffset offset = startPositions.get(walPrefix);
+    // if the wal is before the start offset, just ignore it
+    if (offset != null) {
+      long offsetStartTime = AbstractFSWALProvider.getTimestamp(offset.getWal());
+      long startTime = AbstractFSWALProvider.getTimestamp(wal.getName());
+      if (offsetStartTime > startTime) {
+        LOG.info("Skip enqueuing {} because it is before the start position {}", wal, offset);
+        return;
+      }
+    }
+    super.enqueueLog(wal);
   }
 
   @Override
   protected RecoveredReplicationSourceShipper createNewShipper(String walGroupId) {
-    return new RecoveredReplicationSourceShipper(conf, walGroupId, logQueue, this, queueStorage);
-  }
-
-  public void locateRecoveredPaths(String walGroupId) throws IOException {
-    boolean hasPathChanged = false;
-    PriorityBlockingQueue<Path> queue = logQueue.getQueue(walGroupId);
-    PriorityBlockingQueue<Path> newPaths = new PriorityBlockingQueue<Path>(queueSizePerGroup,
-      new AbstractFSWALProvider.WALStartTimeComparator());
-    pathsLoop: for (Path path : queue) {
-      if (fs.exists(path)) { // still in same location, don't need to do anything
-        newPaths.add(path);
-        continue;
-      }
-      // Path changed - try to find the right path.
-      hasPathChanged = true;
-      if (server instanceof ReplicationSyncUp.DummyServer) {
-        // In the case of disaster/recovery, HMaster may be shutdown/crashed before flush data
-        // from .logs to .oldlogs. Loop into .logs folders and check whether a match exists
-        Path newPath = getReplSyncUpPath(path);
-        newPaths.add(newPath);
-        continue;
-      } else {
-        // See if Path exists in the dead RS folder (there could be a chain of failures
-        // to look at)
-        List<ServerName> deadRegionServers = this.replicationQueueInfo.getDeadRegionServers();
-        LOG.info("NB dead servers : " + deadRegionServers.size());
-        final Path walDir = CommonFSUtils.getWALRootDir(conf);
-        for (ServerName curDeadServerName : deadRegionServers) {
-          final Path deadRsDirectory = new Path(walDir,
-            AbstractFSWALProvider.getWALDirectoryName(curDeadServerName.getServerName()));
-          Path[] locs = new Path[] { new Path(deadRsDirectory, path.getName()),
-            new Path(deadRsDirectory.suffix(AbstractFSWALProvider.SPLITTING_EXT), path.getName()) };
-          for (Path possibleLogLocation : locs) {
-            LOG.info("Possible location " + possibleLogLocation.toUri().toString());
-            if (manager.getFs().exists(possibleLogLocation)) {
-              // We found the right new location
-              LOG.info("Log " + path + " still exists at " + possibleLogLocation);
-              newPaths.add(possibleLogLocation);
-              continue pathsLoop;
-            }
-          }
-        }
-        // didn't find a new location
-        LOG.error(
-          String.format("WAL Path %s doesn't exist and couldn't find its new location", path));
-        newPaths.add(path);
-      }
-    }
-
-    if (hasPathChanged) {
-      if (newPaths.size() != queue.size()) { // this shouldn't happen
-        LOG.error("Recovery queue size is incorrect");
-        throw new IOException("Recovery queue size error");
-      }
-      // put the correct locations in the queue
-      // since this is a recovered queue with no new incoming logs,
-      // there shouldn't be any concurrency issues
-      logQueue.clear(walGroupId);
-      for (Path path : newPaths) {
-        logQueue.enqueueLog(path, walGroupId);
-      }
-    }
-  }
-
-  // N.B. the ReplicationSyncUp tool sets the manager.getWALDir to the root of the wal
-  // area rather than to the wal area for a particular region server.
-  private Path getReplSyncUpPath(Path path) throws IOException {
-    FileStatus[] rss = fs.listStatus(manager.getLogDir());
-    for (FileStatus rs : rss) {
-      Path p = rs.getPath();
-      FileStatus[] logs = fs.listStatus(p);
-      for (FileStatus log : logs) {
-        p = new Path(p, log.getPath().getName());
-        if (p.getName().equals(path.getName())) {
-          LOG.info("Log " + p.getName() + " found at " + p);
-          return p;
-        }
-      }
-    }
-    LOG.error("Didn't find path for: " + path.getName());
-    return path;
+    return new RecoveredReplicationSourceShipper(conf, walGroupId, logQueue, this);
   }
 
   void tryFinish() {
@@ -146,20 +77,5 @@ public class RecoveredReplicationSource extends ReplicationSource {
       this.getSourceMetrics().clear();
       manager.finishRecoveredSource(this);
     }
-  }
-
-  @Override
-  public String getPeerId() {
-    return this.actualPeerId;
-  }
-
-  @Override
-  public ServerName getServerWALsBelongTo() {
-    return this.replicationQueueInfo.getDeadRegionServers().get(0);
-  }
-
-  @Override
-  public boolean isRecovered() {
-    return true;
   }
 }

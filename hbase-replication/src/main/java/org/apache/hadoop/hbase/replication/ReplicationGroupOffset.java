@@ -15,27 +15,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.replication.regionserver;
+package org.apache.hadoop.hbase.replication;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
- * Used by a {@link RecoveredReplicationSource}.
+ * Representing a replication offset for a group.
+ * <p/>
+ * A replication queue could have multiple groups if multi WAL is enabled, but in each group, we can
+ * make sure the WAL files are sent in order.
+ * <p/>
+ * Actually, the offset is just a (WALFileName, offsetInWALFile) pair.
  */
 @InterfaceAudience.Private
-public class RecoveredReplicationSourceShipper extends ReplicationSourceShipper {
+public class ReplicationGroupOffset {
 
-  protected final RecoveredReplicationSource source;
+  public static final ReplicationGroupOffset BEGIN = new ReplicationGroupOffset("", 0L);
 
-  public RecoveredReplicationSourceShipper(Configuration conf, String walGroupId,
-    ReplicationSourceLogQueue logQueue, RecoveredReplicationSource source) {
-    super(conf, walGroupId, logQueue, source);
-    this.source = source;
+  private final String wal;
+
+  private final long offset;
+
+  public ReplicationGroupOffset(String wal, long offset) {
+    this.wal = wal;
+    this.offset = offset;
+  }
+
+  public String getWal() {
+    return wal;
+  }
+
+  public long getOffset() {
+    return offset;
   }
 
   @Override
-  protected void postFinish() {
-    source.tryFinish();
+  public String toString() {
+    return wal + ":" + offset;
   }
 }

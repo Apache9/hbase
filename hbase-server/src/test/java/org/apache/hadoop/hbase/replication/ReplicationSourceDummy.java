@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.replication;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hadoop.conf.Configuration;
@@ -41,7 +42,7 @@ public class ReplicationSourceDummy implements ReplicationSourceInterface {
 
   private ReplicationSourceManager manager;
   private ReplicationPeer replicationPeer;
-  private String peerClusterId;
+  private ReplicationQueueId queueId;
   private Path currentPath;
   private MetricsSource metrics;
   private WALFileLengthProvider walFileLengthProvider;
@@ -49,11 +50,11 @@ public class ReplicationSourceDummy implements ReplicationSourceInterface {
 
   @Override
   public void init(Configuration conf, FileSystem fs, ReplicationSourceManager manager,
-    ReplicationQueueStorage rq, ReplicationPeer rp, Server server, String peerClusterId,
-    UUID clusterId, WALFileLengthProvider walFileLengthProvider, MetricsSource metrics)
-    throws IOException {
+    ReplicationQueueStorage rq, ReplicationPeer rp, Server server, ReplicationQueueId queueId,
+    Map<String, ReplicationGroupOffset> startPositions, UUID clusterId,
+    WALFileLengthProvider walFileLengthProvider, MetricsSource metrics) throws IOException {
     this.manager = manager;
-    this.peerClusterId = peerClusterId;
+    this.queueId = queueId;
     this.metrics = metrics;
     this.walFileLengthProvider = walFileLengthProvider;
     this.replicationPeer = rp;
@@ -98,14 +99,8 @@ public class ReplicationSourceDummy implements ReplicationSourceInterface {
   }
 
   @Override
-  public String getQueueId() {
-    return peerClusterId;
-  }
-
-  @Override
-  public String getPeerId() {
-    String[] parts = peerClusterId.split("-", 2);
-    return parts.length != 1 ? parts[0] : peerClusterId;
+  public ReplicationQueueId getQueueId() {
+    return queueId;
   }
 
   @Override

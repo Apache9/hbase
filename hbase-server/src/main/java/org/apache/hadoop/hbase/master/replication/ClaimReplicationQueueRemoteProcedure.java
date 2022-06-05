@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.master.procedure.ServerRemoteProcedure;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.RemoteProcedureDispatcher.RemoteOperation;
 import org.apache.hadoop.hbase.procedure2.RemoteProcedureDispatcher.RemoteProcedure;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.regionserver.ClaimReplicationQueueCallable;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -50,10 +51,13 @@ public class ClaimReplicationQueueRemoteProcedure extends ServerRemoteProcedure
   public ClaimReplicationQueueRemoteProcedure() {
   }
 
-  public ClaimReplicationQueueRemoteProcedure(ServerName crashedServer, String queue,
-    ServerName targetServer) {
-    this.crashedServer = crashedServer;
-    this.queue = queue;
+  public ClaimReplicationQueueRemoteProcedure(ReplicationQueueId queueId, ServerName targetServer) {
+    // for keeping compatible with old wire format, we store the server name in crashedServer, and
+    // the peerId and source server name in queue
+    this.crashedServer = queueId.getServerName();
+    StringBuilder sb = new StringBuilder(queueId.getPeerId());
+    queueId.getSourceServerName().ifPresent(s -> sb.append('-').append(s.toString()));
+    this.queue = sb.toString();
     this.targetServer = targetServer;
   }
 

@@ -30,7 +30,9 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationGroupOffset;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
+import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
@@ -50,8 +52,8 @@ public interface ReplicationSourceInterface {
    */
   void init(Configuration conf, FileSystem fs, ReplicationSourceManager manager,
     ReplicationQueueStorage queueStorage, ReplicationPeer replicationPeer, Server server,
-    String queueId, UUID clusterId, WALFileLengthProvider walFileLengthProvider,
-    MetricsSource metrics) throws IOException;
+    ReplicationQueueId queueId, Map<String, ReplicationGroupOffset> startPositions, UUID clusterId,
+    WALFileLengthProvider walFileLengthProvider, MetricsSource metrics) throws IOException;
 
   /**
    * Add a log to the list of logs to replicate
@@ -106,14 +108,14 @@ public interface ReplicationSourceInterface {
    * Get the queue id that the source is replicating to
    * @return queue id
    */
-  String getQueueId();
+  ReplicationQueueId getQueueId();
 
   /**
    * Get the id that the source is replicating to.
    * @return peer id
    */
   default String getPeerId() {
-    return getPeer().getId();
+    return getQueueId().getPeerId();
   }
 
   /**
@@ -199,7 +201,7 @@ public interface ReplicationSourceInterface {
    * @return whether this is a replication source for recovery.
    */
   default boolean isRecovered() {
-    return false;
+    return getQueueId().isRecovered();
   }
 
   /**
