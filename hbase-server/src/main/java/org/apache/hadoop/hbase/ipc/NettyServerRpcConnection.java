@@ -70,10 +70,11 @@ class NettyServerRpcConnection extends ServerRpcConnection {
     this.remotePort = inetSocketAddress.getPort();
   }
 
-  void setupDecoder() {
+  void setupHandler() {
     ChannelPipeline p = channel.pipeline();
-    p.addLast("frameDecoder", new NettyRpcFrameDecoder(rpcServer.maxRequestSize, this));
-    p.addLast("decoder", new NettyRpcServerRequestDecoder(rpcServer.metrics, this));
+    p.addLast("frameDecoder", new NettyRpcFrameDecoder(rpcServer.maxRequestSize, this))
+      .addLast("decoder", new NettyRpcServerRequestDecoder(rpcServer.metrics, this))
+      .addLast("encoder", new NettyRpcServerResponseEncoder(rpcServer.metrics));
   }
 
   void process(ByteBuf buf) throws IOException, InterruptedException {
