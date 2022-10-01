@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.master.replication;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.TableDescriptor;
@@ -158,6 +159,20 @@ public abstract class ModifyPeerProcedure extends AbstractPeerProcedure<PeerModi
     switch (state) {
       case PRE_PEER_MODIFICATION:
         try {
+          if (
+            env.getMasterServices().getProcedures().stream()
+              .filter(p -> p instanceof MigrateReplicationQueueFromZkToTableProcedure)
+              .anyMatch(p -> !p.isFinished())
+          ) {
+            LOG.info("There is a pending {}, give up execution of {}",
+              MigrateReplicationQueueFromZkToTableProcedure.class.getSimpleName(),
+              getClass().getName());
+            setFailure("master-" + getPeerOperationType().name().toLowerCase() + "-peer",
+              new DoNotRetryIOException("There is a pending "
+                + MigrateReplicationQueueFromZkToTableProcedure.class.getSimpleName()));
+            releaseLatch(env);
+            return Flow.NO_MORE_STATE;
+          }
           prePeerModification(env);
         } catch (IOException e) {
           LOG.warn("{} failed to call pre CP hook or the pre check is failed for peer {}, "

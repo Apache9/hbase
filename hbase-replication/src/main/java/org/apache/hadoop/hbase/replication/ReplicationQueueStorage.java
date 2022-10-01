@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.replication.ZKReplicationQueueStorage.ZkLastPushedSeqId;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.yetus.audience.InterfaceAudience;
 
@@ -184,4 +185,12 @@ public interface ReplicationQueueStorage {
    * @return Whether the replication queue table exists
    */
   boolean hasData() throws ReplicationException;
+
+  // the below 3 methods are used for migrating
+  void batchUpdate(ServerName serverName, List<ReplicationQueueData> datas)
+    throws ReplicationException;
+
+  void batchUpdate(List<ZkLastPushedSeqId> lastPushedSeqIds) throws ReplicationException;
+
+  void batchUpdate(String peerId, List<String> hfileRefs) throws ReplicationException;
 }

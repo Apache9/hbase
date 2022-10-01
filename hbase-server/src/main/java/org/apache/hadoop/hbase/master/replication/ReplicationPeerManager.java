@@ -21,14 +21,18 @@ import com.google.errorprone.annotations.RestrictedApi;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -39,6 +43,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.ReplicationPeerNotFoundException;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUtil;
 import org.apache.hadoop.hbase.master.MasterServices;
@@ -49,17 +54,24 @@ import org.apache.hadoop.hbase.replication.BaseReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.HBaseReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationGroupOffset;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfigBuilder;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationPeerStorage;
+import org.apache.hadoop.hbase.replication.ReplicationQueueData;
 import org.apache.hadoop.hbase.replication.ReplicationQueueId;
 import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
 import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.hbase.replication.ZKReplicationQueueStorage;
+import org.apache.hadoop.hbase.replication.ZKReplicationQueueStorage.MigrationIterator;
+import org.apache.hadoop.hbase.replication.ZKReplicationQueueStorage.ZkLastPushedSeqId;
+import org.apache.hadoop.hbase.replication.ZKReplicationQueueStorage.ZkReplicationQueueData;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleanerBarrier;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
 import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZKConfig;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
@@ -138,6 +150,10 @@ public class ReplicationPeerManager {
     }
   }
 
+  private void initializeQueueStorage() throws IOException {
+    queueStorageInitializer.initialize();
+  }
+
   void preAddPeer(String peerId, ReplicationPeerConfig peerConfig)
     throws ReplicationException, IOException {
     if (peerId.contains("-")) {
@@ -152,7 +168,7 @@ public class ReplicationPeerManager {
     }
 
     // lazy create table
-    queueStorageInitializer.initialize();
+    initializeQueueStorage();
     // make sure that there is no queues with the same peer id. This may happen when we create a
     // peer with the same id with a old deleted peer. If the replication queues for the old peer
     // have not been cleaned up yet then we should not create the new peer, otherwise the old wal
@@ -689,5 +705,84 @@ public class ReplicationPeerManager {
 
   public ReplicationLogCleanerBarrier getReplicationLogCleanerBarrier() {
     return replicationLogCleanerBarrier;
+  }
+
+  private ReplicationQueueData convert(ZkReplicationQueueData zkData) {
+    Map<String, ReplicationGroupOffset> groupOffsets = new HashMap<>();
+    zkData.getWalOffsets().forEach((wal, offset) -> {
+      String walGroup = AbstractFSWALProvider.getWALPrefixFromWALName(wal);
+      groupOffsets.compute(walGroup, (k, oldOffset) -> {
+        if (oldOffset == null) {
+          return new ReplicationGroupOffset(wal, offset);
+        }
+        // we should record the first wal's offset
+        long oldWalTs = AbstractFSWALProvider.getTimestamp(oldOffset.getWal());
+        long walTs = AbstractFSWALProvider.getTimestamp(wal);
+        if (walTs < oldWalTs) {
+          return new ReplicationGroupOffset(wal, offset);
+        }
+        return oldOffset;
+      });
+    });
+    return new ReplicationQueueData(zkData.getQueueId(), ImmutableMap.copyOf(groupOffsets));
+  }
+
+  private void migrateQueues(ZKReplicationQueueStorage oldQueueStorage) throws Exception {
+    MigrationIterator<Pair<ServerName, List<ZkReplicationQueueData>>> iter =
+      oldQueueStorage.listAllQueues();
+    for (;;) {
+      Pair<ServerName, List<ZkReplicationQueueData>> pair = iter.next();
+      if (pair == null) {
+        return;
+      }
+      queueStorage.batchUpdate(pair.getFirst(),
+        pair.getSecond().stream().filter(data -> peers.containsKey(data.getQueueId().getPeerId()))
+          .map(this::convert).collect(Collectors.toList()));
+    }
+  }
+
+  private void migrateLastPushedSeqIds(ZKReplicationQueueStorage oldQueueStorage) throws Exception {
+    MigrationIterator<List<ZkLastPushedSeqId>> iter = oldQueueStorage.listAllLastPushedSeqIds();
+    for (;;) {
+      List<ZkLastPushedSeqId> list = iter.next();
+      if (list == null) {
+        return;
+      }
+      queueStorage.batchUpdate(list.stream().filter(data -> peers.containsKey(data.getPeerId()))
+        .collect(Collectors.toList()));
+    }
+  }
+
+  private void migrateHFileRefs(ZKReplicationQueueStorage oldQueueStorage) throws Exception {
+    MigrationIterator<Pair<String, List<String>>> iter = oldQueueStorage.listAllHFileRefs();
+    for (;;) {
+      Pair<String, List<String>> pair = iter.next();
+      if (pair == null) {
+        return;
+      }
+      if (peers.containsKey(pair.getFirst())) {
+        queueStorage.batchUpdate(pair.getFirst(), pair.getSecond());
+      }
+    }
+  }
+
+  /**
+   * Submit the migration tasks to the given {@code executor} and return the futures.
+   */
+  List<Future<?>> migrateFromZk(ZKWatcher zookeeper, ExecutorService executor) throws IOException {
+    // the replication queue table creation is asynchronous and will be triggered by addPeer, so
+    // here we need to manually initialize it since we will not call addPeer.
+    initializeQueueStorage();
+    ZKReplicationQueueStorage oldStorage = new ZKReplicationQueueStorage(zookeeper, conf);
+    return Arrays.asList(executor.submit(() -> {
+      migrateQueues(oldStorage);
+      return null;
+    }), executor.submit(() -> {
+      migrateLastPushedSeqIds(oldStorage);
+      return null;
+    }), executor.submit(() -> {
+      migrateHFileRefs(oldStorage);
+      return null;
+    }));
   }
 }
