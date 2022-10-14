@@ -17,11 +17,19 @@
  */
 package org.apache.hadoop.hbase.master.replication;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtil;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureEnv;
+import org.apache.hadoop.hbase.master.procedure.MasterProcedureTestingUtility;
 import org.apache.hadoop.hbase.master.procedure.PeerProcedureInterface;
 import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.procedure2.ProcedureExecutor;
@@ -29,8 +37,17 @@ import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureTestingUtility;
 import org.apache.hadoop.hbase.procedure2.ProcedureYieldException;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
+import org.apache.hadoop.hbase.replication.ZKReplicationQueueStorage;
+import org.apache.hadoop.hbase.replication.ZKReplicationStorageBase;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
+import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
+import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -72,6 +89,10 @@ public class TestMigrateReplicationQueueFromZkToTableProcedure {
   @After
   public void tearDown() throws Exception {
     ProcedureTestingUtility.setKillAndToggleBeforeStoreUpdate(getMasterProcedureExecutor(), false);
+    Admin admin = UTIL.getAdmin();
+    for (ReplicationPeerDescription pd : admin.listReplicationPeers()) {
+      admin.removeReplicationPeer(pd.getPeerId());
+    }
   }
 
   private static CountDownLatch PEER_PROC_ARRIVE;
@@ -132,7 +153,7 @@ public class TestMigrateReplicationQueueFromZkToTableProcedure {
     PEER_PROC_ARRIVE = new CountDownLatch(1);
     PEER_PROC_RESUME = new CountDownLatch(1);
     ProcedureExecutor<MasterProcedureEnv> procExec = getMasterProcedureExecutor();
-    procExec.submitProcedure(new FakePeerProcedure());
+    procExec.submitProcedure(new FakePeerProcedure("1"));
     PEER_PROC_ARRIVE.await();
     MigrateReplicationQueueFromZkToTableProcedure proc =
       new MigrateReplicationQueueFromZkToTableProcedure();
@@ -141,5 +162,48 @@ public class TestMigrateReplicationQueueFromZkToTableProcedure {
     UTIL.waitFor(30000, () -> proc.getState() == ProcedureState.WAITING_TIMEOUT);
     PEER_PROC_RESUME.countDown();
     UTIL.waitFor(30000, () -> proc.isSuccess());
+  }
+
+  private String getHFileRefsZNode() throws IOException {
+    Configuration conf = UTIL.getConfiguration();
+    ZKWatcher zk = UTIL.getZooKeeperWatcher();
+    String replicationZNode = ZNodePaths.joinZNode(zk.getZNodePaths().baseZNode,
+      conf.get(ZKReplicationStorageBase.REPLICATION_ZNODE,
+        ZKReplicationStorageBase.REPLICATION_ZNODE_DEFAULT));
+    return ZNodePaths.joinZNode(replicationZNode,
+      conf.get(ZKReplicationQueueStorage.ZOOKEEPER_ZNODE_REPLICATION_HFILE_REFS_KEY,
+        ZKReplicationQueueStorage.ZOOKEEPER_ZNODE_REPLICATION_HFILE_REFS_DEFAULT));
+  }
+
+  @Test
+  public void testRecoveryAndDoubleExecution() throws Exception {
+    String peerId = "2";
+    ReplicationPeerConfig rpc = ReplicationPeerConfig.newBuilder()
+      .setClusterKey(UTIL.getZkCluster().getAddress().toString() + ":/testhbase")
+      .setReplicateAllUserTables(true).build();
+    UTIL.getAdmin().addReplicationPeer(peerId, rpc);
+
+    // here we only test a simple migration, more complicated migration will be tested in other UTs,
+    // such as TestMigrateReplicationQueue and TestReplicationPeerManagerMigrateFromZk
+    String hfileRefsZNode = getHFileRefsZNode();
+    String hfile = "hfile";
+    String hfileZNode = ZNodePaths.joinZNode(hfileRefsZNode, peerId, hfile);
+    ZKUtil.createWithParents(UTIL.getZooKeeperWatcher(), hfileZNode);
+
+    ProcedureExecutor<MasterProcedureEnv> procExec = getMasterProcedureExecutor();
+
+    ProcedureTestingUtility.waitNoProcedureRunning(procExec);
+    ProcedureTestingUtility.setKillAndToggleBeforeStoreUpdate(procExec, true);
+
+    // Start the migration procedure && kill the executor
+    long procId = procExec.submitProcedure(new MigrateReplicationQueueFromZkToTableProcedure());
+    // Restart the executor and execute the step twice
+    MasterProcedureTestingUtility.testRecoveryAndDoubleExecution(procExec, procId);
+    // Validate the migration result
+    ProcedureTestingUtility.assertProcNotFailed(procExec, procId);
+    ReplicationQueueStorage queueStorage =
+      UTIL.getMiniHBaseCluster().getMaster().getReplicationPeerManager().getQueueStorage();
+    List<String> hfiles = queueStorage.getReplicableHFiles(peerId);
+    assertThat(hfiles, Matchers.<List<String>> both(hasItem(hfile)).and(hasSize(1)));
   }
 }

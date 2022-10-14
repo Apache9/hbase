@@ -769,7 +769,7 @@ public class ReplicationPeerManager {
   /**
    * Submit the migration tasks to the given {@code executor} and return the futures.
    */
-  List<Future<?>> migrateFromZk(ZKWatcher zookeeper, ExecutorService executor) throws IOException {
+  List<Future<?>> migrateQueuesFromZk(ZKWatcher zookeeper, ExecutorService executor) throws IOException {
     // the replication queue table creation is asynchronous and will be triggered by addPeer, so
     // here we need to manually initialize it since we will not call addPeer.
     initializeQueueStorage();

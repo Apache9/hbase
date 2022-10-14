@@ -146,7 +146,7 @@ public class TestReplicationPeerManagerMigrateFromZk {
   @Test
   public void testNoPeers() throws Exception {
     prepareData();
-    for (Future<?> future : manager.migrateFromZk(UTIL.getZooKeeperWatcher(), EXECUTOR)) {
+    for (Future<?> future : manager.migrateQueuesFromZk(UTIL.getZooKeeperWatcher(), EXECUTOR)) {
       future.get(1, TimeUnit.MINUTES);
     }
     // should have called initializer
@@ -165,7 +165,7 @@ public class TestReplicationPeerManagerMigrateFromZk {
       // value is not used in this test, so just add a mock
       peers.put("peer_" + i, mock(ReplicationPeerDescription.class));
     }
-    for (Future<?> future : manager.migrateFromZk(UTIL.getZooKeeperWatcher(), EXECUTOR)) {
+    for (Future<?> future : manager.migrateQueuesFromZk(UTIL.getZooKeeperWatcher(), EXECUTOR)) {
       future.get(1, TimeUnit.MINUTES);
     }
     // should have called initializer

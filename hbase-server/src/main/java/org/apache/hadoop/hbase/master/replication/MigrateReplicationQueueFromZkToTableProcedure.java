@@ -166,7 +166,7 @@ public class MigrateReplicationQueueFromZkToTableProcedure
         }
         try {
           futures = env.getReplicationPeerManager()
-            .migrateFromZk(env.getMasterServices().getZooKeeper(), getExecutorService());
+            .migrateQueuesFromZk(env.getMasterServices().getZooKeeper(), getExecutorService());
         } catch (IOException e) {
           LOG.warn("failed to submit migration tasks", e);
           throw suspend(10_000, true);
