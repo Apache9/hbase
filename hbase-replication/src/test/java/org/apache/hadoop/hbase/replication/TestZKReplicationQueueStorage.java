@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
+import org.apache.zookeeper.KeeperException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -101,6 +102,86 @@ public class TestZKReplicationQueueStorage {
     Closeables.close(zk, true);
   }
 
+  public static void mockQueuesData(ZKReplicationQueueStorage storage, int nServers, String peerId,
+    ServerName deadServer) throws KeeperException {
+    ZKWatcher zk = storage.zookeeper;
+    for (int i = 0; i < nServers; i++) {
+      ServerName sn =
+        ServerName.valueOf("test-hbase-" + i, 12345, EnvironmentEdgeManager.currentTime());
+      String rsZNode = ZNodePaths.joinZNode(storage.getQueuesZNode(), sn.toString());
+      String peerZNode = ZNodePaths.joinZNode(rsZNode, peerId);
+      ZKUtil.createWithParents(zk, peerZNode);
+      for (int j = 0; j < i; j++) {
+        String wal = ZNodePaths.joinZNode(peerZNode, sn.toString() + "." + j);
+        ZKUtil.createSetData(zk, wal, ZKUtil.positionToByteArray(j));
+      }
+      String deadServerPeerZNode = ZNodePaths.joinZNode(rsZNode, peerId + "-" + deadServer);
+      ZKUtil.createWithParents(zk, deadServerPeerZNode);
+      for (int j = 0; j < i; j++) {
+        String wal = ZNodePaths.joinZNode(deadServerPeerZNode, deadServer.toString() + "." + j);
+        if (j > 0) {
+          ZKUtil.createSetData(zk, wal, ZKUtil.positionToByteArray(j));
+        } else {
+          ZKUtil.createWithParents(zk, wal);
+        }
+      }
+    }
+    ZKUtil.createWithParents(zk,
+      ZNodePaths.joinZNode(storage.getQueuesZNode(), deadServer.toString()));
+  }
+
+  private static String getLastPushedSeqIdZNode(String regionsZNode, String encodedName,
+    String peerId) {
+    return ZNodePaths.joinZNode(regionsZNode, encodedName.substring(0, 2),
+      encodedName.substring(2, 4), encodedName.substring(4) + "-" + peerId);
+  }
+
+  public static Map<String, Set<String>> mockLastPushedSeqIds(ZKReplicationQueueStorage storage,
+    String peerId1, String peerId2, int nRegions, int emptyLevel1Count, int emptyLevel2Count)
+    throws KeeperException {
+    ZKWatcher zk = storage.zookeeper;
+    Map<String, Set<String>> name2PeerIds = new HashMap<>();
+    byte[] bytes = new byte[32];
+    for (int i = 0; i < nRegions; i++) {
+      ThreadLocalRandom.current().nextBytes(bytes);
+      String encodeName = MD5Hash.getMD5AsHex(bytes);
+      String znode1 = getLastPushedSeqIdZNode(storage.getRegionsZNode(), encodeName, peerId1);
+      ZKUtil.createSetData(zk, znode1, ZKUtil.positionToByteArray(1));
+      String znode2 = getLastPushedSeqIdZNode(storage.getRegionsZNode(), encodeName, peerId2);
+      ZKUtil.createSetData(zk, znode2, ZKUtil.positionToByteArray(2));
+      name2PeerIds.put(encodeName, Sets.newHashSet(peerId1, peerId2));
+    }
+    int addedEmptyZNodes = 0;
+    for (int i = 0; i < 256; i++) {
+      String level1ZNode =
+        ZNodePaths.joinZNode(storage.getRegionsZNode(), String.format("%02x", i));
+      if (ZKUtil.checkExists(zk, level1ZNode) == -1) {
+        ZKUtil.createWithParents(zk, level1ZNode);
+        addedEmptyZNodes++;
+        if (addedEmptyZNodes <= emptyLevel2Count) {
+          ZKUtil.createWithParents(zk, ZNodePaths.joinZNode(level1ZNode, "ab"));
+        }
+        if (addedEmptyZNodes >= emptyLevel1Count + emptyLevel2Count) {
+          break;
+        }
+      }
+    }
+    return name2PeerIds;
+  }
+
+  public static void mockHFileRefs(ZKReplicationQueueStorage storage, int nPeers)
+    throws KeeperException {
+    ZKWatcher zk = storage.zookeeper;
+    for (int i = 0; i < nPeers; i++) {
+      String peerId = "peer_" + i;
+      ZKUtil.createWithParents(zk, ZNodePaths.joinZNode(storage.getHfileRefsZNode(), peerId));
+      for (int j = 0; j < i; j++) {
+        ZKUtil.createWithParents(zk,
+          ZNodePaths.joinZNode(storage.getHfileRefsZNode(), peerId, "hfile-" + j));
+      }
+    }
+  }
+
   @Test
   public void testDeleteAllData() throws Exception {
     assertFalse(storage.hasData());
@@ -129,29 +210,7 @@ public class TestZKReplicationQueueStorage {
     ServerName deadServer =
       ServerName.valueOf("test-hbase-dead", 12345, EnvironmentEdgeManager.currentTime());
     int nServers = 10;
-    for (int i = 0; i < nServers; i++) {
-      ServerName sn =
-        ServerName.valueOf("test-hbase-" + i, 12345, EnvironmentEdgeManager.currentTime());
-      String rsZNode = ZNodePaths.joinZNode(storage.getQueuesZNode(), sn.toString());
-      String peerZNode = ZNodePaths.joinZNode(rsZNode, peerId);
-      ZKUtil.createWithParents(zk, peerZNode);
-      for (int j = 0; j < i; j++) {
-        String wal = ZNodePaths.joinZNode(peerZNode, "wal-" + j);
-        ZKUtil.createSetData(zk, wal, ZKUtil.positionToByteArray(j));
-      }
-      String deadServerPeerZNode = ZNodePaths.joinZNode(rsZNode, peerId + "-" + deadServer);
-      ZKUtil.createWithParents(zk, deadServerPeerZNode);
-      for (int j = 0; j < i; j++) {
-        String wal = ZNodePaths.joinZNode(deadServerPeerZNode, "wal-" + j);
-        if (j > 0) {
-          ZKUtil.createSetData(zk, wal, ZKUtil.positionToByteArray(j));
-        } else {
-          ZKUtil.createWithParents(zk, wal);
-        }
-      }
-    }
-    ZKUtil.createWithParents(zk,
-      ZNodePaths.joinZNode(storage.getQueuesZNode(), deadServer.toString()));
+    mockQueuesData(storage, nServers, peerId, deadServer);
     MigrationIterator<Pair<ServerName, List<ZkReplicationQueueData>>> iter =
       storage.listAllQueues();
     ServerName previousServerName = null;
@@ -174,14 +233,20 @@ public class TestZKReplicationQueueStorage {
         assertEquals(sn, data0.getQueueId().getServerName());
         assertEquals(n, data0.getWalOffsets().size());
         for (int j = 0; j < n; j++) {
-          assertEquals(j, data0.getWalOffsets().get("wal-" + j).intValue());
+          assertEquals(j,
+            data0.getWalOffsets().get(
+              (data0.getQueueId().isRecovered() ? deadServer.toString() : sn.toString()) + "." + j)
+              .intValue());
         }
         ZkReplicationQueueData data1 = pair.getSecond().get(1);
         assertEquals(peerId, data1.getQueueId().getPeerId());
         assertEquals(sn, data1.getQueueId().getServerName());
         assertEquals(n, data1.getWalOffsets().size());
         for (int j = 0; j < n; j++) {
-          assertEquals(j, data1.getWalOffsets().get("wal-" + j).intValue());
+          assertEquals(j,
+            data1.getWalOffsets().get(
+              (data1.getQueueId().isRecovered() ? deadServer.toString() : sn.toString()) + "." + j)
+              .intValue());
         }
         // the order of the returned result is undetermined
         if (data0.getQueueId().getSourceServerName().isPresent()) {
@@ -196,42 +261,12 @@ public class TestZKReplicationQueueStorage {
     assertEquals(-1, ZKUtil.checkExists(zk, storage.getQueuesZNode()));
   }
 
-  private String getLastPushedSeqIdZNode(String encodedName, String peerId) {
-    return ZNodePaths.joinZNode(storage.getRegionsZNode(), encodedName.substring(0, 2),
-      encodedName.substring(2, 4), encodedName.substring(4) + "-" + peerId);
-  }
-
   @Test
   public void testListAllLastPushedSeqIds() throws Exception {
     String peerId1 = "1";
     String peerId2 = "2";
-    Map<String, Set<String>> name2PeerIds = new HashMap<>();
-    byte[] bytes = new byte[32];
-    for (int i = 0; i < 100; i++) {
-      ThreadLocalRandom.current().nextBytes(bytes);
-      String encodeName = MD5Hash.getMD5AsHex(bytes);
-      String znode1 = getLastPushedSeqIdZNode(encodeName, peerId1);
-      ZKUtil.createSetData(zk, znode1, ZKUtil.positionToByteArray(1));
-      String znode2 = getLastPushedSeqIdZNode(encodeName, peerId2);
-      ZKUtil.createSetData(zk, znode2, ZKUtil.positionToByteArray(2));
-      name2PeerIds.put(encodeName, Sets.newHashSet(peerId1, peerId2));
-    }
-    int addedEmptyZNodes = 0;
-    for (int i = 0; i < 256; i++) {
-      String level1ZNode =
-        ZNodePaths.joinZNode(storage.getRegionsZNode(), String.format("%02x", i));
-      if (ZKUtil.checkExists(zk, level1ZNode) == -1) {
-        ZKUtil.createWithParents(zk, level1ZNode);
-        addedEmptyZNodes++;
-        if (addedEmptyZNodes <= 10) {
-          ZKUtil.createWithParents(zk, ZNodePaths.joinZNode(level1ZNode, "ab"));
-        }
-        if (addedEmptyZNodes >= 20) {
-          break;
-        }
-
-      }
-    }
+    Map<String, Set<String>> name2PeerIds =
+      mockLastPushedSeqIds(storage, peerId1, peerId2, 100, 10, 10);
     MigrationIterator<List<ZkLastPushedSeqId>> iter = storage.listAllLastPushedSeqIds();
     int emptyListCount = 0;
     for (;;) {
@@ -260,16 +295,9 @@ public class TestZKReplicationQueueStorage {
   }
 
   @Test
-  public void testListAllHFilesRefs() throws Exception {
+  public void testListAllHFileRefs() throws Exception {
     int nPeers = 10;
-    for (int i = 0; i < nPeers; i++) {
-      String peerId = "peer_" + i;
-      ZKUtil.createWithParents(zk, ZNodePaths.joinZNode(storage.getHfileRefsZNode(), peerId));
-      for (int j = 0; j < i; j++) {
-        ZKUtil.createWithParents(zk,
-          ZNodePaths.joinZNode(storage.getHfileRefsZNode(), peerId, "hfile-" + j));
-      }
-    }
+    mockHFileRefs(storage, nPeers);
     MigrationIterator<Pair<String, List<String>>> iter = storage.listAllHFileRefs();
     String previousPeerId = null;
     for (int i = 0; i < nPeers; i++) {

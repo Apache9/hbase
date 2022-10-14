@@ -544,6 +544,9 @@ public class TableReplicationQueueStorage implements ReplicationQueueStorage {
     throws ReplicationException {
     List<Put> puts = new ArrayList<>();
     for (ReplicationQueueData data : datas) {
+      if (data.getOffsets().isEmpty()) {
+        continue;
+      }
       Put put = new Put(Bytes.toBytes(data.getId().toString()));
       data.getOffsets().forEach((walGroup, offset) -> {
         put.addColumn(QUEUE_FAMILY, Bytes.toBytes(walGroup), Bytes.toBytes(offset.toString()));
@@ -567,7 +570,8 @@ public class TableReplicationQueueStorage implements ReplicationQueueStorage {
           Bytes.toBytes(lastPushedSeqId.getLastPushedSeqId()));
     }
     try (Table table = conn.getTable(tableName)) {
-      table.put(peerId2Put.values().stream().collect(Collectors.toList()));
+      table
+        .put(peerId2Put.values().stream().filter(p -> !p.isEmpty()).collect(Collectors.toList()));
     } catch (IOException e) {
       throw new ReplicationException("failed to batch update last pushed sequence ids", e);
     }
@@ -575,6 +579,9 @@ public class TableReplicationQueueStorage implements ReplicationQueueStorage {
 
   @Override
   public void batchUpdate(String peerId, List<String> hfileRefs) throws ReplicationException {
+    if (hfileRefs.isEmpty()) {
+      return;
+    }
     Put put = new Put(Bytes.toBytes(peerId));
     for (String ref : hfileRefs) {
       put.addColumn(HFILE_REF_FAMILY, Bytes.toBytes(ref), HConstants.EMPTY_BYTE_ARRAY);

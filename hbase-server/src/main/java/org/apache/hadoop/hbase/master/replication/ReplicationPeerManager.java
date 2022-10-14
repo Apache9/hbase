@@ -118,7 +118,7 @@ public class ReplicationPeerManager {
   private final Configuration conf;
 
   @FunctionalInterface
-  private interface ReplicationQueueStorageInitializer {
+  interface ReplicationQueueStorageInitializer {
 
     void initialize() throws IOException;
   }
