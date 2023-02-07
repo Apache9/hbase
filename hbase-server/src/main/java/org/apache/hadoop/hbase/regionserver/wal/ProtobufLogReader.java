@@ -160,6 +160,7 @@ public class ProtobufLogReader extends ReaderBase {
   @Override
   public void reset() throws IOException {
     String clsName = initInternal(null, false);
+    resetCompression();
     initAfterCompression(clsName); // We need a new decoder (at least).
   }
 
