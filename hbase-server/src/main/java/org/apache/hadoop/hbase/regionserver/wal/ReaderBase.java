@@ -134,10 +134,10 @@ public abstract class ReaderBase implements AbstractFSWALProvider.Reader {
    * Reset the compression context so we can read the stream from the start point again
    */
   protected final void resetCompression() {
-//    if (compressionContext != null) {
-//      compressionContext.clear();
-//      emptyCompressionContext = true;
-//    }
+    // if (compressionContext != null) {
+    // compressionContext.clear();
+    // emptyCompressionContext = true;
+    // }
   }
 
   /**
