@@ -67,8 +67,6 @@ class WALEntryStream implements Closeable {
   private final FileSystem fs;
   private final Configuration conf;
   private final WALFileLengthProvider walFileLengthProvider;
-  // which region server the WALs belong to
-  private final ServerName serverName;
   private final MetricsSource metrics;
 
   /**
@@ -83,19 +81,29 @@ class WALEntryStream implements Closeable {
    * @throws IOException throw IO exception from stream
    */
   public WALEntryStream(ReplicationSourceLogQueue logQueue, Configuration conf, long startPosition,
-    WALFileLengthProvider walFileLengthProvider, ServerName serverName, MetricsSource metrics,
+    WALFileLengthProvider walFileLengthProvider, MetricsSource metrics,
     String walGroupId) throws IOException {
     this.logQueue = logQueue;
     this.fs = CommonFSUtils.getWALFileSystem(conf);
     this.conf = conf;
     this.currentPositionOfEntry = startPosition;
     this.walFileLengthProvider = walFileLengthProvider;
-    this.serverName = serverName;
     this.metrics = metrics;
     this.walGroupId = walGroupId;
   }
 
-  /** Returns true if there is another WAL {@link Entry} */
+  /**
+   * Check whether there is a new entry in the current WAL file.
+   * <p/>
+   * Usually there are 2 cases:
+   * <ol>
+   * <li>We have finished reading the current file, and there is no new file for this queue(for
+   * recovered replication queue).</li>
+   * <li>The current file is being written and we have reached the current EOF.</li>
+   * </ol>
+   * The upper layer should try to figure out the different cases and use different ways to deal
+   * with them.
+   */
   public boolean hasNext() throws IOException {
     if (currentEntry == null) {
       tryAdvanceEntry();
@@ -184,6 +192,9 @@ class WALEntryStream implements Closeable {
             if (openNextLog()) {
               readNextEntryAndRecordReaderPosition();
             }
+            // if openNextLog returns false, it means we have reached the end of the replication
+            // queue, just leave currentEntry as null so the upper layer know that the replication
+            // is finished.
           }
         }
       }

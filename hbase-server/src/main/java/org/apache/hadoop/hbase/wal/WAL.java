@@ -236,15 +236,64 @@ public interface WAL extends Closeable, WALFileLengthProvider {
    * When outside clients need to consume persisted WALs, they rely on a provided Reader.
    */
   interface Reader extends Closeable {
-    Entry next() throws IOException;
+    /**
+     * Read the next entry in WAL.
+     * <p/>
+     * In most cases you should just use this method, especially when reading a closed wal file for
+     * splitting or printing.
+     */
+    default Entry next() throws IOException {
+      return next(null);
+    }
 
+    /**
+     * Read the next entry in WAL, use the given {@link Entry} if not {@code null} to hold the data.
+     * <p/>
+     * Mainly used in MR.
+     * @param reuse the entry to be used for reading, can be {@code null}
+     */
     Entry next(Entry reuse) throws IOException;
 
+    /**
+     * Read the next entry in WAL, and do not exceed the limit.
+     * <p/>
+     * This is mainly used by Replication, where we do not want to read beyond a given limit, see
+     * HBASE-14004 for more details.
+     * <p/>
+     * Notice that, for tailing the WAL file which is currently being written, we will throw
+     * different type of exceptions to tell the upper layer how to call {@link #reset(boolean)}
+     * method. For example, if we have compression enabled and it has been messed up by partial
+     * edit, when reseting we also need to reset the {@code CompressionContext}, i.e, pass
+     * {@code true} when calling {@link #reset(boolean)}.
+     * @param limit the position limit while reading
+     */
+    Entry next(long limit) throws IOException;
+
+    /**
+     * Seek to the given position. If compression is enabled, we may skip to the given position
+     * instead of just seeking to, as we need to reconstruct the dictionary.
+     */
     void seek(long pos) throws IOException;
 
+    /**
+     * Get the current reading position.
+     */
     long getPosition() throws IOException;
 
-    void reset() throws IOException;
+    /**
+     * Reopen the reader and set read position to 0. Usually this is used in replication where we
+     * want to tail the WAL which is currently being written, so when reaching EOF, we need to
+     * reopen the reader to see if there are new data arrive. The implementation usually needs to
+     * refresh the meta data to get more data.
+     * <p/>
+     * Usually, in replication implementation, we will call {@link #seek(long)} right after calling
+     * this method, to read from the previous good position.
+     * <p/>
+     * Notice that, if compression is enabled, after reseting, we may need to reconstruct the
+     * compression dictionary, if there are some data which are added to the dictionary between the
+     * last position we reached and the position we want to go back to.
+     */
+    void reset(boolean resetCompression) throws IOException;
   }
 
   /**

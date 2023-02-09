@@ -88,11 +88,6 @@ public abstract class ReaderBase implements AbstractFSWALProvider.Reader {
   }
 
   @Override
-  public Entry next() throws IOException {
-    return next(null);
-  }
-
-  @Override
   public Entry next(Entry reuse) throws IOException {
     Entry e = reuse;
     if (e == null) {
