@@ -206,73 +206,82 @@ class WALEntryStream implements Closeable {
 
   @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "DCN_NULLPOINTER_EXCEPTION",
       justification = "HDFS-4380")
-  private HasNext tryAdvanceEntry() {
-    if (reader == null) {
-      // try open next WAL file
-      PriorityBlockingQueue<Path> queue = logQueue.getQueue(walGroupId);
-      Path nextPath = queue.peek();
-      if (nextPath != null) {
-        setCurrentPath(nextPath);
-        // we need to test this prior to create the reader. If not, it is possible that, while
-        // opening the file, the file is still being written so its header is incomplete and we get
-        // a header EOF, but then while we test whether it is still being written, we have already
-        // flushed the data out and we consider it is not being written, and then we just skip over
-        // file, then we will lose the data written after opening...
-        boolean beingWritten =
-          walFileLengthProvider.getLogFileSizeIfBeingWritten(nextPath).isPresent();
+  private HasNext prepareReader() {
+    if (reader != null) {
+      if (state != null && state != WALTailingReader.State.NORMAL) {
+        // reset before reading
         try {
-          reader = WALFactory.createTailingReader(fs, nextPath, conf,
-            currentPositionOfEntry > 0 ? currentPositionOfEntry : -1);
-        } catch (WALHeaderEOFException e) {
-          if (!eofAutoRecovery) {
-            // if we do not enable EOF auto recovery, just let the upper layer retry
-            // the replication will be stuck usually, and need to be fixed manually
-            return HasNext.RETRY;
-          }
-          // we hit EOF while reading the WAL header, usually this means we can just skip over this
-          // file, but we need to be careful that whether this file is still being written, if so we
-          // should retry instead of skipping.
-          LOG.warn("EOF while trying to open WAL reader for path: {}", nextPath, e);
-          if (beingWritten) {
-            // just retry as the file is still being written, maybe next time we could read
-            // something
-            return HasNext.RETRY;
+          if (currentPositionOfEntry > 0) {
+            reader.resetTo(currentPositionOfEntry, state.resetCompression());
           } else {
-            // the file is not being written so we are safe to just skip over it
-            dequeueCurrentLog();
-            return HasNext.RETRY_IMMEDIATELY;
+            // we will read from the beginning so we should always clear the compression context
+            reader.resetTo(-1, true);
           }
-        } catch (LeaseNotRecoveredException e) {
-          // HBASE-15019 the WAL was not closed due to some hiccup.
-          LOG.warn("Try to recover the WAL lease " + nextPath, e);
-          AbstractFSWALProvider.recoverLease(conf, nextPath);
-          return HasNext.RETRY;
-        } catch (IOException | NullPointerException e) {
-          // For why we need to catch NPE here, see HDFS-4380 for more details
-          LOG.warn("Failed to open WAL reader for path: {}", nextPath, e);
+        } catch (IOException e) {
+          LOG.warn("Failed to reset reader {} to pos {}, reset compression={}", currentPath,
+            currentPositionOfEntry, state.resetCompression(), e);
+          // just leave the state as is, and try resetting next time
           return HasNext.RETRY;
         }
       } else {
-        // no more files in queue, this could happen for recovered queue, or for a wal group of a
-        // sync replication peer which has already been transited to DA or S.
-        setCurrentPath(null);
-        return HasNext.NO;
+        return HasNext.YES;
       }
-    } else if (state != null && state != WALTailingReader.State.NORMAL) {
-      // reset before reading
-      try {
-        if (currentPositionOfEntry > 0) {
-          reader.resetTo(currentPositionOfEntry, state.resetCompression());
-        } else {
-          // we will read from the beginning so we should always clear the compression context
-          reader.resetTo(-1, true);
-        }
-      } catch (IOException e) {
-        LOG.warn("Failed to reset reader {} to pos {}, reset compression={}", currentPath,
-          currentPositionOfEntry, state.resetCompression(), e);
-        // just leave the state as is, and try resetting next time
+    }
+    // try open next WAL file
+    PriorityBlockingQueue<Path> queue = logQueue.getQueue(walGroupId);
+    Path nextPath = queue.peek();
+    if (nextPath == null) {
+      // no more files in queue, this could happen for recovered queue, or for a wal group of a
+      // sync replication peer which has already been transited to DA or S.
+      setCurrentPath(null);
+      return HasNext.NO;
+    }
+    setCurrentPath(nextPath);
+    // we need to test this prior to create the reader. If not, it is possible that, while
+    // opening the file, the file is still being written so its header is incomplete and we get
+    // a header EOF, but then while we test whether it is still being written, we have already
+    // flushed the data out and we consider it is not being written, and then we just skip over
+    // file, then we will lose the data written after opening...
+    boolean beingWritten = walFileLengthProvider.getLogFileSizeIfBeingWritten(nextPath).isPresent();
+    try {
+      reader = WALFactory.createTailingReader(fs, nextPath, conf,
+        currentPositionOfEntry > 0 ? currentPositionOfEntry : -1);
+      return HasNext.YES;
+    } catch (WALHeaderEOFException e) {
+      if (!eofAutoRecovery) {
+        // if we do not enable EOF auto recovery, just let the upper layer retry
+        // the replication will be stuck usually, and need to be fixed manually
         return HasNext.RETRY;
       }
+      // we hit EOF while reading the WAL header, usually this means we can just skip over this
+      // file, but we need to be careful that whether this file is still being written, if so we
+      // should retry instead of skipping.
+      LOG.warn("EOF while trying to open WAL reader for path: {}", nextPath, e);
+      if (beingWritten) {
+        // just retry as the file is still being written, maybe next time we could read
+        // something
+        return HasNext.RETRY;
+      } else {
+        // the file is not being written so we are safe to just skip over it
+        dequeueCurrentLog();
+        return HasNext.RETRY_IMMEDIATELY;
+      }
+    } catch (LeaseNotRecoveredException e) {
+      // HBASE-15019 the WAL was not closed due to some hiccup.
+      LOG.warn("Try to recover the WAL lease " + nextPath, e);
+      AbstractFSWALProvider.recoverLease(conf, nextPath);
+      return HasNext.RETRY;
+    } catch (IOException | NullPointerException e) {
+      // For why we need to catch NPE here, see HDFS-4380 for more details
+      LOG.warn("Failed to open WAL reader for path: {}", nextPath, e);
+      return HasNext.RETRY;
+    }
+  }
+
+  private HasNext tryAdvanceEntry() {
+    HasNext prepared = prepareReader();
+    if (prepared != HasNext.YES) {
+      return prepared;
     }
 
     Pair<WALTailingReader.State, Boolean> pair = readNextEntryAndRecordReaderPosition();
