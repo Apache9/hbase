@@ -376,6 +376,13 @@ public abstract class AbstractMemStore implements MemStore {
     return snapshot;
   }
 
+  @Override
+  public void close() {
+    assert snapshot == null;
+    // active should never be null
+    active.close();
+  }
+
   /** Returns an ordered list of segments from most recent to oldest in memstore */
   protected abstract List<Segment> getSegments() throws IOException;
 
