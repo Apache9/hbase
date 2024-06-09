@@ -132,11 +132,6 @@ public class TestHBaseRpcControllerImpl {
               }
 
               @Override
-              public byte getTypeByte() {
-                return 0;
-              }
-
-              @Override
               public long getSequenceId() {
                 return 0;
               }

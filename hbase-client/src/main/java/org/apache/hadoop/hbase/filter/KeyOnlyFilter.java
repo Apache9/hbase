@@ -206,11 +206,6 @@ public class KeyOnlyFilter extends FilterBase {
     }
 
     @Override
-    public byte getTypeByte() {
-      return cell.getTypeByte();
-    }
-
-    @Override
     public Type getType() {
       return cell.getType();
     }

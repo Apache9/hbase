@@ -937,7 +937,7 @@ public abstract class Mutation extends OperationWithAttributes
 
     @Override
     public byte getTypeByte() {
-      return cell.getTypeByte();
+      return cell.getType().getCode();
     }
 
     @Override

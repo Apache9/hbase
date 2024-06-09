@@ -676,9 +676,9 @@ public class KeyValue implements ExtendedCell, Cloneable {
   public KeyValue(Cell c) {
     this(c.getRowArray(), c.getRowOffset(), c.getRowLength(), c.getFamilyArray(),
       c.getFamilyOffset(), c.getFamilyLength(), c.getQualifierArray(), c.getQualifierOffset(),
-      c.getQualifierLength(), c.getTimestamp(), Type.codeToType(c.getTypeByte()), c.getValueArray(),
-      c.getValueOffset(), c.getValueLength(), c.getTagsArray(), c.getTagsOffset(),
-      c.getTagsLength());
+      c.getQualifierLength(), c.getTimestamp(), Type.codeToType(c.getType().getCode()),
+      c.getValueArray(), c.getValueOffset(), c.getValueLength(), c.getTagsArray(),
+      c.getTagsOffset(), c.getTagsLength());
     this.seqId = c.getSequenceId();
   }
 
@@ -1004,7 +1004,7 @@ public class KeyValue implements ExtendedCell, Cloneable {
     int hash = 31 * rowHash + familyHash;
     hash = 31 * hash + qualifierHash;
     hash = 31 * hash + (int) cell.getTimestamp();
-    hash = 31 * hash + cell.getTypeByte();
+    hash = 31 * hash + cell.getType().getCode();
     return hash;
   }
 

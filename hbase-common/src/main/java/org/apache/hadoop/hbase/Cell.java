@@ -114,11 +114,12 @@ public interface Cell extends HeapSize {
   // 5) Type
 
   /**
-   * Return the byte representation of the KeyValue.TYPE of this cell: one of Put, Delete, etc
-   * @deprecated As of HBase-2.0. Will be removed in HBase-3.0. Use {@link #getType()}.
+   * Returns the type of cell in a human readable format using {@link Type}. Note : This does not
+   * expose the internal types of Cells like {@link KeyValue.Type#Maximum} and
+   * {@link KeyValue.Type#Minimum}
+   * @return The data type this cell: one of Put, Delete, etc
    */
-  @Deprecated
-  byte getTypeByte();
+  Type getType();
 
   // 6) SequenceId
 
@@ -179,21 +180,6 @@ public interface Cell extends HeapSize {
   int getTagsLength();
 
   /**
-   * Returns the type of cell in a human readable format using {@link Type}. Note : This does not
-   * expose the internal types of Cells like {@link KeyValue.Type#Maximum} and
-   * {@link KeyValue.Type#Minimum}
-   * @return The data type this cell: one of Put, Delete, etc
-   */
-  default Type getType() {
-    byte byteType = getTypeByte();
-    Type t = Type.CODE_ARRAY[byteType & 0xff];
-    if (t != null) {
-      return t;
-    }
-    throw new UnsupportedOperationException("Invalid type of cell " + byteType);
-  }
-
-  /**
    * The valid types for user to build the cell. Currently, This is subset of {@link KeyValue.Type}.
    */
   enum Type {
@@ -215,14 +201,6 @@ public interface Cell extends HeapSize {
 
     public byte getCode() {
       return this.code;
-    }
-
-    private static final Type[] CODE_ARRAY = new Type[256];
-
-    static {
-      for (Type t : Type.values()) {
-        CODE_ARRAY[t.code & 0xff] = t;
-      }
     }
   }
 }

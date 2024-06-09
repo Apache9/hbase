@@ -168,4 +168,9 @@ public interface ExtendedCell extends RawCell, HeapSize {
 
   /** Returns The byte representation of the KeyValue.TYPE of this cell: one of Put, Delete, etc */
   byte getTypeByte();
+
+  @Override
+  default Type getType() {
+    return CellUtil.byte2Type(getTypeByte());
+  }
 }

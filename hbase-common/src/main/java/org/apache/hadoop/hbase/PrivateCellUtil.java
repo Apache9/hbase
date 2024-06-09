@@ -200,7 +200,7 @@ public final class PrivateCellUtil {
 
     @Override
     public byte getTypeByte() {
-      return cell.getTypeByte();
+      return cell.getType().getCode();
     }
 
     @Override
@@ -804,7 +804,7 @@ public final class PrivateCellUtil {
   }
 
   public static boolean matchingType(Cell a, Cell b) {
-    return a.getTypeByte() == b.getTypeByte();
+    return a.getType() == b.getType();
   }
 
   public static boolean matchingTags(final Cell left, final Cell right, int llength, int rlength) {
@@ -838,28 +838,28 @@ public final class PrivateCellUtil {
 
   /** Returns True if this cell is a {@link KeyValue.Type#Delete} type. */
   public static boolean isDeleteType(Cell cell) {
-    return cell.getTypeByte() == KeyValue.Type.Delete.getCode();
+    return cell.getType().getCode() == KeyValue.Type.Delete.getCode();
   }
 
   public static boolean isDeleteFamily(final Cell cell) {
-    return cell.getTypeByte() == KeyValue.Type.DeleteFamily.getCode();
+    return cell.getType().getCode() == KeyValue.Type.DeleteFamily.getCode();
   }
 
   public static boolean isDeleteFamilyVersion(final Cell cell) {
-    return cell.getTypeByte() == KeyValue.Type.DeleteFamilyVersion.getCode();
+    return cell.getType().getCode() == KeyValue.Type.DeleteFamilyVersion.getCode();
   }
 
   public static boolean isDeleteColumns(final Cell cell) {
-    return cell.getTypeByte() == KeyValue.Type.DeleteColumn.getCode();
+    return cell.getType().getCode() == KeyValue.Type.DeleteColumn.getCode();
   }
 
   public static boolean isDeleteColumnVersion(final Cell cell) {
-    return cell.getTypeByte() == KeyValue.Type.Delete.getCode();
+    return cell.getType().getCode() == KeyValue.Type.Delete.getCode();
   }
 
   /** Returns True if this cell is a delete family or column type. */
   public static boolean isDeleteColumnOrFamily(Cell cell) {
-    int t = cell.getTypeByte();
+    int t = cell.getType().getCode();
     return t == KeyValue.Type.DeleteColumn.getCode() || t == KeyValue.Type.DeleteFamily.getCode();
   }
 
@@ -1160,7 +1160,7 @@ public final class PrivateCellUtil {
       return commonPrefix;
     }
     // Compare the type
-    if (c1.getTypeByte() == c2.getTypeByte()) {
+    if (c1.getType() == c2.getType()) {
       commonPrefix += KeyValue.TYPE_SIZE;
     }
     return commonPrefix;

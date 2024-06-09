@@ -276,11 +276,6 @@ public class TestPassCustomCellViaRegionObserver {
       }
 
       @Override
-      public byte getTypeByte() {
-        return type.getCode();
-      }
-
-      @Override
       public long getSequenceId() {
         return 0;
       }

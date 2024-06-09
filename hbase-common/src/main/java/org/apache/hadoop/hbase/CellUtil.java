@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.function.Function;
+import org.apache.hadoop.hbase.Cell.Type;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -616,7 +617,7 @@ public final class CellUtil {
     sb.append('/');
     sb.append(KeyValue.humanReadableTimestamp(cell.getTimestamp()));
     sb.append('/');
-    sb.append(KeyValue.Type.codeToType(cell.getTypeByte()));
+    sb.append(KeyValue.Type.codeToType(cell.getType().getCode()));
     if (!(cell instanceof KeyValue.KeyOnlyKeyValue)) {
       sb.append("/vlen=");
       sb.append(cell.getValueLength());
@@ -828,5 +829,21 @@ public final class CellUtil {
 
   public static Cell cloneIfNecessary(Cell cell) {
     return (cell instanceof ByteBufferExtendedCell ? KeyValueUtil.copyToNewKeyValue(cell) : cell);
+  }
+
+  private static final Type[] CODE_ARRAY = new Type[256];
+
+  static {
+    for (Type t : Type.values()) {
+      CODE_ARRAY[t.getCode() & 0xff] = t;
+    }
+  }
+
+  static Type byte2Type(byte byteType) {
+    Type t = CODE_ARRAY[byteType & 0xff];
+    if (t != null) {
+      return t;
+    }
+    throw new UnsupportedOperationException("Invalid type of cell " + byteType);
   }
 }

@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,7 +36,6 @@ import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockito.Mockito;
 
 @Category({ MiscTests.class, SmallTests.class })
 public class TestCellUtil {
@@ -116,67 +114,51 @@ public class TestCellUtil {
 
     @Override
     public byte[] getFamilyArray() {
-      // TODO Auto-generated method stub
       return null;
     }
 
     @Override
     public int getFamilyOffset() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public byte getFamilyLength() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public byte[] getQualifierArray() {
-      // TODO Auto-generated method stub
       return null;
     }
 
     @Override
     public int getQualifierOffset() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public int getQualifierLength() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public long getTimestamp() {
-      // TODO Auto-generated method stub
-      return 0;
-    }
-
-    @Override
-    public byte getTypeByte() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public byte[] getValueArray() {
-      // TODO Auto-generated method stub
       return null;
     }
 
     @Override
     public int getValueOffset() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public int getValueLength() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
@@ -187,31 +169,32 @@ public class TestCellUtil {
 
     @Override
     public byte[] getTagsArray() {
-      // TODO Auto-generated method stub
       return null;
     }
 
     @Override
     public int getTagsOffset() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public long getSequenceId() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public int getTagsLength() {
-      // TODO Auto-generated method stub
       return 0;
     }
 
     @Override
     public long heapSize() {
       return 0;
+    }
+
+    @Override
+    public Type getType() {
+      return null;
     }
   }
 
@@ -536,34 +519,6 @@ public class TestCellUtil {
     assertTrue(CellUtil.equals(kv, res));
   }
 
-  // Workaround for jdk 11 - reflective access to interface default methods for testGetType
-  private static abstract class CellForMockito implements Cell {
-  }
-
-  @Test
-  public void testGetType() {
-    CellForMockito c = Mockito.mock(CellForMockito.class);
-    Mockito.when(c.getType()).thenCallRealMethod();
-    for (Cell.Type type : Cell.Type.values()) {
-      Mockito.when(c.getTypeByte()).thenReturn(type.getCode());
-      assertEquals(type, c.getType());
-    }
-
-    try {
-      Mockito.when(c.getTypeByte()).thenReturn(KeyValue.Type.Maximum.getCode());
-      c.getType();
-      fail("The code of Maximum can't be handled by Cell.Type");
-    } catch (UnsupportedOperationException e) {
-    }
-
-    try {
-      Mockito.when(c.getTypeByte()).thenReturn(KeyValue.Type.Minimum.getCode());
-      c.getType();
-      fail("The code of Maximum can't be handled by Cell.Type");
-    } catch (UnsupportedOperationException e) {
-    }
-  }
-
   private static class NonExtendedCell implements Cell {
     private KeyValue kv;
 
@@ -622,11 +577,6 @@ public class TestCellUtil {
     }
 
     @Override
-    public byte getTypeByte() {
-      return this.kv.getTypeByte();
-    }
-
-    @Override
     public long getSequenceId() {
       return this.kv.getSequenceId();
     }
@@ -669,6 +619,11 @@ public class TestCellUtil {
     @Override
     public long heapSize() {
       return this.kv.heapSize();
+    }
+
+    @Override
+    public Type getType() {
+      return this.kv.getType();
     }
   }
 }
