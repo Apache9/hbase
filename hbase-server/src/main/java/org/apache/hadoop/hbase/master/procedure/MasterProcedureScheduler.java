@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.master.procedure;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -114,6 +116,12 @@ public class MasterProcedureScheduler extends AbstractProcedureScheduler {
   private GlobalQueue globalMap = null;
 
   private final SchemaLocking locking;
+
+  // To prevent multiple Create/Modify/Disable/Enable table procedure run at the same time, we will
+  // keep table procedure in this queue first before actually enqueuing it to tableQueue
+  // Seee HBASE-28683 for more details
+  private final ConcurrentMap<TableName, java.util.Queue<Procedure<?>>> tableProcsWaitingEnqueue =
+    new ConcurrentHashMap<>();
 
   public MasterProcedureScheduler(Function<Long, Procedure<?>> procedureRetriever) {
     locking = new SchemaLocking(procedureRetriever);
