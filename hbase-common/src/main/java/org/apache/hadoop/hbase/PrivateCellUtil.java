@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Optional;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.io.TagCompressionContext;
@@ -39,6 +41,8 @@ import org.apache.hadoop.hbase.util.ByteRange;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * Utility methods helpful slinging {@link Cell} instances. It has more powerful and rich set of
@@ -2359,9 +2363,9 @@ public final class PrivateCellUtil {
    * @return True if cell timestamp is modified.
    * @throws IOException when the passed cell is not of type {@link ExtendedCell}
    */
-  public static boolean updateLatestStamp(Cell cell, long ts) throws IOException {
+  public static boolean updateLatestStamp(ExtendedCell cell, long ts) throws IOException {
     if (cell.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
-      setTimestamp(cell, ts);
+      cell.setTimestamp(ts);
       return true;
     }
     return false;
@@ -2953,5 +2957,109 @@ public final class PrivateCellUtil {
    */
   public static ExtendedCell createFirstDeleteFamilyCellOnRow(final byte[] row, final byte[] fam) {
     return new FirstOnRowDeleteFamilyCell(row, fam);
+  }
+
+  /**
+   * In fact, in HBase, all {@link Cell}s are {@link ExtendedCell}s. We do not expect users to
+   * implement their own {@link Cell} types, except some special projects like Phoenix, where they
+   * just use {@link org.apache.hadoop.hbase.KeyValue} and {@link ExtendedCell} directly.
+   * @return the original {@code cell} which has already been cast to an {@link ExtendedCell}.
+   * @throws IllegalArgumentException if the given {@code cell} is not an {@link ExtendedCell}.
+   */
+  public static ExtendedCell ensureExtendedCell(Cell cell) {
+    Preconditions.checkArgument(cell == null || cell instanceof ExtendedCell,
+      "Unsupported cell type: %s", cell.getClass().getName());
+    return (ExtendedCell) cell;
+  }
+
+  /** Returns ExtendedCellScanner interface over <code>cellIterables</code> */
+  public static ExtendedCellScanner
+    createExtendedCellScanner(final List<? extends ExtendedCellScannable> cellScannerables) {
+    return new ExtendedCellScanner() {
+      private final Iterator<? extends ExtendedCellScannable> iterator =
+        cellScannerables.iterator();
+      private ExtendedCellScanner cellScanner = null;
+
+      @Override
+      public ExtendedCell current() {
+        return this.cellScanner != null ? this.cellScanner.current() : null;
+      }
+
+      @Override
+      public boolean advance() throws IOException {
+        while (true) {
+          if (this.cellScanner == null) {
+            if (!this.iterator.hasNext()) {
+              return false;
+            }
+            this.cellScanner = this.iterator.next().cellScanner();
+          }
+          if (this.cellScanner.advance()) {
+            return true;
+          }
+          this.cellScanner = null;
+        }
+      }
+    };
+  }
+
+  /**
+   * Flatten the map of cells out under the ExtendedCellScanner
+   * @param map Map of Cell Lists; for example, the map of families to ExtendedCells that is used
+   *            inside Put, etc., keeping Cells organized by family.
+   * @return ExtendedCellScanner interface over <code>cellIterable</code>
+   */
+  public static ExtendedCellScanner
+    createExtendedCellScanner(final NavigableMap<byte[], List<ExtendedCell>> map) {
+    return new ExtendedCellScanner() {
+      private final Iterator<Entry<byte[], List<ExtendedCell>>> entries = map.entrySet().iterator();
+      private Iterator<ExtendedCell> currentIterator = null;
+      private ExtendedCell currentCell;
+
+      @Override
+      public ExtendedCell current() {
+        return this.currentCell;
+      }
+
+      @Override
+      public boolean advance() {
+        while (true) {
+          if (this.currentIterator == null) {
+            if (!this.entries.hasNext()) return false;
+            this.currentIterator = this.entries.next().getValue().iterator();
+          }
+          if (this.currentIterator.hasNext()) {
+            this.currentCell = this.currentIterator.next();
+            return true;
+          }
+          this.currentCell = null;
+          this.currentIterator = null;
+        }
+      }
+    };
+  }
+
+  /** Returns CellScanner interface over <code>cellArray</code> */
+  public static ExtendedCellScanner createExtendedCellScanner(final ExtendedCell[] cellArray) {
+    return new ExtendedCellScanner() {
+      private final ExtendedCell[] cells = cellArray;
+      private int index = -1;
+
+      @Override
+      public ExtendedCell current() {
+        if (cells == null) {
+          return null;
+        }
+        return (index < 0) ? null : this.cells[index];
+      }
+
+      @Override
+      public boolean advance() {
+        if (cells == null) {
+          return false;
+        }
+        return ++index < this.cells.length;
+      }
+    };
   }
 }

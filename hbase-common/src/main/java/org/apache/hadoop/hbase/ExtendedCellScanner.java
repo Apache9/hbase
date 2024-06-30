@@ -15,32 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.client;
+package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.hbase.ExtendedCell;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
- * A helper class used to access the package private field in o.a.h.h.client package.
+ * We use this class in HBase internally for getting {@link ExtendedCell} directly without casting.
  * <p>
- * This is because we share some data structures between client and server and the data structures
- * are marked as {@code InterfaceAudience.Public}, but we do not want to expose some of the fields
- * to end user.
+ * In general, all {@link Cell}s in HBase should and must be {@link ExtendedCell}.
  * <p>
- * TODO: A better solution is to separate the data structures used in client and server.
+ * See HBASE-28684 and related issues for more details.
+ * @see CellScanner
+ * @see ExtendedCellScannable
+ * @see ExtendedCell
  */
 @InterfaceAudience.Private
-public class PackagePrivateFieldAccessor {
+public interface ExtendedCellScanner extends CellScanner {
 
-  public static void setMvccReadPoint(Scan scan, long mvccReadPoint) {
-    scan.setMvccReadPoint(mvccReadPoint);
-  }
-
-  public static long getMvccReadPoint(Scan scan) {
-    return scan.getMvccReadPoint();
-  }
-
-  public static ExtendedCell[] getExtendedRawCells(Result result) {
-    return result.rawExtendedCells();
-  }
+  @Override
+  ExtendedCell current();
 }

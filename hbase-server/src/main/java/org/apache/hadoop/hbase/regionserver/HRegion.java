@@ -4184,9 +4184,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       return cellPairs.stream().map(Pair::getSecond).collect(Collectors.toList());
     }
 
-    private static ExtendedCell reckonDelta(final Cell delta, final Cell currentCell,
-      final byte[] columnFamily, final long now, Mutation mutation, Function<Cell, byte[]> supplier)
-      throws IOException {
+    private static ExtendedCell reckonDelta(final ExtendedCell delta,
+      final ExtendedCell currentCell, final byte[] columnFamily, final long now, Mutation mutation,
+      Function<ExtendedCell, byte[]> supplier) throws IOException {
       // Forward any tags found on the delta.
       List<Tag> tags = TagUtil.carryForwardTags(delta);
       if (currentCell != null) {
@@ -4204,7 +4204,6 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       } else {
         tags = TagUtil.carryForwardTTLTag(tags, mutation.getTTL());
         PrivateCellUtil.updateLatestStamp(delta, now);
-        assert delta instanceof ExtendedCell;
         ExtendedCell deltaCell = (ExtendedCell) delta;
         return CollectionUtils.isEmpty(tags)
           ? deltaCell

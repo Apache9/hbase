@@ -309,10 +309,14 @@ public final class CellUtil {
       public boolean advance() throws IOException {
         while (true) {
           if (this.cellScanner == null) {
-            if (!this.iterator.hasNext()) return false;
+            if (!this.iterator.hasNext()) {
+              return false;
+            }
             this.cellScanner = this.iterator.next().cellScanner();
           }
-          if (this.cellScanner.advance()) return true;
+          if (this.cellScanner.advance()) {
+            return true;
+          }
           this.cellScanner = null;
         }
       }
@@ -357,13 +361,17 @@ public final class CellUtil {
 
       @Override
       public Cell current() {
-        if (cells == null) return null;
+        if (cells == null) {
+          return null;
+        }
         return (index < 0) ? null : this.cells[index];
       }
 
       @Override
       public boolean advance() {
-        if (cells == null) return false;
+        if (cells == null) {
+          return false;
+        }
         return ++index < this.cells.length;
       }
     };

@@ -32,9 +32,11 @@ import java.util.NoSuchElementException;
 import java.util.TreeMap;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
-import org.apache.hadoop.hbase.CellScannable;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.ExtendedCell;
+import org.apache.hadoop.hbase.ExtendedCellScannable;
+import org.apache.hadoop.hbase.ExtendedCellScanner;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
@@ -70,8 +72,8 @@ import org.apache.yetus.audience.InterfaceAudience;
  * {@link #copyFrom(Result)}
  */
 @InterfaceAudience.Public
-public class Result implements CellScannable, CellScanner {
-  private Cell[] cells;
+public class Result implements ExtendedCellScannable, ExtendedCellScanner {
+  private ExtendedCell[] cells;
   private Boolean exists; // if the query was just to check existence.
   private boolean stale = false;
 
@@ -142,7 +144,8 @@ public class Result implements CellScannable, CellScanner {
     if (exists != null) {
       return new Result(null, exists, stale, mayHaveMoreCellsInRow);
     }
-    return new Result(cells.toArray(new Cell[cells.size()]), null, stale, mayHaveMoreCellsInRow);
+    return new Result(cells.toArray(new ExtendedCell[cells.size()]), null, stale,
+      mayHaveMoreCellsInRow);
   }
 
   /**
@@ -163,7 +166,7 @@ public class Result implements CellScannable, CellScanner {
     if (exists != null) {
       return new Result(null, exists, stale, mayHaveMoreCellsInRow);
     }
-    return new Result(cells, null, stale, mayHaveMoreCellsInRow);
+    return new Result((ExtendedCell[]) cells, null, stale, mayHaveMoreCellsInRow);
   }
 
   public static Result createCursorResult(Cursor cursor) {
@@ -176,7 +179,8 @@ public class Result implements CellScannable, CellScanner {
   }
 
   /** Private ctor. Use {@link #create(Cell[])}. */
-  private Result(Cell[] cells, Boolean exists, boolean stale, boolean mayHaveMoreCellsInRow) {
+  private Result(ExtendedCell[] cells, Boolean exists, boolean stale,
+    boolean mayHaveMoreCellsInRow) {
     this.cells = cells;
     this.exists = exists;
     this.stale = stale;
@@ -209,6 +213,10 @@ public class Result implements CellScannable, CellScanner {
    * @return array of Cells; can be null if nothing in the result
    */
   public Cell[] rawCells() {
+    return cells;
+  }
+
+  ExtendedCell[] rawExtendedCells() {
     return cells;
   }
 
@@ -263,7 +271,7 @@ public class Result implements CellScannable, CellScanner {
     }
   }
 
-  protected int binarySearch(final Cell[] kvs, final byte[] family, final byte[] qualifier) {
+  private int binarySearch(final Cell[] kvs, final byte[] family, final byte[] qualifier) {
     byte[] familyNotNull = notNullBytes(family);
     byte[] qualifierNotNull = notNullBytes(qualifier);
     Cell searchTerm = PrivateCellUtil.createFirstOnRow(kvs[0].getRowArray(), kvs[0].getRowOffset(),
@@ -294,7 +302,7 @@ public class Result implements CellScannable, CellScanner {
    * @param qlength   qualifier length
    * @return the index where the value was found, or -1 otherwise
    */
-  protected int binarySearch(final Cell[] kvs, final byte[] family, final int foffset,
+  private int binarySearch(final Cell[] kvs, final byte[] family, final int foffset,
     final int flength, final byte[] qualifier, final int qoffset, final int qlength) {
 
     double keyValueSize =
@@ -824,18 +832,29 @@ public class Result implements CellScannable, CellScanner {
     this.cells = other.cells;
   }
 
+  /**
+   * For client users: You should only use the return value as a
+   * {@link org.apache.hadoop.hbase.CellScanner}, {@link ExtendedCellScanner} is marked as
+   * IA.Private which means there is no guarantee about its API stability.
+   */
   @Override
-  public CellScanner cellScanner() {
+  public ExtendedCellScanner cellScanner() {
     // Reset
     this.cellScannerIndex = INITIAL_CELLSCANNER_INDEX;
     return this;
   }
 
+  /**
+   * For client users: You should only use the return value as a {@link Cell}, {@link ExtendedCell}
+   * is marked as IA.Private which means there is no guarantee about its API stability.
+   */
   @Override
-  public Cell current() {
+  public ExtendedCell current() {
     if (
       isEmpty() || cellScannerIndex == INITIAL_CELLSCANNER_INDEX || cellScannerIndex >= cells.length
-    ) return null;
+    ) {
+      return null;
+    }
     return this.cells[cellScannerIndex];
   }
 
