@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase.regionserver;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
-import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.ExtendedCell;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
@@ -41,21 +41,23 @@ import org.apache.yetus.audience.InterfaceStability;
 public interface InternalScanner extends Closeable {
   /**
    * Grab the next row's worth of values.
-   * @param result return output array
+   * @param result return output array. We will only add ExtendedCell to this list, but for CP
+   *               users, you'd better just use {@link org.apache.hadoop.hbase.RawCell} as
+   *               {@link ExtendedCell} is IA.Private.
    * @return true if more rows exist after this one, false if scanner is done
-   * @throws IOException e
    */
-  default boolean next(List<Cell> result) throws IOException {
+  default boolean next(List<? super ExtendedCell> result) throws IOException {
     return next(result, NoLimitScannerContext.getInstance());
   }
 
   /**
    * Grab the next row's worth of values.
-   * @param result return output array
+   * @param result return output array. We will only add ExtendedCell to this list, but for CP
+   *               users, you'd better just use {@link org.apache.hadoop.hbase.RawCell} as
+   *               {@link ExtendedCell} is IA.Private.
    * @return true if more rows exist after this one, false if scanner is done
-   * @throws IOException e
    */
-  boolean next(List<Cell> result, ScannerContext scannerContext) throws IOException;
+  boolean next(List<? super ExtendedCell> result, ScannerContext scannerContext) throws IOException;
 
   /**
    * Closes the scanner and releases any resources it has allocated
