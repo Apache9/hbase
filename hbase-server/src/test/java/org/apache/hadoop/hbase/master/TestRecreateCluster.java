@@ -28,9 +28,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtil;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.SingleProcessHBaseCluster;
+import org.apache.hadoop.hbase.StartTestingClusterOption;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.Get;
@@ -38,13 +38,11 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.master.region.MasterRegionFactory;
-import org.apache.hadoop.hbase.procedure2.store.wal.WALProcedureStore;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -72,9 +70,16 @@ public class TestRecreateCluster {
   private static final long MASTER_INIT_TIMEOUT_MS = Duration.ofSeconds(45).toMillis();
 
   @Before
-  public void setup() {
+  public void setUp() throws Exception {
     TEST_UTIL.getConfiguration().setLong("hbase.master.init.timeout.localHBaseCluster",
       MASTER_INIT_TIMEOUT_MS);
+    TEST_UTIL.startMiniCluster(StartTestingClusterOption.builder().numRegionServers(NUM_RS)
+      .numDataNodes(NUM_RS).createWALDir(true).build());
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    TEST_UTIL.shutdownMiniCluster();
   }
 
   @Test
@@ -93,7 +98,7 @@ public class TestRecreateCluster {
     validateRecreateClusterWithUserTableEnabled(false, true);
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testRecreateCluster_UserTableEnabled_CleanupWALAndZNodes() throws Exception {
     // master fails with InitMetaProcedure because it cannot delete existing meta table directory,
     // region server cannot join and time-out the cluster starts.
@@ -102,35 +107,26 @@ public class TestRecreateCluster {
 
   private void validateRecreateClusterWithUserDisabled(boolean cleanupWALs, boolean cleanUpZNodes)
     throws Exception {
-    TEST_UTIL.startMiniCluster(NUM_RS);
-    try {
-      TableName tableName = TableName.valueOf("t1");
-      prepareDataBeforeRecreate(TEST_UTIL, tableName);
-      TEST_UTIL.getAdmin().disableTable(tableName);
-      TEST_UTIL.waitTableDisabled(tableName.getName());
-      restartHBaseCluster(cleanupWALs, cleanUpZNodes);
-      TEST_UTIL.getAdmin().enableTable(tableName);
-      validateDataAfterRecreate(TEST_UTIL, tableName);
-    } finally {
-      TEST_UTIL.shutdownMiniCluster();
-    }
+    TableName tableName = TableName.valueOf("t1");
+    prepareDataBeforeRecreate(TEST_UTIL, tableName);
+    TEST_UTIL.getAdmin().disableTable(tableName);
+    TEST_UTIL.waitTableDisabled(tableName.getName());
+    restartHBaseCluster(cleanupWALs, cleanUpZNodes);
+    TEST_UTIL.getAdmin().enableTable(tableName);
+    validateDataAfterRecreate(TEST_UTIL, tableName);
   }
 
   private void validateRecreateClusterWithUserTableEnabled(boolean cleanupWALs,
     boolean cleanUpZNodes) throws Exception {
-    TEST_UTIL.startMiniCluster(NUM_RS);
-    try {
-      TableName tableName = TableName.valueOf("t1");
-      prepareDataBeforeRecreate(TEST_UTIL, tableName);
-      restartHBaseCluster(cleanupWALs, cleanUpZNodes);
-      validateDataAfterRecreate(TEST_UTIL, tableName);
-    } finally {
-      TEST_UTIL.shutdownMiniCluster();
-    }
+    TableName tableName = TableName.valueOf("t1");
+    prepareDataBeforeRecreate(TEST_UTIL, tableName);
+    restartHBaseCluster(cleanupWALs, cleanUpZNodes);
+    validateDataAfterRecreate(TEST_UTIL, tableName);
   }
 
   private void restartHBaseCluster(boolean cleanUpWALs, boolean cleanUpZnodes) throws Exception {
     // flush cache so that everything is on disk
+    TEST_UTIL.getMiniHBaseCluster().getMaster().getMasterRegion().flush(true);
     TEST_UTIL.getMiniHBaseCluster().flushcache(TableName.META_TABLE_NAME);
     TEST_UTIL.getMiniHBaseCluster().flushcache();
 
@@ -143,21 +139,10 @@ public class TestRecreateCluster {
 
     // shutdown and delete data if needed
     Path walRootDirPath = TEST_UTIL.getMiniHBaseCluster().getMaster().getWALRootDir();
-    Path rootDirPath = CommonFSUtils.getRootDir(TEST_UTIL.getConfiguration());
     TEST_UTIL.shutdownMiniHBaseCluster();
 
     if (cleanUpWALs) {
-      TEST_UTIL.getDFSCluster().getFileSystem()
-        .delete(new Path(rootDirPath, MasterRegionFactory.MASTER_STORE_DIR), true);
-      TEST_UTIL.getDFSCluster().getFileSystem()
-        .delete(new Path(walRootDirPath, MasterRegionFactory.MASTER_STORE_DIR), true);
-      TEST_UTIL.getDFSCluster().getFileSystem()
-        .delete(new Path(walRootDirPath, WALProcedureStore.MASTER_PROCEDURE_LOGDIR), true);
-
-      TEST_UTIL.getDFSCluster().getFileSystem()
-        .delete(new Path(walRootDirPath, HConstants.HREGION_LOGDIR_NAME), true);
-      TEST_UTIL.getDFSCluster().getFileSystem()
-        .delete(new Path(walRootDirPath, HConstants.HREGION_OLDLOGDIR_NAME), true);
+      TEST_UTIL.getDFSCluster().getFileSystem().delete(walRootDirPath, true);
     }
 
     if (cleanUpZnodes) {
