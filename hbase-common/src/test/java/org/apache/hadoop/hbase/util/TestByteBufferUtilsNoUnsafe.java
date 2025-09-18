@@ -17,23 +17,36 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.junit.BeforeClass;
+import org.apache.hadoop.hbase.unsafe.HBasePlatformDependent;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Timeout;
+import org.mockito.MockedStatic;
 
 @Tag(MiscTests.TAG)
 @Tag(SmallTests.TAG)
 @Timeout(value = 1, unit = TimeUnit.MINUTES)
-public class TestByteBufferUtils extends ByteBufferUtilsTestBase {
+public class TestByteBufferUtilsNoUnsafe extends ByteBufferUtilsTestBase {
 
-  @BeforeClass
-  public static void afterClass() throws Exception {
-    // usually it should be available, unless we are on some none x86 CPUs
-    assumeTrue(ByteBufferUtils.UNSAFE_AVAIL);
+  private static MockedStatic<HBasePlatformDependent> MOCKED =
+    mockStatic(HBasePlatformDependent.class);
+
+  @BeforeAll
+  public static void setUpBeforeClass() {
+    MOCKED.when(HBasePlatformDependent::isUnsafeAvailable).thenReturn(false);
+    assertFalse(ByteBufferUtils.UNSAFE_AVAIL);
   }
+
+  @AfterAll
+  public static void tearDownAfterClass() {
+    MOCKED.closeOnDemand();
+  }
+
 }
