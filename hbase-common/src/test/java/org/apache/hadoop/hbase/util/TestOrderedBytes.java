@@ -17,28 +17,23 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
-import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
-@Category({ MiscTests.class, SmallTests.class })
+@Tag(MiscTests.TAG)
+@Tag(SmallTests.TAG)
 public class TestOrderedBytes {
-
-  @ClassRule
-  public static final HBaseClassTestRule CLASS_RULE =
-    HBaseClassTestRule.forClass(TestOrderedBytes.class);
 
   // integer constants for testing Numeric code paths
   static final Long[] I_VALS =
@@ -117,7 +112,7 @@ public class TestOrderedBytes {
       72057594037927934L, 72057594037927935L, Long.MAX_VALUE - 1, Long.MAX_VALUE,
       Long.MIN_VALUE + 1, Long.MIN_VALUE, -2L, -1L };
     int[] lens = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 9, 9, 9, 9 };
-    assertEquals("Broken test!", vals.length, lens.length);
+    assertEquals(vals.length, lens.length, "Broken test!");
 
     /*
      * assert encoded values match decoded values. encode into target buffer starting at an offset
@@ -855,10 +850,12 @@ public class TestOrderedBytes {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testStringNoNullChars() {
     PositionedByteRange buff = new SimplePositionedMutableByteRange(3);
-    OrderedBytes.encodeString(buff, "\u0000", Order.ASCENDING);
+    assertThrows(IllegalArgumentException.class, () -> {
+      OrderedBytes.encodeString(buff, "\u0000", Order.ASCENDING);
+    });
   }
 
   /**
@@ -1060,17 +1057,13 @@ public class TestOrderedBytes {
   /**
    * Assert invalid input byte[] are rejected by BlobCopy
    */
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testBlobCopyNoZeroBytes() {
     byte[] val = { 0x01, 0x02, 0x00, 0x03 };
-    // TODO: implementation detail leaked here.
-    byte[] ascExpected = { 0x38, 0x01, 0x02, 0x00, 0x03 };
     PositionedByteRange buf = new SimplePositionedMutableByteRange(val.length + 1);
-    OrderedBytes.encodeBlobCopy(buf, val, Order.ASCENDING);
-    assertArrayEquals(ascExpected, buf.getBytes());
-    buf.set(val.length + 2);
-    OrderedBytes.encodeBlobCopy(buf, val, Order.DESCENDING);
-    fail("test should never get here.");
+    assertThrows(IllegalArgumentException.class, () -> {
+      OrderedBytes.encodeBlobCopy(buf, val, Order.ASCENDING);
+    });
   }
 
   /**

@@ -18,18 +18,14 @@
 package org.apache.hadoop.hbase;
 
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.junit.ClassRule;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
-@Category(SmallTests.class)
+@Tag(SmallTests.TAG)
 public class TestTimeout {
 
-  @ClassRule
-  public static final HBaseClassTestRule CLASS_RULE =
-    HBaseClassTestRule.forClass(TestTimeout.class);
-
+  @Disabled
   @Test
   public void run1() throws InterruptedException {
     Thread.sleep(100);
@@ -39,7 +35,7 @@ public class TestTimeout {
    * Enable to check if timeout works. Can't enable as it waits 30seconds and expected doesn't do
    * Exception catching
    */
-  @Ignore
+  @Disabled
   @Test
   public void infiniteLoop() {
     // Launch a background non-daemon thread.

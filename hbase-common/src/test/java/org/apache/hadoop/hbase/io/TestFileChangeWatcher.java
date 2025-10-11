@@ -18,11 +18,11 @@
 package org.apache.hadoop.hbase.io;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,17 +35,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseCommonTestingUtil;
 import org.apache.hadoop.hbase.io.crypto.tls.X509Util;
 import org.apache.hadoop.hbase.testclassification.IOTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.hamcrest.Matchers;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,12 +53,9 @@ import org.slf4j.LoggerFactory;
  *      "https://github.com/apache/zookeeper/blob/391cb4aa6b54e19a028215e1340232a114c23ed3/zookeeper-server/src/test/java/org/apache/zookeeper/common/FileChangeWatcherTest.java">Base
  *      revision</a>
  */
-@Category({ IOTests.class, SmallTests.class })
+@Tag(IOTests.TAG)
+@Tag(SmallTests.TAG)
 public class TestFileChangeWatcher {
-
-  @ClassRule
-  public static final HBaseClassTestRule CLASS_RULE =
-    HBaseClassTestRule.forClass(TestFileChangeWatcher.class);
 
   private static File tempFile;
 
@@ -70,12 +65,12 @@ public class TestFileChangeWatcher {
   private static final long FS_TIMEOUT = 30000L;
   private static final Duration POLL_INTERVAL = Duration.ofMillis(100);
 
-  @BeforeClass
+  @BeforeAll
   public static void createTempFile() throws IOException {
     tempFile = File.createTempFile("zk_test_", "");
   }
 
-  @AfterClass
+  @AfterAll
   public static void cleanupTempDir() {
     UTIL.cleanupTestDir();
   }
@@ -126,7 +121,7 @@ public class TestFileChangeWatcher {
       watcher.start();
       watcher.waitForState(FileChangeWatcher.State.RUNNING);
       Thread.sleep(1000L); // TODO hack
-      assertEquals("Should not have been notified", 0, notifiedPaths.size());
+      assertEquals(0, notifiedPaths.size(), "Should not have been notified");
     } finally {
       if (watcher != null) {
         watcher.stop();
@@ -158,7 +153,7 @@ public class TestFileChangeWatcher {
           if (notifiedPaths.size() < i + 1) {
             notifiedPaths.wait(FS_TIMEOUT);
           }
-          assertEquals("Wrong number of notifications", i + 1, notifiedPaths.size());
+          assertEquals(i + 1, notifiedPaths.size(), "Wrong number of notifications");
           Path path = notifiedPaths.get(i);
           assertEquals(tempFile.getPath(), path.toString());
         }
