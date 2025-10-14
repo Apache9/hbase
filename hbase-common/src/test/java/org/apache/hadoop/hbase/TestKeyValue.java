@@ -715,7 +715,7 @@ public class TestKeyValue {
           fail("Should fail when parse key value from an invalid bytes for case#" + i + ". " + c);
         }
       } catch (IllegalArgumentException e) {
-        assertEquals("Case#" + i + " failed," + c, c.getExpectedMessage(), e.getMessage());
+        assertEquals(c.getExpectedMessage(), e.getMessage(), "Case#" + i + " failed," + c);
       }
     }
   }

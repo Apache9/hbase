@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -108,13 +109,13 @@ public class TestCommonFSUtils {
     assertEquals(walRoot, CommonFSUtils.getWALRootDir(conf));
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testGetWALRootDirIllegalWALDir() throws IOException {
     Path root = new Path("file:///hbase/root");
     Path invalidWALDir = new Path("file:///hbase/root/logroot");
     CommonFSUtils.setRootDir(conf, root);
     CommonFSUtils.setWALRootDir(conf, invalidWALDir);
-    CommonFSUtils.getWALRootDir(conf);
+    assertThrows(IllegalStateException.class, () -> CommonFSUtils.getWALRootDir(conf));
   }
 
   @Test

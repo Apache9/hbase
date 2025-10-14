@@ -217,9 +217,10 @@ public class TestIndividualBytesFieldCell {
 
   @Test
   public void testIllegalValue() {
-    new IndividualBytesFieldCell(Bytes.toBytes("row"), 0, 3, Bytes.toBytes("family"), 0, 6,
-      Bytes.toBytes("qualifier"), 0, 9, 0L, KeyValue.Type.Put, 0, Bytes.toBytes("value"), 0, 100,
-      HConstants.EMPTY_BYTE_ARRAY, 0, 0);
+    assertThrows(IllegalArgumentException.class,
+      () -> new IndividualBytesFieldCell(Bytes.toBytes("row"), 0, 3, Bytes.toBytes("family"), 0, 6,
+        Bytes.toBytes("qualifier"), 0, 9, 0L, KeyValue.Type.Put, 0, Bytes.toBytes("value"), 0, 100,
+        HConstants.EMPTY_BYTE_ARRAY, 0, 0));
   }
 
   @Test
