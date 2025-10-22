@@ -12,31 +12,31 @@ This file tracks the migration of JUnit4 tests to JUnit5 in hbase-common module.
 - [x] `src/test/java/org/apache/hadoop/hbase/TestClassFinder.java`
 - [x] `src/test/java/org/apache/hadoop/hbase/TestChoreService.java`
 - [x] `src/test/java/org/apache/hadoop/hbase/TestCellComparator.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/TestByteBufferKeyValue.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/TestByteBufferKeyValue.java`
 
 ### Type System Tests
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestStruct.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestRawBytes.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedNumeric.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt8.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt64.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt32.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt16.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedFloat64.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedFloat32.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestStruct.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestRawBytes.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedNumeric.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt8.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt64.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt32.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedInt16.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedFloat64.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/types/TestOrderedFloat32.java`
 
 ### Utility Tests
-- [ ] `src/test/java/org/apache/hadoop/hbase/util/TestThreads.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/util/TestMovingAverage.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/util/TestClasses.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/util/AbstractHBaseToolTest.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/util/TestThreads.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/util/TestMovingAverage.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/util/TestClasses.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/util/AbstractHBaseToolTest.java`
 
 ### NIO Tests
-- [ ] `src/test/java/org/apache/hadoop/hbase/nio/TestSingleByteBuff.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/nio/TestMultiByteBuff.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/nio/TestSingleByteBuff.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/nio/TestMultiByteBuff.java`
 
 ### Network Tests
-- [ ] `src/test/java/org/apache/hadoop/hbase/net/TestAddress.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/net/TestAddress.java`
 
 ### Logging Tests
 - [ ] `src/test/java/org/apache/hadoop/hbase/logging/TestLog4jUtils.java`
@@ -95,5 +95,42 @@ This file tracks the migration of JUnit4 tests to JUnit5 in hbase-common module.
 
 7. **Tag Symbol Conflicts**: Remove the import for `org.junit.jupiter.api.Tag`, at the beginning of class, use `@org.junit.jupiter.api.Tag(XXXTests.TAG)` instead.
 
+8. **Parameterized Tests Migration**: Replace JUnit4 parameterized tests with JUnit5 approach:
+   - **Remove**: `@RunWith(Parameterized.class)`, `@Parameters`, field injection with `@Parameter`
+   - **Replace with**: `@ParameterizedTest` and `@MethodSource("methodName")`
+   - **Data source**: Replace `Collection<Object[]>` with `Stream<Arguments>`
+   - **Parameter injection**: Parameters injected directly into test method parameters instead of fields
+   
+   **Example Migration:**
+   ```java
+   // JUnit4:
+   @RunWith(Parameterized.class)
+   public class TestExample {
+       @Parameter(0) public int input;
+       @Parameter(1) public int expected;
+       
+       @Parameters(name = "{index}: test({0}) = {1}")
+       public static Collection<Object[]> data() {
+           return Arrays.asList(new Object[][] {{1, 2}, {2, 4}});
+       }
+       
+       @Test
+       public void test() { assertEquals(expected, input * 2); }
+   }
+   
+   // JUnit5:
+   class TestExample {
+       @ParameterizedTest
+       @MethodSource("data")
+       void test(int input, int expected) {
+           assertEquals(expected, input * 2);
+       }
+       
+       static Stream<Arguments> data() {
+           return Stream.of(Arguments.of(1, 2), Arguments.of(2, 4));
+       }
+   }
+   ```
+
 ## Progress
-**6/46 files migrated (13.0%)**
+**22/46 files migrated (47.8%)**
