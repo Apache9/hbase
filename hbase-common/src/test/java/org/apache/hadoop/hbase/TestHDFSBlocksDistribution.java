@@ -26,8 +26,8 @@ import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.DNS;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 @Tag(MiscTests.TAG)
 @Tag(SmallTests.TAG)
@@ -44,17 +44,17 @@ public class TestHDFSBlocksDistribution {
     assertEquals(1, distribution.getHostAndWeights().size(), "Should be one host");
     distribution.addHostsAndBlockWeight(new String[] { "test" }, 202);
     assertEquals(1, distribution.getHostAndWeights().size(), "Should be one host");
-    assertEquals(303,
-      distribution.getHostAndWeights().get("test").getWeight(), "test host should have weight 303");
+    assertEquals(303, distribution.getHostAndWeights().get("test").getWeight(),
+      "test host should have weight 303");
     distribution.addHostsAndBlockWeight(new String[] { "testTwo" }, 222);
     assertEquals(2, distribution.getHostAndWeights().size(), "Should be two hosts");
     assertEquals(525, distribution.getUniqueBlocksTotalWeight(), "Total weight should be 525");
     distribution.addHostsAndBlockWeight(new String[] { "test" }, 100,
       new StorageType[] { StorageType.SSD });
-    assertEquals(403,
-      distribution.getHostAndWeights().get("test").getWeight(), "test host should have weight 403");
-    assertEquals(100,
-      distribution.getHostAndWeights().get("test").getWeightForSsd(), "test host should have weight for ssd 100");
+    assertEquals(403, distribution.getHostAndWeights().get("test").getWeight(),
+      "test host should have weight 403");
+    assertEquals(100, distribution.getHostAndWeights().get("test").getWeightForSsd(),
+      "test host should have weight for ssd 100");
   }
 
   private static final class MockHDFSBlocksDistribution extends HDFSBlocksDistribution {
@@ -83,13 +83,13 @@ public class TestHDFSBlocksDistribution {
   public void testLocalHostCompatibility() throws Exception {
     String currentHost = DNS.getDefaultHost("default", "default");
     HDFSBlocksDistribution distribution = new HDFSBlocksDistribution();
-    assertEquals(0.0, distribution.getBlockLocalityIndex(currentHost),
-      0.01, "Locality should be 0.0");
+    assertEquals(0.0, distribution.getBlockLocalityIndex(currentHost), 0.01,
+      "Locality should be 0.0");
     distribution.addHostsAndBlockWeight(new String[] { "localhost" }, 10);
     assertEquals(1, distribution.getHostAndWeights().size(), "Should be one host");
     assertEquals(0.0, distribution.getBlockLocalityIndex("test"), 0.01, "Locality should be 0.0");
-    assertNotEquals(0.0, distribution.getBlockLocalityIndex(currentHost),
-      0.01, "Locality should be 0.0");
+    assertNotEquals(0.0, distribution.getBlockLocalityIndex(currentHost), 0.01,
+      "Locality should be 0.0");
   }
 
 }

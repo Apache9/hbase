@@ -72,9 +72,8 @@ public class TestThreads {
 
     long timeElapsed = EnvironmentEdgeManager.currentTime() - startTime;
     // We expect to wait at least SLEEP_TIME_MS, but we can wait more if there is a GC.
-    assertTrue(SLEEP_TIME_MS - timeElapsed < TOLERANCE_MS,
-      "Elapsed time " + timeElapsed + " ms is out of the expected " + " sleep time of "
-      + SLEEP_TIME_MS);
+    assertTrue(SLEEP_TIME_MS - timeElapsed < TOLERANCE_MS, "Elapsed time " + timeElapsed
+      + " ms is out of the expected " + " sleep time of " + SLEEP_TIME_MS);
     LOG.debug("Target sleep time: " + SLEEP_TIME_MS + ", time elapsed: " + timeElapsed);
   }
 }

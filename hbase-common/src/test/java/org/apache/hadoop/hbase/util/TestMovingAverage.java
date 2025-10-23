@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.jupiter.api.Tag;
@@ -92,7 +91,8 @@ public class TestMovingAverage {
 
   @Test
   public void testWeightedMovingAverage(TestInfo testInfo) throws Exception {
-    MovingAverage<?> algorithm = new WeightedMovingAverage(testInfo.getTestMethod().get().getName());
+    MovingAverage<?> algorithm =
+      new WeightedMovingAverage(testInfo.getTestMethod().get().getName());
     int index = 0;
     // [1, 12, 13, 24]
     int bound = 4;
@@ -122,7 +122,8 @@ public class TestMovingAverage {
   @Test
   public void testExponentialMovingAverage(TestInfo testInfo) throws Exception {
     // [1, 12, 13, 24, 25, 26, 37, 38, 39, 40]
-    MovingAverage<?> algorithm = new ExponentialMovingAverage(testInfo.getTestMethod().get().getName());
+    MovingAverage<?> algorithm =
+      new ExponentialMovingAverage(testInfo.getTestMethod().get().getName());
     int index = 0;
     int bound = 5;
     for (; index < bound; index++) {

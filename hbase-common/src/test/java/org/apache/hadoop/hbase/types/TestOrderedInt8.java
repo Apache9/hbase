@@ -66,8 +66,8 @@ public class TestOrderedInt8 {
   public void testEncodeNoSupportForNull() {
     final DataType<Byte> type = new OrderedInt8(Order.ASCENDING);
 
-    assertThrows(IllegalArgumentException.class, () -> 
-      type.encode(new SimplePositionedMutableByteRange(20), null));
+    assertThrows(IllegalArgumentException.class,
+      () -> type.encode(new SimplePositionedMutableByteRange(20), null));
   }
 
   @Test
