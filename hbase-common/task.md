@@ -23,7 +23,9 @@ This file tracks the migration of JUnit4 tests to JUnit5 in hbase-common module.
 
 6. **Replace Category With Tag**: Replace JUnit4 `@Category({XXXTests.class, YYYTests.class})` with JUnit5 `@Tag(XXXTests.TAG)` and `@Tag(YYYTests.TAG)`.
 
-7. **Tag Symbol Conflicts**: Remove the import for `org.junit.jupiter.api.Tag`, at the beginning of class, use `@org.junit.jupiter.api.Tag(XXXTests.TAG)` instead.
+7. **Tag Symbol Conflicts**:
+   - Import `org.junit.jupiter.api.Tag` and use `@Tag` on top of the test class if possible.
+   - If the test also uses `org.apache.hadoop.hbase.Tag`, then remove the import for `org.junit.jupiter.api.Tag`, use fully qualified `@org.junit.jupiter.api.Tag(XXXTests.TAG)` instead.
 
 8. **Parameterized Tests Migration**: Replace JUnit4 parameterized tests with JUnit5 approach:
    - Replace JUnit4 `@RunWith(Parameterized.class)` with JUnit5 @ParameterizedClass
@@ -91,12 +93,12 @@ This file tracks the migration of JUnit4 tests to JUnit5 in hbase-common module.
 - [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestPEMFileLoader.java`
 - [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestKeyStoreFileType.java`
 - [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestJKSFileLoader.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestHBaseTrustManager.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestHBaseHostnameVerifier.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestFileKeyStoreLoaderBuilderProvider.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestBCFKSFileLoader.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/io/crypto/aes/TestCommonsAES.java`
-- [ ] `src/test/java/org/apache/hadoop/hbase/io/crypto/aes/TestAES.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestHBaseTrustManager.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestHBaseHostnameVerifier.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestFileKeyStoreLoaderBuilderProvider.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/tls/TestBCFKSFileLoader.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/aes/TestCommonsAES.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/io/crypto/aes/TestAES.java`
 
 ### ZooKeeper Tests
-- [ ] `src/test/java/org/apache/hadoop/hbase/zookeeper/TestZKConfig.java`
+- [x] `src/test/java/org/apache/hadoop/hbase/zookeeper/TestZKConfig.java`
