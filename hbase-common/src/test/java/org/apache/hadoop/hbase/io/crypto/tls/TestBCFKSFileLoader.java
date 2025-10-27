@@ -17,17 +17,16 @@
  */
 package org.apache.hadoop.hbase.io.crypto.tls;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.io.IOException;
 import java.security.KeyStore;
-import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.testclassification.SecurityTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.junit.Assert;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedClass;
 
 /**
  * This file has been copied from the Apache ZooKeeper project.
@@ -35,48 +34,46 @@ import org.junit.runners.Parameterized;
  *      "https://github.com/apache/zookeeper/blob/master/zookeeper-server/src/test/java/org/apache/zookeeper/common/BCFKSFileLoaderTest.java">Base
  *      revision</a>
  */
-@RunWith(Parameterized.class)
-@Category({ SecurityTests.class, SmallTests.class })
+@ParameterizedClass
+@Tag(SecurityTests.TAG)
+@Tag(SmallTests.TAG)
 public class TestBCFKSFileLoader extends AbstractTestX509Parameterized {
-
-  @ClassRule
-  public static final HBaseClassTestRule CLASS_RULE =
-    HBaseClassTestRule.forClass(TestBCFKSFileLoader.class);
 
   @Test
   public void testLoadKeyStore() throws Exception {
     String path = x509TestContext.getKeyStoreFile(KeyStoreFileType.BCFKS).getAbsolutePath();
     KeyStore ks = new BCFKSFileLoader.Builder().setKeyStorePath(path)
       .setKeyStorePassword(x509TestContext.getKeyStorePassword()).build().loadKeyStore();
-    Assert.assertEquals(1, ks.size());
+    assertEquals(1, ks.size());
   }
 
-  @Test(expected = Exception.class)
+  @Test
   public void testLoadKeyStoreWithWrongPassword() throws Exception {
     String path = x509TestContext.getKeyStoreFile(KeyStoreFileType.BCFKS).getAbsolutePath();
-    new BCFKSFileLoader.Builder().setKeyStorePath(path)
-      .setKeyStorePassword("wrong password".toCharArray()).build().loadKeyStore();
+    assertThrows(Exception.class, () -> new BCFKSFileLoader.Builder().setKeyStorePath(path)
+      .setKeyStorePassword("wrong password".toCharArray()).build().loadKeyStore());
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testLoadKeyStoreWithWrongFilePath() throws Exception {
     String path = x509TestContext.getKeyStoreFile(KeyStoreFileType.BCFKS).getAbsolutePath();
-    new BCFKSFileLoader.Builder().setKeyStorePath(path + ".does_not_exist")
-      .setKeyStorePassword(x509TestContext.getKeyStorePassword()).build().loadKeyStore();
+    assertThrows(IOException.class,
+      () -> new BCFKSFileLoader.Builder().setKeyStorePath(path + ".does_not_exist")
+        .setKeyStorePassword(x509TestContext.getKeyStorePassword()).build().loadKeyStore());
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test
   public void testLoadKeyStoreWithNullFilePath() throws Exception {
-    new BCFKSFileLoader.Builder().setKeyStorePassword(x509TestContext.getKeyStorePassword()).build()
-      .loadKeyStore();
+    assertThrows(NullPointerException.class, () -> new BCFKSFileLoader.Builder()
+      .setKeyStorePassword(x509TestContext.getKeyStorePassword()).build().loadKeyStore());
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testLoadKeyStoreWithWrongFileType() throws Exception {
     // Trying to load a PEM file with BCFKS loader should fail
     String path = x509TestContext.getKeyStoreFile(KeyStoreFileType.PEM).getAbsolutePath();
-    new BCFKSFileLoader.Builder().setKeyStorePath(path)
-      .setKeyStorePassword(x509TestContext.getKeyStorePassword()).build().loadKeyStore();
+    assertThrows(IOException.class, () -> new BCFKSFileLoader.Builder().setKeyStorePath(path)
+      .setKeyStorePassword(x509TestContext.getKeyStorePassword()).build().loadKeyStore());
   }
 
   @Test
@@ -84,35 +81,36 @@ public class TestBCFKSFileLoader extends AbstractTestX509Parameterized {
     String path = x509TestContext.getTrustStoreFile(KeyStoreFileType.BCFKS).getAbsolutePath();
     KeyStore ts = new BCFKSFileLoader.Builder().setTrustStorePath(path)
       .setTrustStorePassword(x509TestContext.getTrustStorePassword()).build().loadTrustStore();
-    Assert.assertEquals(1, ts.size());
+    assertEquals(1, ts.size());
   }
 
-  @Test(expected = Exception.class)
+  @Test
   public void testLoadTrustStoreWithWrongPassword() throws Exception {
     String path = x509TestContext.getTrustStoreFile(KeyStoreFileType.BCFKS).getAbsolutePath();
-    new BCFKSFileLoader.Builder().setTrustStorePath(path)
-      .setTrustStorePassword("wrong password".toCharArray()).build().loadTrustStore();
+    assertThrows(Exception.class, () -> new BCFKSFileLoader.Builder().setTrustStorePath(path)
+      .setTrustStorePassword("wrong password".toCharArray()).build().loadTrustStore());
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testLoadTrustStoreWithWrongFilePath() throws Exception {
     String path = x509TestContext.getTrustStoreFile(KeyStoreFileType.BCFKS).getAbsolutePath();
-    new BCFKSFileLoader.Builder().setTrustStorePath(path + ".does_not_exist")
-      .setTrustStorePassword(x509TestContext.getTrustStorePassword()).build().loadTrustStore();
+    assertThrows(IOException.class,
+      () -> new BCFKSFileLoader.Builder().setTrustStorePath(path + ".does_not_exist")
+        .setTrustStorePassword(x509TestContext.getTrustStorePassword()).build().loadTrustStore());
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test
   public void testLoadTrustStoreWithNullFilePath() throws Exception {
-    new BCFKSFileLoader.Builder().setTrustStorePassword(x509TestContext.getTrustStorePassword())
-      .build().loadTrustStore();
+    assertThrows(NullPointerException.class, () -> new BCFKSFileLoader.Builder()
+      .setTrustStorePassword(x509TestContext.getTrustStorePassword()).build().loadTrustStore());
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testLoadTrustStoreWithWrongFileType() throws Exception {
     // Trying to load a PEM file with BCFKS loader should fail
     String path = x509TestContext.getTrustStoreFile(KeyStoreFileType.PEM).getAbsolutePath();
-    new BCFKSFileLoader.Builder().setTrustStorePath(path)
-      .setTrustStorePassword(x509TestContext.getTrustStorePassword()).build().loadTrustStore();
+    assertThrows(IOException.class, () -> new BCFKSFileLoader.Builder().setTrustStorePath(path)
+      .setTrustStorePassword(x509TestContext.getTrustStorePassword()).build().loadTrustStore());
   }
 
 }

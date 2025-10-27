@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 @Tag(SmallTests.TAG)
 public class TestTimeout {
 
-  @Disabled
   @Test
   public void run1() throws InterruptedException {
     Thread.sleep(100);

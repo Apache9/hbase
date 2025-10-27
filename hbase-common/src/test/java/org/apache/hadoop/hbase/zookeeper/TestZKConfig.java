@@ -20,9 +20,18 @@ package org.apache.hadoop.hbase.zookeeper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
@@ -165,5 +174,87 @@ public class TestZKConfig {
     } else {
       assertEquals(key, reconstructedKey);
     }
+  }
+
+  private static final Pattern TESTS = Pattern.compile(
+    "\\[[A-Z]+\\] Tests run: (\\d+), Failures: (\\d+), Errors: (\\d+), Skipped: (\\d+), Time elapsed: [^-]+ -- in ([A-Za-z.]+)");
+
+  private static final class TestCount {
+    int run;
+    int failures;
+    int errors;
+    int skipped;
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(errors, failures, run, skipped);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) return true;
+      if (obj == null) return false;
+      if (getClass() != obj.getClass()) return false;
+      TestCount other = (TestCount) obj;
+      return errors == other.errors && failures == other.failures && run == other.run
+        && skipped == other.skipped;
+    }
+
+    @Override
+    public String toString() {
+      return "TestCount [run=" + run + ", failures=" + failures + ", errors=" + errors
+        + ", skipped=" + skipped + "]";
+    }
+
+  }
+
+  private static TestCount collect(Matcher m) {
+    TestCount c = new TestCount();
+    c.run = Integer.parseInt(m.group(1));
+    c.failures = Integer.parseInt(m.group(2));
+    c.errors = Integer.parseInt(m.group(3));
+    c.skipped = Integer.parseInt(m.group(4));
+    return c;
+  }
+
+  private static Map<String, TestCount> read(String file) throws IOException {
+    Map<String, TestCount> testCount = new TreeMap<>();
+    try (BufferedReader br = Files.newBufferedReader(Paths.get(file), StandardCharsets.UTF_8)) {
+      for (String line;;) {
+        line = br.readLine();
+        if (line == null) {
+          break;
+        }
+        Matcher m = TESTS.matcher(line);
+        if (!m.matches()) {
+          continue;
+        }
+        String testName = m.group(5);
+        testCount.put(testName, collect(m));
+      }
+    }
+    return testCount;
+  }
+
+  public static void main(String[] args) throws Exception {
+    Map<String, TestCount> oldCount = read("/home/zhangduo/hbase/old");
+    Map<String, TestCount> newCount = read("/home/zhangduo/hbase/new");
+    oldCount.forEach((testName, testCount) -> {
+      TestCount newTestCount = newCount.get(testName);
+      if (newTestCount == null) {
+        System.out.println("missed: " + testName);
+        return;
+      }
+      if (!testCount.equals(newTestCount)) {
+        System.out.println("diff " + testName + ":");
+        System.out.println("\told: " + testCount);
+        System.out.println("\tnew: " + newTestCount);
+      }
+    });
+    newCount.forEach((testName, newTestCount) -> {
+      if (!oldCount.containsKey(testName)) {
+        System.out.println("new: " + testName);
+      }
+    });
   }
 }

@@ -21,17 +21,19 @@ import java.io.File;
 import java.io.IOException;
 import java.security.Security;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseCommonTestingUtil;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.Parameter;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Base class for parameterized unit tests that use X509TestContext for testing different X509
@@ -46,40 +48,39 @@ import org.junit.runners.Parameterized;
  *      "https://github.com/apache/zookeeper/blob/master/zookeeper-server/src/test/java/org/apache/zookeeper/common/BaseX509ParameterizedTestCase.java">Base
  *      revision</a>
  */
+@MethodSource("defaultParams")
 public abstract class AbstractTestX509Parameterized {
 
   private static final HBaseCommonTestingUtil UTIL = new HBaseCommonTestingUtil();
   private static X509TestContextProvider PROVIDER;
 
-  @Parameterized.Parameter()
+  @Parameter(0)
   public X509KeyType caKeyType;
 
-  @Parameterized.Parameter(value = 1)
+  @Parameter(1)
   public X509KeyType certKeyType;
 
-  @Parameterized.Parameter(value = 2)
+  @Parameter(2)
   public char[] keyPassword;
 
-  @Parameterized.Parameter(value = 3)
+  @Parameter(3)
   public Integer paramIndex;
 
   /**
    * Default parameters suitable for most subclasses. See example usage in {@link TestX509Util}.
    * @return an array of parameter combinations to test with.
    */
-  @Parameterized.Parameters(
-      name = "{index}: caKeyType={0}, certKeyType={1}, keyPassword={2}, paramIndex={3}")
-  public static Collection<Object[]> defaultParams() {
-    List<Object[]> result = new ArrayList<>();
+  public static Stream<Arguments> defaultParams() {
+    List<Arguments> result = new ArrayList<>();
     int paramIndex = 0;
     for (X509KeyType caKeyType : X509KeyType.values()) {
       for (X509KeyType certKeyType : X509KeyType.values()) {
         for (char[] keyPassword : new char[][] { "".toCharArray(), "pa$$w0rd".toCharArray() }) {
-          result.add(new Object[] { caKeyType, certKeyType, keyPassword, paramIndex++ });
+          result.add(Arguments.of(caKeyType, certKeyType, keyPassword, paramIndex++));
         }
       }
     }
-    return result;
+    return result.stream();
   }
 
   /**
@@ -92,7 +93,7 @@ public abstract class AbstractTestX509Parameterized {
 
   protected X509TestContext x509TestContext;
 
-  @BeforeClass
+  @BeforeAll
   public static void setUpBaseClass() throws Exception {
     Security.addProvider(new BouncyCastleProvider());
     File dir = new File(UTIL.getDataTestDir(TestX509Util.class.getSimpleName()).toString())
@@ -101,20 +102,20 @@ public abstract class AbstractTestX509Parameterized {
     PROVIDER = new X509TestContextProvider(UTIL.getConfiguration(), dir);
   }
 
-  @AfterClass
+  @AfterAll
   public static void cleanUpBaseClass() {
     Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
     UTIL.cleanupTestDir();
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws IOException {
     x509TestContext = PROVIDER.get(caKeyType, certKeyType, keyPassword);
     x509TestContext.setConfigurations(KeyStoreFileType.JKS, KeyStoreFileType.JKS);
     conf = new Configuration(UTIL.getConfiguration());
   }
 
-  @After
+  @AfterEach
   public void cleanUp() {
     x509TestContext.clearConfigurations();
     x509TestContext.getConf().unset(X509Util.TLS_CONFIG_OCSP);
