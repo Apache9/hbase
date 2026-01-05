@@ -17,23 +17,49 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import java.io.File;
+import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.testclassification.ClientTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.minikdc.MiniKdc;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 
 /**
- * Test basic read write operation with different {@link ConnectionRegistry} implementations.
+ * Test basic read write operation with different {@link ConnectionRegistry} implementations when
+ * security is enabled.
  */
 @Tag(MediumTests.TAG)
 @Tag(ClientTests.TAG)
-public class TestBasicReadWriteWithDifferentConnectionRegistries
+public class TestSecureBasicReadWriteWithDifferentConnectionRegistries
   extends BasicReadWriteWithDifferentConnectionRegistriesTestBase {
+
+  protected static final File KEYTAB_FILE =
+    new File(UTIL.getDataTestDir("keytab").toUri().getPath());
+
+  private static MiniKdc KDC;
+  private static String HOST = "localhost";
+  private static String PRINCIPAL;
+  private static String HTTP_PRINCIPAL;
+
+  protected static void stopKDC() {
+    if (KDC != null) {
+      KDC.stop();
+    }
+  }
 
   @BeforeAll
   public static void setUpBeforeClass() throws Exception {
-    UTIL.startMiniCluster();
+    KDC = UTIL.setupMiniKdc(KEYTAB_FILE);
+    PRINCIPAL = "hbase/" + HOST;
+    HTTP_PRINCIPAL = "HTTP/" + HOST;
+    KDC.createPrincipal(KEYTAB_FILE, PRINCIPAL, HTTP_PRINCIPAL);
+    // set a smaller timeout and retry to speed up tests
+    UTIL.getConfiguration().setInt(RpcClient.SOCKET_TIMEOUT_READ, 2000);
+    UTIL.getConfiguration().setInt("hbase.security.relogin.maxretries", 1);
+    UTIL.getConfiguration().setInt("hbase.security.relogin.maxbackoff", 100);
+    UTIL.startSecureMiniCluster(KDC, PRINCIPAL, HTTP_PRINCIPAL);
   }
 
   @AfterAll
