@@ -38,22 +38,7 @@ pipeline {
     stage ('build hbase website') {
       steps {
         dir('component') {
-          script {
-            checkout([
-              $class: 'GitSCM',
-              branches: [[name: '*/master']],
-              doGenerateSubmoduleConfigurations: false,
-              extensions: [
-                [$class: 'CloneOption',
-                  noTags: true,
-                  shallow: true,
-                  depth: 1
-                ],
-                [$class: 'CheckoutOption', timeout: 20]
-              ],
-              userRemoteConfigs: [[url: 'https://github.com/apache/hbase']]
-            ])
-          }
+          checkout scm
         }
         sh '''#!/bin/bash -e
           if [ "${DEBUG}" = "true" ]; then
