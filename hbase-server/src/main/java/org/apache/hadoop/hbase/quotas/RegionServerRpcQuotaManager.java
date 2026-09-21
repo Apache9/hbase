@@ -56,14 +56,10 @@ public class RegionServerRpcQuotaManager implements RpcQuotaManager, Configurati
 
   private QuotaCache quotaCache = null;
   private volatile boolean rpcThrottleEnabled;
-  // Storage for quota rpc throttle
-  private RpcThrottleStorage rpcThrottleStorage;
   private final Supplier<Double> requestsPerSecondSupplier;
 
   public RegionServerRpcQuotaManager(final RegionServerServices rsServices) {
     this.rsServices = rsServices;
-    rpcThrottleStorage =
-      new RpcThrottleStorage(rsServices.getZooKeeper(), rsServices.getConfiguration());
     this.requestsPerSecondSupplier = Suppliers.memoizeWithExpiration(
       () -> rsServices.getMetrics().getRegionServerWrapper().getRequestsPerSecond(), 1,
       TimeUnit.MINUTES);
