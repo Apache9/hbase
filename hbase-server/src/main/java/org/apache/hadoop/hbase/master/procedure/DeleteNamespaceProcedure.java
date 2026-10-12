@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.master.procedure;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -27,7 +28,9 @@ import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NamespaceNotFoundException;
 import org.apache.hadoop.hbase.constraint.ConstraintException;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
+import org.apache.hadoop.hbase.procedure2.ProcedureFutureUtil;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -43,10 +46,15 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.D
 @InterfaceAudience.Private
 public class DeleteNamespaceProcedure
   extends AbstractStateMachineNamespaceProcedure<DeleteNamespaceState> {
+
+  /** Backoff while waiting for the acl cleanup procedure. */
+  private static final int ACL_WAIT_BACKOFF_MSEC = 100;
   private static final Logger LOG = LoggerFactory.getLogger(DeleteNamespaceProcedure.class);
 
   private NamespaceDescriptor nsDescriptor;
   private String namespaceName;
+  /** Completed once the acl procedure carrying the cleanup of this namespace has completed. */
+  private CompletableFuture<Void> aclCleanupFuture;
 
   public DeleteNamespaceProcedure() {
   }
@@ -63,7 +71,7 @@ public class DeleteNamespaceProcedure
 
   @Override
   protected Flow executeFromState(MasterProcedureEnv env, DeleteNamespaceState state)
-    throws InterruptedException {
+    throws InterruptedException, ProcedureSuspendedException {
     LOG.info(this.toString());
     try {
       switch (state) {
@@ -89,7 +97,19 @@ public class DeleteNamespaceProcedure
           setNextState(DeleteNamespaceState.DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA);
           break;
         case DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA:
-          removeNamespaceQuota(env, namespaceName);
+          if (aclCleanupFuture == null) {
+            removeNamespaceQuota(env, namespaceName);
+            // the permission cleanup goes through an acl procedure like every other acl change,
+            // batched with the changes queued alongside it; this procedure waits for that
+            // procedure to complete: the delete is only done once the permissions of the
+            // namespace are gone from hbase:acl and from the region server caches. The wait is
+            // rebuilt at recovery, see RefreshAclProcedure#afterReplay
+            aclCleanupFuture =
+              env.getMasterServices().getAclManager().requestCleanup(getProcId(), namespaceName);
+          }
+          // completed already: continues inline; not yet: suspends until the acl procedure ends
+          ProcedureFutureUtil.suspendIfNecessary(this, this::setAclCleanupFuture, aclCleanupFuture,
+            env, this::afterAclCleanup);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(this + " unhandled state=" + state);
@@ -103,6 +123,19 @@ public class DeleteNamespaceProcedure
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  private void setAclCleanupFuture(CompletableFuture<Void> future) {
+    aclCleanupFuture = future;
+  }
+
+  /** Rebuilt at recovery when the cleanup was already scheduled before the restart. */
+  void restoreAclCleanupWait(CompletableFuture<Void> wait) {
+    aclCleanupFuture = wait;
+  }
+
+  private void afterAclCleanup() {
+    LOG.debug("Finished {}", this);
   }
 
   @Override

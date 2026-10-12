@@ -17,9 +17,6 @@
  */
 package org.apache.hadoop.hbase.security.access;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,16 +52,12 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
-import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.Region;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.io.WritableFactories;
-import org.apache.hadoop.io.WritableUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,9 +113,6 @@ public final class PermissionStorage {
 
   private static final Logger LOG = LoggerFactory.getLogger(PermissionStorage.class);
 
-  private PermissionStorage() {
-  }
-
   /**
    * Stores a new user permission grant in the access control lists table.
    * @param conf     the configuration
@@ -132,10 +122,21 @@ public final class PermissionStorage {
    */
   public static void addUserPermission(Configuration conf, UserPermission userPerm, Table t,
     boolean mergeExistingPermissions) throws IOException {
+    addUserPermission(conf, userPerm, t, mergeExistingPermissions,
+      EnvironmentEdgeManager.currentTime());
+  }
+
+  /**
+   * Stores a new user permission grant in the access control lists table.
+   * @param ts the timestamp to stamp the write with, the master assigns monotonically increasing
+   *           timestamps so the cell timestamps carry the write order
+   */
+  public static void addUserPermission(Configuration conf, UserPermission userPerm, Table t,
+    boolean mergeExistingPermissions, long ts) throws IOException {
     Permission permission = userPerm.getPermission();
     Permission.Action[] actions = permission.getActions();
     byte[] rowKey = userPermissionRowKey(permission);
-    Put p = new Put(rowKey);
+    Put p = new Put(rowKey, ts);
     byte[] key = userPermissionKey(userPerm);
 
     if ((actions == null) || (actions.length == 0)) {
@@ -146,7 +147,8 @@ public final class PermissionStorage {
 
     Set<Permission.Action> actionSet = new TreeSet<Permission.Action>();
     if (mergeExistingPermissions) {
-      List<UserPermission> perms = getUserPermissions(conf, rowKey, null, null, null, false);
+      List<UserPermission> perms =
+        toUserPermissions(getPermissions(t, rowKey, null, null, null, false));
       UserPermission currentPerm = null;
       for (UserPermission perm : perms) {
         if (userPerm.equalsExceptActions(perm)) {
@@ -185,7 +187,7 @@ public final class PermissionStorage {
 
   static void addUserPermission(Configuration conf, UserPermission userPerm, Table t)
     throws IOException {
-    addUserPermission(conf, userPerm, t, false);
+    addUserPermission(conf, userPerm, t, false, EnvironmentEdgeManager.currentTime());
   }
 
   /**
@@ -202,15 +204,25 @@ public final class PermissionStorage {
    */
   public static void removeUserPermission(Configuration conf, UserPermission userPerm, Table t)
     throws IOException {
+    removeUserPermission(conf, userPerm, t, EnvironmentEdgeManager.currentTime());
+  }
+
+  /**
+   * Removes a previously granted permission, see
+   * {@link #removeUserPermission(Configuration, UserPermission, Table)}. The write is stamped with
+   * the given timestamp.
+   */
+  public static void removeUserPermission(Configuration conf, UserPermission userPerm, Table t,
+    long ts) throws IOException {
     if (
       null == userPerm.getPermission().getActions()
         || userPerm.getPermission().getActions().length == 0
     ) {
-      removePermissionRecord(conf, userPerm, t);
+      removePermissionRecord(conf, userPerm, t, ts);
     } else {
       // Get all the global user permissions from the acl table
-      List<UserPermission> permsList = getUserPermissions(conf,
-        userPermissionRowKey(userPerm.getPermission()), null, null, null, false);
+      List<UserPermission> permsList = toUserPermissions(
+        getPermissions(t, userPermissionRowKey(userPerm.getPermission()), null, null, null, false));
       List<Permission.Action> remainingActions = new ArrayList<>();
       List<Permission.Action> dropActions = Arrays.asList(userPerm.getPermission().getActions());
       for (UserPermission perm : permsList) {
@@ -224,9 +236,9 @@ public final class PermissionStorage {
           if (!remainingActions.isEmpty()) {
             perm.getPermission()
               .setActions(remainingActions.toArray(new Permission.Action[remainingActions.size()]));
-            addUserPermission(conf, perm, t);
+            addUserPermission(conf, perm, t, false, ts);
           } else {
-            removePermissionRecord(conf, userPerm, t);
+            removePermissionRecord(conf, userPerm, t, ts);
           }
           break;
         }
@@ -237,9 +249,9 @@ public final class PermissionStorage {
     }
   }
 
-  private static void removePermissionRecord(Configuration conf, UserPermission userPerm, Table t)
-    throws IOException {
-    Delete d = new Delete(userPermissionRowKey(userPerm.getPermission()));
+  private static void removePermissionRecord(Configuration conf, UserPermission userPerm, Table t,
+    long ts) throws IOException {
+    Delete d = new Delete(userPermissionRowKey(userPerm.getPermission()), ts);
     d.addColumns(ACL_LIST_FAMILY, userPermissionKey(userPerm));
     try {
       t.delete(d);
@@ -253,7 +265,12 @@ public final class PermissionStorage {
    */
   static void removeTablePermissions(Configuration conf, TableName tableName, Table t)
     throws IOException {
-    Delete d = new Delete(tableName.getName());
+    removeTablePermissions(conf, tableName, t, EnvironmentEdgeManager.currentTime());
+  }
+
+  static void removeTablePermissions(Configuration conf, TableName tableName, Table t, long ts)
+    throws IOException {
+    Delete d = new Delete(tableName.getName(), ts);
     d.addFamily(ACL_LIST_FAMILY);
 
     if (LOG.isDebugEnabled()) {
@@ -271,7 +288,13 @@ public final class PermissionStorage {
    */
   static void removeNamespacePermissions(Configuration conf, String namespace, Table t)
     throws IOException {
-    Delete d = new Delete(Bytes.toBytes(toNamespaceEntry(namespace)));
+    removeNamespacePermissions(conf, namespace, t, EnvironmentEdgeManager.currentTime());
+  }
+
+  static void removeNamespacePermissions(Configuration conf, String namespace, Table t, long ts)
+    throws IOException {
+    byte[] entry = Bytes.toBytes(toNamespaceEntry(namespace));
+    Delete d = new Delete(entry, ts);
     d.addFamily(ACL_LIST_FAMILY);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Removing permissions of removed namespace " + namespace);
@@ -288,7 +311,7 @@ public final class PermissionStorage {
    * Remove permissions of the specified column families of the given table from the acl table.
    */
   static void removeTableColumnFamiliesPermissions(Configuration conf, TableName tableName,
-    Collection<byte[]> columns, Table t) throws IOException {
+    Collection<byte[]> columns, Table t, long ts) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Removing permissions of removed columns {} from table {}",
         columns.stream().map(Bytes::toStringBinary).collect(Collectors.joining(", ")), tableName);
@@ -297,7 +320,7 @@ public final class PermissionStorage {
       Set<byte[]> families = new TreeSet<>(Bytes.BYTES_COMPARATOR);
       families.addAll(columns);
       ListMultimap<String, UserPermission> perms = getTablePermissions(conf, tableName, t);
-      Delete d = new Delete(tableName.getName());
+      Delete d = new Delete(tableName.getName(), ts);
       boolean found = false;
       for (UserPermission perm : perms.values()) {
         Permission permission = perm.getPermission();
@@ -433,8 +456,44 @@ public final class PermissionStorage {
    */
   static Map<byte[], ListMultimap<String, UserPermission>> loadAll(Configuration conf)
     throws IOException {
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return loadAllSnapshot(connection).getPermissions();
+    }
+  }
+
+  /**
+   * Content of the {@code hbase:acl} table together with the largest cell timestamp seen in it.
+   * Cell timestamps of acl writes are assigned by the master, so {@link #getMaxTimestamp()} is the
+   * newest write reflected in the snapshot and serves as its version watermark.
+   */
+  public static final class AclTableContent {
+    private final Map<byte[], ListMultimap<String, UserPermission>> permissions;
+    private final long maxTimestamp;
+
+    AclTableContent(Map<byte[], ListMultimap<String, UserPermission>> permissions,
+      long maxTimestamp) {
+      this.permissions = permissions;
+      this.maxTimestamp = maxTimestamp;
+    }
+
+    public Map<byte[], ListMultimap<String, UserPermission>> getPermissions() {
+      return permissions;
+    }
+
+    /** The newest write timestamp reflected in this snapshot, 0 if it is empty. */
+    public long getMaxTimestamp() {
+      return maxTimestamp;
+    }
+  }
+
+  /**
+   * Load all permissions from {@code _acl_} along with the newest write timestamp seen, used as the
+   * version watermark of a full reload.
+   */
+  static AclTableContent loadAllSnapshot(Connection connection) throws IOException {
     Map<byte[], ListMultimap<String, UserPermission>> allPerms =
       new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
+    long maxTimestamp = 0L;
 
     // do a full scan of _acl_, filtering on only first table region rows
 
@@ -442,47 +501,75 @@ public final class PermissionStorage {
     scan.addFamily(ACL_LIST_FAMILY);
 
     ResultScanner scanner = null;
-    // TODO: Pass in a Connection rather than create one each time.
-    try (Connection connection = ConnectionFactory.createConnection(conf)) {
-      try (Table table = connection.getTable(ACL_TABLE_NAME)) {
-        scanner = table.getScanner(scan);
-        try {
-          for (Result row : scanner) {
-            ListMultimap<String, UserPermission> resultPerms =
-              parsePermissions(row.getRow(), row, null, null, null, false);
-            allPerms.put(row.getRow(), resultPerms);
+    try (Table table = connection.getTable(ACL_TABLE_NAME)) {
+      scanner = table.getScanner(scan);
+      try {
+        // explicit next(), so a scan failure surfaces as IOException instead of an unchecked
+        // wrap of the iterator
+        for (Result row; (row = scanner.next()) != null;) {
+          ListMultimap<String, UserPermission> resultPerms =
+            parsePermissions(row.getRow(), row, null, null, null, false);
+          allPerms.put(row.getRow(), resultPerms);
+          for (Cell cell : row.rawCells()) {
+            maxTimestamp = Math.max(maxTimestamp, cell.getTimestamp());
           }
-        } finally {
-          if (scanner != null) {
-            scanner.close();
-          }
+        }
+      } finally {
+        if (scanner != null) {
+          scanner.close();
         }
       }
     }
 
-    return allPerms;
+    return new AclTableContent(allPerms, maxTimestamp);
   }
 
+  public static ListMultimap<String, UserPermission> getTablePermissions(Connection connection,
+    TableName tableName) throws IOException {
+    return getTablePermissions(connection, tableName, null);
+  }
+
+  public static ListMultimap<String, UserPermission> getTablePermissions(Connection connection,
+    TableName tableName, Table t) throws IOException {
+    return t != null
+      ? getPermissions(t, tableName != null ? tableName.getName() : null, null, null, null, false)
+      : getPermissions(connection, tableName != null ? tableName.getName() : null, null, null, null,
+        false);
+  }
+
+  public static ListMultimap<String, UserPermission> getNamespacePermissions(Connection connection,
+    String namespace) throws IOException {
+    return getPermissions(connection, Bytes.toBytes(toNamespaceEntry(namespace)), null, null, null,
+      false);
+  }
+
+  public static ListMultimap<String, UserPermission> getGlobalPermissions(Connection connection)
+    throws IOException {
+    return getPermissions(connection, null, null, null, null, false);
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static ListMultimap<String, UserPermission> getTablePermissions(Configuration conf,
     TableName tableName) throws IOException {
-    return getTablePermissions(conf, tableName, null);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getTablePermissions(connection, tableName);
+    }
   }
 
-  public static ListMultimap<String, UserPermission> getTablePermissions(Configuration conf,
-    TableName tableName, Table t) throws IOException {
-    return getPermissions(conf, tableName != null ? tableName.getName() : null, t, null, null, null,
-      false);
-  }
-
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static ListMultimap<String, UserPermission> getNamespacePermissions(Configuration conf,
     String namespace) throws IOException {
-    return getPermissions(conf, Bytes.toBytes(toNamespaceEntry(namespace)), null, null, null, null,
-      false);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getNamespacePermissions(connection, namespace);
+    }
   }
 
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static ListMultimap<String, UserPermission> getGlobalPermissions(Configuration conf)
     throws IOException {
-    return getPermissions(conf, null, null, null, null, null, false);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getGlobalPermissions(connection);
+    }
   }
 
   /**
@@ -492,8 +579,15 @@ public final class PermissionStorage {
    * See {@link PermissionStorage class documentation} for the key structure used for storage.
    * </p>
    */
-  static ListMultimap<String, UserPermission> getPermissions(Configuration conf, byte[] entryName,
-    Table t, byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
+  static ListMultimap<String, UserPermission> getPermissions(Connection connection,
+    byte[] entryName, byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
+    try (Table table = connection.getTable(ACL_TABLE_NAME)) {
+      return getPermissions(table, entryName, cf, cq, user, hasFilterUser);
+    }
+  }
+
+  static ListMultimap<String, UserPermission> getPermissions(Table t, byte[] entryName, byte[] cf,
+    byte[] cq, String user, boolean hasFilterUser) throws IOException {
     if (entryName == null) {
       entryName = ACL_GLOBAL_NAME;
     }
@@ -501,16 +595,7 @@ public final class PermissionStorage {
     ListMultimap<String, UserPermission> perms = ArrayListMultimap.create();
     Get get = new Get(entryName);
     get.addFamily(ACL_LIST_FAMILY);
-    Result row = null;
-    if (t == null) {
-      try (Connection connection = ConnectionFactory.createConnection(conf)) {
-        try (Table table = connection.getTable(ACL_TABLE_NAME)) {
-          row = table.get(get);
-        }
-      }
-    } else {
-      row = t.get(get);
-    }
+    Result row = t.get(get);
     if (!row.isEmpty()) {
       perms = parsePermissions(entryName, row, cf, cq, user, hasFilterUser);
     } else {
@@ -525,27 +610,44 @@ public final class PermissionStorage {
    * Returns the currently granted permissions for a given table as the specified user plus
    * associated permissions.
    */
+  public static List<UserPermission> getUserTablePermissions(Connection connection,
+    TableName tableName, byte[] cf, byte[] cq, String userName, boolean hasFilterUser)
+    throws IOException {
+    return getUserPermissions(connection, tableName == null ? null : tableName.getName(), cf, cq,
+      userName, hasFilterUser);
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static List<UserPermission> getUserTablePermissions(Configuration conf,
     TableName tableName, byte[] cf, byte[] cq, String userName, boolean hasFilterUser)
     throws IOException {
-    return getUserPermissions(conf, tableName == null ? null : tableName.getName(), cf, cq,
-      userName, hasFilterUser);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getUserTablePermissions(connection, tableName, cf, cq, userName, hasFilterUser);
+    }
   }
 
   /**
    * Returns the currently granted permissions for a given namespace as the specified user plus
    * associated permissions.
    */
+  public static List<UserPermission> getUserNamespacePermissions(Connection connection,
+    String namespace, String user, boolean hasFilterUser) throws IOException {
+    return getUserPermissions(connection, Bytes.toBytes(toNamespaceEntry(namespace)), null, null,
+      user, hasFilterUser);
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static List<UserPermission> getUserNamespacePermissions(Configuration conf,
     String namespace, String user, boolean hasFilterUser) throws IOException {
-    return getUserPermissions(conf, Bytes.toBytes(toNamespaceEntry(namespace)), null, null, user,
-      hasFilterUser);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getUserNamespacePermissions(connection, namespace, user, hasFilterUser);
+    }
   }
 
   /**
    * Returns the currently granted permissions for a given table/namespace with associated
    * permissions based on the specified column family, column qualifier and user name.
-   * @param conf          the configuration
+   * @param connection    the connection to the acl table
    * @param entryName     Table name or the namespace
    * @param cf            Column family
    * @param cq            Column qualifier
@@ -554,15 +656,26 @@ public final class PermissionStorage {
    * @return List of UserPermissions
    * @throws IOException on failure
    */
-  public static List<UserPermission> getUserPermissions(Configuration conf, byte[] entryName,
+  public static List<UserPermission> getUserPermissions(Connection connection, byte[] entryName,
     byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
-    ListMultimap<String, UserPermission> allPerms =
-      getPermissions(conf, entryName, null, cf, cq, user, hasFilterUser);
-    List<UserPermission> perms = new ArrayList<>();
+    return toUserPermissions(getPermissions(connection, entryName, cf, cq, user, hasFilterUser));
+  }
+
+  private static List<UserPermission>
+    toUserPermissions(ListMultimap<String, UserPermission> allPerms) {
+    List<UserPermission> perms = new ArrayList<>(allPerms.size());
     for (Map.Entry<String, UserPermission> entry : allPerms.entries()) {
       perms.add(entry.getValue());
     }
     return perms;
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
+  public static List<UserPermission> getUserPermissions(Configuration conf, byte[] entryName,
+    byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getUserPermissions(connection, entryName, cf, cq, user, hasFilterUser);
+    }
   }
 
   /**
@@ -714,103 +827,6 @@ public final class PermissionStorage {
       }
     }
     return include;
-  }
-
-  /**
-   * Writes a set of permissions as {@link org.apache.hadoop.io.Writable} instances and returns the
-   * resulting byte array. Writes a set of permission [user: table permission]
-   */
-  public static byte[] writePermissionsAsBytes(ListMultimap<String, UserPermission> perms,
-    Configuration conf) {
-    return ProtobufUtil
-      .prependPBMagic(AccessControlUtil.toUserTablePermissions(perms).toByteArray());
-  }
-
-  // This is part of the old HbaseObjectWritableFor96Migration.
-  private static final int LIST_CODE = 61;
-
-  private static final int WRITABLE_CODE = 14;
-
-  private static final int WRITABLE_NOT_ENCODED = 0;
-
-  private static List<Permission> readWritableUserPermission(DataInput in, Configuration conf)
-    throws IOException, ClassNotFoundException {
-    assert WritableUtils.readVInt(in) == LIST_CODE;
-    int length = in.readInt();
-    List<Permission> list = new ArrayList<>(length);
-    for (int i = 0; i < length; i++) {
-      assert WritableUtils.readVInt(in) == WRITABLE_CODE;
-      assert WritableUtils.readVInt(in) == WRITABLE_NOT_ENCODED;
-      String className = Text.readString(in);
-      Class<? extends Writable> clazz = conf.getClassByName(className).asSubclass(Writable.class);
-      Writable instance = WritableFactories.newInstance(clazz, conf);
-      instance.readFields(in);
-      list.add((Permission) instance);
-    }
-    return list;
-  }
-
-  public static ListMultimap<String, UserPermission> readUserPermission(byte[] data,
-    Configuration conf) throws DeserializationException {
-    if (ProtobufUtil.isPBMagicPrefix(data)) {
-      int pblen = ProtobufUtil.lengthOfPBMagic();
-      try {
-        AccessControlProtos.UsersAndPermissions.Builder builder =
-          AccessControlProtos.UsersAndPermissions.newBuilder();
-        ProtobufUtil.mergeFrom(builder, data, pblen, data.length - pblen);
-        return AccessControlUtil.toUserPermission(builder.build());
-      } catch (IOException e) {
-        throw new DeserializationException(e);
-      }
-    } else {
-      // TODO: We have to re-write non-PB data as PB encoded. Otherwise we will carry old Writables
-      // forever (here and a couple of other places).
-      ListMultimap<String, UserPermission> userPermission = ArrayListMultimap.create();
-      try {
-        DataInput in = new DataInputStream(new ByteArrayInputStream(data));
-        int length = in.readInt();
-        for (int i = 0; i < length; i++) {
-          String user = Text.readString(in);
-          List<Permission> perms = readWritableUserPermission(in, conf);
-          for (Permission p : perms) {
-            userPermission.put(user, new UserPermission(user, p));
-          }
-        }
-      } catch (IOException | ClassNotFoundException e) {
-        throw new DeserializationException(e);
-      }
-      return userPermission;
-    }
-  }
-
-  public static ListMultimap<String, Permission> readPermissions(byte[] data, Configuration conf)
-    throws DeserializationException {
-    if (ProtobufUtil.isPBMagicPrefix(data)) {
-      int pblen = ProtobufUtil.lengthOfPBMagic();
-      try {
-        AccessControlProtos.UsersAndPermissions.Builder builder =
-          AccessControlProtos.UsersAndPermissions.newBuilder();
-        ProtobufUtil.mergeFrom(builder, data, pblen, data.length - pblen);
-        return AccessControlUtil.toPermission(builder.build());
-      } catch (IOException e) {
-        throw new DeserializationException(e);
-      }
-    } else {
-      // TODO: We have to re-write non-PB data as PB encoded. Otherwise we will carry old Writables
-      // forever (here and a couple of other places).
-      ListMultimap<String, Permission> perms = ArrayListMultimap.create();
-      try {
-        DataInput in = new DataInputStream(new ByteArrayInputStream(data));
-        int length = in.readInt();
-        for (int i = 0; i < length; i++) {
-          String user = Text.readString(in);
-          perms.putAll(user, readWritableUserPermission(in, conf));
-        }
-      } catch (IOException | ClassNotFoundException e) {
-        throw new DeserializationException(e);
-      }
-      return perms;
-    }
   }
 
   public static boolean isGlobalEntry(byte[] entryName) {

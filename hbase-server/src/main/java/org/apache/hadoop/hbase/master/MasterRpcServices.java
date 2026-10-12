@@ -52,7 +52,6 @@ import org.apache.hadoop.hbase.client.BalanceResponse;
 import org.apache.hadoop.hbase.client.MasterSwitchType;
 import org.apache.hadoop.hbase.client.NormalizeTableFilterParams;
 import org.apache.hadoop.hbase.client.RegionInfo;
-import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.client.VersionInfoUtil;
@@ -76,6 +75,7 @@ import org.apache.hadoop.hbase.master.locking.LockProcedure;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureEnv;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureUtil;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureUtil.NonceProcedureRunnable;
+import org.apache.hadoop.hbase.master.procedure.ProcedurePrepareLatch;
 import org.apache.hadoop.hbase.master.procedure.RestoreBackupSystemTableProcedure;
 import org.apache.hadoop.hbase.master.procedure.ServerCrashProcedure;
 import org.apache.hadoop.hbase.master.replication.AbstractPeerNoLockProcedure;
@@ -103,14 +103,10 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.rsgroup.RSGroupUtil;
-import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.AccessChecker;
-import org.apache.hadoop.hbase.security.access.AccessChecker.InputUser;
 import org.apache.hadoop.hbase.security.access.AccessController;
 import org.apache.hadoop.hbase.security.access.Permission;
-import org.apache.hadoop.hbase.security.access.Permission.Action;
-import org.apache.hadoop.hbase.security.access.PermissionStorage;
 import org.apache.hadoop.hbase.security.access.ShadedAccessControlUtil;
 import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.security.visibility.VisibilityController;
@@ -121,6 +117,7 @@ import org.apache.hadoop.hbase.util.DNS;
 import org.apache.hadoop.hbase.util.DNS.ServerType;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ForeignExceptionUtil;
+import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -2947,12 +2944,15 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
           ShadedAccessControlUtil.toUserPermission(request.getUserPermission());
         boolean mergeExistingPermissions = request.getMergeExistingPermissions();
         server.cpHost.preGrant(perm, mergeExistingPermissions);
-        try (Table table = server.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-          PermissionStorage.addUserPermission(getConfiguration(), perm, table,
-            mergeExistingPermissions);
-        }
+        // old clients only know the synchronous behaviour: hold them until the write landed;
+        // new clients get the procedure to wait for instead, see GrantResponse
+        ProcedurePrepareLatch syncLatch = ProcedurePrepareLatch.createLatch(4, 0);
+        CompletableFuture<Long> procedureId =
+          server.getAclManager().grant(perm, mergeExistingPermissions, syncLatch);
         server.cpHost.postGrant(perm, mergeExistingPermissions);
-        return GrantResponse.getDefaultInstance();
+        long procId = FutureUtils.get(procedureId);
+        syncLatch.await();
+        return GrantResponse.newBuilder().setProcId(procId).build();
       } else {
         throw new DoNotRetryIOException(
           new UnsupportedOperationException(AccessController.class.getName() + " is not loaded"));
@@ -2971,11 +2971,13 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
         final UserPermission userPermission =
           ShadedAccessControlUtil.toUserPermission(request.getUserPermission());
         server.cpHost.preRevoke(userPermission);
-        try (Table table = server.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-          PermissionStorage.removeUserPermission(server.getConfiguration(), userPermission, table);
-        }
+        ProcedurePrepareLatch syncLatch = ProcedurePrepareLatch.createLatch(4, 0);
+        CompletableFuture<Long> procedureId =
+          server.getAclManager().revoke(userPermission, syncLatch);
         server.cpHost.postRevoke(userPermission);
-        return RevokeResponse.getDefaultInstance();
+        long procId = FutureUtils.get(procedureId);
+        syncLatch.await();
+        return RevokeResponse.newBuilder().setProcId(procId).build();
       } else {
         throw new DoNotRetryIOException(
           new UnsupportedOperationException(AccessController.class.getName() + " is not loaded"));
@@ -3005,28 +3007,8 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
         server.getMasterCoprocessorHost().preGetUserPermissions(userName, namespace, table, cf, cq,
           permissionScope);
 
-        List<UserPermission> perms = null;
-        if (permissionType == Type.Table) {
-          boolean filter = (cf != null || userName != null) ? true : false;
-          perms = PermissionStorage.getUserTablePermissions(server.getConfiguration(), table, cf,
-            cq, userName, filter);
-        } else if (permissionType == Type.Namespace) {
-          perms = PermissionStorage.getUserNamespacePermissions(server.getConfiguration(),
-            namespace, userName, userName != null ? true : false);
-        } else {
-          perms = PermissionStorage.getUserPermissions(server.getConfiguration(), null, null, null,
-            userName, userName != null ? true : false);
-          // Skip super users when filter user is specified
-          if (userName == null) {
-            // Adding superusers explicitly to the result set as PermissionStorage do not store
-            // them. Also using acl as table name to be inline with the results of global admin and
-            // will help in avoiding any leakage of information about being superusers.
-            for (String user : Superusers.getSuperUsers()) {
-              perms.add(new UserPermission(user,
-                Permission.newBuilder().withActions(Action.values()).build()));
-            }
-          }
-        }
+        List<UserPermission> perms = server.getAclManager().getUserPermissions(permissionType,
+          table, namespace, cf, cq, userName);
 
         server.getMasterCoprocessorHost().postGetUserPermissions(userName, namespace, table, cf, cq,
           permissionScope);
@@ -3056,22 +3038,8 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
           permissions.add(ShadedAccessControlUtil.toPermission(request.getPermission(i)));
         }
         server.getMasterCoprocessorHost().preHasUserPermissions(userName, permissions);
-        if (!caller.getShortName().equals(userName)) {
-          List<String> groups = AccessChecker.getUserGroups(userName);
-          caller = new InputUser(userName, groups.toArray(new String[groups.size()]));
-        }
-        List<Boolean> hasUserPermissions = new ArrayList<>();
-        if (getAccessChecker() != null) {
-          for (Permission permission : permissions) {
-            boolean hasUserPermission =
-              getAccessChecker().hasUserPermission(caller, "hasUserPermissions", permission);
-            hasUserPermissions.add(hasUserPermission);
-          }
-        } else {
-          for (int i = 0; i < permissions.size(); i++) {
-            hasUserPermissions.add(true);
-          }
-        }
+        List<Boolean> hasUserPermissions =
+          server.getAclManager().hasUserPermissions(caller, userName, permissions);
         server.getMasterCoprocessorHost().postHasUserPermissions(userName, permissions);
         HasUserPermissionsResponse.Builder builder =
           HasUserPermissionsResponse.newBuilder().addAllHasUserPermission(hasUserPermissions);

@@ -108,6 +108,13 @@ public class ProcedureExecutor<TEnvironment> {
     protected volatile boolean killIfSuspended = false;
 
     /**
+     * When set, only procedures of this class are killed: a test that runs other root procedures
+     * alongside the one under test keeps those out of the kill/toggle cycle, which otherwise
+     * consumes the kills at their store updates and starves the procedure under test.
+     */
+    protected volatile Class<?> killBeforeStoreUpdateOnlyFor = null;
+
+    /**
      * Kill the PE BEFORE we store state to the WAL. Good for figuring out if a Procedure is
      * persisting all the state it needs to recover after a crash.
      */
@@ -134,11 +141,15 @@ public class ProcedureExecutor<TEnvironment> {
       return kill;
     }
 
-    protected boolean shouldKillBeforeStoreUpdate(boolean isSuspended, boolean hasParent) {
+    protected boolean shouldKillBeforeStoreUpdate(boolean isSuspended, boolean hasParent,
+      Procedure<?> proc) {
       if (isSuspended && !killIfSuspended) {
         return false;
       }
       if (hasParent && !killIfHasParent) {
+        return false;
+      }
+      if (killBeforeStoreUpdateOnlyFor != null && !killBeforeStoreUpdateOnlyFor.isInstance(proc)) {
         return false;
       }
       return shouldKillBeforeStoreUpdate();
@@ -1877,7 +1888,8 @@ public class ProcedureExecutor<TEnvironment> {
       // allows to kill the executor before something is stored to the wal.
       // useful to test the procedure recovery.
       if (
-        testing != null && testing.shouldKillBeforeStoreUpdate(suspended, procedure.hasParent())
+        testing != null
+          && testing.shouldKillBeforeStoreUpdate(suspended, procedure.hasParent(), procedure)
       ) {
         kill("TESTING: Kill BEFORE store update: " + procedure);
       }

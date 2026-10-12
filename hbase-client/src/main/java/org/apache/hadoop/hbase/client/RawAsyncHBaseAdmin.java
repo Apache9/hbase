@@ -4324,20 +4324,35 @@ class RawAsyncHBaseAdmin implements AsyncAdmin {
   @Override
   public CompletableFuture<Void> grant(UserPermission userPermission,
     boolean mergeExistingPermissions) {
-    return this.<Void> newMasterCaller()
-      .action((controller, stub) -> this.<GrantRequest, GrantResponse, Void> call(controller, stub,
-        ShadedAccessControlUtil.buildGrantRequest(userPermission, mergeExistingPermissions),
-        (s, c, req, done) -> s.grant(c, req, done), resp -> null))
-      .call();
+    return this.<GrantResponse> newMasterCaller()
+      .action(
+        (controller, stub) -> this.<GrantRequest, GrantResponse, GrantResponse> call(controller,
+          stub, ShadedAccessControlUtil.buildGrantRequest(userPermission, mergeExistingPermissions),
+          (s, c, req, done) -> s.grant(c, req, done), resp -> resp))
+      .call().thenCompose(resp -> waitAclProcedure(resp.hasProcId(), resp.getProcId()));
   }
 
   @Override
   public CompletableFuture<Void> revoke(UserPermission userPermission) {
-    return this.<Void> newMasterCaller()
-      .action((controller, stub) -> this.<RevokeRequest, RevokeResponse, Void> call(controller,
-        stub, ShadedAccessControlUtil.buildRevokeRequest(userPermission),
-        (s, c, req, done) -> s.revoke(c, req, done), resp -> null))
-      .call();
+    return this.<RevokeResponse> newMasterCaller()
+      .action((controller, stub) -> this.<RevokeRequest, RevokeResponse, RevokeResponse> call(
+        controller, stub, ShadedAccessControlUtil.buildRevokeRequest(userPermission),
+        (s, c, req, done) -> s.revoke(c, req, done), resp -> resp))
+      .call().thenCompose(resp -> waitAclProcedure(resp.hasProcId(), resp.getProcId()));
+  }
+
+  /**
+   * Waits for the procedure applying a grant or a revoke. An old master applies the change before
+   * answering and has no procedure to wait for.
+   */
+  private CompletableFuture<Void> waitAclProcedure(boolean hasProcId, long procId) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    if (hasProcId) {
+      getProcedureResult(procId, src -> null, future, 0);
+    } else {
+      future.complete(null);
+    }
+    return future;
   }
 
   @Override

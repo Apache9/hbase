@@ -170,6 +170,10 @@ public class TestDeleteNamespaceProcedure {
 
     ProcedureTestingUtility.waitNoProcedureRunning(procExec);
     ProcedureTestingUtility.setKillAndToggleBeforeStoreUpdate(procExec, true);
+    // the acl procedure of the permission cleanup runs as another root procedure; only the delete
+    // under test may consume the kills, see ProcedureTestingUtility
+    ProcedureTestingUtility.setKillBeforeStoreUpdateOnlyFor(procExec,
+      DeleteNamespaceProcedure.class);
 
     // Start the DeleteNamespace procedure && kill the executor
     long procId = procExec
@@ -192,6 +196,10 @@ public class TestDeleteNamespaceProcedure {
 
     ProcedureTestingUtility.waitNoProcedureRunning(procExec);
     ProcedureTestingUtility.setKillAndToggleBeforeStoreUpdate(procExec, true);
+    // the acl procedure of the permission cleanup runs as another root procedure; only the delete
+    // under test may consume the kills, see ProcedureTestingUtility
+    ProcedureTestingUtility.setKillBeforeStoreUpdateOnlyFor(procExec,
+      DeleteNamespaceProcedure.class);
 
     // Start the DeleteNamespace procedure && kill the executor
     long procId = procExec

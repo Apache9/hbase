@@ -82,6 +82,9 @@ public class MasterProcedureTestingUtility {
     throws Exception {
     final MasterProcedureEnv env = procExec.getEnvironment();
     final HMaster master = (HMaster) env.getMasterServices();
+    // the re-loaded procedures do not run through AclManager again, clear its submit state so
+    // the completions of the replayed procedures do not count against it
+    master.getAclManager().reset();
     ProcedureTestingUtility.restart(procExec, true, true,
       // stop services
       new Callable<Void>() {

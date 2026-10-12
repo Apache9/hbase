@@ -180,6 +180,9 @@ public class TestDeleteTableProcedure extends TestTableDDLProcedureBase {
     final ProcedureExecutor<MasterProcedureEnv> procExec = getMasterProcedureExecutor();
     ProcedureTestingUtility.waitNoProcedureRunning(procExec);
     ProcedureTestingUtility.setKillAndToggleBeforeStoreUpdate(procExec, true);
+    // the acl procedure of the permission cleanup runs as another root procedure; only the delete
+    // under test may consume the kills, see ProcedureTestingUtility
+    ProcedureTestingUtility.setKillBeforeStoreUpdateOnlyFor(procExec, DeleteTableProcedure.class);
 
     // Start the Delete procedure && kill the executor
     long procId =
