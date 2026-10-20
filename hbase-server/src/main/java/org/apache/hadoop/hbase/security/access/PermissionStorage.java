@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase.security.access;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -322,7 +321,9 @@ public final class PermissionStorage {
     ResultScanner scanner = null;
     try {
       scanner = table.getScanner(scan);
-      for (Result res : scanner) {
+      // explicit next(), so a scan failure surfaces as IOException instead of an unchecked wrap
+      // of the iterator
+      for (Result res; (res = scanner.next()) != null;) {
         for (byte[] q : res.getFamilyMap(ACL_LIST_FAMILY).navigableKeySet()) {
           qualifierSet.add(q);
         }
@@ -521,7 +522,9 @@ public final class PermissionStorage {
       try (Table table = connection.getTable(ACL_TABLE_NAME)) {
         scanner = table.getScanner(scan);
         try {
-          for (Result row : scanner) {
+          // explicit next(), so a scan failure surfaces as IOException instead of an unchecked
+          // wrap of the iterator
+          for (Result row; (row = scanner.next()) != null;) {
             ListMultimap<String, UserPermission> resultPerms =
               parsePermissions(row.getRow(), row, null, null, null, false);
             allPerms.put(row.getRow(), resultPerms);
@@ -529,9 +532,6 @@ public final class PermissionStorage {
               maxTimestamp = Math.max(maxTimestamp, cell.getTimestamp());
             }
           }
-        } catch (UncheckedIOException e) {
-          // unwrap so callers see the real cause, e.g. a TableNotFoundException
-          throw e.getCause();
         } finally {
           if (scanner != null) {
             scanner.close();

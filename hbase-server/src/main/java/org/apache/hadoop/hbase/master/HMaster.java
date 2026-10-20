@@ -1049,8 +1049,8 @@ public class HMaster extends HBaseServerBase<MasterRpcServices> implements Maste
     }
 
     // must be created before loading procedures, RefreshAclProcedure consults it
-    this.aclManager = new ACLManager(conf, this, getConnection(),
-      getAccessChecker().getAclSnapshot(), getAccessChecker());
+    this.aclManager = new ACLManager(conf, this, getConnection(), getAccessChecker().getAclView(),
+      getAccessChecker());
 
     tryMigrateMetaLocationsFromZooKeeper();
 

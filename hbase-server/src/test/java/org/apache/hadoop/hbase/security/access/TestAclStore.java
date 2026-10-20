@@ -51,7 +51,7 @@ public class TestAclStore {
   private static final TableName TEST_TABLE = TableName.valueOf("aclStoreTable");
 
   private AuthManager authManager;
-  private AclSnapshot aclSnapshot;
+  private AclView acls;
   private AclStore store;
   private User george;
 
@@ -60,9 +60,9 @@ public class TestAclStore {
     Configuration conf = HBaseConfiguration.create();
     conf.set(Superusers.SUPERUSER_CONF_KEY, "admin");
     Superusers.initialize(conf);
-    aclSnapshot = new AclSnapshot();
-    authManager = new AuthManager(aclSnapshot);
-    store = new AclStore(conf, aclSnapshot, new Stoppable() {
+    acls = new AclView();
+    authManager = new AuthManager(acls);
+    store = new AclStore(conf, acls, new Stoppable() {
       @Override
       public void stop(String why) {
       }

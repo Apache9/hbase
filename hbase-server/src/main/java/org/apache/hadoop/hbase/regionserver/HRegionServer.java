@@ -561,9 +561,11 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
         masterAddressTracker = null;
       }
       this.rpcServices.start(zooKeeper);
-      // created before registering with the master, so a push dispatched right after
-      // registration cannot land before this server has an AclStore
-      this.aclStore = new AclStore(conf, getAccessChecker().getAclSnapshot(), this);
+      if (AccessChecker.isAuthorizationSupported(conf)) {
+        // created before registering with the master, so a push dispatched right after
+        // registration cannot land before this server has an AclStore
+        this.aclStore = new AclStore(conf, getAccessChecker().getAclView(), this);
+      }
       span.setStatus(StatusCode.OK);
     } catch (Throwable t) {
       // Make sure we log the exception. HRegionServer is often started via reflection and the
@@ -872,13 +874,11 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
         }, "HRegionServer.registerWithMaster");
       }
 
-      // Load the ACL cache right after registration; non superuser requests are held until done.
-      // This must not block the run loop below: the periodic regionServerReport starts there and
-      // the master only assigns regions to servers that have reported at least once.
-      if (!isStopped() && isHealthy()) {
-        Thread aclLoader = new Thread(this::loadAclCache, "AclCacheLoader");
-        aclLoader.setDaemon(true);
-        aclLoader.start();
+      // Load the ACL snapshot right after registration; non superuser requests are held until
+      // done. This must not block the run loop below: the periodic regionServerReport starts
+      // there and the master only assigns regions to servers that have reported at least once.
+      if (aclStore != null && !isStopped() && isHealthy()) {
+        aclStore.loadAsync(() -> setAclLoaded(true));
       }
 
       if (!isStopped() && isHealthy()) {
@@ -2056,8 +2056,10 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
     if (this.brokenStoreFileCleaner != null) {
       choreService.scheduleChore(brokenStoreFileCleaner);
     }
-    // periodic full reload of the ACL snapshot, the fallback for lost pushes and direct writes
-    aclStore.start(choreService);
+    if (aclStore != null) {
+      // periodic full reload of the ACL snapshot, the fallback for lost pushes and direct writes
+      aclStore.start(choreService);
+    }
     if (this.rsMobFileCleanerChore != null) {
       choreService.scheduleChore(rsMobFileCleanerChore);
     }
@@ -3859,7 +3861,9 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
     shutdownChore(brokenStoreFileCleaner);
     shutdownChore(rsMobFileCleanerChore);
     shutdownChore(replicationMarkerChore);
-    aclStore.close();
+    if (aclStore != null) {
+      aclStore.close();
+    }
   }
 
   @Override

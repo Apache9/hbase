@@ -43,8 +43,10 @@ import org.slf4j.LoggerFactory;
  * <p>
  * For each scope, not only user but also groups he belongs to will be checked.
  * </p>
- * The granted permissions are read from the process side ACL snapshot through {@link AclView}; this
- * class only makes decisions and never mutates the snapshot.
+ * The granted permissions are read from the process side {@link AclSnapshot} through the
+ * {@link AclView}; each decision pins one snapshot and runs entirely on it, so a concurrent ACL
+ * change is either fully seen or not at all. This class only makes decisions and never mutates
+ * anything.
  */
 @InterfaceAudience.Private
 public final class AuthManager {
@@ -64,17 +66,21 @@ public final class AuthManager {
    * @return true if user has, false otherwise
    */
   public boolean authorizeUserGlobal(User user, Permission.Action action) {
+    return authorizeUserGlobal(acls.current(), user, action);
+  }
+
+  private boolean authorizeUserGlobal(AclSnapshot snapshot, User user, Permission.Action action) {
     if (user == null) {
       return false;
     }
     if (Superusers.isSuperUser(user)) {
       return true;
     }
-    if (authorizeGlobal(acls.getGlobalPermission(user.getShortName()), action)) {
+    if (authorizeGlobal(snapshot.getGlobalPermission(user.getShortName()), action)) {
       return true;
     }
     for (String group : user.getGroupNames()) {
-      if (authorizeGlobal(acls.getGlobalPermission(AuthUtil.toGroupEntry(group)), action)) {
+      if (authorizeGlobal(snapshot.getGlobalPermission(AuthUtil.toGroupEntry(group)), action)) {
         return true;
       }
     }
@@ -93,22 +99,28 @@ public final class AuthManager {
    * @return true if user has, false otherwise
    */
   public boolean authorizeUserNamespace(User user, String namespace, Permission.Action action) {
+    return authorizeUserNamespace(acls.current(), user, namespace, action);
+  }
+
+  private boolean authorizeUserNamespace(AclSnapshot snapshot, User user, String namespace,
+    Permission.Action action) {
     if (user == null) {
       return false;
     }
-    if (authorizeUserGlobal(user, action)) {
+    if (authorizeUserGlobal(snapshot, user, action)) {
       return true;
     }
     if (
-      authorizeNamespace(acls.getNamespacePermissions(namespace, user.getShortName()), namespace,
-        action)
+      authorizeNamespace(snapshot.getNamespacePermissions(namespace, user.getShortName()),
+        namespace, action)
     ) {
       return true;
     }
     for (String group : user.getGroupNames()) {
       if (
-        authorizeNamespace(acls.getNamespacePermissions(namespace, AuthUtil.toGroupEntry(group)),
-          namespace, action)
+        authorizeNamespace(
+          snapshot.getNamespacePermissions(namespace, AuthUtil.toGroupEntry(group)), namespace,
+          action)
       ) {
         return true;
       }
@@ -175,14 +187,17 @@ public final class AuthManager {
     if (table == null) {
       table = PermissionStorage.ACL_TABLE_NAME;
     }
-    if (authorizeUserNamespace(user, table.getNamespaceAsString(), action)) {
+    AclSnapshot snapshot = acls.current();
+    if (authorizeUserNamespace(snapshot, user, table.getNamespaceAsString(), action)) {
       return true;
     }
-    if (hasAccessTable(acls.getTablePermissions(table, user.getShortName()), action)) {
+    if (hasAccessTable(snapshot.getTablePermissions(table, user.getShortName()), action)) {
       return true;
     }
     for (String group : user.getGroupNames()) {
-      if (hasAccessTable(acls.getTablePermissions(table, AuthUtil.toGroupEntry(group)), action)) {
+      if (
+        hasAccessTable(snapshot.getTablePermissions(table, AuthUtil.toGroupEntry(group)), action)
+      ) {
         return true;
       }
     }
@@ -243,19 +258,20 @@ public final class AuthManager {
     if (table == null) {
       table = PermissionStorage.ACL_TABLE_NAME;
     }
-    if (authorizeUserNamespace(user, table.getNamespaceAsString(), action)) {
+    AclSnapshot snapshot = acls.current();
+    if (authorizeUserNamespace(snapshot, user, table.getNamespaceAsString(), action)) {
       return true;
     }
     if (
-      authorizeTable(acls.getTablePermissions(table, user.getShortName()), table, family, qualifier,
-        action)
+      authorizeTable(snapshot.getTablePermissions(table, user.getShortName()), table, family,
+        qualifier, action)
     ) {
       return true;
     }
     for (String group : user.getGroupNames()) {
       if (
-        authorizeTable(acls.getTablePermissions(table, AuthUtil.toGroupEntry(group)), table, family,
-          qualifier, action)
+        authorizeTable(snapshot.getTablePermissions(table, AuthUtil.toGroupEntry(group)), table,
+          family, qualifier, action)
       ) {
         return true;
       }
@@ -288,14 +304,16 @@ public final class AuthManager {
     if (fixed != null) {
       return fixed;
     }
+    AclSnapshot snapshot = acls.current();
     if (
-      authorizeFamily(acls.getTablePermissions(table, user.getShortName()), table, family, action)
+      authorizeFamily(snapshot.getTablePermissions(table, user.getShortName()), table, family,
+        action)
     ) {
       return true;
     }
     for (String group : user.getGroupNames()) {
       if (
-        authorizeFamily(acls.getTablePermissions(table, AuthUtil.toGroupEntry(group)), table,
+        authorizeFamily(snapshot.getTablePermissions(table, AuthUtil.toGroupEntry(group)), table,
           family, action)
       ) {
         return true;

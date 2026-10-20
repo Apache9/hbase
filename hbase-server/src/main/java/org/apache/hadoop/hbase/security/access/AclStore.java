@@ -28,6 +28,8 @@ import org.apache.hadoop.hbase.ChoreService;
 import org.apache.hadoop.hbase.ScheduledChore;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.util.RetryCounter;
+import org.apache.hadoop.hbase.util.RetryCounterFactory;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,13 +69,15 @@ public final class AclStore implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(AclStore.class);
 
   private final Configuration conf;
-  private final AclSnapshot snapshot;
+  private final AclView acls;
+  private final Stoppable stopper;
   private final ScheduledChore reloadChore;
   private final AtomicLong appliedTs = new AtomicLong(0L);
 
-  public AclStore(Configuration conf, AclSnapshot snapshot, Stoppable stopper) {
+  public AclStore(Configuration conf, AclView acls, Stoppable stopper) {
     this.conf = conf;
-    this.snapshot = snapshot;
+    this.acls = acls;
+    this.stopper = stopper;
     this.reloadChore = new ScheduledChore("AclReloadChore", stopper,
       conf.getInt(ACL_RELOAD_PERIOD_MSEC_KEY, DEFAULT_ACL_RELOAD_PERIOD_MSEC)) {
       @Override
@@ -89,13 +93,41 @@ public final class AclStore implements Closeable {
   }
 
   /**
-   * Schedules the periodic full reload. Skipped when authorization is disabled; the startup load
-   * and the master pushes do not happen either in that case.
+   * Loads the full ACL content of {@code hbase:acl} in the background after registering with the
+   * master, retrying until it succeeds, then calls {@code onLoaded}. Until then non superuser
+   * requests are held in {@code RSRpcServices#checkOpen()}. A missing acl table (fresh cluster)
+   * counts as loaded with an empty snapshot.
    */
-  public void start(ChoreService choreService) {
-    if (AccessChecker.isAuthorizationSupported(conf)) {
-      choreService.scheduleChore(reloadChore);
+  public void loadAsync(Runnable onLoaded) {
+    Thread loader = new Thread(() -> load(onLoaded), "AclCacheLoader");
+    loader.setDaemon(true);
+    loader.start();
+  }
+
+  private void load(Runnable onLoaded) {
+    RetryCounter retry = new RetryCounterFactory(Integer.MAX_VALUE, 1000, 1000 * 60 * 5).create();
+    while (!stopper.isStopped()) {
+      try {
+        reloadFromTable();
+        onLoaded.run();
+        LOG.info("ACL snapshot loaded, applied timestamp {}", getAppliedTimestamp());
+        return;
+      } catch (IOException e) {
+        long sleepTime = retry.getBackoffTimeAndIncrementAttempts();
+        LOG.warn("Failed to load ACL snapshot; sleeping {} ms and then retrying.", sleepTime, e);
+        try {
+          Thread.sleep(sleepTime);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          return;
+        }
+      }
     }
+  }
+
+  /** Schedules the periodic full reload. */
+  public void start(ChoreService choreService) {
+    choreService.scheduleChore(reloadChore);
   }
 
   /** Highest update timestamp applied so far. */
@@ -111,7 +143,7 @@ public final class AclStore implements Closeable {
     if (!isCurrent(ts, "update batch")) {
       return;
     }
-    snapshot.applyUpdates(updates);
+    acls.update(acls.current().applyUpdates(updates));
     appliedTs.set(ts);
   }
 
@@ -124,7 +156,7 @@ public final class AclStore implements Closeable {
     if (!isCurrent(ts, "full snapshot")) {
       return;
     }
-    snapshot.applyFullSnapshot(perms);
+    acls.update(acls.current().applyFullSnapshot(perms));
     appliedTs.set(ts);
   }
 
@@ -140,7 +172,7 @@ public final class AclStore implements Closeable {
     } catch (TableNotFoundException e) {
       content = new PermissionStorage.AclTableContent(Collections.emptyMap(), 0L);
     }
-    snapshot.applyFullSnapshot(content.getPermissions());
+    acls.update(acls.current().applyFullSnapshot(content.getPermissions()));
     appliedTs.accumulateAndGet(content.getMaxTimestamp(), Math::max);
   }
 
