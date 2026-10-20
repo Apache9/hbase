@@ -149,9 +149,10 @@ public final class AclSnapshot {
     Map<String, Map<String, Set<NamespacePermission>>> namespaces,
     Map<TableName, Map<String, Set<TablePermission>>> tables) {
     if (PermissionStorage.isGlobalEntry(entry)) {
-      if (perms == null) {
-        global.clear();
-      } else {
+      // the global entry carries the whole global scope: replace it entirely, so revoked names
+      // disappear; same for the namespace and table scopes below
+      global.clear();
+      if (perms != null) {
         for (Map.Entry<String, UserPermission> e : perms.entries()) {
           global.put(e.getKey(), toGlobalPermission(e.getValue().getPermission()));
         }

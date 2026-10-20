@@ -179,6 +179,27 @@ public class TestAuthManager {
     acls.update(acls.current().applyFullSnapshot(snapshot));
   }
 
+  @Test
+  public void testEntryReplaceDropsRevokedNames() throws Exception {
+    // an entry carries the whole permission set of its scope: replacing it must drop the names
+    // that are no longer in it, e.g. after a revoke, instead of merging into the old content
+    applyUpdates(Arrays.asList(
+      AclSnapshot.EntryUpdate.replace(globalEntry(),
+        userPerms("george", globalPerm(Permission.Action.READ))),
+      AclSnapshot.EntryUpdate.replace(namespaceEntry(TEST_NAMESPACE),
+        userPerms("george", nsPerm(TEST_NAMESPACE, Permission.Action.READ)))));
+    assertTrue(authManager.authorizeUserGlobal(george, Permission.Action.READ));
+    assertTrue(authManager.authorizeUserNamespace(george, TEST_NAMESPACE, Permission.Action.READ));
+
+    applyUpdates(Arrays.asList(
+      AclSnapshot.EntryUpdate.replace(globalEntry(),
+        userPerms("harold", globalPerm(Permission.Action.READ))),
+      AclSnapshot.EntryUpdate.replace(namespaceEntry(TEST_NAMESPACE),
+        userPerms("harold", nsPerm(TEST_NAMESPACE, Permission.Action.READ)))));
+    assertFalse(authManager.authorizeUserGlobal(george, Permission.Action.READ));
+    assertFalse(authManager.authorizeUserNamespace(george, TEST_NAMESPACE, Permission.Action.READ));
+  }
+
   private static byte[] globalEntry() {
     return PermissionStorage.ACL_GLOBAL_NAME;
   }
