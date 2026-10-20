@@ -17,33 +17,30 @@
  */
 package org.apache.hadoop.hbase.security.access;
 
-import java.util.Set;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
- * Read-only view of the in-memory ACL state: the only part of the ACL storage {@link AuthManager}
- * depends on. Implementations are owned by the process side that maintains the state
- * ({@code ACLManager} on the master, {@code AclStore} on a region server).
+ * The read side of the process side ACL state: hands out the current {@link AclSnapshot} for
+ * {@link AuthManager} to make authorization decisions on. One instance is created per process and
+ * shared between the ACL holder ({@code ACLManager} on the master, {@code AclStore} on a region
+ * server), which is the only writer: it publishes a new snapshot through {@link #update} under its
+ * update lock. Readers pin one snapshot with {@link #current()} and never block.
  */
 @InterfaceAudience.Private
-public interface AclView {
+public final class AclView {
+
+  private volatile AclSnapshot snapshot = AclSnapshot.empty();
 
   /**
-   * Global-scope permission of the given user or group entry name.
-   * @return the permission, or {@code null} when the entry has no global grant
+   * The current snapshot. Pin one at the start of an authorization decision and use it for the
+   * whole decision, so the decision never observes a half applied update.
    */
-  GlobalPermission getGlobalPermission(String entryName);
+  public AclSnapshot current() {
+    return snapshot;
+  }
 
-  /**
-   * Namespace-scope permissions of the given user or group entry name.
-   * @return the permissions, empty when the entry has no namespace grant
-   */
-  Set<NamespacePermission> getNamespacePermissions(String namespace, String entryName);
-
-  /**
-   * Table-scope permissions of the given user or group entry name.
-   * @return the permissions, empty when the entry has no table grant
-   */
-  Set<TablePermission> getTablePermissions(TableName table, String entryName);
+  /** Publishes the new current snapshot. Called by the process side ACL holder. */
+  public void update(AclSnapshot snapshot) {
+    this.snapshot = snapshot;
+  }
 }

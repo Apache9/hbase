@@ -47,6 +47,10 @@ public class RefreshAclRemoteCallable extends BaseRSProcedureCallable {
   @Override
   protected byte[] doCall() throws Exception {
     AclStore store = rs.getAclStore();
+    if (store == null) {
+      // authorization disabled on this server: it keeps no ACL snapshot
+      return null;
+    }
     if (full) {
       store.applyFullSnapshot(ts, toSnapshot(updates));
     } else {

@@ -18,11 +18,11 @@
 package org.apache.hadoop.hbase.master.procedure;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.RemoteProcedureDispatcher;
+import org.apache.hadoop.hbase.security.access.AclChangeSet;
 import org.apache.hadoop.hbase.security.access.RefreshAclRemoteCallable;
 import org.apache.hadoop.hbase.util.ForeignExceptionUtil;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ErrorHandlingProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.RefreshAclRemoteStateData;
 
 /**
@@ -46,19 +45,14 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
 
   private static final Logger LOG = LoggerFactory.getLogger(RefreshAclRemoteProcedure.class);
 
-  private List<AclEntryUpdate> updates;
-  private boolean full;
-  private long ts;
+  private AclChangeSet changeSet;
 
   public RefreshAclRemoteProcedure() {
   }
 
-  public RefreshAclRemoteProcedure(ServerName serverName, List<AclEntryUpdate> updates,
-    boolean full, long ts) {
+  public RefreshAclRemoteProcedure(ServerName serverName, AclChangeSet changeSet) {
     this.targetServer = serverName;
-    this.updates = updates;
-    this.full = full;
-    this.ts = ts;
+    this.changeSet = changeSet;
   }
 
   @Override
@@ -73,8 +67,8 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
   @Override
   protected void serializeStateData(ProcedureStateSerializer serializer) throws IOException {
     RefreshAclRemoteStateData.Builder builder = RefreshAclRemoteStateData.newBuilder();
-    builder.setTargetServer(ProtobufUtil.toServerName(targetServer)).setFull(full).setTs(ts)
-      .setState(state).addAllUpdates(updates);
+    builder.setTargetServer(ProtobufUtil.toServerName(targetServer)).setFull(changeSet.isFull())
+      .setTs(changeSet.getTs()).setState(state).addAllUpdates(changeSet.getUpdates());
     if (this.remoteError != null) {
       ErrorHandlingProtos.ForeignExceptionMessage fem =
         ForeignExceptionUtil.toProtoForeignException(remoteError);
@@ -87,9 +81,7 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
   protected void deserializeStateData(ProcedureStateSerializer serializer) throws IOException {
     RefreshAclRemoteStateData data = serializer.deserialize(RefreshAclRemoteStateData.class);
     targetServer = ProtobufUtil.toServerName(data.getTargetServer());
-    updates = data.getUpdatesList();
-    full = data.getFull();
-    ts = data.getTs();
+    changeSet = new AclChangeSet(data.getUpdatesList(), data.getFull(), data.getTs());
     state = data.getState();
     if (data.hasError()) {
       this.remoteError = ForeignExceptionUtil.toException(data.getError());
@@ -100,11 +92,12 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
   public Optional<RemoteProcedureDispatcher.RemoteOperation>
     remoteCallBuild(MasterProcedureEnv masterProcedureEnv, ServerName remote) {
     assert targetServer.equals(remote);
-    return Optional.of(
-      new RSProcedureDispatcher.ServerOperation(this, getProcId(), RefreshAclRemoteCallable.class,
-        RefreshAclRemoteStateData.newBuilder().setTargetServer(ProtobufUtil.toServerName(remote))
-          .setFull(full).setTs(ts).addAllUpdates(updates).build().toByteArray(),
-        masterProcedureEnv.getMasterServices().getMasterActiveTime()));
+    return Optional.of(new RSProcedureDispatcher.ServerOperation(this, getProcId(),
+      RefreshAclRemoteCallable.class,
+      RefreshAclRemoteStateData.newBuilder().setTargetServer(ProtobufUtil.toServerName(remote))
+        .setFull(changeSet.isFull()).setTs(changeSet.getTs()).addAllUpdates(changeSet.getUpdates())
+        .build().toByteArray(),
+      masterProcedureEnv.getMasterServices().getMasterActiveTime()));
   }
 
   @Override
@@ -127,7 +120,8 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
     if (error != null) {
       // keep retrying while the server is alive; if it dies the dispatch fails and this task is
       // dropped, the restarted server reloads the full content from hbase:acl
-      LOG.warn("Failed to push ACL update ts={} to server {}, will retry", ts, targetServer, error);
+      LOG.warn("Failed to push ACL update ts={} to server {}, will retry",
+        changeSet != null ? changeSet.getTs() : 0L, targetServer, error);
       return false;
     }
     return true;
@@ -139,10 +133,10 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
     sb.append(" server=");
     sb.append(targetServer);
     sb.append(", ts=");
-    sb.append(ts);
+    sb.append(changeSet != null ? changeSet.getTs() : 0L);
     sb.append(", full=");
-    sb.append(full);
+    sb.append(changeSet != null && changeSet.isFull());
     sb.append(", updates=");
-    sb.append(updates != null ? updates.size() : 0);
+    sb.append(changeSet != null ? changeSet.getUpdates().size() : 0);
   }
 }

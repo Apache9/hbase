@@ -102,12 +102,10 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.rsgroup.RSGroupUtil;
-import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.AccessController;
 import org.apache.hadoop.hbase.security.access.Permission;
-import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.security.access.ShadedAccessControlUtil;
 import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.security.visibility.VisibilityController;
@@ -2997,27 +2995,8 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
         server.getMasterCoprocessorHost().preGetUserPermissions(userName, namespace, table, cf, cq,
           permissionScope);
 
-        List<UserPermission> perms = null;
-        if (permissionType == Type.Table) {
-          boolean filter = (cf != null || userName != null) ? true : false;
-          perms = server.getACLManager().getUserTablePermissions(table, cf, cq, userName, filter);
-        } else if (permissionType == Type.Namespace) {
-          perms = server.getACLManager().getUserNamespacePermissions(namespace, userName,
-            userName != null ? true : false);
-        } else {
-          perms =
-            server.getACLManager().getUserPermissions(userName, userName != null ? true : false);
-          // Skip super users when filter user is specified
-          if (userName == null) {
-            // Adding superusers explicitly to the result set as PermissionStorage do not store
-            // them. Also using acl as table name to be inline with the results of global admin and
-            // will help in avoiding any leakage of information about being superusers.
-            for (String user : Superusers.getSuperUsers()) {
-              perms.add(new UserPermission(user,
-                Permission.newBuilder().withActions(Action.values()).build()));
-            }
-          }
-        }
+        List<UserPermission> perms = server.getACLManager().getUserPermissions(permissionType,
+          table, namespace, cf, cq, userName);
 
         server.getMasterCoprocessorHost().postGetUserPermissions(userName, namespace, table, cf, cq,
           permissionScope);

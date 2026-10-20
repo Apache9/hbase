@@ -18,17 +18,16 @@
 package org.apache.hadoop.hbase.master.procedure;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureYieldException;
 import org.apache.hadoop.hbase.procedure2.StateMachineProcedure;
 import org.apache.hadoop.hbase.security.access.ACLManager;
+import org.apache.hadoop.hbase.security.access.AclChangeSet;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.RefreshAclState;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.RefreshAclStateData;
 
@@ -49,19 +48,15 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
 
   private static final Logger LOG = LoggerFactory.getLogger(RefreshAclProcedure.class);
 
-  private List<AclEntryUpdate> updates;
-  private boolean full;
-  private long ts;
+  private AclChangeSet changeSet;
 
   /** For the single-flight incremental push: drains {@link ACLManager} at the first step. */
   public RefreshAclProcedure() {
   }
 
   /** For the full round pushed when a master becomes active. */
-  public RefreshAclProcedure(List<AclEntryUpdate> updates, boolean full, long ts) {
-    this.updates = updates;
-    this.full = full;
-    this.ts = ts;
+  public RefreshAclProcedure(AclChangeSet changeSet) {
+    this.changeSet = changeSet;
   }
 
   @Override
@@ -69,24 +64,20 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     switch (state) {
       case REFRESH_ACL_DRAIN_PENDING: {
-        if (updates == null) {
-          ACLManager.ChangeSet changeSet = env.getMasterServices().getACLManager().drainPending();
+        if (changeSet == null) {
+          changeSet = env.getMasterServices().getACLManager().drainPending();
           if (changeSet == null) {
             // nothing to push, e.g. drained by a previous instance after a failover recovery
             return Flow.NO_MORE_STATE;
           }
-          updates = changeSet.getUpdates();
-          full = changeSet.isFull();
-          ts = changeSet.getTs();
         }
         setNextState(RefreshAclState.REFRESH_ACL_DISPATCH);
         return Flow.HAS_MORE_STATE;
       }
       case REFRESH_ACL_DISPATCH: {
-        RefreshAclRemoteProcedure[] subProcedures =
-          env.getMasterServices().getServerManager().getOnlineServersList().stream()
-            .map(sn -> new RefreshAclRemoteProcedure(sn, updates, full, ts))
-            .toArray(RefreshAclRemoteProcedure[]::new);
+        RefreshAclRemoteProcedure[] subProcedures = env.getMasterServices().getServerManager()
+          .getOnlineServersList().stream().map(sn -> new RefreshAclRemoteProcedure(sn, changeSet))
+          .toArray(RefreshAclRemoteProcedure[]::new);
         if (subProcedures.length > 0) {
           addChildProcedure(subProcedures);
         }
@@ -134,9 +125,10 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
   @Override
   protected void serializeStateData(ProcedureStateSerializer serializer) throws IOException {
     super.serializeStateData(serializer);
-    RefreshAclStateData.Builder builder = RefreshAclStateData.newBuilder().setFull(full).setTs(ts);
-    if (updates != null) {
-      builder.addAllUpdates(updates);
+    RefreshAclStateData.Builder builder = RefreshAclStateData.newBuilder();
+    if (changeSet != null) {
+      builder.setFull(changeSet.isFull()).setTs(changeSet.getTs())
+        .addAllUpdates(changeSet.getUpdates());
     }
     serializer.serialize(builder.build());
   }
@@ -146,9 +138,9 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     super.deserializeStateData(serializer);
     RefreshAclStateData data = serializer.deserialize(RefreshAclStateData.class);
     // an empty list means the drain step has not run yet (recovered before it), re-drain then
-    updates = (data.getUpdatesCount() == 0 && !data.getFull()) ? null : data.getUpdatesList();
-    full = data.getFull();
-    ts = data.getTs();
+    changeSet = (data.getUpdatesCount() == 0 && !data.getFull())
+      ? null
+      : new AclChangeSet(data.getUpdatesList(), data.getFull(), data.getTs());
   }
 
   @Override
@@ -160,10 +152,10 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
   public void toStringClassDetails(StringBuilder sb) {
     sb.append(getClass().getSimpleName());
     sb.append(" ts=");
-    sb.append(ts);
+    sb.append(changeSet != null ? changeSet.getTs() : 0L);
     sb.append(", full=");
-    sb.append(full);
+    sb.append(changeSet != null && changeSet.isFull());
     sb.append(", updates=");
-    sb.append(updates != null ? updates.size() : 0);
+    sb.append(changeSet != null ? changeSet.getUpdates().size() : 0);
   }
 }

@@ -60,9 +60,8 @@ public class TestACLManager {
     Configuration conf = HBaseConfiguration.create();
     conf.set(Superusers.SUPERUSER_CONF_KEY, "admin");
     Superusers.initialize(conf);
-    AclSnapshot aclSnapshot = new AclSnapshot();
     // this test only exercises the push pipeline: no acl table access, no permission checks
-    aclManager = new ACLManager(conf, new MockNoopMasterServices(conf), null, aclSnapshot, null) {
+    aclManager = new ACLManager(conf, new MockNoopMasterServices(conf), null, new AclView(), null) {
       @Override
       void submitPushProcedure(RefreshAclProcedure procedure) {
         submitted.add(procedure);
@@ -85,7 +84,7 @@ public class TestACLManager {
     // one push is in flight for all of them
     assertEquals(1, submitted.size());
 
-    ACLManager.ChangeSet changeSet = aclManager.drainPending();
+    AclChangeSet changeSet = aclManager.drainPending();
     assertNotNull(changeSet);
     // the latest write of an entry wins and each entry appears at most once
     assertEquals(2, changeSet.getUpdates().size());
@@ -130,7 +129,7 @@ public class TestACLManager {
   public void testDeletedUpdateQueued() {
     aclManager.onEntryUpdate(100, replace(TEST_TABLE, "george", Permission.Action.READ));
     aclManager.onEntryUpdate(150, AclSnapshot.EntryUpdate.deleted(TEST_TABLE.getName()));
-    ACLManager.ChangeSet changeSet = aclManager.drainPending();
+    AclChangeSet changeSet = aclManager.drainPending();
     assertNotNull(changeSet);
     assertEquals(1, changeSet.getUpdates().size());
     assertTrue(changeSet.getUpdates().get(0).getDeleted());

@@ -22,51 +22,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.google.common.collect.ArrayListMultimap;
+import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
 
 /**
- * The in-memory ACL snapshot: permission caches for the global, namespace and table scopes, fed
- * from {@code hbase:acl} either as a whole (activation, reload) or through entry level deltas (a
- * grant/revoke). One instance is owned per process side and driven by that side's ACL holder
- * ({@code ACLManager} on the master, {@code AclStore} on a region server); {@link AuthManager}
- * reads it through {@link AclView} to make authorization decisions.
+ * An immutable ACL snapshot: permission caches for the global, namespace and table scopes, fed from
+ * {@code hbase:acl} either as a whole (activation, reload) or through entry level deltas (a
+ * grant/revoke). Every update produces a new snapshot, so readers always see one consistent state,
+ * a batch of entry updates included, and never block on writers. ACL changes are rare, rebuilding
+ * the affected scope on each change is cheap.
  * <p>
- * Thread safety: applying updates is serialized by the owner, readers may run concurrently with
- * applies. Per scope caches are replaced wholesale (volatile references), and
- * {@link PermissionCache} guards its own map.
+ * The process side ACL holder ({@code ACLManager} on the master, {@code AclStore} on a region
+ * server) owns the current snapshot through an {@link AclView} and publishes changes under its
+ * update lock; {@link AuthManager} pins one snapshot per authorization decision.
  * </p>
  */
 @InterfaceAudience.Private
-public class AclSnapshot implements AclView {
-
-  /**
-   * Cache of permissions for one scope, it is thread safe.
-   * @param <T> T extends Permission
-   */
-  private static class PermissionCache<T extends Permission> {
-    private final Object mutex = new Object();
-    private Map<String, Set<T>> cache = new HashMap<>();
-
-    void put(String name, T perm) {
-      synchronized (mutex) {
-        Set<T> perms = cache.getOrDefault(name, ConcurrentHashMap.newKeySet());
-        perms.add(perm);
-        cache.put(name, perms);
-      }
-    }
-
-    Set<T> get(String name) {
-      synchronized (mutex) {
-        return cache.get(name);
-      }
-    }
-  }
+public final class AclSnapshot {
 
   /**
    * Replacement of a single ACL entry, or its deletion. The entry name encoding is the row key of
@@ -107,138 +85,110 @@ public class AclSnapshot implements AclView {
     }
   }
 
-  /**
-   * Cache for global permission excluding superuser and supergroup. Since every user/group can only
-   * have one global permission, no need to use PermissionCache.
-   */
-  private volatile Map<String, GlobalPermission> globalCache = new ConcurrentHashMap<>();
-  /** Cache for namespace permission. */
-  private volatile ConcurrentHashMap<String, PermissionCache<NamespacePermission>> namespaceCache =
-    new ConcurrentHashMap<>();
-  /** Cache for table permission. */
-  private volatile ConcurrentHashMap<TableName, PermissionCache<TablePermission>> tableCache =
-    new ConcurrentHashMap<>();
+  private static final AclSnapshot EMPTY =
+    new AclSnapshot(ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of());
 
   /**
-   * Applies incremental ACL entry updates, each update replaces the whole entry in the cache, or
-   * removes the entry when it is marked as deleted.
+   * Global permissions excluding superuser and supergroup, keyed by user/group entry name. Since
+   * every user/group can only have one global permission there is no set per name.
    */
-  public void applyUpdates(List<EntryUpdate> updates) {
-    for (EntryUpdate update : updates) {
-      applyEntry(update.getEntry(), update.isDeleted() ? null : update.getPermissions());
-    }
+  private final Map<String, GlobalPermission> globalCache;
+  /** Namespace permissions: namespace name to (entry name to permissions). */
+  private final Map<String, Map<String, Set<NamespacePermission>>> namespaceCache;
+  /** Table permissions: table name to (entry name to permissions). */
+  private final Map<TableName, Map<String, Set<TablePermission>>> tableCache;
+
+  private AclSnapshot(Map<String, GlobalPermission> globalCache,
+    Map<String, Map<String, Set<NamespacePermission>>> namespaceCache,
+    Map<TableName, Map<String, Set<TablePermission>>> tableCache) {
+    this.globalCache = globalCache;
+    this.namespaceCache = namespaceCache;
+    this.tableCache = tableCache;
+  }
+
+  /** The empty snapshot, e.g. before the master has loaded {@code hbase:acl}. */
+  public static AclSnapshot empty() {
+    return EMPTY;
   }
 
   /**
-   * Replaces the whole cache with the given snapshot. Callers build the snapshot aside first, so
-   * readers never observe a partially loaded cache.
+   * Applies incremental ACL entry updates, each update replaces the whole entry, or removes the
+   * entry when it is marked as deleted. The batch is applied atomically: readers see either all of
+   * its entries or none of them.
+   */
+  public AclSnapshot applyUpdates(List<EntryUpdate> updates) {
+    Map<String, GlobalPermission> global = new HashMap<>(globalCache);
+    Map<String, Map<String, Set<NamespacePermission>>> namespaces = new HashMap<>(namespaceCache);
+    Map<TableName, Map<String, Set<TablePermission>>> tables = new HashMap<>(tableCache);
+    for (EntryUpdate update : updates) {
+      applyEntry(update.getEntry(), update.isDeleted() ? null : update.getPermissions(), global,
+        namespaces, tables);
+    }
+    return new AclSnapshot(ImmutableMap.copyOf(global), ImmutableMap.copyOf(namespaces),
+      ImmutableMap.copyOf(tables));
+  }
+
+  /**
+   * Replaces the whole snapshot with the given content. Callers build the content aside first, so
+   * readers never observe a partially loaded snapshot.
    * @param snapshot entry name to its permissions, see {@link PermissionStorage#loadAllSnapshot}
    */
-  public void applyFullSnapshot(Map<byte[], ListMultimap<String, UserPermission>> snapshot) {
-    Map<String, GlobalPermission> newGlobalCache = new ConcurrentHashMap<>();
-    ConcurrentHashMap<String, PermissionCache<NamespacePermission>> newNamespaceCache =
-      new ConcurrentHashMap<>();
-    ConcurrentHashMap<TableName, PermissionCache<TablePermission>> newTableCache =
-      new ConcurrentHashMap<>();
+  public AclSnapshot applyFullSnapshot(Map<byte[], ListMultimap<String, UserPermission>> snapshot) {
+    Map<String, GlobalPermission> global = new HashMap<>();
+    Map<String, Map<String, Set<NamespacePermission>>> namespaces = new HashMap<>();
+    Map<TableName, Map<String, Set<TablePermission>>> tables = new HashMap<>();
     for (Map.Entry<byte[], ListMultimap<String, UserPermission>> e : snapshot.entrySet()) {
-      byte[] entry = e.getKey();
-      ListMultimap<String, Permission> perms = toPermissions(e.getValue());
-      if (PermissionStorage.isGlobalEntry(entry)) {
-        for (String name : perms.keySet()) {
-          for (Permission permission : perms.get(name)) {
-            newGlobalCache.put(name, toGlobalPermission(permission));
-          }
-        }
-      } else if (PermissionStorage.isNamespaceEntry(entry)) {
-        PermissionCache<NamespacePermission> cacheToUpdate = new PermissionCache<>();
-        updateCache(perms, cacheToUpdate);
-        newNamespaceCache.put(Bytes.toString(PermissionStorage.fromNamespaceEntry(entry)),
-          cacheToUpdate);
-      } else {
-        PermissionCache<TablePermission> cacheToUpdate = new PermissionCache<>();
-        updateCache(perms, cacheToUpdate);
-        newTableCache.put(TableName.valueOf(entry), cacheToUpdate);
-      }
+      applyEntry(e.getKey(), e.getValue(), global, namespaces, tables);
     }
-    globalCache = newGlobalCache;
-    namespaceCache = newNamespaceCache;
-    tableCache = newTableCache;
+    return new AclSnapshot(ImmutableMap.copyOf(global), ImmutableMap.copyOf(namespaces),
+      ImmutableMap.copyOf(tables));
   }
 
-  private void applyEntry(byte[] entry, ListMultimap<String, UserPermission> perms) {
+  private static void applyEntry(byte[] entry, ListMultimap<String, UserPermission> perms,
+    Map<String, GlobalPermission> global,
+    Map<String, Map<String, Set<NamespacePermission>>> namespaces,
+    Map<TableName, Map<String, Set<TablePermission>>> tables) {
     if (PermissionStorage.isGlobalEntry(entry)) {
       if (perms == null) {
-        globalCache.clear();
+        global.clear();
       } else {
-        updateGlobalCache(toPermissions(perms));
+        for (Map.Entry<String, UserPermission> e : perms.entries()) {
+          global.put(e.getKey(), toGlobalPermission(e.getValue().getPermission()));
+        }
       }
     } else if (PermissionStorage.isNamespaceEntry(entry)) {
       String namespace = Bytes.toString(PermissionStorage.fromNamespaceEntry(entry));
       if (perms == null) {
-        namespaceCache.remove(namespace);
+        namespaces.remove(namespace);
       } else {
-        updateNamespaceCache(namespace, toPermissions(perms));
+        namespaces.put(namespace, toPermissionSet(toPermissions(perms)));
       }
     } else {
       if (perms == null) {
-        tableCache.remove(TableName.valueOf(entry));
+        tables.remove(TableName.valueOf(entry));
       } else {
-        updateTableCache(TableName.valueOf(entry), toPermissions(perms));
+        tables.put(TableName.valueOf(entry), toPermissionSet(toPermissions(perms)));
       }
     }
   }
 
-  /**
-   * Updates the internal global permissions cache.
-   * @param globalPerms new global permissions
-   */
-  private void updateGlobalCache(ListMultimap<String, Permission> globalPerms) {
-    Map<String, GlobalPermission> newGlobalCache = new ConcurrentHashMap<>();
-    for (String name : globalPerms.keySet()) {
-      for (Permission permission : globalPerms.get(name)) {
-        newGlobalCache.put(name, toGlobalPermission(permission));
-      }
+  /** Entry name to its permissions, the immutable replacement of one scope. */
+  private static <T extends Permission> Map<String, Set<T>>
+    toPermissionSet(ListMultimap<String, T> perms) {
+    ImmutableMap.Builder<String, Set<T>> builder = ImmutableMap.builder();
+    for (String name : perms.keySet()) {
+      builder.put(name, ImmutableSet.copyOf(perms.get(name)));
     }
-    globalCache = newGlobalCache;
+    return builder.build();
   }
 
-  /**
-   * Updates the internal table permissions cache for specified table.
-   * @param table      updated table name
-   * @param tablePerms new table permissions
-   */
-  private void updateTableCache(TableName table, ListMultimap<String, Permission> tablePerms) {
-    PermissionCache<TablePermission> cacheToUpdate = new PermissionCache<>();
-    updateCache(tablePerms, cacheToUpdate);
-    tableCache.put(table, cacheToUpdate);
-  }
-
-  /**
-   * Updates the internal namespace permissions cache for specified namespace.
-   * @param namespace updated namespace
-   * @param nsPerms   new namespace permissions
-   */
-  private void updateNamespaceCache(String namespace, ListMultimap<String, Permission> nsPerms) {
-    PermissionCache<NamespacePermission> cacheToUpdate = new PermissionCache<>();
-    updateCache(nsPerms, cacheToUpdate);
-    namespaceCache.put(namespace, cacheToUpdate);
-  }
-
-  @SuppressWarnings("unchecked")
-  private void updateCache(ListMultimap<String, ? extends Permission> newPermissions,
-    PermissionCache cacheToUpdate) {
-    for (String name : newPermissions.keySet()) {
-      for (Permission permission : newPermissions.get(name)) {
-        cacheToUpdate.put(name, permission);
-      }
-    }
-  }
-
-  private static ListMultimap<String, Permission>
+  private static <T extends Permission> ListMultimap<String, T>
     toPermissions(ListMultimap<String, UserPermission> userPerms) {
-    ListMultimap<String, Permission> perms = ArrayListMultimap.create();
+    ListMultimap<String, T> perms = ArrayListMultimap.create();
     for (Map.Entry<String, UserPermission> e : userPerms.entries()) {
-      perms.put(e.getKey(), e.getValue().getPermission());
+      @SuppressWarnings("unchecked")
+      T perm = (T) e.getValue().getPermission();
+      perms.put(e.getKey(), perm);
     }
     return perms;
   }
@@ -250,22 +200,31 @@ public class AclSnapshot implements AclView {
     return new GlobalPermission(permission.getActions());
   }
 
-  @Override
+  /**
+   * Global-scope permission of the given user or group entry name.
+   * @return the permission, or {@code null} when the entry has no global grant
+   */
   public GlobalPermission getGlobalPermission(String entryName) {
     return globalCache.get(entryName);
   }
 
-  @Override
+  /**
+   * Namespace-scope permissions of the given user or group entry name.
+   * @return the permissions, empty when the entry has no namespace grant
+   */
   public Set<NamespacePermission> getNamespacePermissions(String namespace, String entryName) {
-    PermissionCache<NamespacePermission> cache = namespaceCache.get(namespace);
-    Set<NamespacePermission> perms = cache != null ? cache.get(entryName) : null;
-    return perms != null ? perms : Collections.emptySet();
+    Map<String, Set<NamespacePermission>> perms = namespaceCache.get(namespace);
+    Set<NamespacePermission> entryPerms = perms != null ? perms.get(entryName) : null;
+    return entryPerms != null ? entryPerms : Collections.emptySet();
   }
 
-  @Override
+  /**
+   * Table-scope permissions of the given user or group entry name.
+   * @return the permissions, empty when the entry has no table grant
+   */
   public Set<TablePermission> getTablePermissions(TableName table, String entryName) {
-    PermissionCache<TablePermission> cache = tableCache.get(table);
-    Set<TablePermission> perms = cache != null ? cache.get(entryName) : null;
-    return perms != null ? perms : Collections.emptySet();
+    Map<String, Set<TablePermission>> perms = tableCache.get(table);
+    Set<TablePermission> entryPerms = perms != null ? perms.get(entryName) : null;
+    return entryPerms != null ? entryPerms : Collections.emptySet();
   }
 }

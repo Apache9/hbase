@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.procedure.RefreshAclProcedure;
+import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -41,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
 import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
 
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos.Permission.Type;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
 
 /**
@@ -76,7 +78,7 @@ public class ACLManager {
   private final Configuration conf;
   private final MasterServices masterServices;
   private final Connection connection;
-  private final AclSnapshot snapshot;
+  private final AclView acls;
   private final AccessChecker accessChecker;
 
   /** Guards the write path; see the class javadoc. */
@@ -104,37 +106,12 @@ public class ACLManager {
     }
   }
 
-  /** A set of entry updates to broadcast, e.g. the drain of the pending queue. */
-  public static final class ChangeSet {
-    private final List<AclEntryUpdate> updates;
-    private final boolean full;
-    private final long ts;
-
-    ChangeSet(List<AclEntryUpdate> updates, boolean full, long ts) {
-      this.updates = updates;
-      this.full = full;
-      this.ts = ts;
-    }
-
-    public List<AclEntryUpdate> getUpdates() {
-      return updates;
-    }
-
-    public boolean isFull() {
-      return full;
-    }
-
-    public long getTs() {
-      return ts;
-    }
-  }
-
   public ACLManager(Configuration conf, MasterServices masterServices, Connection connection,
-    AclSnapshot snapshot, AccessChecker accessChecker) {
+    AclView acls, AccessChecker accessChecker) {
     this.conf = conf;
     this.masterServices = masterServices;
     this.connection = connection;
-    this.snapshot = snapshot;
+    this.acls = acls;
     this.accessChecker = accessChecker;
   }
 
@@ -143,6 +120,12 @@ public class ACLManager {
    * full round to all region servers. Called when this master becomes active.
    */
   public void initialize() throws IOException {
+    if (!AccessChecker.isAuthorizationSupported(conf)) {
+      // authorization is off: no ACL state to maintain and no region servers to push to, just
+      // keep the timestamp clock running for the writes below
+      lastTs.set(EnvironmentEdgeManager.currentTime());
+      return;
+    }
     PermissionStorage.AclTableContent content;
     long seed;
     synchronized (writeLock) {
@@ -157,11 +140,11 @@ public class ACLManager {
       lastTs.set(seed);
       // serialized with the write path, so a write either lands before the scan (and is part of
       // the snapshot) or applies its entry update after the swap
-      snapshot.applyFullSnapshot(content.getPermissions());
+      acls.update(acls.current().applyFullSnapshot(content.getPermissions()));
     }
     // the push timestamp is above every write the snapshot contains, so the push is never
     // dropped as stale by an RS; later writes get higher timestamps and apply on top of it
-    submitFullPush(toProto(content.getPermissions()), nextTimestamp());
+    submitFullPush(new AclChangeSet(toProto(content.getPermissions()), true, nextTimestamp()));
     LOG.info("ACLManager initialized, timestamps start at {}", seed);
   }
 
@@ -238,6 +221,33 @@ public class ACLManager {
   }
 
   /**
+   * The {@code getUserPermissions} RPC query: collects the permissions of the requested scope,
+   * including the superusers for an unfiltered global query (they are not stored in the acl table).
+   */
+  public List<UserPermission> getUserPermissions(Type permissionType, TableName table,
+    String namespace, byte[] cf, byte[] cq, String userName) throws IOException {
+    if (permissionType == Type.Table) {
+      boolean filter = (cf != null || userName != null) ? true : false;
+      return getUserTablePermissions(table, cf, cq, userName, filter);
+    }
+    if (permissionType == Type.Namespace) {
+      return getUserNamespacePermissions(namespace, userName, userName != null ? true : false);
+    }
+    List<UserPermission> perms = getUserPermissions(userName, userName != null ? true : false);
+    // Skip super users when filter user is specified
+    if (userName == null) {
+      // Adding superusers explicitly to the result set as PermissionStorage do not store
+      // them. Also using acl as table name to be inline with the results of global admin and
+      // will help in avoiding any leakage of information about being superusers.
+      for (String user : Superusers.getSuperUsers()) {
+        perms.add(new UserPermission(user,
+          Permission.newBuilder().withActions(Permission.Action.values()).build()));
+      }
+    }
+    return perms;
+  }
+
+  /**
    * Checks the given permissions of the given user against the authorization cache.
    * @param caller   the request user
    * @param userName the user to check, when different from the caller the caller needs the
@@ -278,8 +288,10 @@ public class ACLManager {
     }
     // the write is done and the write path is serialized, the state read back is the current one:
     // apply it right away so the master's snapshot never lags behind its own writes
-    snapshot.applyUpdates(Collections.singletonList(update));
-    onEntryUpdate(ts, update);
+    acls.update(acls.current().applyUpdates(Collections.singletonList(update)));
+    if (AccessChecker.isAuthorizationSupported(conf)) {
+      onEntryUpdate(ts, update);
+    }
   }
 
   /**
@@ -298,7 +310,7 @@ public class ACLManager {
    * Called by {@link RefreshAclProcedure} as its first step; the change set is persisted in the
    * procedure store, so it survives a master failover and is replayed at-least-once.
    */
-  public synchronized ChangeSet drainPending() {
+  public synchronized AclChangeSet drainPending() {
     if (pending.isEmpty()) {
       return null;
     }
@@ -309,7 +321,7 @@ public class ACLManager {
       ts = Math.max(ts, p.ts);
     }
     pending.clear();
-    return new ChangeSet(updates, false, ts);
+    return new AclChangeSet(updates, false, ts);
   }
 
   /**
@@ -333,9 +345,9 @@ public class ACLManager {
     submitPushProcedure(new RefreshAclProcedure());
   }
 
-  private synchronized void submitFullPush(List<AclEntryUpdate> updates, long ts) {
+  private synchronized void submitFullPush(AclChangeSet changeSet) {
     pushInFlight = true;
-    submitPushProcedure(new RefreshAclProcedure(updates, true, ts));
+    submitPushProcedure(new RefreshAclProcedure(changeSet));
   }
 
   /** Visible for testing: hands the push procedure over to the procedure executor. */
