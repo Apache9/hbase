@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ChoreService;
 import org.apache.hadoop.hbase.ScheduledChore;
@@ -37,8 +36,8 @@ import org.slf4j.LoggerFactory;
 import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
 
 /**
- * Region server side ACL holder: maintains the region server's current {@link AclSnapshot} of
- * {@code hbase:acl}. The snapshot is fed from three sources, all funneled through this class:
+ * Region server side ACL holder: owns the region server's current {@link AclSnapshot} of
+ * {@code hbase:acl} and feeds it from three sources, all funneled through this class:
  * <ul>
  * <li><b>startup load</b>: {@link #reloadFromTable()} after registering with the master, non
  * superuser requests are held until it completes;</li>
@@ -49,17 +48,18 @@ import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
  * lost pushes and for direct writes that bypass the master.</li>
  * </ul>
  * Every batch carries the master assigned timestamp of the writes it was built from; batches whose
- * timestamp is not newer than the last applied one are dropped, so stale deliveries (e.g. a remote
- * procedure replayed after a master failover) cannot regress the snapshot or resurrect deleted
- * entries. {@link #reloadFromTable()} never moves the timestamp watermark backwards either.
+ * timestamp is not newer than the one in the current snapshot are dropped, so stale deliveries
+ * (e.g. a remote procedure replayed after a master failover) cannot regress the snapshot or
+ * resurrect deleted entries. {@link #reloadFromTable()} never moves the timestamp backwards either.
  * <p>
- * Applies and reloads serialize on this object; a reload holds it for the duration of its
- * {@code hbase:acl} scan, so an update arriving during the scan is applied after the swap and can
- * never be lost to it.
+ * Updates publish a new immutable snapshot through {@link AclView}; authorization checks pin the
+ * current one and never block on this class. Applies and reloads only serialize among themselves on
+ * this object: a reload holds it for the duration of its {@code hbase:acl} scan, so an update
+ * arriving during the scan is applied after the swap and can never be lost to it.
  * </p>
  */
 @InterfaceAudience.Private
-public final class AclStore implements Closeable {
+public final class AclStore implements Closeable, AclView {
 
   /** Period of the periodic full reload. */
   public static final String ACL_RELOAD_PERIOD_MSEC_KEY = "hbase.security.acl.reload.period.msec";
@@ -69,14 +69,13 @@ public final class AclStore implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(AclStore.class);
 
   private final Configuration conf;
-  private final AclView acls;
   private final Stoppable stopper;
   private final ScheduledChore reloadChore;
-  private final AtomicLong appliedTs = new AtomicLong(0L);
 
-  public AclStore(Configuration conf, AclView acls, Stoppable stopper) {
+  private volatile AclSnapshot snapshot = AclSnapshot.empty();
+
+  public AclStore(Configuration conf, Stoppable stopper) {
     this.conf = conf;
-    this.acls = acls;
     this.stopper = stopper;
     this.reloadChore = new ScheduledChore("AclReloadChore", stopper,
       conf.getInt(ACL_RELOAD_PERIOD_MSEC_KEY, DEFAULT_ACL_RELOAD_PERIOD_MSEC)) {
@@ -92,11 +91,16 @@ public final class AclStore implements Closeable {
     };
   }
 
+  @Override
+  public AclSnapshot current() {
+    return snapshot;
+  }
+
   /**
    * Loads the full ACL content of {@code hbase:acl} in the background after registering with the
-   * master, retrying until it succeeds, then calls {@code onLoaded}. Until then non superuser
-   * requests are held in {@code RSRpcServices#checkOpen()}. A missing acl table (fresh cluster)
-   * counts as loaded with an empty snapshot.
+   * master, retrying until it succeeds or the server stops, then calls {@code onLoaded}. Until then
+   * non superuser requests are held in {@code RSRpcServices#checkOpen()}. A missing acl table
+   * (fresh cluster) counts as loaded with an empty snapshot.
    */
   public void loadAsync(Runnable onLoaded) {
     Thread loader = new Thread(() -> load(onLoaded), "AclCacheLoader");
@@ -118,8 +122,8 @@ public final class AclStore implements Closeable {
         try {
           Thread.sleep(sleepTime);
         } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          return;
+          // an interrupt only cuts the backoff short (e.g. at shutdown); loading gives up when
+          // the server is stopped, not before
         }
       }
     }
@@ -130,39 +134,41 @@ public final class AclStore implements Closeable {
     choreService.scheduleChore(reloadChore);
   }
 
-  /** Highest update timestamp applied so far. */
+  /** Timestamp of the newest change applied to the current snapshot. */
   public long getAppliedTimestamp() {
-    return appliedTs.get();
+    return snapshot.getTs();
   }
 
   /**
    * Applies a batch of incremental entry updates pushed by the master. Dropped when not newer than
-   * the last applied update, see the class javadoc.
+   * the current snapshot, see the class javadoc. Does not block authorization checks.
    */
   public synchronized void applyUpdates(long ts, List<AclSnapshot.EntryUpdate> updates) {
-    if (!isCurrent(ts, "update batch")) {
+    AclSnapshot current = snapshot;
+    if (ts <= current.getTs()) {
+      LOG.debug("Dropping stale ACL update batch: ts={}, applied={}", ts, current.getTs());
       return;
     }
-    acls.update(acls.current().applyUpdates(updates));
-    appliedTs.set(ts);
+    snapshot = current.applyUpdates(updates, ts);
   }
 
   /**
-   * Applies a full snapshot pushed by the master. Dropped when not newer than the last applied
-   * update, see the class javadoc.
+   * Applies a full snapshot pushed by the master. Dropped when not newer than the current snapshot,
+   * see the class javadoc. Does not block authorization checks.
    */
   public synchronized void applyFullSnapshot(long ts,
     Map<byte[], ListMultimap<String, UserPermission>> perms) {
-    if (!isCurrent(ts, "full snapshot")) {
+    AclSnapshot current = snapshot;
+    if (ts <= current.getTs()) {
+      LOG.debug("Dropping stale ACL full snapshot: ts={}, applied={}", ts, current.getTs());
       return;
     }
-    acls.update(acls.current().applyFullSnapshot(perms));
-    appliedTs.set(ts);
+    snapshot = current.applyFullSnapshot(perms, ts);
   }
 
   /**
-   * Reads the whole {@code hbase:acl} table and swaps it into the snapshot, never losing a
-   * concurrent update and never moving the watermark backwards. Blocks until done. A missing acl
+   * Reads the whole {@code hbase:acl} table and swaps it in as the new snapshot, never losing a
+   * concurrent update and never moving the timestamp backwards. Blocks until done. A missing acl
    * table (fresh cluster) is loaded as empty content.
    */
   public synchronized void reloadFromTable() throws IOException {
@@ -172,16 +178,8 @@ public final class AclStore implements Closeable {
     } catch (TableNotFoundException e) {
       content = new PermissionStorage.AclTableContent(Collections.emptyMap(), 0L);
     }
-    acls.update(acls.current().applyFullSnapshot(content.getPermissions()));
-    appliedTs.accumulateAndGet(content.getMaxTimestamp(), Math::max);
-  }
-
-  private boolean isCurrent(long ts, String what) {
-    if (ts <= appliedTs.get()) {
-      LOG.debug("Dropping stale ACL {}: ts={}, applied={}", what, ts, appliedTs.get());
-      return false;
-    }
-    return true;
+    snapshot = snapshot.applyFullSnapshot(content.getPermissions(),
+      Math.max(snapshot.getTs(), content.getMaxTimestamp()));
   }
 
   @Override

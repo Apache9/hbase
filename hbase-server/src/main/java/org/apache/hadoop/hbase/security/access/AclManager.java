@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.procedure.RefreshAclProcedure;
@@ -71,18 +70,18 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.A
  * that periodic reload.
  */
 @InterfaceAudience.Private
-public class ACLManager {
+public class AclManager implements AclView {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ACLManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AclManager.class);
 
   private final Configuration conf;
   private final MasterServices masterServices;
-  private final Connection connection;
-  private final AclView acls;
-  private final AccessChecker accessChecker;
 
   /** Guards the write path; see the class javadoc. */
   private final Object writeLock = new Object();
+
+  /** The master's current ACL snapshot; replaced as a whole on every change. */
+  private volatile AclSnapshot snapshot = AclSnapshot.empty();
 
   /**
    * Timestamps assigned to acl table writes. Seeded from the acl table content and the wall clock
@@ -106,13 +105,14 @@ public class ACLManager {
     }
   }
 
-  public ACLManager(Configuration conf, MasterServices masterServices, Connection connection,
-    AclView acls, AccessChecker accessChecker) {
+  public AclManager(Configuration conf, MasterServices masterServices) {
     this.conf = conf;
     this.masterServices = masterServices;
-    this.connection = connection;
-    this.acls = acls;
-    this.accessChecker = accessChecker;
+  }
+
+  @Override
+  public AclSnapshot current() {
+    return snapshot;
   }
 
   /**
@@ -140,12 +140,12 @@ public class ACLManager {
       lastTs.set(seed);
       // serialized with the write path, so a write either lands before the scan (and is part of
       // the snapshot) or applies its entry update after the swap
-      acls.update(acls.current().applyFullSnapshot(content.getPermissions()));
+      snapshot = snapshot.applyFullSnapshot(content.getPermissions(), seed);
     }
     // the push timestamp is above every write the snapshot contains, so the push is never
     // dropped as stale by an RS; later writes get higher timestamps and apply on top of it
     submitFullPush(new AclChangeSet(toProto(content.getPermissions()), true, nextTimestamp()));
-    LOG.info("ACLManager initialized, timestamps start at {}", seed);
+    LOG.info("AclManager initialized, timestamps start at {}", seed);
   }
 
   /**
@@ -163,7 +163,7 @@ public class ACLManager {
     synchronized (writeLock) {
       byte[] entry = PermissionStorage.userPermissionRowKey(userPermission.getPermission());
       long ts = nextTimestamp();
-      try (Table t = connection.getTable(PermissionStorage.ACL_TABLE_NAME)) {
+      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
         PermissionStorage.addUserPermission(conf, userPermission, t, mergeExistingPermissions, ts);
         announce(t, entry, ts);
       }
@@ -175,7 +175,7 @@ public class ACLManager {
     synchronized (writeLock) {
       byte[] entry = PermissionStorage.userPermissionRowKey(userPermission.getPermission());
       long ts = nextTimestamp();
-      try (Table t = connection.getTable(PermissionStorage.ACL_TABLE_NAME)) {
+      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
         PermissionStorage.removeUserPermission(conf, userPermission, t, ts);
         announce(t, entry, ts);
       }
@@ -186,7 +186,7 @@ public class ACLManager {
   public void removeTablePermissions(TableName tableName) throws IOException {
     synchronized (writeLock) {
       long ts = nextTimestamp();
-      try (Table t = connection.getTable(PermissionStorage.ACL_TABLE_NAME)) {
+      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
         PermissionStorage.removeTablePermissions(conf, tableName, t, ts);
         announce(t, tableName.getName(), ts);
       }
@@ -198,7 +198,7 @@ public class ACLManager {
     synchronized (writeLock) {
       byte[] entry = Bytes.toBytes(PermissionStorage.toNamespaceEntry(namespace));
       long ts = nextTimestamp();
-      try (Table t = connection.getTable(PermissionStorage.ACL_TABLE_NAME)) {
+      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
         PermissionStorage.removeNamespacePermissions(conf, namespace, t, ts);
         announce(t, entry, ts);
       }
@@ -260,6 +260,7 @@ public class ACLManager {
       caller = new AccessChecker.InputUser(userName, groups.toArray(new String[groups.size()]));
     }
     List<Boolean> results = new ArrayList<>(permissions.size());
+    AccessChecker accessChecker = masterServices.getAccessChecker();
     if (accessChecker != null) {
       for (Permission permission : permissions) {
         results.add(accessChecker.hasUserPermission(caller, "hasUserPermissions", permission));
@@ -288,7 +289,7 @@ public class ACLManager {
     }
     // the write is done and the write path is serialized, the state read back is the current one:
     // apply it right away so the master's snapshot never lags behind its own writes
-    acls.update(acls.current().applyUpdates(Collections.singletonList(update)));
+    snapshot = snapshot.applyUpdates(Collections.singletonList(update), ts);
     if (AccessChecker.isAuthorizationSupported(conf)) {
       onEntryUpdate(ts, update);
     }

@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
@@ -51,7 +52,7 @@ public class TestAuthManager {
   private static final TableName NS_TABLE = TableName.valueOf(TEST_NAMESPACE, "t");
 
   private Configuration conf;
-  private AclView acls;
+  private final AtomicReference<AclSnapshot> acls = new AtomicReference<>(AclSnapshot.empty());
   private AuthManager authManager;
   private User george;
 
@@ -60,8 +61,7 @@ public class TestAuthManager {
     conf = HBaseConfiguration.create();
     conf.set(Superusers.SUPERUSER_CONF_KEY, "admin");
     Superusers.initialize(conf);
-    acls = new AclView();
-    authManager = new AuthManager(acls);
+    authManager = new AuthManager(acls::get);
     george = User.createUserForTesting(conf, "george", new String[0]);
   }
 
@@ -172,11 +172,11 @@ public class TestAuthManager {
   }
 
   private void applyUpdates(List<AclSnapshot.EntryUpdate> updates) {
-    acls.update(acls.current().applyUpdates(updates));
+    acls.updateAndGet(s -> s.applyUpdates(updates, s.getTs() + 1));
   }
 
   private void applyFullSnapshot(Map<byte[], ListMultimap<String, UserPermission>> snapshot) {
-    acls.update(acls.current().applyFullSnapshot(snapshot));
+    acls.updateAndGet(s -> s.applyFullSnapshot(snapshot, s.getTs() + 1));
   }
 
   @Test

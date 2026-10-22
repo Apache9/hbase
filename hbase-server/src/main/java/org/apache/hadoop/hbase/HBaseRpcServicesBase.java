@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.regionserver.RpcSchedulerFactory;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.AccessChecker;
+import org.apache.hadoop.hbase.security.access.AclSnapshot;
 import org.apache.hadoop.hbase.security.access.NoopAccessChecker;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.PermissionStorage;
@@ -173,9 +174,10 @@ public abstract class HBaseRpcServicesBase<S extends HBaseServerBase<?>>
 
   protected final void internalStart(ZKWatcher zkWatcher) {
     if (AccessChecker.isAuthorizationSupported(getConfiguration())) {
-      accessChecker = new AccessChecker(getConfiguration());
+      accessChecker = new AccessChecker(getConfiguration(), server.getAclView());
     } else {
-      accessChecker = new NoopAccessChecker(getConfiguration());
+      // no ACL state to make decisions against when authorization is disabled
+      accessChecker = new NoopAccessChecker(getConfiguration(), AclSnapshot::empty);
     }
     if (getConfiguration().get("zookeeper.znode.acl.parent") != null) {
       LOG.warn("zookeeper.znode.acl.parent is deprecated and ignored: "

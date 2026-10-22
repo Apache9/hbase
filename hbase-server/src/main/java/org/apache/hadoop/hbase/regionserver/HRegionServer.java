@@ -560,12 +560,13 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
       } else {
         masterAddressTracker = null;
       }
-      this.rpcServices.start(zooKeeper);
       if (AccessChecker.isAuthorizationSupported(conf)) {
-        // created before registering with the master, so a push dispatched right after
-        // registration cannot land before this server has an AclStore
-        this.aclStore = new AclStore(conf, getAccessChecker().getAclView(), this);
+        // the ACL holder must exist before the rpc services start: they wire the authorization
+        // checker against it, and a push dispatched right after registration must not land before
+        // it exists either
+        this.aclStore = new AclStore(conf, this);
       }
+      this.rpcServices.start(zooKeeper);
       span.setStatus(StatusCode.OK);
     } catch (Throwable t) {
       // Make sure we log the exception. HRegionServer is often started via reflection and the
@@ -2707,37 +2708,14 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
    * @return A Map of key/value configurations we got from the Master else null if we failed to
    * register.
    */
-  /**
-   * Loads the full ACL content of {@code hbase:acl} into the local cache after registration,
-   * retrying until it succeeds. Until then non superuser requests are held in
-   * {@code RSRpcServices#checkOpen()}. A missing acl table (fresh cluster) counts as loaded with an
-   * empty cache.
-   */
   /** The region server side holder of the current ACL snapshot. */
   public AclStore getAclStore() {
     return aclStore;
   }
 
-  private void loadAclCache() {
-    if (!AccessChecker.isAuthorizationSupported(conf)) {
-      setAclLoaded(true);
-      return;
-    }
-    RetryCounterFactory rcf =
-      new RetryCounterFactory(Integer.MAX_VALUE, this.sleeper.getPeriod(), 1000 * 60 * 5);
-    RetryCounter rc = rcf.create();
-    while (keepLooping()) {
-      try {
-        getAclStore().reloadFromTable();
-        setAclLoaded(true);
-        LOG.info("ACL cache loaded, applied timestamp {}", getAclStore().getAppliedTimestamp());
-        return;
-      } catch (IOException e) {
-        long sleepTime = rc.getBackoffTimeAndIncrementAttempts();
-        LOG.warn("Failed to load ACL cache; sleeping {} ms and then retrying.", sleepTime, e);
-        this.sleeper.sleep(sleepTime);
-      }
-    }
+  @Override
+  public org.apache.hadoop.hbase.security.access.AclView getAclView() {
+    return aclStore;
   }
 
   private RegionServerStartupResponse reportForDuty() throws IOException {

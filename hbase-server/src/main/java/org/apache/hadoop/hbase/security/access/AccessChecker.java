@@ -59,7 +59,6 @@ public class AccessChecker {
   private static final Logger LOG = LoggerFactory.getLogger(AccessChecker.class);
   private static final Logger AUDITLOG =
     LoggerFactory.getLogger("SecurityLogger." + AccessChecker.class.getName());
-  private final AclView aclView;
   private final AuthManager authManager;
 
   /** Group service to retrieve the user group information */
@@ -73,23 +72,13 @@ public class AccessChecker {
    * Constructor with existing configuration
    * @param conf Existing configuration to use
    */
-  public AccessChecker(final Configuration conf) {
-    this.aclView = new AclView();
-    this.authManager = new AuthManager(aclView);
+  public AccessChecker(final Configuration conf, AclView acls) {
+    this.authManager = new AuthManager(acls);
     initGroupService(conf);
   }
 
   public AuthManager getAuthManager() {
     return authManager;
-  }
-
-  /**
-   * The read side of the in-memory ACL state this checker makes decisions against. The state is
-   * owned and driven by the process side ACL holder ({@code ACLManager} on the master,
-   * {@code AclStore} on a region server).
-   */
-  public AclView getAclView() {
-    return aclView;
   }
 
   /**

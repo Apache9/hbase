@@ -2942,7 +2942,7 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
           ShadedAccessControlUtil.toUserPermission(request.getUserPermission());
         boolean mergeExistingPermissions = request.getMergeExistingPermissions();
         server.cpHost.preGrant(perm, mergeExistingPermissions);
-        server.getACLManager().grant(perm, mergeExistingPermissions);
+        server.getAclManager().grant(perm, mergeExistingPermissions);
         server.cpHost.postGrant(perm, mergeExistingPermissions);
         return GrantResponse.getDefaultInstance();
       } else {
@@ -2963,7 +2963,7 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
         final UserPermission userPermission =
           ShadedAccessControlUtil.toUserPermission(request.getUserPermission());
         server.cpHost.preRevoke(userPermission);
-        server.getACLManager().revoke(userPermission);
+        server.getAclManager().revoke(userPermission);
         server.cpHost.postRevoke(userPermission);
         return RevokeResponse.getDefaultInstance();
       } else {
@@ -2995,7 +2995,7 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
         server.getMasterCoprocessorHost().preGetUserPermissions(userName, namespace, table, cf, cq,
           permissionScope);
 
-        List<UserPermission> perms = server.getACLManager().getUserPermissions(permissionType,
+        List<UserPermission> perms = server.getAclManager().getUserPermissions(permissionType,
           table, namespace, cf, cq, userName);
 
         server.getMasterCoprocessorHost().postGetUserPermissions(userName, namespace, table, cf, cq,
@@ -3027,7 +3027,7 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
         }
         server.getMasterCoprocessorHost().preHasUserPermissions(userName, permissions);
         List<Boolean> hasUserPermissions =
-          server.getACLManager().hasUserPermissions(caller, userName, permissions);
+          server.getAclManager().hasUserPermissions(caller, userName, permissions);
         server.getMasterCoprocessorHost().postHasUserPermissions(userName, permissions);
         HasUserPermissionsResponse.Builder builder =
           HasUserPermissionsResponse.newBuilder().addAllHasUserPermission(hasUserPermissions);

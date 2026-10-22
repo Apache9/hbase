@@ -46,14 +46,14 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.A
 @InterfaceAudience.Private
 @Tag(SecurityTests.TAG)
 @Tag(SmallTests.TAG)
-public class TestACLManager {
+public class TestAclManager {
 
   private static final TableName TEST_TABLE = TableName.valueOf("aclManagerTable");
   private static final TableName TEST_TABLE2 = TableName.valueOf("aclManagerTable2");
 
   private final List<RefreshAclProcedure> submitted = new ArrayList<>();
 
-  private ACLManager aclManager;
+  private AclManager aclManager;
 
   @BeforeEach
   public void setUp() throws Exception {
@@ -61,7 +61,7 @@ public class TestACLManager {
     conf.set(Superusers.SUPERUSER_CONF_KEY, "admin");
     Superusers.initialize(conf);
     // this test only exercises the push pipeline: no acl table access, no permission checks
-    aclManager = new ACLManager(conf, new MockNoopMasterServices(conf), null, new AclView(), null) {
+    aclManager = new AclManager(conf, new MockNoopMasterServices(conf)) {
       @Override
       void submitPushProcedure(RefreshAclProcedure procedure) {
         submitted.add(procedure);

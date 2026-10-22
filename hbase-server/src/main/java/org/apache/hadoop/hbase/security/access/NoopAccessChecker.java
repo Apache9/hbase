@@ -33,8 +33,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 @InterfaceAudience.Private
 public final class NoopAccessChecker extends AccessChecker {
 
-  public NoopAccessChecker(Configuration conf) throws RuntimeException {
-    super(conf);
+  public NoopAccessChecker(Configuration conf, AclView acls) throws RuntimeException {
+    super(conf, acls);
   }
 
   @Override
