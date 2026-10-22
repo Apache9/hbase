@@ -293,7 +293,7 @@ public class SecureTestUtil {
     // polling for cache modification times, which cannot tell this update from concurrent ones
     // (e.g. the owner grants of table creations or the cleanup of the previous test).
     final SingleProcessHBaseCluster cluster = util.getHBaseCluster();
-    final long expectedTs = cluster.getMaster().getACLManager().getLastTimestamp();
+    final long expectedTs = cluster.getMaster().getAclManager().getLastTimestamp();
     util.waitFor(WAIT_TIME, 100, new Predicate<IOException>() {
       @Override
       public boolean evaluate() throws IOException {

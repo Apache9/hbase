@@ -22,8 +22,8 @@ import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureYieldException;
 import org.apache.hadoop.hbase.procedure2.StateMachineProcedure;
-import org.apache.hadoop.hbase.security.access.ACLManager;
 import org.apache.hadoop.hbase.security.access.AclChangeSet;
+import org.apache.hadoop.hbase.security.access.AclManager;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.R
 /**
  * Broadcasts one ACL change set to all registered region servers, as one
  * {@link RefreshAclRemoteProcedure} child per server. At most one instance of this procedure runs
- * at a time, see {@link ACLManager}: updates that arrive while it runs are merged into the next
+ * at a time, see {@link AclManager}: updates that arrive while it runs are merged into the next
  * one.
  * <p>
  * A change set is persisted in the procedure store before it is dispatched, so it survives a master
@@ -50,7 +50,7 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
 
   private AclChangeSet changeSet;
 
-  /** For the single-flight incremental push: drains {@link ACLManager} at the first step. */
+  /** For the single-flight incremental push: drains {@link AclManager} at the first step. */
   public RefreshAclProcedure() {
   }
 
@@ -65,7 +65,7 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     switch (state) {
       case REFRESH_ACL_DRAIN_PENDING: {
         if (changeSet == null) {
-          changeSet = env.getMasterServices().getACLManager().drainPending();
+          changeSet = env.getMasterServices().getAclManager().drainPending();
           if (changeSet == null) {
             // nothing to push, e.g. drained by a previous instance after a failover recovery
             return Flow.NO_MORE_STATE;
@@ -94,7 +94,7 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
   @Override
   protected void completionCleanup(MasterProcedureEnv env) {
     // release the single-flight gate and submit the next push when updates piled up meanwhile
-    env.getMasterServices().getACLManager().onPushComplete();
+    env.getMasterServices().getAclManager().onPushComplete();
   }
 
   @Override

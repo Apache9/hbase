@@ -25,7 +25,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.A
 /**
  * One ACL change set to broadcast to the region servers: the entry updates of a drained push round,
  * or the whole {@code hbase:acl} content of a full round, plus the master assigned timestamp of the
- * writes it was built from. Produced by {@link ACLManager}, carried through
+ * writes it was built from. Produced by {@link AclManager}, carried through
  * {@code RefreshAclProcedure} and its per-server children.
  */
 @InterfaceAudience.Private

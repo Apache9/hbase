@@ -38,7 +38,7 @@ import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
  * a batch of entry updates included, and never block on writers. ACL changes are rare, rebuilding
  * the affected scope on each change is cheap.
  * <p>
- * The process side ACL holder ({@code ACLManager} on the master, {@code AclStore} on a region
+ * The process side ACL holder ({@link AclManager} on the master, {@code AclStore} on a region
  * server) owns the current snapshot through an {@link AclView} and publishes changes under its
  * update lock; {@link AuthManager} pins one snapshot per authorization decision.
  * </p>
@@ -86,8 +86,13 @@ public final class AclSnapshot {
   }
 
   private static final AclSnapshot EMPTY =
-    new AclSnapshot(ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of());
+    new AclSnapshot(0L, ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of());
 
+  /**
+   * The master assigned timestamp of the newest change applied in this snapshot: the watermark of
+   * the applied updates on a region server, the write timestamp of the newest change on the master.
+   */
+  private final long ts;
   /**
    * Global permissions excluding superuser and supergroup, keyed by user/group entry name. Since
    * every user/group can only have one global permission there is no set per name.
@@ -98,9 +103,10 @@ public final class AclSnapshot {
   /** Table permissions: table name to (entry name to permissions). */
   private final Map<TableName, Map<String, Set<TablePermission>>> tableCache;
 
-  private AclSnapshot(Map<String, GlobalPermission> globalCache,
+  private AclSnapshot(long ts, Map<String, GlobalPermission> globalCache,
     Map<String, Map<String, Set<NamespacePermission>>> namespaceCache,
     Map<TableName, Map<String, Set<TablePermission>>> tableCache) {
+    this.ts = ts;
     this.globalCache = globalCache;
     this.namespaceCache = namespaceCache;
     this.tableCache = tableCache;
@@ -111,12 +117,18 @@ public final class AclSnapshot {
     return EMPTY;
   }
 
+  /** The master assigned timestamp of the newest change applied in this snapshot. */
+  public long getTs() {
+    return ts;
+  }
+
   /**
    * Applies incremental ACL entry updates, each update replaces the whole entry, or removes the
    * entry when it is marked as deleted. The batch is applied atomically: readers see either all of
    * its entries or none of them.
+   * @param ts the master assigned timestamp of the writes the batch was built from
    */
-  public AclSnapshot applyUpdates(List<EntryUpdate> updates) {
+  public AclSnapshot applyUpdates(List<EntryUpdate> updates, long ts) {
     Map<String, GlobalPermission> global = new HashMap<>(globalCache);
     Map<String, Map<String, Set<NamespacePermission>>> namespaces = new HashMap<>(namespaceCache);
     Map<TableName, Map<String, Set<TablePermission>>> tables = new HashMap<>(tableCache);
@@ -124,7 +136,7 @@ public final class AclSnapshot {
       applyEntry(update.getEntry(), update.isDeleted() ? null : update.getPermissions(), global,
         namespaces, tables);
     }
-    return new AclSnapshot(ImmutableMap.copyOf(global), ImmutableMap.copyOf(namespaces),
+    return new AclSnapshot(ts, ImmutableMap.copyOf(global), ImmutableMap.copyOf(namespaces),
       ImmutableMap.copyOf(tables));
   }
 
@@ -132,15 +144,17 @@ public final class AclSnapshot {
    * Replaces the whole snapshot with the given content. Callers build the content aside first, so
    * readers never observe a partially loaded snapshot.
    * @param snapshot entry name to its permissions, see {@link PermissionStorage#loadAllSnapshot}
+   * @param ts       the timestamp of the new snapshot, see {@link #getTs()}
    */
-  public AclSnapshot applyFullSnapshot(Map<byte[], ListMultimap<String, UserPermission>> snapshot) {
+  public AclSnapshot applyFullSnapshot(Map<byte[], ListMultimap<String, UserPermission>> snapshot,
+    long ts) {
     Map<String, GlobalPermission> global = new HashMap<>();
     Map<String, Map<String, Set<NamespacePermission>>> namespaces = new HashMap<>();
     Map<TableName, Map<String, Set<TablePermission>>> tables = new HashMap<>();
     for (Map.Entry<byte[], ListMultimap<String, UserPermission>> e : snapshot.entrySet()) {
       applyEntry(e.getKey(), e.getValue(), global, namespaces, tables);
     }
-    return new AclSnapshot(ImmutableMap.copyOf(global), ImmutableMap.copyOf(namespaces),
+    return new AclSnapshot(ts, ImmutableMap.copyOf(global), ImmutableMap.copyOf(namespaces),
       ImmutableMap.copyOf(tables));
   }
 

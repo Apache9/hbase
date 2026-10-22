@@ -252,8 +252,8 @@ import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.SecurityConstants;
 import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.UserProvider;
-import org.apache.hadoop.hbase.security.access.ACLManager;
 import org.apache.hadoop.hbase.security.access.AbstractReadOnlyController;
+import org.apache.hadoop.hbase.security.access.AclManager;
 import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -470,7 +470,7 @@ public class HMaster extends HBaseServerBase<MasterRpcServices> implements Maste
   // it is assigned after 'initialized' guard set to true, so should be volatile
   private volatile MasterQuotaManager quotaManager;
   private RpcThrottleStateStore rpcThrottleStateStore;
-  private ACLManager aclManager;
+  private AclManager aclManager;
   private SpaceQuotaSnapshotNotifier spaceQuotaSnapshotNotifier;
   private QuotaObserverChore quotaObserverChore;
   private SnapshotQuotaObserverChore snapshotQuotaChore;
@@ -592,6 +592,10 @@ public class HMaster extends HBaseServerBase<MasterRpcServices> implements Maste
       this.activeMasterManager = createActiveMasterManager(zooKeeper, serverName, this);
       cachedClusterId = new CachedClusterId(this, conf);
       this.regionServerTracker = new RegionServerTracker(zooKeeper, this);
+      // the ACL holder must exist before the rpc services start: they wire the authorization
+      // checker against it, and later createProcedureExecutor recovers RefreshAclProcedure which
+      // consults it
+      this.aclManager = new AclManager(conf, this);
       this.rpcServices.start(zooKeeper);
       span.setStatus(StatusCode.OK);
     } catch (Throwable t) {
@@ -1047,10 +1051,6 @@ public class HMaster extends HBaseServerBase<MasterRpcServices> implements Maste
     ) {
       this.splitWALManager = new SplitWALManager(this);
     }
-
-    // must be created before loading procedures, RefreshAclProcedure consults it
-    this.aclManager = new ACLManager(conf, this, getConnection(), getAccessChecker().getAclView(),
-      getAccessChecker());
 
     tryMigrateMetaLocationsFromZooKeeper();
 
@@ -4836,7 +4836,12 @@ public class HMaster extends HBaseServerBase<MasterRpcServices> implements Maste
   }
 
   @Override
-  public ACLManager getACLManager() {
+  public AclManager getAclManager() {
+    return aclManager;
+  }
+
+  @Override
+  public org.apache.hadoop.hbase.security.access.AclView getAclView() {
     return aclManager;
   }
 }

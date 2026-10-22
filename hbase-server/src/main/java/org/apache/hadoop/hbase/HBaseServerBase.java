@@ -564,6 +564,13 @@ public abstract class HBaseServerBase<R extends HBaseRpcServicesBase<?>> extends
    * Whether the local ACL cache has finished its initial load. Region servers hold non superuser
    * requests until this is true, see {@code RSRpcServices#checkOpen()}.
    */
+  /**
+   * The process side ACL holder of this server: {@code AclManager} on the master, {@code AclStore}
+   * on a region server. {@link org.apache.hadoop.hbase.security.access.AuthManager} reads the ACL
+   * state through it.
+   */
+  public abstract org.apache.hadoop.hbase.security.access.AclView getAclView();
+
   public boolean isAclLoaded() {
     return aclLoaded;
   }

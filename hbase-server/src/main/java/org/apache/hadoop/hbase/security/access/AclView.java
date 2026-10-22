@@ -21,26 +21,17 @@ import org.apache.yetus.audience.InterfaceAudience;
 
 /**
  * The read side of the process side ACL state: hands out the current {@link AclSnapshot} for
- * {@link AuthManager} to make authorization decisions on. One instance is created per process and
- * shared between the ACL holder ({@code ACLManager} on the master, {@code AclStore} on a region
- * server), which is the only writer: it publishes a new snapshot through {@link #update} under its
- * update lock. Readers pin one snapshot with {@link #current()} and never block.
+ * {@link AuthManager} to make authorization decisions on. Implemented by the process side ACL
+ * holder, {@link AclManager} on the master and {@link AclStore} on a region server, which own the
+ * snapshot and publish a new one on every change; readers pin one snapshot with {@link #current()}
+ * and never block.
  */
 @InterfaceAudience.Private
-public final class AclView {
-
-  private volatile AclSnapshot snapshot = AclSnapshot.empty();
+public interface AclView {
 
   /**
    * The current snapshot. Pin one at the start of an authorization decision and use it for the
    * whole decision, so the decision never observes a half applied update.
    */
-  public AclSnapshot current() {
-    return snapshot;
-  }
-
-  /** Publishes the new current snapshot. Called by the process side ACL holder. */
-  public void update(AclSnapshot snapshot) {
-    this.snapshot = snapshot;
-  }
+  AclSnapshot current();
 }

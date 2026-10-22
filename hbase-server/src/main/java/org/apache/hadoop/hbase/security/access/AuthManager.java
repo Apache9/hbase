@@ -184,10 +184,12 @@ public final class AuthManager {
     if (user == null) {
       return false;
     }
-    if (table == null) {
-      table = PermissionStorage.ACL_TABLE_NAME;
-    }
     AclSnapshot snapshot = acls.current();
+    if (table == null) {
+      // the historical global scope call: access to hbase:acl itself is governed by the fixed
+      // rules above, a null table must not reach its cached grants
+      return authorizeUserGlobal(snapshot, user, action);
+    }
     if (authorizeUserNamespace(snapshot, user, table.getNamespaceAsString(), action)) {
       return true;
     }
@@ -255,10 +257,12 @@ public final class AuthManager {
     if (user == null) {
       return false;
     }
-    if (table == null) {
-      table = PermissionStorage.ACL_TABLE_NAME;
-    }
     AclSnapshot snapshot = acls.current();
+    if (table == null) {
+      // the historical global scope call: access to hbase:acl itself is governed by the fixed
+      // rules above, a null table must not reach its cached grants
+      return authorizeUserGlobal(snapshot, user, action);
+    }
     if (authorizeUserNamespace(snapshot, user, table.getNamespaceAsString(), action)) {
       return true;
     }
