@@ -158,6 +158,8 @@ import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.AbstractReadOnlyController;
+import org.apache.hadoop.hbase.security.access.AccessChecker;
+import org.apache.hadoop.hbase.security.access.AclStore;
 import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CompressionTest;
@@ -398,6 +400,7 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
   private BlockCache blockCache;
   // The cache for mob files
   private MobFileCache mobFileCache;
+  private AclStore aclStore;
 
   /** The health check chore. */
   private HealthCheckChore healthCheckChore;
@@ -556,6 +559,12 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
         masterAddressTracker.start();
       } else {
         masterAddressTracker = null;
+      }
+      if (AccessChecker.isAuthorizationSupported(conf)) {
+        // the ACL holder must exist before the rpc services start: they wire the authorization
+        // checker against it, and a push dispatched right after registration must not land before
+        // it exists either
+        this.aclStore = new AclStore(conf, this);
       }
       this.rpcServices.start(zooKeeper);
       span.setStatus(StatusCode.OK);
@@ -864,6 +873,13 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
             }
           }
         }, "HRegionServer.registerWithMaster");
+      }
+
+      // Load the ACL snapshot right after registration; non superuser requests are held until
+      // done. This must not block the run loop below: the periodic regionServerReport starts
+      // there and the master only assigns regions to servers that have reported at least once.
+      if (aclStore != null && !isStopped() && isHealthy()) {
+        aclStore.loadAsync(() -> setAclLoaded(true));
       }
 
       if (!isStopped() && isHealthy()) {
@@ -1976,6 +1992,9 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
     executorService.startExecutorService(
       executorService.new ExecutorConfig().setExecutorType(ExecutorType.RS_SWITCH_RPC_THROTTLE)
         .setCorePoolSize(switchRpcThrottleThreads));
+    final int refreshAclThreads = conf.getInt("hbase.regionserver.executor.refresh.acl.threads", 1);
+    executorService.startExecutorService(executorService.new ExecutorConfig()
+      .setExecutorType(ExecutorType.RS_REFRESH_ACL).setCorePoolSize(refreshAclThreads));
     final int claimReplicationQueueThreads =
       conf.getInt("hbase.regionserver.executor.claim.replication.queue.threads", 1);
     executorService.startExecutorService(
@@ -2037,6 +2056,10 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
     }
     if (this.brokenStoreFileCleaner != null) {
       choreService.scheduleChore(brokenStoreFileCleaner);
+    }
+    if (aclStore != null) {
+      // periodic full reload of the ACL snapshot, the fallback for lost pushes and direct writes
+      aclStore.start(choreService);
     }
     if (this.rsMobFileCleanerChore != null) {
       choreService.scheduleChore(rsMobFileCleanerChore);
@@ -2685,6 +2708,16 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
    * @return A Map of key/value configurations we got from the Master else null if we failed to
    * register.
    */
+  /** The region server side holder of the current ACL snapshot. */
+  public AclStore getAclStore() {
+    return aclStore;
+  }
+
+  @Override
+  public org.apache.hadoop.hbase.security.access.AclView getAclView() {
+    return aclStore;
+  }
+
   private RegionServerStartupResponse reportForDuty() throws IOException {
     if (this.masterless) {
       return RegionServerStartupResponse.getDefaultInstance();
@@ -3806,6 +3839,9 @@ public class HRegionServer extends HBaseServerBase<RSRpcServices>
     shutdownChore(brokenStoreFileCleaner);
     shutdownChore(rsMobFileCleanerChore);
     shutdownChore(replicationMarkerChore);
+    if (aclStore != null) {
+      aclStore.close();
+    }
   }
 
   @Override

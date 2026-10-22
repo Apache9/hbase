@@ -58,7 +58,7 @@ import org.apache.hadoop.hbase.replication.SyncReplicationState;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleanerBarrier;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfoManager;
 import org.apache.hadoop.hbase.security.access.AccessChecker;
-import org.apache.hadoop.hbase.security.access.ZKPermissionWatcher;
+import org.apache.hadoop.hbase.security.access.AclManager;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.google.protobuf.Service;
@@ -454,8 +454,8 @@ public interface MasterServices extends Server, KeyManagementService {
   /** Returns the {@link AccessChecker} */
   AccessChecker getAccessChecker();
 
-  /** Returns the {@link ZKPermissionWatcher} */
-  ZKPermissionWatcher getZKPermissionWatcher();
+  /** Returns the {@link ACLManager} */
+  AclManager getAclManager();
 
   /**
    * Execute region plans with throttling

@@ -66,7 +66,7 @@ import org.apache.hadoop.hbase.replication.SyncReplicationState;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleanerBarrier;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfoManager;
 import org.apache.hadoop.hbase.security.access.AccessChecker;
-import org.apache.hadoop.hbase.security.access.ZKPermissionWatcher;
+import org.apache.hadoop.hbase.security.access.AclManager;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 
@@ -514,11 +514,6 @@ public class MockNoopMasterServices implements MasterServices {
   }
 
   @Override
-  public ZKPermissionWatcher getZKPermissionWatcher() {
-    return null;
-  }
-
-  @Override
   public List<RegionPlan> executeRegionPlansWithThrottling(List<RegionPlan> plans) {
     return null;
   }
@@ -607,4 +602,10 @@ public class MockNoopMasterServices implements MasterServices {
   public RpcThrottleStateStore getRpcThrottleStateStore() {
     return null;
   }
+
+  @Override
+  public AclManager getAclManager() {
+    return null;
+  }
+
 }
