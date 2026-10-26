@@ -172,11 +172,11 @@ public class TestAuthManager {
   }
 
   private void applyUpdates(List<AclSnapshot.EntryUpdate> updates) {
-    acls.updateAndGet(s -> s.applyUpdates(updates, s.getTs() + 1));
+    acls.updateAndGet(s -> s.applyEntryUpdates(updates, s.getTs() + 1));
   }
 
   private void applyFullSnapshot(Map<byte[], ListMultimap<String, UserPermission>> snapshot) {
-    acls.updateAndGet(s -> s.applyFullSnapshot(snapshot, s.getTs() + 1));
+    acls.updateAndGet(s -> AclSnapshot.of(snapshot, s.getTs() + 1));
   }
 
   @Test

@@ -764,8 +764,9 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
     User.runAsLoginUser(new PrivilegedExceptionAction<Void>() {
       @Override
       public Void run() throws Exception {
-        List<UserPermission> acls =
-          PermissionStorage.getUserTablePermissions(conf, tableName, null, null, null, false);
+        List<UserPermission> acls = PermissionStorage.getUserTablePermissions(
+          ((HasMasterServices) c.getEnvironment()).getMasterServices().getConnection(), tableName,
+          null, null, null, false);
         if (acls != null) {
           tableAcls.put(tableName, acls);
         }

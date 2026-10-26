@@ -148,7 +148,8 @@ public final class PermissionStorage {
 
     Set<Permission.Action> actionSet = new TreeSet<Permission.Action>();
     if (mergeExistingPermissions) {
-      List<UserPermission> perms = getUserPermissions(conf, rowKey, null, null, null, false);
+      List<UserPermission> perms =
+        toUserPermissions(getPermissions(t, rowKey, null, null, null, false));
       UserPermission currentPerm = null;
       for (UserPermission perm : perms) {
         if (userPerm.equalsExceptActions(perm)) {
@@ -221,8 +222,8 @@ public final class PermissionStorage {
       removePermissionRecord(conf, userPerm, t, ts);
     } else {
       // Get all the global user permissions from the acl table
-      List<UserPermission> permsList = getUserPermissions(conf,
-        userPermissionRowKey(userPerm.getPermission()), null, null, null, false);
+      List<UserPermission> permsList = toUserPermissions(
+        getPermissions(t, userPermissionRowKey(userPerm.getPermission()), null, null, null, false));
       List<Permission.Action> remainingActions = new ArrayList<>();
       List<Permission.Action> dropActions = Arrays.asList(userPerm.getPermission().getActions());
       for (UserPermission perm : permsList) {
@@ -474,7 +475,9 @@ public final class PermissionStorage {
    */
   static Map<byte[], ListMultimap<String, UserPermission>> loadAll(Configuration conf)
     throws IOException {
-    return loadAllSnapshot(conf).getPermissions();
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return loadAllSnapshot(connection).getPermissions();
+    }
   }
 
   /**
@@ -506,7 +509,7 @@ public final class PermissionStorage {
    * Load all permissions from {@code _acl_} along with the newest write timestamp seen, used as the
    * version watermark of a full reload.
    */
-  static AclTableContent loadAllSnapshot(Configuration conf) throws IOException {
+  static AclTableContent loadAllSnapshot(Connection connection) throws IOException {
     Map<byte[], ListMultimap<String, UserPermission>> allPerms =
       new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
     long maxTimestamp = 0L;
@@ -517,25 +520,22 @@ public final class PermissionStorage {
     scan.addFamily(ACL_LIST_FAMILY);
 
     ResultScanner scanner = null;
-    // TODO: Pass in a Connection rather than create one each time.
-    try (Connection connection = ConnectionFactory.createConnection(conf)) {
-      try (Table table = connection.getTable(ACL_TABLE_NAME)) {
-        scanner = table.getScanner(scan);
-        try {
-          // explicit next(), so a scan failure surfaces as IOException instead of an unchecked
-          // wrap of the iterator
-          for (Result row; (row = scanner.next()) != null;) {
-            ListMultimap<String, UserPermission> resultPerms =
-              parsePermissions(row.getRow(), row, null, null, null, false);
-            allPerms.put(row.getRow(), resultPerms);
-            for (Cell cell : row.rawCells()) {
-              maxTimestamp = Math.max(maxTimestamp, cell.getTimestamp());
-            }
+    try (Table table = connection.getTable(ACL_TABLE_NAME)) {
+      scanner = table.getScanner(scan);
+      try {
+        // explicit next(), so a scan failure surfaces as IOException instead of an unchecked
+        // wrap of the iterator
+        for (Result row; (row = scanner.next()) != null;) {
+          ListMultimap<String, UserPermission> resultPerms =
+            parsePermissions(row.getRow(), row, null, null, null, false);
+          allPerms.put(row.getRow(), resultPerms);
+          for (Cell cell : row.rawCells()) {
+            maxTimestamp = Math.max(maxTimestamp, cell.getTimestamp());
           }
-        } finally {
-          if (scanner != null) {
-            scanner.close();
-          }
+        }
+      } finally {
+        if (scanner != null) {
+          scanner.close();
         }
       }
     }
@@ -543,26 +543,52 @@ public final class PermissionStorage {
     return new AclTableContent(allPerms, maxTimestamp);
   }
 
+  public static ListMultimap<String, UserPermission> getTablePermissions(Connection connection,
+    TableName tableName) throws IOException {
+    return getTablePermissions(connection, tableName, null);
+  }
+
+  public static ListMultimap<String, UserPermission> getTablePermissions(Connection connection,
+    TableName tableName, Table t) throws IOException {
+    return t != null
+      ? getPermissions(t, tableName != null ? tableName.getName() : null, null, null, null, false)
+      : getPermissions(connection, tableName != null ? tableName.getName() : null, null, null, null,
+        false);
+  }
+
+  public static ListMultimap<String, UserPermission> getNamespacePermissions(Connection connection,
+    String namespace) throws IOException {
+    return getPermissions(connection, Bytes.toBytes(toNamespaceEntry(namespace)), null, null, null,
+      false);
+  }
+
+  public static ListMultimap<String, UserPermission> getGlobalPermissions(Connection connection)
+    throws IOException {
+    return getPermissions(connection, null, null, null, null, false);
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static ListMultimap<String, UserPermission> getTablePermissions(Configuration conf,
     TableName tableName) throws IOException {
-    return getTablePermissions(conf, tableName, null);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getTablePermissions(connection, tableName);
+    }
   }
 
-  public static ListMultimap<String, UserPermission> getTablePermissions(Configuration conf,
-    TableName tableName, Table t) throws IOException {
-    return getPermissions(conf, tableName != null ? tableName.getName() : null, t, null, null, null,
-      false);
-  }
-
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static ListMultimap<String, UserPermission> getNamespacePermissions(Configuration conf,
     String namespace) throws IOException {
-    return getPermissions(conf, Bytes.toBytes(toNamespaceEntry(namespace)), null, null, null, null,
-      false);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getNamespacePermissions(connection, namespace);
+    }
   }
 
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static ListMultimap<String, UserPermission> getGlobalPermissions(Configuration conf)
     throws IOException {
-    return getPermissions(conf, null, null, null, null, null, false);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getGlobalPermissions(connection);
+    }
   }
 
   /**
@@ -572,8 +598,15 @@ public final class PermissionStorage {
    * See {@link PermissionStorage class documentation} for the key structure used for storage.
    * </p>
    */
-  static ListMultimap<String, UserPermission> getPermissions(Configuration conf, byte[] entryName,
-    Table t, byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
+  static ListMultimap<String, UserPermission> getPermissions(Connection connection,
+    byte[] entryName, byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
+    try (Table table = connection.getTable(ACL_TABLE_NAME)) {
+      return getPermissions(table, entryName, cf, cq, user, hasFilterUser);
+    }
+  }
+
+  static ListMultimap<String, UserPermission> getPermissions(Table t, byte[] entryName, byte[] cf,
+    byte[] cq, String user, boolean hasFilterUser) throws IOException {
     if (entryName == null) {
       entryName = ACL_GLOBAL_NAME;
     }
@@ -581,16 +614,7 @@ public final class PermissionStorage {
     ListMultimap<String, UserPermission> perms = ArrayListMultimap.create();
     Get get = new Get(entryName);
     get.addFamily(ACL_LIST_FAMILY);
-    Result row = null;
-    if (t == null) {
-      try (Connection connection = ConnectionFactory.createConnection(conf)) {
-        try (Table table = connection.getTable(ACL_TABLE_NAME)) {
-          row = table.get(get);
-        }
-      }
-    } else {
-      row = t.get(get);
-    }
+    Result row = t.get(get);
     if (!row.isEmpty()) {
       perms = parsePermissions(entryName, row, cf, cq, user, hasFilterUser);
     } else {
@@ -605,27 +629,44 @@ public final class PermissionStorage {
    * Returns the currently granted permissions for a given table as the specified user plus
    * associated permissions.
    */
+  public static List<UserPermission> getUserTablePermissions(Connection connection,
+    TableName tableName, byte[] cf, byte[] cq, String userName, boolean hasFilterUser)
+    throws IOException {
+    return getUserPermissions(connection, tableName == null ? null : tableName.getName(), cf, cq,
+      userName, hasFilterUser);
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static List<UserPermission> getUserTablePermissions(Configuration conf,
     TableName tableName, byte[] cf, byte[] cq, String userName, boolean hasFilterUser)
     throws IOException {
-    return getUserPermissions(conf, tableName == null ? null : tableName.getName(), cf, cq,
-      userName, hasFilterUser);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getUserTablePermissions(connection, tableName, cf, cq, userName, hasFilterUser);
+    }
   }
 
   /**
    * Returns the currently granted permissions for a given namespace as the specified user plus
    * associated permissions.
    */
+  public static List<UserPermission> getUserNamespacePermissions(Connection connection,
+    String namespace, String user, boolean hasFilterUser) throws IOException {
+    return getUserPermissions(connection, Bytes.toBytes(toNamespaceEntry(namespace)), null, null,
+      user, hasFilterUser);
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
   public static List<UserPermission> getUserNamespacePermissions(Configuration conf,
     String namespace, String user, boolean hasFilterUser) throws IOException {
-    return getUserPermissions(conf, Bytes.toBytes(toNamespaceEntry(namespace)), null, null, user,
-      hasFilterUser);
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getUserNamespacePermissions(connection, namespace, user, hasFilterUser);
+    }
   }
 
   /**
    * Returns the currently granted permissions for a given table/namespace with associated
    * permissions based on the specified column family, column qualifier and user name.
-   * @param conf          the configuration
+   * @param connection    the connection to the acl table
    * @param entryName     Table name or the namespace
    * @param cf            Column family
    * @param cq            Column qualifier
@@ -634,15 +675,26 @@ public final class PermissionStorage {
    * @return List of UserPermissions
    * @throws IOException on failure
    */
-  public static List<UserPermission> getUserPermissions(Configuration conf, byte[] entryName,
+  public static List<UserPermission> getUserPermissions(Connection connection, byte[] entryName,
     byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
-    ListMultimap<String, UserPermission> allPerms =
-      getPermissions(conf, entryName, null, cf, cq, user, hasFilterUser);
-    List<UserPermission> perms = new ArrayList<>();
+    return toUserPermissions(getPermissions(connection, entryName, cf, cq, user, hasFilterUser));
+  }
+
+  private static List<UserPermission>
+    toUserPermissions(ListMultimap<String, UserPermission> allPerms) {
+    List<UserPermission> perms = new ArrayList<>(allPerms.size());
     for (Map.Entry<String, UserPermission> entry : allPerms.entries()) {
       perms.add(entry.getValue());
     }
     return perms;
+  }
+
+  /** One-off callers that only have a {@link Configuration}; server paths pass their connection. */
+  public static List<UserPermission> getUserPermissions(Configuration conf, byte[] entryName,
+    byte[] cf, byte[] cq, String user, boolean hasFilterUser) throws IOException {
+    try (Connection connection = ConnectionFactory.createConnection(conf)) {
+      return getUserPermissions(connection, entryName, cf, cq, user, hasFilterUser);
+    }
   }
 
   /**

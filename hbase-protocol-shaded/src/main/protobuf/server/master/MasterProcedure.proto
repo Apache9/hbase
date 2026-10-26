@@ -717,7 +717,6 @@ message SwitchRpcThrottleRemoteStateData {
 enum RefreshAclState {
   REFRESH_ACL_DRAIN_PENDING = 1;
   REFRESH_ACL_DISPATCH = 2;
-  REFRESH_ACL_WAIT = 3;
 }
 
 message AclEntryUpdate {

@@ -23,8 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.Stoppable;
@@ -33,7 +32,6 @@ import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.SecurityTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -143,11 +141,8 @@ public class TestAclStore {
     return AclSnapshot.EntryUpdate.replace(TEST_TABLE.getName(), perms);
   }
 
-  private Map<byte[], ListMultimap<String, UserPermission>> snapshot(AclSnapshot.EntryUpdate e) {
-    Map<byte[], ListMultimap<String, UserPermission>> map =
-      new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
-    map.put(e.getEntry(), e.getPermissions());
-    return map;
+  private List<AclSnapshot.EntryUpdate> snapshot(AclSnapshot.EntryUpdate e) {
+    return Collections.singletonList(e);
   }
 
   private boolean canRead() {

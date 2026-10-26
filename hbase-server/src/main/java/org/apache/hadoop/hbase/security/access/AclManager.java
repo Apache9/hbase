@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -58,7 +57,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.A
  * one, so at most one broadcast is in flight and pushes are naturally coalesced.</li>
  * </ul>
  * The refresh procedure only updates the region servers; the master applies each change to its own
- * snapshot at write time and is reloaded from the table when it becomes active.
+ * snapshot at write time and is reloaded from the table when it becomes active. Activation also
+ * pushes one full round to all region servers, see {@link #initialize()}.
  * <p>
  * The whole write path (timestamp assignment, table write, entry read back, local apply, queueing
  * for broadcast) is serialized, so writes apply locally in their timestamp order and a concurrent
@@ -82,13 +82,6 @@ public class AclManager implements AclView {
 
   /** The master's current ACL snapshot; replaced as a whole on every change. */
   private volatile AclSnapshot snapshot = AclSnapshot.empty();
-
-  /**
-   * Timestamps assigned to acl table writes. Seeded from the acl table content and the wall clock
-   * at activation, so they never move backwards across restarts or master failovers and the RS side
-   * watermark of {@code AclStore} stays meaningful.
-   */
-  private final AtomicLong lastTs = new AtomicLong(0L);
 
   /** Latest update per entry; guarded by {@code this}. */
   private final Map<byte[], PendingUpdate> pending = new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
@@ -118,43 +111,51 @@ public class AclManager implements AclView {
   /**
    * Seeds the timestamp clock, loads the master's snapshot from {@code hbase:acl} and pushes one
    * full round to all region servers. Called when this master becomes active.
+   * <p>
+   * The full round closes the crash window of the previous master: a write it made to the table but
+   * did not broadcast (crash between the table write and the refresh procedure) would otherwise
+   * linger on the region servers until their periodic reload, so for example a revoked permission
+   * could survive its revocation. It is submitted inside the write lock together with the snapshot
+   * swap, so a later write is queued after it and applies on top of it.
+   * </p>
    */
   public void initialize() throws IOException {
     if (!AccessChecker.isAuthorizationSupported(conf)) {
-      // authorization is off: no ACL state to maintain and no region servers to push to, just
-      // keep the timestamp clock running for the writes below
-      lastTs.set(EnvironmentEdgeManager.currentTime());
+      // the flag only turns the checks off (HBASE-13275): no snapshot to load, no region server
+      // stores to push to, the writes below still record into hbase:acl and just need a clock
+      snapshot = snapshot.withTs(EnvironmentEdgeManager.currentTime());
       return;
     }
     PermissionStorage.AclTableContent content;
     long seed;
     synchronized (writeLock) {
       try {
-        content = PermissionStorage.loadAllSnapshot(conf);
+        content = PermissionStorage.loadAllSnapshot(masterServices.getConnection());
       } catch (TableNotFoundException e) {
         // a fresh cluster: the acl table is created later by the AccessController postStartMaster
         // hook
         content = new PermissionStorage.AclTableContent(Collections.emptyMap(), 0L);
       }
       seed = Math.max(EnvironmentEdgeManager.currentTime(), content.getMaxTimestamp() + 1);
-      lastTs.set(seed);
       // serialized with the write path, so a write either lands before the scan (and is part of
       // the snapshot) or applies its entry update after the swap
-      snapshot = snapshot.applyFullSnapshot(content.getPermissions(), seed);
+      snapshot = AclSnapshot.of(content.getPermissions(), seed);
+      // the push timestamp is the snapshot's own, above every write it contains: a push is never
+      // dropped as stale by an RS and later writes get higher timestamps and apply on top of it
+      submitFullPush(new AclChangeSet(toProto(content.getPermissions()), true, seed));
     }
-    // the push timestamp is above every write the snapshot contains, so the push is never
-    // dropped as stale by an RS; later writes get higher timestamps and apply on top of it
-    submitFullPush(new AclChangeSet(toProto(content.getPermissions()), true, nextTimestamp()));
     LOG.info("AclManager initialized, timestamps start at {}", seed);
   }
 
   /**
    * Next timestamp for an {@code hbase:acl} write, to be stamped into the cells of the write so the
-   * cell timestamps carry the master assigned write order.
+   * cell timestamps carry the master assigned write order. Advances the timestamp clock of the
+   * snapshot; callers hold the write lock.
    */
   public long nextTimestamp() {
-    long now = EnvironmentEdgeManager.currentTime();
-    return lastTs.updateAndGet(prev -> Math.max(now, prev + 1));
+    long ts = Math.max(EnvironmentEdgeManager.currentTime(), snapshot.getTs() + 1);
+    snapshot = snapshot.withTs(ts);
+    return ts;
   }
 
   /** Grants the given permission, optionally merging it into the existing actions. */
@@ -207,17 +208,20 @@ public class AclManager implements AclView {
 
   public List<UserPermission> getUserTablePermissions(TableName table, byte[] cf, byte[] cq,
     String userName, boolean filter) throws IOException {
-    return PermissionStorage.getUserTablePermissions(conf, table, cf, cq, userName, filter);
+    return PermissionStorage.getUserTablePermissions(masterServices.getConnection(), table, cf, cq,
+      userName, filter);
   }
 
   public List<UserPermission> getUserNamespacePermissions(String namespace, String userName,
     boolean filter) throws IOException {
-    return PermissionStorage.getUserNamespacePermissions(conf, namespace, userName, filter);
+    return PermissionStorage.getUserNamespacePermissions(masterServices.getConnection(), namespace,
+      userName, filter);
   }
 
   public List<UserPermission> getUserPermissions(String userName, boolean filter)
     throws IOException {
-    return PermissionStorage.getUserPermissions(conf, null, null, null, userName, filter);
+    return PermissionStorage.getUserPermissions(masterServices.getConnection(), null, null, null,
+      userName, filter);
   }
 
   /**
@@ -279,7 +283,7 @@ public class AclManager implements AclView {
    */
   private void announce(Table t, byte[] entry, long ts) throws IOException {
     ListMultimap<String, UserPermission> perms =
-      PermissionStorage.getPermissions(conf, entry, t, null, null, null, false);
+      PermissionStorage.getPermissions(t, entry, null, null, null, false);
     AclSnapshot.EntryUpdate update = perms.isEmpty()
       ? AclSnapshot.EntryUpdate.deleted(entry)
       : AclSnapshot.EntryUpdate.replace(entry, perms);
@@ -289,7 +293,7 @@ public class AclManager implements AclView {
     }
     // the write is done and the write path is serialized, the state read back is the current one:
     // apply it right away so the master's snapshot never lags behind its own writes
-    snapshot = snapshot.applyUpdates(Collections.singletonList(update), ts);
+    snapshot = snapshot.applyEntryUpdates(Collections.singletonList(update), ts);
     if (AccessChecker.isAuthorizationSupported(conf)) {
       onEntryUpdate(ts, update);
     }
@@ -335,7 +339,7 @@ public class AclManager implements AclView {
   }
 
   public long getLastTimestamp() {
-    return lastTs.get();
+    return current().getTs();
   }
 
   private void maybeSubmitPush() {

@@ -147,7 +147,12 @@ public final class AuthManager {
    * </ul>
    * Global and namespace grants must not override these rules. Note that a {@code null} table name
    * carries the historical "global scope" semantics of this class and is not subject to these
-   * rules.
+   * rules. Before HBASE-30402 a null table was remapped to {@code hbase:acl} here instead: that
+   * came from HBASE-7373, when the permission listing RPC gained an optional table and its check
+   * was wired through this method, so "no table" fell back to the acl table and its grants decided
+   * who may list permissions. That gate now belongs to the explicit scope checks of
+   * {@code getUserPermissions} plus the fixed rule above, so a null table is the plain global
+   * scope.
    * @return the verdict of the fixed rules, or {@code null} if they do not apply
    */
   private static Boolean fixedSystemTableRule(User user, TableName table,

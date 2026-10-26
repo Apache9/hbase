@@ -594,7 +594,9 @@ public class HMaster extends HBaseServerBase<MasterRpcServices> implements Maste
       this.regionServerTracker = new RegionServerTracker(zooKeeper, this);
       // the ACL holder must exist before the rpc services start: they wire the authorization
       // checker against it, and later createProcedureExecutor recovers RefreshAclProcedure which
-      // consults it
+      // consults it. It is created even with authorization disabled: the flag only turns the
+      // checks off, grant/revoke keep recording into hbase:acl (HBASE-13275), and the push path
+      // stays idle then since the region servers hold no AclStore
       this.aclManager = new AclManager(conf, this);
       this.rpcServices.start(zooKeeper);
       span.setStatus(StatusCode.OK);

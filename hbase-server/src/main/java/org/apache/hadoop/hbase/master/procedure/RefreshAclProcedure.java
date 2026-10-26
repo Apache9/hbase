@@ -23,7 +23,6 @@ import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureYieldException;
 import org.apache.hadoop.hbase.procedure2.StateMachineProcedure;
 import org.apache.hadoop.hbase.security.access.AclChangeSet;
-import org.apache.hadoop.hbase.security.access.AclManager;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,11 +80,10 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
         if (subProcedures.length > 0) {
           addChildProcedure(subProcedures);
         }
-        setNextState(RefreshAclState.REFRESH_ACL_WAIT);
-        return Flow.HAS_MORE_STATE;
-      }
-      case REFRESH_ACL_WAIT:
+        // no state is needed to wait for them: the framework holds this procedure until its
+        // children complete, the next execution lands on the end of the state machine
         return Flow.NO_MORE_STATE;
+      }
       default:
         throw new UnsupportedOperationException("unhandled state=" + state);
     }
@@ -100,6 +98,9 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
   @Override
   protected void rollbackState(MasterProcedureEnv env, RefreshAclState state)
     throws IOException, InterruptedException {
+    // there is no state to roll back: the region server caches are only refreshed forward, a
+    // failed push is simply retried with the next change set
+    throw new UnsupportedOperationException("RefreshAclProcedure cannot be rolled back");
   }
 
   @Override

@@ -455,6 +455,7 @@ public interface MasterServices extends Server, KeyManagementService {
   AccessChecker getAccessChecker();
 
   /** Returns the {@link ACLManager} */
+  /** The master side ACL holder: records and serves {@code hbase:acl}, drives the RS refresh. */
   AclManager getAclManager();
 
   /**

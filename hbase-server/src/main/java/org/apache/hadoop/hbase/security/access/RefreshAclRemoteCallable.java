@@ -19,14 +19,10 @@ package org.apache.hadoop.hbase.security.access;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import org.apache.hadoop.hbase.executor.EventType;
 import org.apache.hadoop.hbase.procedure2.BaseRSProcedureCallable;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
 import org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
@@ -52,7 +48,7 @@ public class RefreshAclRemoteCallable extends BaseRSProcedureCallable {
       return null;
     }
     if (full) {
-      store.applyFullSnapshot(ts, toSnapshot(updates));
+      store.applyFullSnapshot(ts, updates);
     } else {
       store.applyUpdates(ts, updates);
     }
@@ -79,15 +75,4 @@ public class RefreshAclRemoteCallable extends BaseRSProcedureCallable {
     return EventType.M_RS_REFRESH_ACL;
   }
 
-  private static Map<byte[], ListMultimap<String, UserPermission>>
-    toSnapshot(List<AclSnapshot.EntryUpdate> entryUpdates) {
-    Map<byte[], ListMultimap<String, UserPermission>> snapshot =
-      new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
-    for (AclSnapshot.EntryUpdate update : entryUpdates) {
-      if (!update.isDeleted()) {
-        snapshot.put(update.getEntry(), update.getPermissions());
-      }
-    }
-    return snapshot;
-  }
 }

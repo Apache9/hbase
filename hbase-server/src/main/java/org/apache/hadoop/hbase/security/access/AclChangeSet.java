@@ -24,9 +24,9 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.A
 
 /**
  * One ACL change set to broadcast to the region servers: the entry updates of a drained push round,
- * or the whole {@code hbase:acl} content of a full round, plus the master assigned timestamp of the
- * writes it was built from. Produced by {@link AclManager}, carried through
- * {@code RefreshAclProcedure} and its per-server children.
+ * plus the master assigned timestamp of the writes it was built from. Produced by
+ * {@link AclManager} , carried through {@code RefreshAclProcedure} and its per-server children and
+ * applied against the region server's {@link AclSnapshot}.
  */
 @InterfaceAudience.Private
 public final class AclChangeSet {
@@ -45,7 +45,13 @@ public final class AclChangeSet {
     return updates;
   }
 
-  /** True for the full round pushed when a master becomes active. */
+  /**
+   * True when {@link #getUpdates()} carries the complete {@code hbase:acl} content and the receiver
+   * must replace its whole snapshot with it (apply on an empty base) instead of applying the entry
+   * changes on top of the current one. There is one such round: the push a master sends when it
+   * becomes active, closing the window of a write the previous master made to the table but did not
+   * broadcast before it died; see {@link AclManager#initialize()}.
+   */
   public boolean isFull() {
     return full;
   }

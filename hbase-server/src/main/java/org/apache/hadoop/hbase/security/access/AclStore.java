@@ -21,19 +21,18 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ChoreService;
 import org.apache.hadoop.hbase.ScheduledChore;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.util.RetryCounter;
 import org.apache.hadoop.hbase.util.RetryCounterFactory;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
 
 /**
  * Region server side ACL holder: owns the region server's current {@link AclSnapshot} of
@@ -71,6 +70,9 @@ public final class AclStore implements Closeable, AclView {
   private final Configuration conf;
   private final Stoppable stopper;
   private final ScheduledChore reloadChore;
+
+  /** Created on the first table read and reused; an ACL store does not touch the table often. */
+  private Connection connection;
 
   private volatile AclSnapshot snapshot = AclSnapshot.empty();
 
@@ -119,11 +121,18 @@ public final class AclStore implements Closeable, AclView {
       } catch (IOException e) {
         long sleepTime = retry.getBackoffTimeAndIncrementAttempts();
         LOG.warn("Failed to load ACL snapshot; sleeping {} ms and then retrying.", sleepTime, e);
+        // an interrupt only cuts the backoff short (e.g. at shutdown); loading gives up when the
+        // server is stopped, not before. The flag is restored afterwards so an interrupt is never
+        // swallowed
+        boolean interrupted = Thread.interrupted();
         try {
           Thread.sleep(sleepTime);
         } catch (InterruptedException ie) {
-          // an interrupt only cuts the backoff short (e.g. at shutdown); loading gives up when
-          // the server is stopped, not before
+          interrupted = true;
+        } finally {
+          if (interrupted) {
+            Thread.currentThread().interrupt();
+          }
         }
       }
     }
@@ -149,21 +158,21 @@ public final class AclStore implements Closeable, AclView {
       LOG.debug("Dropping stale ACL update batch: ts={}, applied={}", ts, current.getTs());
       return;
     }
-    snapshot = current.applyUpdates(updates, ts);
+    snapshot = current.applyEntryUpdates(updates, ts);
   }
 
   /**
-   * Applies a full snapshot pushed by the master. Dropped when not newer than the current snapshot,
-   * see the class javadoc. Does not block authorization checks.
+   * Applies a full change set pushed by the master: the entry states replace the whole snapshot,
+   * see {@link AclChangeSet#isFull()}. Dropped when not newer than the current snapshot, see the
+   * class javadoc. Does not block authorization checks.
    */
-  public synchronized void applyFullSnapshot(long ts,
-    Map<byte[], ListMultimap<String, UserPermission>> perms) {
+  public synchronized void applyFullSnapshot(long ts, List<AclSnapshot.EntryUpdate> updates) {
     AclSnapshot current = snapshot;
     if (ts <= current.getTs()) {
       LOG.debug("Dropping stale ACL full snapshot: ts={}, applied={}", ts, current.getTs());
       return;
     }
-    snapshot = current.applyFullSnapshot(perms, ts);
+    snapshot = AclSnapshot.empty().applyEntryUpdates(updates, ts);
   }
 
   /**
@@ -174,16 +183,30 @@ public final class AclStore implements Closeable, AclView {
   public synchronized void reloadFromTable() throws IOException {
     PermissionStorage.AclTableContent content;
     try {
-      content = PermissionStorage.loadAllSnapshot(conf);
+      content = PermissionStorage.loadAllSnapshot(getConnection());
     } catch (TableNotFoundException e) {
       content = new PermissionStorage.AclTableContent(Collections.emptyMap(), 0L);
     }
-    snapshot = snapshot.applyFullSnapshot(content.getPermissions(),
+    snapshot = AclSnapshot.of(content.getPermissions(),
       Math.max(snapshot.getTs(), content.getMaxTimestamp()));
   }
 
+  private synchronized Connection getConnection() throws IOException {
+    if (connection == null) {
+      connection = ConnectionFactory.createConnection(conf);
+    }
+    return connection;
+  }
+
   @Override
-  public void close() {
+  public synchronized void close() {
     reloadChore.cancel(true);
+    if (connection != null) {
+      try {
+        connection.close();
+      } catch (IOException e) {
+        LOG.warn("Failed to close the ACL connection", e);
+      }
+    }
   }
 }
