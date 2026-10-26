@@ -134,8 +134,6 @@ enum DeleteTableState {
   DELETE_TABLE_UNASSIGN_REGIONS = 5;
   DELETE_TABLE_POST_OPERATION = 6;
   DELETE_TABLE_SNAPSHOT = 7;
-  DELETE_TABLE_REMOVE_ACL = 8;
-  DELETE_TABLE_WAIT_ACL = 9;
 }
 
 message DeleteTableStateData {
@@ -143,8 +141,6 @@ message DeleteTableStateData {
   required TableName table_name = 2;
   repeated RegionInfo region_info = 3;
   optional string snapshot_name = 4;
-  // acl procedure clearing the permissions of the deleted table
-  optional uint64 acl_procedure_id = 5 [default = 0];
 }
 
 enum CreateNamespaceState {
@@ -176,15 +172,11 @@ enum DeleteNamespaceState {
   DELETE_NAMESPACE_REMOVE_FROM_ZK = 3[deprecated=true];
   DELETE_NAMESPACE_DELETE_DIRECTORIES = 4;
   DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA = 5;
-  DELETE_NAMESPACE_REMOVE_ACL = 6;
-  DELETE_NAMESPACE_WAIT_ACL = 7;
 }
 
 message DeleteNamespaceStateData {
   required string namespace_name = 1;
   optional NamespaceDescriptor namespace_descriptor = 2;
-  // acl procedure clearing the permissions of the deleted namespace
-  optional uint64 acl_procedure_id = 3 [default = 0];
 }
 
 enum EnableTableState {

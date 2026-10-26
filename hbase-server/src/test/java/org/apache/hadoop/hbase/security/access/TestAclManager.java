@@ -89,7 +89,7 @@ public class TestAclManager {
     assertFalse(second.isDone());
 
     // the queued backlog lands in one procedure, chained behind the running one
-    aclManager.onProcedureComplete();
+    aclManager.onProcedureComplete(100L);
     assertEquals(2, submitted.size());
     assertEquals(101L, second.getNow(0L));
     assertEquals(101L, third.getNow(0L));
@@ -97,47 +97,38 @@ public class TestAclManager {
     assertEquals(100L, submitted.get(1).getPreviousProcedureId());
 
     // nothing queued at completion: no further procedure
-    aclManager.onProcedureComplete();
+    aclManager.onProcedureComplete(101L);
     assertEquals(2, submitted.size());
   }
 
   @Test
-  public void testCleanupSubmitsImmediatelyAndChains() {
+  public void testCleanupIsBuiltForTheCallerAndCarriesTheBacklog() {
     grant(TEST_TABLE, "george");
     assertEquals(1, submitted.size());
 
-    // the cleanup of a deleted table must be submitted before its procedure can go on, even
-    // while another acl procedure runs: it chains behind it so the writes stay in order
-    long cleanup = aclManager.removeTablePermissions(TEST_TABLE);
-    assertEquals(2, submitted.size());
-    assertEquals(101L, cleanup);
-    assertEquals(100L, submitted.get(1).getPreviousProcedureId());
-    assertEquals(1, submitted.get(1).getOpCount());
+    // a change queued behind the running procedure
+    CompletableFuture<Long> queued = grant(TEST_TABLE, "hubert");
+    assertFalse(queued.isDone());
 
-    long namespaceCleanup = aclManager.removeNamespacePermissions("ns");
-    assertEquals(3, submitted.size());
-    assertEquals(102L, namespaceCleanup);
-    assertEquals(101L, submitted.get(2).getPreviousProcedureId());
+    // the cleanup of a deleted table is built for the delete procedure to run as its child: it
+    // carries the queued backlog in order and chains behind the running procedure
+    RefreshAclProcedure cleanup = aclManager.newCleanupProcedure(TEST_TABLE);
+    assertEquals(1, submitted.size());
+    assertEquals(2, cleanup.getOpCount());
+    assertEquals(100L, cleanup.getPreviousProcedureId());
+
+    // the backlog is not submitted again behind the cleanup
+    aclManager.onProcedureComplete(100L);
+    assertEquals(1, submitted.size());
+    aclManager.onProcedureComplete(200L);
+    assertEquals(1, submitted.size());
   }
 
   @Test
-  public void testChangesReachTheTableInQueuedOrder() {
-    grant(TEST_TABLE, "george");
-    long cleanup = aclManager.removeTablePermissions(TEST_TABLE);
-    CompletableFuture<Long> queued = grant(TEST_TABLE, "hubert");
-    // the queued change waits for the next procedure
-    assertEquals(2, submitted.size());
-    assertFalse(queued.isDone());
-
-    // every procedure chains behind the previous one, so the writes reach the table in the
-    // order the changes were queued; the backlog is submitted once they all completed
-    aclManager.onProcedureComplete();
-    assertFalse(queued.isDone());
-    aclManager.onProcedureComplete();
-    assertEquals(3, submitted.size());
-    assertEquals(101L, submitted.get(2).getPreviousProcedureId());
-    assertEquals(102L, queued.getNow(0L));
-    assertEquals(cleanup, submitted.get(1).getPreviousProcedureId() + 1);
+  public void testCleanupOfNamespace() {
+    RefreshAclProcedure cleanup = aclManager.newCleanupProcedure("ns");
+    assertEquals(1, cleanup.getOpCount());
+    assertEquals(0L, cleanup.getPreviousProcedureId());
   }
 
   private CompletableFuture<Long> grant(TableName table, String user) {

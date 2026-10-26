@@ -64,9 +64,9 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.A
  * procedure that will apply the change, so an RPC can answer its client with something to wait on,
  * or block on the {@link ProcedurePrepareLatch} it passes in for the synchronous behaviour old
  * clients expect;</li>
- * <li>{@link #removeTablePermissions} and {@link #removeNamespacePermissions} submit right away and
- * return the procedure id, so the table or namespace procedure that triggered them can record it
- * and wait for it to finish.</li>
+ * <li>{@link #newCleanupProcedure(TableName)} and {@link #newCleanupProcedure(String)} build the
+ * cleanup of a deleted table or namespace for the delete procedure to run as one of its children,
+ * so the cleanup is persisted with the delete and done before it completes.</li>
  * </ul>
  * A burst of changes is coalesced: at most one procedure is submitted for the queued backlog, and a
  * procedure submitted while another one is still running is chained behind it, so the changes reach
@@ -109,6 +109,16 @@ public class AclManager implements AclView {
 
     /** Completed with the id of the procedure that applies this change, at submit time. */
     private final CompletableFuture<Long> ack = new CompletableFuture<>();
+
+    /** Hands the procedure id to the caller of grant or revoke. */
+    public void acknowledge(long procedureId) {
+      ack.complete(procedureId);
+    }
+
+    /** The future completed by {@link #acknowledge(long)}. */
+    public CompletableFuture<Long> acknowledged() {
+      return ack;
+    }
 
     /** Released once the write of this change landed; for old clients, see the class javadoc. */
     public final ProcedurePrepareLatch syncLatch;
@@ -238,25 +248,35 @@ public class AclManager implements AclView {
   }
 
   /**
-   * Queues the removal of all permissions of a deleted table and submits a procedure for it right
-   * away, so the caller can record the returned procedure id and wait for the cleanup to land.
+   * Builds the procedure removing all permissions of a deleted table: it carries the cleanup
+   * together with the changes queued so far, so they reach {@code hbase:acl} in order. The caller
+   * runs it as one of its children, which keeps the cleanup persisted with the caller and done
+   * before the caller completes.
    */
-  public long removeTablePermissions(TableName tableName) {
-    return enqueue(PendingOp.removeTable(tableName), true).getNow(0L);
+  public RefreshAclProcedure newCleanupProcedure(TableName tableName) {
+    return buildProcedure(PendingOp.removeTable(tableName));
   }
 
   /**
-   * Queues the removal of all permissions of a deleted namespace, see
-   * {@link #removeTablePermissions}.
+   * Builds the procedure removing all permissions of a deleted namespace, see
+   * {@link #newCleanupProcedure(TableName)}.
    */
-  public long removeNamespacePermissions(String namespace) {
-    return enqueue(PendingOp.removeNamespace(namespace), true).getNow(0L);
+  public RefreshAclProcedure newCleanupProcedure(String namespace) {
+    return buildProcedure(PendingOp.removeNamespace(namespace));
+  }
+
+  private synchronized RefreshAclProcedure buildProcedure(PendingOp cleanup) {
+    pending.add(cleanup);
+    List<PendingOp> ops = new ArrayList<>(pending);
+    pending.clear();
+    proceduresInFlight++;
+    return new RefreshAclProcedure(ops, lastProcedureId);
   }
 
   private synchronized CompletableFuture<Long> enqueue(PendingOp op, boolean forceSubmit) {
     pending.add(op);
     submitPending(forceSubmit);
-    return op.ack;
+    return op.acknowledged();
   }
 
   /**
@@ -276,13 +296,17 @@ public class AclManager implements AclView {
     lastProcedureId = procedureId;
     proceduresInFlight++;
     for (PendingOp op : ops) {
-      op.ack.complete(procedureId);
+      op.acknowledge(procedureId);
     }
     LOG.debug("Submitted acl update procedure {} with {} changes", procedureId, ops.size());
   }
 
-  /** Called by {@link RefreshAclProcedure} when it terminates; submits the queued backlog. */
-  public synchronized void onProcedureComplete() {
+  /**
+   * Called by {@link RefreshAclProcedure} when it terminates; records it as the last procedure of
+   * the chain and submits the queued backlog behind it.
+   */
+  public synchronized void onProcedureComplete(long procedureId) {
+    lastProcedureId = procedureId;
     proceduresInFlight--;
     submitPending(false);
   }
@@ -341,6 +365,13 @@ public class AclManager implements AclView {
         snapshot = snapshot.applyEntryUpdates(Collections.singletonList(update), ts);
         derived.put(entry, toProto(update));
         return ts;
+      } catch (TableNotFoundException e) {
+        if (op.type != AclOp.Type.REMOVE_TABLE && op.type != AclOp.Type.REMOVE_NAMESPACE) {
+          throw e;
+        }
+        // a cluster without hbase:acl has no permissions to clean up either
+        LOG.debug("No {} to clean up, nothing recorded yet", PermissionStorage.ACL_TABLE_NAME);
+        return 0L;
       }
     }
   }

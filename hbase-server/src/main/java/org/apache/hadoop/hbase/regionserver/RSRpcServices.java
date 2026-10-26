@@ -1477,6 +1477,18 @@ public class RSRpcServices extends HBaseRpcServicesBase<HRegionServer>
    */
   // TODO : Rename this and HMaster#checkInitialized to isRunning() (or a better name).
   protected void checkOpen() throws IOException {
+    checkOpen(true);
+  }
+
+  /**
+   * @param holdForAclCache when true, non superuser requests are held until the initial ACL
+   *                        snapshot load has completed, so that authorization fails closed instead
+   *                        of open while the snapshot is still empty. Must be false for the
+   *                        procedure dispatch channel and similar infrastructure: those open the
+   *                        very regions the ACL snapshot is loaded from, holding them would
+   *                        deadlock the initial load.
+   */
+  protected void checkOpen(boolean holdForAclCache) throws IOException {
     if (server.isAborted()) {
       throw new RegionServerAbortedException("Server " + server.getServerName() + " aborting");
     }
@@ -1490,13 +1502,13 @@ public class RSRpcServices extends HBaseRpcServicesBase<HRegionServer>
       throw new ServerNotRunningYetException(
         "Server " + server.getServerName() + " is not running yet");
     }
-    // hold non superuser client requests until the initial ACL snapshot load has completed, so
-    // that authorization fails closed instead of open while the snapshot is still empty. There is
-    // no AclStore (and nothing to hold for) when authorization is disabled. Calls without a
-    // request user are in-process internal paths (e.g. region open deploy tasks) and are not held.
-    if (server.getAclStore() != null && !server.isAclLoaded()) {
+    // There is no AclStore (and nothing to hold for) when authorization is disabled. Calls without
+    // a request user are in-process internal paths (e.g. region open deploy tasks) and are not
+    // held. Neither are the server's own requests: the ACL snapshot load reads hbase:acl as this
+    // server's identity, holding it would deadlock the very load this gate waits for.
+    if (holdForAclCache && server.getAclStore() != null && !server.isAclLoaded()) {
       User user = RpcServer.getRequestUser().orElse(null);
-      if (user != null && !Superusers.isSuperUser(user)) {
+      if (user != null && !Superusers.isSuperUser(user) && !server.isServerUser(user)) {
         throw new PleaseHoldException(
           "ACL cache is not loaded yet on " + server.getServerName() + ", please retry later");
       }
@@ -4027,7 +4039,9 @@ public class RSRpcServices extends HBaseRpcServicesBase<HRegionServer>
   public ExecuteProceduresResponse executeProcedures(RpcController controller,
     ExecuteProceduresRequest request) throws ServiceException {
     try {
-      checkOpen();
+      // the procedure dispatch channel opens the very regions the ACL snapshot is loaded from,
+      // it must not be held until that load completes
+      checkOpen(false);
       throwOnWrongStartCode(request);
       server.getRegionServerCoprocessorHost().preExecuteProcedures();
       if (request.getOpenRegionCount() > 0) {

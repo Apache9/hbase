@@ -97,6 +97,11 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
           skipPersistence();
           throw new ProcedureSuspendedException();
         }
+        // changes drained into a child procedure are only persisted with their parent: their
+        // callers are acknowledged here, once this procedure runs and has an id
+        for (AclManager.PendingOp op : ops) {
+          op.acknowledge(getProcId());
+        }
         Map<byte[], AclEntryUpdate> derived = new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
         long maxTs = 0L;
         for (int i = 0; i < ops.size(); i++) {
@@ -149,8 +154,8 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
 
   @Override
   protected void completionCleanup(MasterProcedureEnv env) {
-    // release the single-flight gate and submit the queued backlog meanwhile
-    env.getMasterServices().getAclManager().onProcedureComplete();
+    // release the single-flight gate and submit the queued backlog behind this procedure
+    env.getMasterServices().getAclManager().onProcedureComplete(getProcId());
   }
 
   @Override

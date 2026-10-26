@@ -27,7 +27,6 @@ import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NamespaceNotFoundException;
 import org.apache.hadoop.hbase.constraint.ConstraintException;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
-import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
@@ -38,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.DeleteNamespaceState;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ProcedureProtos;
 
 /**
  * The procedure to remove a namespace.
@@ -53,8 +51,6 @@ public class DeleteNamespaceProcedure
 
   private NamespaceDescriptor nsDescriptor;
   private String namespaceName;
-  /** Procedure clearing the permissions of the deleted namespace. */
-  private long aclProcedureId;
 
   public DeleteNamespaceProcedure() {
   }
@@ -98,24 +94,11 @@ public class DeleteNamespaceProcedure
           break;
         case DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA:
           removeNamespaceQuota(env, namespaceName);
-          setNextState(DeleteNamespaceState.DELETE_NAMESPACE_REMOVE_ACL);
-          break;
-        case DELETE_NAMESPACE_REMOVE_ACL: {
           // the permission cleanup is applied by an acl procedure like every other acl change;
-          // its id is recorded here so this procedure can end only once the cleanup landed
-          aclProcedureId =
-            env.getMasterServices().getAclManager().removeNamespacePermissions(namespaceName);
-          LOG.debug("Acl cleanup of namespace {} submitted as procedure {}", namespaceName,
-            aclProcedureId);
-          setNextState(DeleteNamespaceState.DELETE_NAMESPACE_WAIT_ACL);
-          break;
-        }
-        case DELETE_NAMESPACE_WAIT_ACL: {
-          if (!waitAclProcedure(env)) {
-            return Flow.HAS_MORE_STATE;
-          }
+          // as a child of this procedure it is persisted with it and completed before it
+          addChildProcedure(
+            env.getMasterServices().getAclManager().newCleanupProcedure(namespaceName));
           return Flow.NO_MORE_STATE;
-        }
         default:
           throw new UnsupportedOperationException(this + " unhandled state=" + state);
       }
@@ -128,36 +111,6 @@ public class DeleteNamespaceProcedure
       }
     }
     return Flow.HAS_MORE_STATE;
-  }
-
-  /**
-   * Waits for the acl procedure recorded in {@link #aclProcedureId} without blocking a procedure
-   * thread: suspend and come back later while it runs.
-   * @return true once the acl procedure is done and this procedure can end
-   */
-  private boolean waitAclProcedure(final MasterProcedureEnv env)
-    throws ProcedureSuspendedException {
-    if (!env.getMasterServices().getMasterProcedureExecutor().isFinished(aclProcedureId)) {
-      setTimeout(ACL_WAIT_BACKOFF_MSEC);
-      setState(ProcedureProtos.ProcedureState.WAITING_TIMEOUT);
-      skipPersistence();
-      throw new ProcedureSuspendedException();
-    }
-    Procedure<?> aclProcedure =
-      env.getMasterServices().getMasterProcedureExecutor().getResult(aclProcedureId);
-    if (aclProcedure != null && !aclProcedure.isSuccess()) {
-      // the namespace is gone either way; the periodic reload of the region servers converges
-      LOG.warn("Acl cleanup procedure {} of namespace {} failed", aclProcedureId, namespaceName);
-    }
-    return true;
-  }
-
-  @Override
-  protected synchronized boolean setTimeoutFailure(MasterProcedureEnv env) {
-    // the timeout is only a wake-up to re-check the acl procedure, not a failure
-    setState(ProcedureProtos.ProcedureState.RUNNABLE);
-    env.getProcedureScheduler().addFront(this);
-    return false;
   }
 
   @Override
@@ -210,9 +163,6 @@ public class DeleteNamespaceProcedure
       deleteNamespaceMsg
         .setNamespaceDescriptor(ProtobufUtil.toProtoNamespaceDescriptor(this.nsDescriptor));
     }
-    if (aclProcedureId != 0) {
-      deleteNamespaceMsg.setAclProcedureId(aclProcedureId);
-    }
     serializer.serialize(deleteNamespaceMsg.build());
   }
 
@@ -227,7 +177,6 @@ public class DeleteNamespaceProcedure
       nsDescriptor =
         ProtobufUtil.toNamespaceDescriptor(deleteNamespaceMsg.getNamespaceDescriptor());
     }
-    aclProcedureId = deleteNamespaceMsg.getAclProcedureId();
   }
 
   @Override

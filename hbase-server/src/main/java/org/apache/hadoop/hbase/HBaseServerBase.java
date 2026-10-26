@@ -109,6 +109,9 @@ public abstract class HBaseServerBase<R extends HBaseRpcServicesBase<?>> extends
 
   private volatile boolean aclLoaded = false;
 
+  /** The identity this server runs as; its own internal requests carry it. */
+  private final User serverUser = User.getCurrent();
+
   // Flag set when a read-only to read-write transition is blocked because another active cluster
   // exists
   protected final AtomicBoolean readOnlyTransitionBlocked;
@@ -573,6 +576,12 @@ public abstract class HBaseServerBase<R extends HBaseRpcServicesBase<?>> extends
 
   public boolean isAclLoaded() {
     return aclLoaded;
+  }
+
+  /** Whether the given user is the identity this server itself runs as. */
+  public boolean isServerUser(User user) {
+    return serverUser != null && user != null
+      && serverUser.getShortName().equals(user.getShortName());
   }
 
   public void setAclLoaded(boolean aclLoaded) {
