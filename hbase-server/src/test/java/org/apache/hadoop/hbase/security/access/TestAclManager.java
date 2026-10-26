@@ -80,7 +80,6 @@ public class TestAclManager {
     assertEquals(1, submitted.size());
     assertEquals(100L, first.getNow(0L));
     assertEquals(1, submitted.get(0).getOpCount());
-    assertEquals(0L, submitted.get(0).getPreviousProcedureId());
 
     // changes arriving while it runs queue up for the next procedure
     CompletableFuture<Long> second = grant(TEST_TABLE, "hubert");
@@ -94,7 +93,6 @@ public class TestAclManager {
     assertEquals(101L, second.getNow(0L));
     assertEquals(101L, third.getNow(0L));
     assertEquals(2, submitted.get(1).getOpCount());
-    assertEquals(100L, submitted.get(1).getPreviousProcedureId());
 
     // nothing queued at completion: no further procedure
     aclManager.onProcedureComplete(101L);
@@ -111,11 +109,10 @@ public class TestAclManager {
     assertFalse(queued.isDone());
 
     // the cleanup of a deleted table is built for the delete procedure to run as its child: it
-    // carries the queued backlog in order and chains behind the running procedure
+    // carries the queued backlog in order
     RefreshAclProcedure cleanup = aclManager.newCleanupProcedure(TEST_TABLE);
     assertEquals(1, submitted.size());
     assertEquals(2, cleanup.getOpCount());
-    assertEquals(100L, cleanup.getPreviousProcedureId());
 
     // the backlog is not submitted again behind the cleanup
     aclManager.onProcedureComplete(100L);
@@ -126,9 +123,7 @@ public class TestAclManager {
 
   @Test
   public void testCleanupOfNamespace() {
-    RefreshAclProcedure cleanup = aclManager.newCleanupProcedure("ns");
-    assertEquals(1, cleanup.getOpCount());
-    assertEquals(0L, cleanup.getPreviousProcedureId());
+    assertEquals(1, aclManager.newCleanupProcedure("ns").getOpCount());
   }
 
   private CompletableFuture<Long> grant(TableName table, String user) {

@@ -121,17 +121,11 @@ public final class AclStore implements Closeable, AclView {
         long sleepTime = retry.getBackoffTimeAndIncrementAttempts();
         LOG.warn("Failed to load ACL snapshot; sleeping {} ms and then retrying.", sleepTime, e);
         // an interrupt only cuts the backoff short (e.g. at shutdown); loading gives up when the
-        // server is stopped, not before. The flag is restored afterwards so an interrupt is never
-        // swallowed
-        boolean interrupted = Thread.interrupted();
+        // server is stopped, not before
         try {
           Thread.sleep(sleepTime);
         } catch (InterruptedException ie) {
-          interrupted = true;
-        } finally {
-          if (interrupted) {
-            Thread.currentThread().interrupt();
-          }
+          Thread.currentThread().interrupt();
         }
       }
     }

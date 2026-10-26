@@ -58,13 +58,7 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
 
   private static final Logger LOG = LoggerFactory.getLogger(RefreshAclProcedure.class);
 
-  /** Backoff while waiting for the procedure chained in front of this one. */
-  private static final int CHAIN_BACKOFF_MSEC = 100;
-
   private List<AclManager.PendingOp> ops;
-
-  /** The procedure whose changes must reach {@code hbase:acl} before these, 0 if none. */
-  private long previousProcedureId;
 
   /** Entry states derived from the writes, filled in by the apply step and then broadcast. */
   private List<AclEntryUpdate> updates;
@@ -75,9 +69,8 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
   public RefreshAclProcedure() {
   }
 
-  public RefreshAclProcedure(List<AclManager.PendingOp> ops, long previousProcedureId) {
+  public RefreshAclProcedure(List<AclManager.PendingOp> ops) {
     this.ops = ops;
-    this.previousProcedureId = previousProcedureId;
   }
 
   @Override
@@ -85,18 +78,6 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     switch (state) {
       case REFRESH_ACL_APPLY: {
-        if (
-          previousProcedureId != 0
-            && !env.getMasterServices().getMasterProcedureExecutor().isFinished(previousProcedureId)
-        ) {
-          // chained behind the previous acl procedure: its changes must reach hbase:acl first,
-          // come back later instead of blocking a procedure thread
-          LOG.debug("Waiting for the previous acl procedure {} of {}", previousProcedureId, this);
-          setTimeout(CHAIN_BACKOFF_MSEC);
-          setState(ProcedureProtos.ProcedureState.WAITING_TIMEOUT);
-          skipPersistence();
-          throw new ProcedureSuspendedException();
-        }
         // changes drained into a child procedure are only persisted with their parent: their
         // callers are acknowledged here, once this procedure runs and has an id
         for (AclManager.PendingOp op : ops) {
@@ -171,11 +152,6 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     return ops != null ? ops.size() : 0;
   }
 
-  /** Visible for testing: the procedure chained in front of this one, 0 if none. */
-  public long getPreviousProcedureId() {
-    return previousProcedureId;
-  }
-
   @Override
   public String getGlobalId() {
     return getClass().getSimpleName();
@@ -204,8 +180,7 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
   @Override
   protected void serializeStateData(ProcedureStateSerializer serializer) throws IOException {
     super.serializeStateData(serializer);
-    RefreshAclStateData.Builder builder =
-      RefreshAclStateData.newBuilder().setPreviousProcedureId(previousProcedureId).setTs(ts);
+    RefreshAclStateData.Builder builder = RefreshAclStateData.newBuilder().setTs(ts);
     if (ops != null) {
       for (AclManager.PendingOp op : ops) {
         builder.addOps(op.toProto());
@@ -221,7 +196,6 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
   protected void deserializeStateData(ProcedureStateSerializer serializer) throws IOException {
     super.deserializeStateData(serializer);
     RefreshAclStateData data = serializer.deserialize(RefreshAclStateData.class);
-    previousProcedureId = data.getPreviousProcedureId();
     ts = data.getTs();
     ops = new ArrayList<>(data.getOpsCount());
     for (AclOp proto : data.getOpsList()) {

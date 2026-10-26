@@ -749,8 +749,6 @@ message RefreshAclStateData {
   repeated AclEntryUpdate updates = 4;
   // master assigned timestamp of the writes, used by the RS side watermark filter
   optional uint64 ts = 3 [default = 0];
-  // procedure chained in front of this one: its changes reach hbase:acl first
-  optional uint64 previous_procedure_id = 5 [default = 0];
 }
 
 message RefreshAclRemoteStateData {

@@ -238,13 +238,13 @@ public class AclManager implements AclView {
    */
   public CompletableFuture<Long> grant(UserPermission userPermission,
     boolean mergeExistingPermissions, ProcedurePrepareLatch syncLatch) {
-    return enqueue(PendingOp.grant(userPermission, mergeExistingPermissions, syncLatch), false);
+    return enqueue(PendingOp.grant(userPermission, mergeExistingPermissions, syncLatch));
   }
 
   /** Queues a revoke, see {@link #grant}. */
   public CompletableFuture<Long> revoke(UserPermission userPermission,
     ProcedurePrepareLatch syncLatch) {
-    return enqueue(PendingOp.revoke(userPermission, syncLatch), false);
+    return enqueue(PendingOp.revoke(userPermission, syncLatch));
   }
 
   /**
@@ -270,28 +270,28 @@ public class AclManager implements AclView {
     List<PendingOp> ops = new ArrayList<>(pending);
     pending.clear();
     proceduresInFlight++;
-    return new RefreshAclProcedure(ops, lastProcedureId);
+    return new RefreshAclProcedure(ops);
   }
 
-  private synchronized CompletableFuture<Long> enqueue(PendingOp op, boolean forceSubmit) {
+  private synchronized CompletableFuture<Long> enqueue(PendingOp op) {
     pending.add(op);
-    submitPending(forceSubmit);
+    submitPending();
     return op.acknowledged();
   }
 
   /**
    * Takes the queued changes as one procedure and submits it. Nothing is submitted while another
-   * procedure is running unless forced: a burst of changes then lands in one procedure and one
-   * broadcast. The drained changes are part of the procedure from its creation, so they are
-   * persisted with it before its id is handed out.
+   * acl procedure is running: a burst of changes then lands in one procedure and one broadcast, and
+   * the changes reach {@code hbase:acl} in the order they were queued. The drained changes are part
+   * of the procedure from its creation, so they are persisted with it before its id is handed out.
    */
-  private void submitPending(boolean forceSubmit) {
-    if (pending.isEmpty() || (!forceSubmit && proceduresInFlight > 0)) {
+  private void submitPending() {
+    if (pending.isEmpty() || proceduresInFlight > 0) {
       return;
     }
     List<PendingOp> ops = new ArrayList<>(pending);
     pending.clear();
-    RefreshAclProcedure procedure = new RefreshAclProcedure(ops, lastProcedureId);
+    RefreshAclProcedure procedure = new RefreshAclProcedure(ops);
     long procedureId = submitProcedure(procedure);
     lastProcedureId = procedureId;
     proceduresInFlight++;
@@ -307,8 +307,20 @@ public class AclManager implements AclView {
    */
   public synchronized void onProcedureComplete(long procedureId) {
     lastProcedureId = procedureId;
-    proceduresInFlight--;
-    submitPending(false);
+    if (proceduresInFlight > 0) {
+      proceduresInFlight--;
+    }
+    submitPending();
+  }
+
+  /**
+   * Clears the submit state after the procedure executor was restarted under a test: the re-loaded
+   * procedures do not run through {@link #submitProcedure} again and would otherwise complete
+   * against a count they never incremented.
+   */
+  public synchronized void reset() {
+    pending.clear();
+    proceduresInFlight = 0;
   }
 
   /** Visible for testing: hands the procedure over to the procedure executor. */
@@ -366,14 +378,20 @@ public class AclManager implements AclView {
         derived.put(entry, toProto(update));
         return ts;
       } catch (TableNotFoundException e) {
-        if (op.type != AclOp.Type.REMOVE_TABLE && op.type != AclOp.Type.REMOVE_NAMESPACE) {
+        if (!isCleanupOp(op)) {
           throw e;
         }
-        // a cluster without hbase:acl has no permissions to clean up either
-        LOG.debug("No {} to clean up, nothing recorded yet", PermissionStorage.ACL_TABLE_NAME);
+        // a cleanup op on a cluster without hbase:acl: nothing was ever recorded for the deleted
+        // table or namespace, so there is nothing to clean up
+        LOG.debug("No {} yet, nothing to clean up for {}", PermissionStorage.ACL_TABLE_NAME,
+          op.type);
         return 0L;
       }
     }
+  }
+
+  private static boolean isCleanupOp(PendingOp op) {
+    return op.type == AclOp.Type.REMOVE_TABLE || op.type == AclOp.Type.REMOVE_NAMESPACE;
   }
 
   /**

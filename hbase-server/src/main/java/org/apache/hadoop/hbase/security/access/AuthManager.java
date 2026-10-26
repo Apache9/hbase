@@ -145,28 +145,34 @@ public final class AuthManager {
    * <li>{@code hbase:meta}: READ is allowed for any user, other actions for superuser only</li>
    * <li>{@code hbase:acl}: superuser only</li>
    * </ul>
-   * Global and namespace grants must not override these rules. Note that a {@code null} table name
-   * carries the historical "global scope" semantics of this class and is not subject to these
-   * rules. Before HBASE-30402 a null table was remapped to {@code hbase:acl} here instead: that
-   * came from HBASE-7373, when the permission listing RPC gained an optional table and its check
-   * was wired through this method, so "no table" fell back to the acl table and its grants decided
-   * who may list permissions. That gate now belongs to the explicit scope checks of
-   * {@code getUserPermissions} plus the fixed rule above, so a null table is the plain global
-   * scope.
-   * @return the verdict of the fixed rules, or {@code null} if they do not apply
+   * Global and namespace grants must not override these rules. A {@code null} table name is treated
+   * as {@code hbase:acl}: that fallback came with HBASE-7373 (commit 4480a9f6ebe), which made the
+   * table of the permission listing RPC optional and settled its check for "no table" on the acl
+   * table. The jira itself does not explain why; the behaviour is kept as it was and is up for a
+   * follow-up issue.
+   * @return the verdict of the fixed rules, or {@link FixedRule#NO_OPINION} if they do not apply
    */
-  private static Boolean fixedSystemTableRule(User user, TableName table,
+  private static FixedRule fixedSystemTableRule(User user, TableName table,
     Permission.Action action) {
     if (table == null) {
-      return null;
+      table = PermissionStorage.ACL_TABLE_NAME;
     }
     if (TableName.META_TABLE_NAME.equals(table)) {
-      return action == Permission.Action.READ ? Boolean.TRUE : Boolean.valueOf(isSuperUser(user));
+      return action == Permission.Action.READ
+        ? FixedRule.ALLOW
+        : (isSuperUser(user) ? FixedRule.ALLOW : FixedRule.DENY);
     }
     if (PermissionStorage.ACL_TABLE_NAME.equals(table)) {
-      return isSuperUser(user);
+      return isSuperUser(user) ? FixedRule.ALLOW : FixedRule.DENY;
     }
-    return null;
+    return FixedRule.NO_OPINION;
+  }
+
+  /** The verdict of {@link #fixedSystemTableRule}. */
+  private enum FixedRule {
+    ALLOW,
+    DENY,
+    NO_OPINION
   }
 
   private static boolean isSuperUser(User user) {
@@ -182,19 +188,14 @@ public final class AuthManager {
    * @return true if the user has access to the table, false otherwise
    */
   public boolean accessUserTable(User user, TableName table, Permission.Action action) {
-    Boolean fixed = fixedSystemTableRule(user, table, action);
-    if (fixed != null) {
-      return fixed;
+    FixedRule fixed = fixedSystemTableRule(user, table, action);
+    if (fixed != FixedRule.NO_OPINION) {
+      return fixed == FixedRule.ALLOW;
     }
     if (user == null) {
       return false;
     }
     AclSnapshot snapshot = acls.current();
-    if (table == null) {
-      // the historical global scope call: access to hbase:acl itself is governed by the fixed
-      // rules above, a null table must not reach its cached grants
-      return authorizeUserGlobal(snapshot, user, action);
-    }
     if (authorizeUserNamespace(snapshot, user, table.getNamespaceAsString(), action)) {
       return true;
     }
@@ -255,19 +256,14 @@ public final class AuthManager {
    */
   public boolean authorizeUserTable(User user, TableName table, byte[] family, byte[] qualifier,
     Permission.Action action) {
-    Boolean fixed = fixedSystemTableRule(user, table, action);
-    if (fixed != null) {
-      return fixed;
+    FixedRule fixed = fixedSystemTableRule(user, table, action);
+    if (fixed != FixedRule.NO_OPINION) {
+      return fixed == FixedRule.ALLOW;
     }
     if (user == null) {
       return false;
     }
     AclSnapshot snapshot = acls.current();
-    if (table == null) {
-      // the historical global scope call: access to hbase:acl itself is governed by the fixed
-      // rules above, a null table must not reach its cached grants
-      return authorizeUserGlobal(snapshot, user, action);
-    }
     if (authorizeUserNamespace(snapshot, user, table.getNamespaceAsString(), action)) {
       return true;
     }
@@ -309,9 +305,9 @@ public final class AuthManager {
    */
   public boolean authorizeUserFamily(User user, TableName table, byte[] family,
     Permission.Action action) {
-    Boolean fixed = fixedSystemTableRule(user, table, action);
-    if (fixed != null) {
-      return fixed;
+    FixedRule fixed = fixedSystemTableRule(user, table, action);
+    if (fixed != FixedRule.NO_OPINION) {
+      return fixed == FixedRule.ALLOW;
     }
     AclSnapshot snapshot = acls.current();
     if (
@@ -351,9 +347,9 @@ public final class AuthManager {
    */
   public boolean authorizeCell(User user, TableName table, Cell cell, Permission.Action action) {
     // fixed rules for hbase:meta / hbase:acl take precedence over cell tags
-    Boolean fixed = fixedSystemTableRule(user, table, action);
-    if (fixed != null) {
-      return fixed;
+    FixedRule fixed = fixedSystemTableRule(user, table, action);
+    if (fixed != FixedRule.NO_OPINION) {
+      return fixed == FixedRule.ALLOW;
     }
     try {
       assert cell instanceof ExtendedCell;

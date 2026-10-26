@@ -116,13 +116,16 @@ public class TestAuthManager {
   }
 
   @Test
-  public void testNullTableKeepsGlobalScopeSemantics() throws Exception {
-    // table == null is the historical "global scope" call, it must not hit the acl fixed rules
+  public void testNullTableIsTreatedAsTheAclTable() throws Exception {
+    // HBASE-7373: a null table is checked as hbase:acl, whose fixed rule is superuser only
     assertFalse(authManager.authorizeUserTable(george, null, Permission.Action.READ));
+    // global grants do not satisfy the acl fixed rule either
     applyFullSnapshot(
       snapshot(globalEntry(), userPerms("george", globalPerm(Permission.Action.READ))));
-    assertTrue(authManager.authorizeUserTable(george, null, Permission.Action.READ));
-    assertTrue(authManager.accessUserTable(george, null, Permission.Action.READ));
+    assertFalse(authManager.authorizeUserTable(george, null, Permission.Action.READ));
+    assertFalse(authManager.accessUserTable(george, null, Permission.Action.READ));
+    assertTrue(authManager.authorizeUserTable(User.getCurrent(), null, Permission.Action.READ));
+    assertTrue(authManager.accessUserTable(User.getCurrent(), null, Permission.Action.READ));
   }
 
   @Test
