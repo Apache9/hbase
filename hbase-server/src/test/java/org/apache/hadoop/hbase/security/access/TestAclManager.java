@@ -19,16 +19,16 @@ package org.apache.hadoop.hbase.security.access;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.MockNoopMasterServices;
+import org.apache.hadoop.hbase.master.procedure.ProcedurePrepareLatch;
 import org.apache.hadoop.hbase.master.procedure.RefreshAclProcedure;
 import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.testclassification.SecurityTests;
@@ -37,11 +37,6 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import org.apache.hbase.thirdparty.com.google.common.collect.ArrayListMultimap;
-import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
-
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
 
 @InterfaceAudience.Private
 @Tag(SecurityTests.TAG)
@@ -52,6 +47,7 @@ public class TestAclManager {
   private static final TableName TEST_TABLE2 = TableName.valueOf("aclManagerTable2");
 
   private final List<RefreshAclProcedure> submitted = new ArrayList<>();
+  private long nextProcedureId = 100;
 
   private AclManager aclManager;
 
@@ -60,11 +56,12 @@ public class TestAclManager {
     Configuration conf = HBaseConfiguration.create();
     conf.set(Superusers.SUPERUSER_CONF_KEY, "admin");
     Superusers.initialize(conf);
-    // this test only exercises the push pipeline: no acl table access, no permission checks
+    // this test only exercises the submit pipeline: no acl table access, no permission checks
     aclManager = new AclManager(conf, new MockNoopMasterServices(conf)) {
       @Override
-      void submitPushProcedure(RefreshAclProcedure procedure) {
+      long submitProcedure(RefreshAclProcedure procedure) {
         submitted.add(procedure);
+        return nextProcedureId++;
       }
     };
   }
@@ -77,69 +74,75 @@ public class TestAclManager {
   }
 
   @Test
-  public void testPendingUpdatesMergePerEntry() {
-    aclManager.onEntryUpdate(100, replace(TEST_TABLE, "george", Permission.Action.READ));
-    aclManager.onEntryUpdate(110, replace(TEST_TABLE, "george", Permission.Action.WRITE));
-    aclManager.onEntryUpdate(120, replace(TEST_TABLE2, "hubert", Permission.Action.READ));
-    // one push is in flight for all of them
+  public void testChangesAreCoalescedIntoOneProcedure() {
+    CompletableFuture<Long> first = grant(TEST_TABLE, "george");
+    // the first change starts a procedure right away and its caller gets the id
     assertEquals(1, submitted.size());
+    assertEquals(100L, first.getNow(0L));
+    assertEquals(1, submitted.get(0).getOpCount());
+    assertEquals(0L, submitted.get(0).getPreviousProcedureId());
 
-    AclChangeSet changeSet = aclManager.drainPending();
-    assertNotNull(changeSet);
-    // the latest write of an entry wins and each entry appears at most once
-    assertEquals(2, changeSet.getUpdates().size());
-    assertEquals(120, changeSet.getTs());
-    for (AclEntryUpdate update : changeSet.getUpdates()) {
-      if (update.getEntry().toStringUtf8().equals(TEST_TABLE.getNameAsString())) {
-        // the later write of the entry won
-        assertFalse(update.getDeleted());
-        assertEquals(1, update.getPerms().getUserPermissionsCount());
-        assertEquals("george", update.getPerms().getUserPermissions(0).getUser().toStringUtf8());
-      }
-    }
-    assertNull(aclManager.drainPending());
-  }
-
-  @Test
-  public void testSingleFlight() {
-    aclManager.onEntryUpdate(100, replace(TEST_TABLE, "george", Permission.Action.READ));
+    // changes arriving while it runs queue up for the next procedure
+    CompletableFuture<Long> second = grant(TEST_TABLE, "hubert");
+    CompletableFuture<Long> third = grant(TEST_TABLE2, "harold");
     assertEquals(1, submitted.size());
+    assertFalse(second.isDone());
 
-    // updates arriving while a push runs only queue up
-    aclManager.onEntryUpdate(110, replace(TEST_TABLE, "george", Permission.Action.WRITE));
-    aclManager.onEntryUpdate(120, replace(TEST_TABLE2, "hubert", Permission.Action.READ));
-    assertEquals(1, submitted.size());
-    assertNotNull(aclManager.drainPending());
-
-    // an update arriving after the drain, while the push is still running
-    aclManager.onEntryUpdate(130, replace(TEST_TABLE, "george", Permission.Action.ADMIN));
-    assertEquals(1, submitted.size());
-
-    // it goes into the next push once the running one completes
-    aclManager.onPushComplete();
+    // the queued backlog lands in one procedure, chained behind the running one
+    aclManager.onProcedureComplete();
     assertEquals(2, submitted.size());
-    assertNotNull(aclManager.drainPending());
+    assertEquals(101L, second.getNow(0L));
+    assertEquals(101L, third.getNow(0L));
+    assertEquals(2, submitted.get(1).getOpCount());
+    assertEquals(100L, submitted.get(1).getPreviousProcedureId());
 
-    // nothing pending at completion: no further push
-    aclManager.onPushComplete();
+    // nothing queued at completion: no further procedure
+    aclManager.onProcedureComplete();
     assertEquals(2, submitted.size());
   }
 
   @Test
-  public void testDeletedUpdateQueued() {
-    aclManager.onEntryUpdate(100, replace(TEST_TABLE, "george", Permission.Action.READ));
-    aclManager.onEntryUpdate(150, AclSnapshot.EntryUpdate.deleted(TEST_TABLE.getName()));
-    AclChangeSet changeSet = aclManager.drainPending();
-    assertNotNull(changeSet);
-    assertEquals(1, changeSet.getUpdates().size());
-    assertTrue(changeSet.getUpdates().get(0).getDeleted());
-    assertEquals(150, changeSet.getTs());
+  public void testCleanupSubmitsImmediatelyAndChains() {
+    grant(TEST_TABLE, "george");
+    assertEquals(1, submitted.size());
+
+    // the cleanup of a deleted table must be submitted before its procedure can go on, even
+    // while another acl procedure runs: it chains behind it so the writes stay in order
+    long cleanup = aclManager.removeTablePermissions(TEST_TABLE);
+    assertEquals(2, submitted.size());
+    assertEquals(101L, cleanup);
+    assertEquals(100L, submitted.get(1).getPreviousProcedureId());
+    assertEquals(1, submitted.get(1).getOpCount());
+
+    long namespaceCleanup = aclManager.removeNamespacePermissions("ns");
+    assertEquals(3, submitted.size());
+    assertEquals(102L, namespaceCleanup);
+    assertEquals(101L, submitted.get(2).getPreviousProcedureId());
   }
 
-  private AclSnapshot.EntryUpdate replace(TableName table, String user, Permission.Action action) {
-    ListMultimap<String, UserPermission> perms = ArrayListMultimap.create();
-    perms.put(user,
-      new UserPermission(user, Permission.newBuilder(table).withActions(action).build()));
-    return AclSnapshot.EntryUpdate.replace(table.getName(), perms);
+  @Test
+  public void testChangesReachTheTableInQueuedOrder() {
+    grant(TEST_TABLE, "george");
+    long cleanup = aclManager.removeTablePermissions(TEST_TABLE);
+    CompletableFuture<Long> queued = grant(TEST_TABLE, "hubert");
+    // the queued change waits for the next procedure
+    assertEquals(2, submitted.size());
+    assertFalse(queued.isDone());
+
+    // every procedure chains behind the previous one, so the writes reach the table in the
+    // order the changes were queued; the backlog is submitted once they all completed
+    aclManager.onProcedureComplete();
+    assertFalse(queued.isDone());
+    aclManager.onProcedureComplete();
+    assertEquals(3, submitted.size());
+    assertEquals(101L, submitted.get(2).getPreviousProcedureId());
+    assertEquals(102L, queued.getNow(0L));
+    assertEquals(cleanup, submitted.get(1).getPreviousProcedureId() + 1);
+  }
+
+  private CompletableFuture<Long> grant(TableName table, String user) {
+    UserPermission perm = new UserPermission(user,
+      Permission.newBuilder(table).withActions(Permission.Action.READ).build());
+    return aclManager.grant(perm, false, ProcedurePrepareLatch.getNoopLatch());
   }
 }

@@ -23,37 +23,24 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
 
 /**
- * One ACL change set to broadcast to the region servers: the entry updates of a drained push round,
- * plus the master assigned timestamp of the writes it was built from. Produced by
- * {@link AclManager} , carried through {@code RefreshAclProcedure} and its per-server children and
- * applied against the region server's {@link AclSnapshot}.
+ * One ACL change set to broadcast to the region servers: the entry states derived from one batch of
+ * writes, plus the master assigned timestamp of the newest one. Produced by {@link AclManager},
+ * carried through {@code RefreshAclProcedure} and its per-server children and applied on top of the
+ * region server's {@link AclSnapshot}.
  */
 @InterfaceAudience.Private
 public final class AclChangeSet {
 
   private final List<AclEntryUpdate> updates;
-  private final boolean full;
   private final long ts;
 
-  public AclChangeSet(List<AclEntryUpdate> updates, boolean full, long ts) {
+  public AclChangeSet(List<AclEntryUpdate> updates, long ts) {
     this.updates = updates;
-    this.full = full;
     this.ts = ts;
   }
 
   public List<AclEntryUpdate> getUpdates() {
     return updates;
-  }
-
-  /**
-   * True when {@link #getUpdates()} carries the complete {@code hbase:acl} content and the receiver
-   * must replace its whole snapshot with it (apply on an empty base) instead of applying the entry
-   * changes on top of the current one. There is one such round: the push a master sends when it
-   * becomes active, closing the window of a write the previous master made to the table but did not
-   * broadcast before it died; see {@link AclManager#initialize()}.
-   */
-  public boolean isFull() {
-    return full;
   }
 
   public long getTs() {

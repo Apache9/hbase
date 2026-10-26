@@ -40,9 +40,8 @@ import org.slf4j.LoggerFactory;
  * <ul>
  * <li><b>startup load</b>: {@link #reloadFromTable()} after registering with the master, non
  * superuser requests are held until it completes;</li>
- * <li><b>master pushes</b>: {@link #applyUpdates} / {@link #applyFullSnapshot} from
- * {@code RefreshAclRemoteCallable}; applies are synchronous, so a completed refresh procedure means
- * the change is already visible;</li>
+ * <li><b>master pushes</b>: {@link #applyUpdates} from {@code RefreshAclRemoteCallable}; applies
+ * are synchronous, so a completed refresh procedure means the change is already visible;</li>
  * <li><b>periodic reload</b>: {@link #reloadFromTable()} on an internal chore, the fallback for
  * lost pushes and for direct writes that bypass the master.</li>
  * </ul>
@@ -159,20 +158,6 @@ public final class AclStore implements Closeable, AclView {
       return;
     }
     snapshot = current.applyEntryUpdates(updates, ts);
-  }
-
-  /**
-   * Applies a full change set pushed by the master: the entry states replace the whole snapshot,
-   * see {@link AclChangeSet#isFull()}. Dropped when not newer than the current snapshot, see the
-   * class javadoc. Does not block authorization checks.
-   */
-  public synchronized void applyFullSnapshot(long ts, List<AclSnapshot.EntryUpdate> updates) {
-    AclSnapshot current = snapshot;
-    if (ts <= current.getTs()) {
-      LOG.debug("Dropping stale ACL full snapshot: ts={}, applied={}", ts, current.getTs());
-      return;
-    }
-    snapshot = AclSnapshot.empty().applyEntryUpdates(updates, ts);
   }
 
   /**

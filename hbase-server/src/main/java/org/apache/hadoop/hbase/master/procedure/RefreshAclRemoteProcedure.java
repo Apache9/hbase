@@ -67,8 +67,8 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
   @Override
   protected void serializeStateData(ProcedureStateSerializer serializer) throws IOException {
     RefreshAclRemoteStateData.Builder builder = RefreshAclRemoteStateData.newBuilder();
-    builder.setTargetServer(ProtobufUtil.toServerName(targetServer)).setFull(changeSet.isFull())
-      .setTs(changeSet.getTs()).setState(state).addAllUpdates(changeSet.getUpdates());
+    builder.setTargetServer(ProtobufUtil.toServerName(targetServer)).setTs(changeSet.getTs())
+      .setState(state).addAllUpdates(changeSet.getUpdates());
     if (this.remoteError != null) {
       ErrorHandlingProtos.ForeignExceptionMessage fem =
         ForeignExceptionUtil.toProtoForeignException(remoteError);
@@ -81,7 +81,7 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
   protected void deserializeStateData(ProcedureStateSerializer serializer) throws IOException {
     RefreshAclRemoteStateData data = serializer.deserialize(RefreshAclRemoteStateData.class);
     targetServer = ProtobufUtil.toServerName(data.getTargetServer());
-    changeSet = new AclChangeSet(data.getUpdatesList(), data.getFull(), data.getTs());
+    changeSet = new AclChangeSet(data.getUpdatesList(), data.getTs());
     state = data.getState();
     if (data.hasError()) {
       this.remoteError = ForeignExceptionUtil.toException(data.getError());
@@ -92,12 +92,11 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
   public Optional<RemoteProcedureDispatcher.RemoteOperation>
     remoteCallBuild(MasterProcedureEnv masterProcedureEnv, ServerName remote) {
     assert targetServer.equals(remote);
-    return Optional.of(new RSProcedureDispatcher.ServerOperation(this, getProcId(),
-      RefreshAclRemoteCallable.class,
-      RefreshAclRemoteStateData.newBuilder().setTargetServer(ProtobufUtil.toServerName(remote))
-        .setFull(changeSet.isFull()).setTs(changeSet.getTs()).addAllUpdates(changeSet.getUpdates())
-        .build().toByteArray(),
-      masterProcedureEnv.getMasterServices().getMasterActiveTime()));
+    return Optional.of(
+      new RSProcedureDispatcher.ServerOperation(this, getProcId(), RefreshAclRemoteCallable.class,
+        RefreshAclRemoteStateData.newBuilder().setTargetServer(ProtobufUtil.toServerName(remote))
+          .setTs(changeSet.getTs()).addAllUpdates(changeSet.getUpdates()).build().toByteArray(),
+        masterProcedureEnv.getMasterServices().getMasterActiveTime()));
   }
 
   @Override
@@ -134,8 +133,6 @@ public class RefreshAclRemoteProcedure extends ServerRemoteProcedure
     sb.append(targetServer);
     sb.append(", ts=");
     sb.append(changeSet != null ? changeSet.getTs() : 0L);
-    sb.append(", full=");
-    sb.append(changeSet != null && changeSet.isFull());
     sb.append(", updates=");
     sb.append(changeSet != null ? changeSet.getUpdates().size() : 0);
   }

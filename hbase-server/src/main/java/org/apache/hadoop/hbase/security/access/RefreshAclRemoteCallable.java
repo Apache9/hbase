@@ -37,7 +37,6 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.R
 public class RefreshAclRemoteCallable extends BaseRSProcedureCallable {
 
   private List<AclSnapshot.EntryUpdate> updates;
-  private boolean full;
   private long ts;
 
   @Override
@@ -47,18 +46,13 @@ public class RefreshAclRemoteCallable extends BaseRSProcedureCallable {
       // authorization disabled on this server: it keeps no ACL snapshot
       return null;
     }
-    if (full) {
-      store.applyFullSnapshot(ts, updates);
-    } else {
-      store.applyUpdates(ts, updates);
-    }
+    store.applyUpdates(ts, updates);
     return null;
   }
 
   @Override
   protected void initParameter(byte[] parameter) throws InvalidProtocolBufferException {
     RefreshAclRemoteStateData data = RefreshAclRemoteStateData.parseFrom(parameter);
-    full = data.getFull();
     ts = data.getTs();
     updates = new ArrayList<>(data.getUpdatesCount());
     for (AclEntryUpdate update : data.getUpdatesList()) {

@@ -106,34 +106,6 @@ public class TestAclStore {
     assertEquals(200, store.getAppliedTimestamp());
   }
 
-  @Test
-  public void testFullSnapshotAdvancesWatermark() throws IOException {
-    store.applyFullSnapshot(200, snapshot(replace(Permission.Action.READ)));
-    assertTrue(canRead());
-    assertEquals(200, store.getAppliedTimestamp());
-
-    // older than the snapshot content: dropped
-    store.applyUpdates(150, Collections.singletonList(replace(Permission.Action.WRITE)));
-    assertTrue(canRead());
-    assertFalse(canWrite());
-
-    // newer than the snapshot: applied on top of it
-    store.applyUpdates(250, Collections.singletonList(replace(Permission.Action.WRITE)));
-    assertTrue(canWrite());
-    assertEquals(250, store.getAppliedTimestamp());
-  }
-
-  @Test
-  public void testStaleFullSnapshotIsDropped() throws IOException {
-    store.applyUpdates(300, Collections.singletonList(replace(Permission.Action.WRITE)));
-    assertTrue(canWrite());
-
-    // an older full snapshot (e.g. a replayed procedure after a master failover) is dropped
-    store.applyFullSnapshot(200, snapshot(replace(Permission.Action.READ)));
-    assertTrue(canWrite());
-    assertFalse(canRead());
-  }
-
   private AclSnapshot.EntryUpdate replace(Permission.Action action) {
     ListMultimap<String, UserPermission> perms = ArrayListMultimap.create();
     perms.put("george",

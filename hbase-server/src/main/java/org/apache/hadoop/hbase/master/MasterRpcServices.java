@@ -75,6 +75,7 @@ import org.apache.hadoop.hbase.master.locking.LockProcedure;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureEnv;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureUtil;
 import org.apache.hadoop.hbase.master.procedure.MasterProcedureUtil.NonceProcedureRunnable;
+import org.apache.hadoop.hbase.master.procedure.ProcedurePrepareLatch;
 import org.apache.hadoop.hbase.master.procedure.RestoreBackupSystemTableProcedure;
 import org.apache.hadoop.hbase.master.procedure.ServerCrashProcedure;
 import org.apache.hadoop.hbase.master.replication.AbstractPeerNoLockProcedure;
@@ -116,6 +117,7 @@ import org.apache.hadoop.hbase.util.DNS;
 import org.apache.hadoop.hbase.util.DNS.ServerType;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ForeignExceptionUtil;
+import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -2942,9 +2944,15 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
           ShadedAccessControlUtil.toUserPermission(request.getUserPermission());
         boolean mergeExistingPermissions = request.getMergeExistingPermissions();
         server.cpHost.preGrant(perm, mergeExistingPermissions);
-        server.getAclManager().grant(perm, mergeExistingPermissions);
+        // old clients only know the synchronous behaviour: hold them until the write landed;
+        // new clients get the procedure to wait for instead, see GrantResponse
+        ProcedurePrepareLatch syncLatch = ProcedurePrepareLatch.createLatch(4, 0);
+        CompletableFuture<Long> procedureId =
+          server.getAclManager().grant(perm, mergeExistingPermissions, syncLatch);
         server.cpHost.postGrant(perm, mergeExistingPermissions);
-        return GrantResponse.getDefaultInstance();
+        long procId = FutureUtils.get(procedureId);
+        syncLatch.await();
+        return GrantResponse.newBuilder().setProcId(procId).build();
       } else {
         throw new DoNotRetryIOException(
           new UnsupportedOperationException(AccessController.class.getName() + " is not loaded"));
@@ -2963,9 +2971,13 @@ public class MasterRpcServices extends HBaseRpcServicesBase<HMaster>
         final UserPermission userPermission =
           ShadedAccessControlUtil.toUserPermission(request.getUserPermission());
         server.cpHost.preRevoke(userPermission);
-        server.getAclManager().revoke(userPermission);
+        ProcedurePrepareLatch syncLatch = ProcedurePrepareLatch.createLatch(4, 0);
+        CompletableFuture<Long> procedureId =
+          server.getAclManager().revoke(userPermission, syncLatch);
         server.cpHost.postRevoke(userPermission);
-        return RevokeResponse.getDefaultInstance();
+        long procId = FutureUtils.get(procedureId);
+        syncLatch.await();
+        return RevokeResponse.newBuilder().setProcId(procId).build();
       } else {
         throw new DoNotRetryIOException(
           new UnsupportedOperationException(AccessController.class.getName() + " is not loaded"));

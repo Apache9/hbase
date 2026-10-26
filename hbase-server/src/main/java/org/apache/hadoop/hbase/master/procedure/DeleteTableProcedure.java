@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.mob.MobConstants;
 import org.apache.hadoop.hbase.mob.MobUtils;
+import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureUtil;
@@ -64,10 +65,15 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ProcedureProtos;
 public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<DeleteTableState> {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteTableProcedure.class);
 
+  /** Backoff while waiting for the acl cleanup procedure. */
+  private static final int ACL_WAIT_BACKOFF_MSEC = 100;
+
   private List<RegionInfo> regions;
   private TableName tableName;
   private RetryCounter retryCounter;
   private String recoverySnapshotName;
+  /** Procedure clearing the permissions of the deleted table. */
+  private long aclProcedureId;
 
   public DeleteTableProcedure() {
     // Required by the Procedure framework to create the procedure on replay
@@ -149,8 +155,24 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
         case DELETE_TABLE_POST_OPERATION:
           postDelete(env);
           retryCounter = null;
+          setNextState(DeleteTableState.DELETE_TABLE_REMOVE_ACL);
+          break;
+        case DELETE_TABLE_REMOVE_ACL: {
+          // the permission cleanup is applied by an acl procedure like every other acl change;
+          // its id is recorded here so this procedure can end only once the cleanup landed
+          aclProcedureId =
+            env.getMasterServices().getAclManager().removeTablePermissions(getTableName());
+          LOG.debug("Acl cleanup of {} submitted as procedure {}", getTableName(), aclProcedureId);
+          setNextState(DeleteTableState.DELETE_TABLE_WAIT_ACL);
+          break;
+        }
+        case DELETE_TABLE_WAIT_ACL: {
+          if (!waitAclProcedure(env)) {
+            return Flow.HAS_MORE_STATE;
+          }
           LOG.debug("Finished {}", this);
           return Flow.NO_MORE_STATE;
+        }
         default:
           throw new UnsupportedOperationException("unhandled state=" + state);
       }
@@ -269,6 +291,9 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
     if (recoverySnapshotName != null) {
       state.setSnapshotName(recoverySnapshotName);
     }
+    if (aclProcedureId != 0) {
+      state.setAclProcedureId(aclProcedureId);
+    }
     serializer.serialize(state.build());
   }
 
@@ -291,6 +316,29 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
     if (state.hasSnapshotName()) {
       recoverySnapshotName = state.getSnapshotName();
     }
+    aclProcedureId = state.getAclProcedureId();
+  }
+
+  /**
+   * Waits for the acl procedure recorded in {@link #aclProcedureId} without blocking a procedure
+   * thread: suspend and come back later while it runs.
+   * @return true once the acl procedure is done and this procedure can end
+   */
+  private boolean waitAclProcedure(final MasterProcedureEnv env)
+    throws ProcedureSuspendedException {
+    if (!env.getMasterServices().getMasterProcedureExecutor().isFinished(aclProcedureId)) {
+      setTimeout(ACL_WAIT_BACKOFF_MSEC);
+      setState(ProcedureProtos.ProcedureState.WAITING_TIMEOUT);
+      skipPersistence();
+      throw new ProcedureSuspendedException();
+    }
+    Procedure<?> aclProcedure =
+      env.getMasterServices().getMasterProcedureExecutor().getResult(aclProcedureId);
+    if (aclProcedure != null && !aclProcedure.isSuccess()) {
+      // the table is gone either way; the periodic reload of the region servers converges
+      LOG.warn("Acl cleanup procedure {} of {} failed", aclProcedureId, getTableName());
+    }
+    return true;
   }
 
   private boolean prepareDelete(final MasterProcedureEnv env) throws IOException {

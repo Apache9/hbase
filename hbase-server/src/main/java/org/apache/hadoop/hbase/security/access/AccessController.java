@@ -93,6 +93,7 @@ import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.MasterServices;
+import org.apache.hadoop.hbase.master.procedure.ProcedurePrepareLatch;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.quotas.GlobalQuotaSettings;
 import org.apache.hadoop.hbase.regionserver.BloomType;
@@ -738,7 +739,9 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
         String owner = getActiveUser(c).getShortName();
         UserPermission userPermission = new UserPermission(owner,
           Permission.newBuilder(desc.getTableName()).withActions(Action.values()).build());
-        getAclManager(c).grant(userPermission, false);
+        // applied asynchronously by an acl procedure, the owner grant does not need to land
+        // before this hook returns
+        getAclManager(c).grant(userPermission, false, ProcedurePrepareLatch.getNoopLatch());
       }
     }
   }
@@ -747,12 +750,6 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
   public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> c, TableName tableName)
     throws IOException {
     requirePermission(c, "deleteTable", tableName, null, null, Action.ADMIN, Action.CREATE);
-  }
-
-  @Override
-  public void postDeleteTable(ObserverContext<MasterCoprocessorEnvironment> c,
-    final TableName tableName) throws IOException {
-    getAclManager(c).removeTablePermissions(tableName);
   }
 
   @Override
@@ -781,7 +778,7 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
     List<UserPermission> perms = tableAcls.get(tableName);
     if (perms != null) {
       for (UserPermission perm : perms) {
-        getAclManager(ctx).grant(perm, false);
+        getAclManager(ctx).grant(perm, false, ProcedurePrepareLatch.getNoopLatch());
       }
     }
     tableAcls.remove(tableName);
@@ -826,7 +823,7 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
     String owner = getActiveUser(c).getShortName();
     UserPermission userperm = new UserPermission(owner,
       Permission.newBuilder(currentDesc.getTableName()).withActions(Action.values()).build());
-    getAclManager(c).grant(userperm, false);
+    getAclManager(c).grant(userperm, false, ProcedurePrepareLatch.getNoopLatch());
   }
 
   @Override
@@ -1033,13 +1030,6 @@ public class AccessController implements MasterCoprocessor, RegionCoprocessor,
   public void preDeleteNamespace(ObserverContext<MasterCoprocessorEnvironment> ctx,
     String namespace) throws IOException {
     requireGlobalPermission(ctx, "deleteNamespace", Action.ADMIN, namespace);
-  }
-
-  @Override
-  public void postDeleteNamespace(ObserverContext<MasterCoprocessorEnvironment> ctx,
-    final String namespace) throws IOException {
-    getAclManager(ctx).removeNamespacePermissions(namespace);
-    LOG.info(namespace + " entry deleted in " + PermissionStorage.ACL_TABLE_NAME + " table.");
   }
 
   @Override

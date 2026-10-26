@@ -134,6 +134,8 @@ enum DeleteTableState {
   DELETE_TABLE_UNASSIGN_REGIONS = 5;
   DELETE_TABLE_POST_OPERATION = 6;
   DELETE_TABLE_SNAPSHOT = 7;
+  DELETE_TABLE_REMOVE_ACL = 8;
+  DELETE_TABLE_WAIT_ACL = 9;
 }
 
 message DeleteTableStateData {
@@ -141,6 +143,8 @@ message DeleteTableStateData {
   required TableName table_name = 2;
   repeated RegionInfo region_info = 3;
   optional string snapshot_name = 4;
+  // acl procedure clearing the permissions of the deleted table
+  optional uint64 acl_procedure_id = 5 [default = 0];
 }
 
 enum CreateNamespaceState {
@@ -172,11 +176,15 @@ enum DeleteNamespaceState {
   DELETE_NAMESPACE_REMOVE_FROM_ZK = 3[deprecated=true];
   DELETE_NAMESPACE_DELETE_DIRECTORIES = 4;
   DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA = 5;
+  DELETE_NAMESPACE_REMOVE_ACL = 6;
+  DELETE_NAMESPACE_WAIT_ACL = 7;
 }
 
 message DeleteNamespaceStateData {
   required string namespace_name = 1;
   optional NamespaceDescriptor namespace_descriptor = 2;
+  // acl procedure clearing the permissions of the deleted namespace
+  optional uint64 acl_procedure_id = 3 [default = 0];
 }
 
 enum EnableTableState {
@@ -715,7 +723,7 @@ message SwitchRpcThrottleRemoteStateData {
 }
 
 enum RefreshAclState {
-  REFRESH_ACL_DRAIN_PENDING = 1;
+  REFRESH_ACL_APPLY = 1;
   REFRESH_ACL_DISPATCH = 2;
 }
 
@@ -727,18 +735,35 @@ message AclEntryUpdate {
   optional bool deleted = 3 [default = false];
 }
 
+// one queued ACL change to write to hbase:acl
+message AclOp {
+  enum Type {
+    GRANT = 1;
+    REVOKE = 2;
+    REMOVE_TABLE = 3;
+    REMOVE_NAMESPACE = 4;
+  }
+  required Type type = 1;
+  optional UserPermission user_permission = 2;
+  optional bool merge_existing = 3 [default = false];
+  optional bytes table_name = 4;
+  optional bytes namespace_name = 5;
+}
+
 message RefreshAclStateData {
-  repeated AclEntryUpdate updates = 1;
-  // true = full snapshot (swap on RS), false = incremental (apply on RS)
-  optional bool full = 2 [default = false];
-  // master assigned timestamp, used by the RS side watermark filter
+  // the queued changes to apply, fixed when the procedure is created
+  repeated AclOp ops = 1;
+  // entry updates derived from the writes, filled in after the apply step and broadcast
+  repeated AclEntryUpdate updates = 4;
+  // master assigned timestamp of the writes, used by the RS side watermark filter
   optional uint64 ts = 3 [default = 0];
+  // procedure chained in front of this one: its changes reach hbase:acl first
+  optional uint64 previous_procedure_id = 5 [default = 0];
 }
 
 message RefreshAclRemoteStateData {
   required ServerName target_server = 1;
   repeated AclEntryUpdate updates = 2;
-  optional bool full = 3 [default = false];
   optional uint64 ts = 4 [default = 0];
   optional ServerRemoteProcedureState state = 5;
   optional ForeignExceptionMessage error = 6;

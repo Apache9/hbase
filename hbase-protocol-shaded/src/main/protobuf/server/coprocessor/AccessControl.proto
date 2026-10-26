@@ -93,6 +93,9 @@ message GrantRequest {
 }
 
 message GrantResponse {
+  // id of the procedure applying the grant; present when the client is new enough to
+  // wait for it, absent semantics for old clients which block on the server side instead
+  optional uint64 proc_id = 1 [default = 0];
 }
 
 message RevokeRequest {
@@ -100,6 +103,8 @@ message RevokeRequest {
 }
 
 message RevokeResponse {
+  // id of the procedure applying the revoke, see GrantResponse
+  optional uint64 proc_id = 1 [default = 0];
 }
 
 message GetUserPermissionsRequest {

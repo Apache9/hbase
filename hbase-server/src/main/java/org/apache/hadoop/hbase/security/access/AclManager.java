@@ -22,12 +22,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.MasterServices;
+import org.apache.hadoop.hbase.master.procedure.ProcedurePrepareLatch;
 import org.apache.hadoop.hbase.master.procedure.RefreshAclProcedure;
 import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
@@ -42,32 +43,35 @@ import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos.Permission.Type;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclOp;
 
 /**
  * Master side ACL holder: the {@code hbase:acl} table is the authoritative store, this class owns
- * the master's {@link AclSnapshot} of it and drives everything around it:
+ * the master's {@link AclSnapshot} of it and drives every change to it:
  * <ul>
- * <li>performs permission updates and queries on {@code hbase:acl} (all writes go through this
- * class);</li>
- * <li>assigns the monotonic timestamps of its writes;</li>
- * <li>keeps its snapshot in step with every write (the entry state is applied synchronously, so the
- * master never lags behind its own writes and needs no periodic reload);</li>
- * <li>pushes the changes to all region servers through a single in-flight
- * {@link RefreshAclProcedure}: updates arriving while a push is running are merged into the next
- * one, so at most one broadcast is in flight and pushes are naturally coalesced.</li>
+ * <li>grant, revoke and the cleanup of a removed table or namespace are queued here as
+ * {@link PendingOp}s and end up in a {@link RefreshAclProcedure}, which writes them to
+ * {@code hbase:acl} and then broadcasts the resulting entry states to all region servers;</li>
+ * <li>because the writes happen inside the procedure, they are persisted with it before the caller
+ * hears back: a master failover replays them from the procedure store and no update can fall into
+ * the gap between a table write and its broadcast;</li>
+ * <li>the master's own snapshot is updated with every write, so it never lags behind its own
+ * changes and needs no periodic reload.</li>
  * </ul>
- * The refresh procedure only updates the region servers; the master applies each change to its own
- * snapshot at write time and is reloaded from the table when it becomes active. Activation also
- * pushes one full round to all region servers, see {@link #initialize()}.
- * <p>
- * The whole write path (timestamp assignment, table write, entry read back, local apply, queueing
- * for broadcast) is serialized, so writes apply locally in their timestamp order and a concurrent
- * write can never overwrite a newer state with an older one. The lock is held across the table
- * write; ACL changes are rare admin operations, this does not hurt.
- * </p>
- * Servers that miss a push (crash, abandonment) converge through their startup load and the
- * periodic reload. Direct writes to {@code hbase:acl} that bypass this class are only picked up by
- * that periodic reload.
+ * A change is queued in the caller's thread and applied asynchronously:
+ * <ul>
+ * <li>{@link #grant} and {@link #revoke} hand back a {@link CompletableFuture} with the id of the
+ * procedure that will apply the change, so an RPC can answer its client with something to wait on,
+ * or block on the {@link ProcedurePrepareLatch} it passes in for the synchronous behaviour old
+ * clients expect;</li>
+ * <li>{@link #removeTablePermissions} and {@link #removeNamespacePermissions} submit right away and
+ * return the procedure id, so the table or namespace procedure that triggered them can record it
+ * and wait for it to finish.</li>
+ * </ul>
+ * A burst of changes is coalesced: at most one procedure is submitted for the queued backlog, and a
+ * procedure submitted while another one is still running is chained behind it, so the changes reach
+ * {@code hbase:acl} in the order they were queued. Direct writes to {@code hbase:acl} that bypass
+ * this class are only picked up by the periodic reload of the region servers.
  */
 @InterfaceAudience.Private
 public class AclManager implements AclView {
@@ -83,18 +87,85 @@ public class AclManager implements AclView {
   /** The master's current ACL snapshot; replaced as a whole on every change. */
   private volatile AclSnapshot snapshot = AclSnapshot.empty();
 
-  /** Latest update per entry; guarded by {@code this}. */
-  private final Map<byte[], PendingUpdate> pending = new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
+  /** Queued changes in arrival order; guarded by {@code this}. */
+  private final List<PendingOp> pending = new ArrayList<>();
 
-  private boolean pushInFlight;
+  /** Number of submitted procedures that have not completed yet; guarded by {@code this}. */
+  private int proceduresInFlight;
 
-  private static final class PendingUpdate {
-    private final long ts;
-    private final AclSnapshot.EntryUpdate update;
+  /** Id of the last submitted procedure, the one the next one chains behind. */
+  private long lastProcedureId;
 
-    PendingUpdate(long ts, AclSnapshot.EntryUpdate update) {
-      this.ts = ts;
-      this.update = update;
+  /**
+   * One queued ACL change. The content is persisted with the procedure that applies it; the ack
+   * fields are transient bookkeeping for the caller that queued it.
+   */
+  public static final class PendingOp {
+    private final AclOp.Type type;
+    private final UserPermission userPermission;
+    private final boolean mergeExisting;
+    private final TableName table;
+    private final String namespace;
+
+    /** Completed with the id of the procedure that applies this change, at submit time. */
+    private final CompletableFuture<Long> ack = new CompletableFuture<>();
+
+    /** Released once the write of this change landed; for old clients, see the class javadoc. */
+    public final ProcedurePrepareLatch syncLatch;
+
+    private PendingOp(AclOp.Type type, UserPermission userPermission, boolean mergeExisting,
+      TableName table, String namespace, ProcedurePrepareLatch syncLatch) {
+      this.type = type;
+      this.userPermission = userPermission;
+      this.mergeExisting = mergeExisting;
+      this.table = table;
+      this.namespace = namespace;
+      this.syncLatch = syncLatch;
+    }
+
+    static PendingOp grant(UserPermission userPermission, boolean mergeExisting,
+      ProcedurePrepareLatch syncLatch) {
+      return new PendingOp(AclOp.Type.GRANT, userPermission, mergeExisting, null, null, syncLatch);
+    }
+
+    static PendingOp revoke(UserPermission userPermission, ProcedurePrepareLatch syncLatch) {
+      return new PendingOp(AclOp.Type.REVOKE, userPermission, false, null, null, syncLatch);
+    }
+
+    static PendingOp removeTable(TableName table) {
+      return new PendingOp(AclOp.Type.REMOVE_TABLE, null, false, table, null, null);
+    }
+
+    static PendingOp removeNamespace(String namespace) {
+      return new PendingOp(AclOp.Type.REMOVE_NAMESPACE, null, false, null, namespace, null);
+    }
+
+    /** For the procedure: a recovered procedure has no callers to acknowledge any more. */
+    public PendingOp(AclOp proto) {
+      this.type = proto.getType();
+      this.userPermission = proto.hasUserPermission()
+        ? ShadedAccessControlUtil.toUserPermission(proto.getUserPermission())
+        : null;
+      this.mergeExisting = proto.getMergeExisting();
+      this.table =
+        proto.hasTableName() ? TableName.valueOf(proto.getTableName().toByteArray()) : null;
+      this.namespace =
+        proto.hasNamespaceName() ? Bytes.toString(proto.getNamespaceName().toByteArray()) : null;
+      this.syncLatch = null;
+    }
+
+    public AclOp toProto() {
+      AclOp.Builder builder = AclOp.newBuilder().setType(type).setMergeExisting(mergeExisting);
+      if (userPermission != null) {
+        builder.setUserPermission(ShadedAccessControlUtil.toUserPermission(userPermission));
+      }
+      if (table != null) {
+        builder.setTableName(ByteString.copyFrom(table.getName()));
+      }
+      if (namespace != null) {
+        builder.setNamespaceName(ByteString.copyFrom(Bytes.toBytes(namespace)));
+      }
+      return builder.build();
     }
   }
 
@@ -109,15 +180,9 @@ public class AclManager implements AclView {
   }
 
   /**
-   * Seeds the timestamp clock, loads the master's snapshot from {@code hbase:acl} and pushes one
-   * full round to all region servers. Called when this master becomes active.
-   * <p>
-   * The full round closes the crash window of the previous master: a write it made to the table but
-   * did not broadcast (crash between the table write and the refresh procedure) would otherwise
-   * linger on the region servers until their periodic reload, so for example a revoked permission
-   * could survive its revocation. It is submitted inside the write lock together with the snapshot
-   * swap, so a later write is queued after it and applies on top of it.
-   * </p>
+   * Loads the master's snapshot from {@code hbase:acl} and seeds the timestamp clock. Called when
+   * this master becomes active; every change made before that is already applied, it was made
+   * through a procedure of the previous master and the table is the authoritative store.
    */
   public void initialize() throws IOException {
     if (!AccessChecker.isAuthorizationSupported(conf)) {
@@ -127,7 +192,6 @@ public class AclManager implements AclView {
       return;
     }
     PermissionStorage.AclTableContent content;
-    long seed;
     synchronized (writeLock) {
       try {
         content = PermissionStorage.loadAllSnapshot(masterServices.getConnection());
@@ -136,15 +200,10 @@ public class AclManager implements AclView {
         // hook
         content = new PermissionStorage.AclTableContent(Collections.emptyMap(), 0L);
       }
-      seed = Math.max(EnvironmentEdgeManager.currentTime(), content.getMaxTimestamp() + 1);
-      // serialized with the write path, so a write either lands before the scan (and is part of
-      // the snapshot) or applies its entry update after the swap
+      long seed = Math.max(EnvironmentEdgeManager.currentTime(), content.getMaxTimestamp() + 1);
       snapshot = AclSnapshot.of(content.getPermissions(), seed);
-      // the push timestamp is the snapshot's own, above every write it contains: a push is never
-      // dropped as stale by an RS and later writes get higher timestamps and apply on top of it
-      submitFullPush(new AclChangeSet(toProto(content.getPermissions()), true, seed));
+      LOG.info("AclManager initialized, timestamps start at {}", seed);
     }
-    LOG.info("AclManager initialized, timestamps start at {}", seed);
   }
 
   /**
@@ -158,70 +217,132 @@ public class AclManager implements AclView {
     return ts;
   }
 
-  /** Grants the given permission, optionally merging it into the existing actions. */
-  public void grant(UserPermission userPermission, boolean mergeExistingPermissions)
-    throws IOException {
+  public long getLastTimestamp() {
+    return current().getTs();
+  }
+
+  /**
+   * Queues a grant. The returned future is completed with the id of the procedure that applies it,
+   * so a caller can either wait for that procedure or, with a {@code syncLatch}, return as soon as
+   * the write landed.
+   */
+  public CompletableFuture<Long> grant(UserPermission userPermission,
+    boolean mergeExistingPermissions, ProcedurePrepareLatch syncLatch) {
+    return enqueue(PendingOp.grant(userPermission, mergeExistingPermissions, syncLatch), false);
+  }
+
+  /** Queues a revoke, see {@link #grant}. */
+  public CompletableFuture<Long> revoke(UserPermission userPermission,
+    ProcedurePrepareLatch syncLatch) {
+    return enqueue(PendingOp.revoke(userPermission, syncLatch), false);
+  }
+
+  /**
+   * Queues the removal of all permissions of a deleted table and submits a procedure for it right
+   * away, so the caller can record the returned procedure id and wait for the cleanup to land.
+   */
+  public long removeTablePermissions(TableName tableName) {
+    return enqueue(PendingOp.removeTable(tableName), true).getNow(0L);
+  }
+
+  /**
+   * Queues the removal of all permissions of a deleted namespace, see
+   * {@link #removeTablePermissions}.
+   */
+  public long removeNamespacePermissions(String namespace) {
+    return enqueue(PendingOp.removeNamespace(namespace), true).getNow(0L);
+  }
+
+  private synchronized CompletableFuture<Long> enqueue(PendingOp op, boolean forceSubmit) {
+    pending.add(op);
+    submitPending(forceSubmit);
+    return op.ack;
+  }
+
+  /**
+   * Takes the queued changes as one procedure and submits it. Nothing is submitted while another
+   * procedure is running unless forced: a burst of changes then lands in one procedure and one
+   * broadcast. The drained changes are part of the procedure from its creation, so they are
+   * persisted with it before its id is handed out.
+   */
+  private void submitPending(boolean forceSubmit) {
+    if (pending.isEmpty() || (!forceSubmit && proceduresInFlight > 0)) {
+      return;
+    }
+    List<PendingOp> ops = new ArrayList<>(pending);
+    pending.clear();
+    RefreshAclProcedure procedure = new RefreshAclProcedure(ops, lastProcedureId);
+    long procedureId = submitProcedure(procedure);
+    lastProcedureId = procedureId;
+    proceduresInFlight++;
+    for (PendingOp op : ops) {
+      op.ack.complete(procedureId);
+    }
+    LOG.debug("Submitted acl update procedure {} with {} changes", procedureId, ops.size());
+  }
+
+  /** Called by {@link RefreshAclProcedure} when it terminates; submits the queued backlog. */
+  public synchronized void onProcedureComplete() {
+    proceduresInFlight--;
+    submitPending(false);
+  }
+
+  /** Visible for testing: hands the procedure over to the procedure executor. */
+  long submitProcedure(RefreshAclProcedure procedure) {
+    return masterServices.getMasterProcedureExecutor().submitProcedure(procedure);
+  }
+
+  /**
+   * Writes one queued change to {@code hbase:acl} and applies it to the local snapshot, recording
+   * the derived entry state for the broadcast. Called by the apply step of
+   * {@link RefreshAclProcedure}, which also acknowledges the caller once the write landed.
+   * @return the master assigned timestamp of the write
+   */
+  public long applyOp(PendingOp op, Map<byte[], AclEntryUpdate> derived) throws IOException {
     synchronized (writeLock) {
-      byte[] entry = PermissionStorage.userPermissionRowKey(userPermission.getPermission());
-      long ts = nextTimestamp();
+      byte[] entry;
+      long ts;
       try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-        PermissionStorage.addUserPermission(conf, userPermission, t, mergeExistingPermissions, ts);
-        announce(t, entry, ts);
+        switch (op.type) {
+          case GRANT:
+            entry = PermissionStorage.userPermissionRowKey(op.userPermission.getPermission());
+            ts = nextTimestamp();
+            PermissionStorage.addUserPermission(conf, op.userPermission, t, op.mergeExisting, ts);
+            break;
+          case REVOKE:
+            entry = PermissionStorage.userPermissionRowKey(op.userPermission.getPermission());
+            ts = nextTimestamp();
+            PermissionStorage.removeUserPermission(conf, op.userPermission, t, ts);
+            break;
+          case REMOVE_TABLE:
+            entry = op.table.getName();
+            ts = nextTimestamp();
+            PermissionStorage.removeTablePermissions(conf, op.table, t, ts);
+            break;
+          case REMOVE_NAMESPACE:
+            entry = Bytes.toBytes(PermissionStorage.toNamespaceEntry(op.namespace));
+            ts = nextTimestamp();
+            PermissionStorage.removeNamespacePermissions(conf, op.namespace, t, ts);
+            break;
+          default:
+            throw new UnsupportedOperationException("unhandled acl op=" + op.type);
+        }
+        ListMultimap<String, UserPermission> perms =
+          PermissionStorage.getPermissions(t, entry, null, null, null, false);
+        AclSnapshot.EntryUpdate update = perms.isEmpty()
+          ? AclSnapshot.EntryUpdate.deleted(entry)
+          : AclSnapshot.EntryUpdate.replace(entry, perms);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Applied acl entry {} change at ts {}, deleted={}", Bytes.toStringBinary(entry),
+            ts, update.isDeleted());
+        }
+        // the write is done and the write path is serialized, the state read back is the current
+        // one: apply it right away so the master's snapshot never lags behind its own writes
+        snapshot = snapshot.applyEntryUpdates(Collections.singletonList(update), ts);
+        derived.put(entry, toProto(update));
+        return ts;
       }
     }
-  }
-
-  /** Revokes the given permission. */
-  public void revoke(UserPermission userPermission) throws IOException {
-    synchronized (writeLock) {
-      byte[] entry = PermissionStorage.userPermissionRowKey(userPermission.getPermission());
-      long ts = nextTimestamp();
-      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-        PermissionStorage.removeUserPermission(conf, userPermission, t, ts);
-        announce(t, entry, ts);
-      }
-    }
-  }
-
-  /** Drops all permissions of a removed table. */
-  public void removeTablePermissions(TableName tableName) throws IOException {
-    synchronized (writeLock) {
-      long ts = nextTimestamp();
-      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-        PermissionStorage.removeTablePermissions(conf, tableName, t, ts);
-        announce(t, tableName.getName(), ts);
-      }
-    }
-  }
-
-  /** Drops all permissions of a removed namespace. */
-  public void removeNamespacePermissions(String namespace) throws IOException {
-    synchronized (writeLock) {
-      byte[] entry = Bytes.toBytes(PermissionStorage.toNamespaceEntry(namespace));
-      long ts = nextTimestamp();
-      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-        PermissionStorage.removeNamespacePermissions(conf, namespace, t, ts);
-        announce(t, entry, ts);
-      }
-    }
-  }
-
-  public List<UserPermission> getUserTablePermissions(TableName table, byte[] cf, byte[] cq,
-    String userName, boolean filter) throws IOException {
-    return PermissionStorage.getUserTablePermissions(masterServices.getConnection(), table, cf, cq,
-      userName, filter);
-  }
-
-  public List<UserPermission> getUserNamespacePermissions(String namespace, String userName,
-    boolean filter) throws IOException {
-    return PermissionStorage.getUserNamespacePermissions(masterServices.getConnection(), namespace,
-      userName, filter);
-  }
-
-  public List<UserPermission> getUserPermissions(String userName, boolean filter)
-    throws IOException {
-    return PermissionStorage.getUserPermissions(masterServices.getConnection(), null, null, null,
-      userName, filter);
   }
 
   /**
@@ -251,6 +372,24 @@ public class AclManager implements AclView {
     return perms;
   }
 
+  public List<UserPermission> getUserTablePermissions(TableName table, byte[] cf, byte[] cq,
+    String userName, boolean filter) throws IOException {
+    return PermissionStorage.getUserTablePermissions(masterServices.getConnection(), table, cf, cq,
+      userName, filter);
+  }
+
+  public List<UserPermission> getUserNamespacePermissions(String namespace, String userName,
+    boolean filter) throws IOException {
+    return PermissionStorage.getUserNamespacePermissions(masterServices.getConnection(), namespace,
+      userName, filter);
+  }
+
+  public List<UserPermission> getUserPermissions(String userName, boolean filter)
+    throws IOException {
+    return PermissionStorage.getUserPermissions(masterServices.getConnection(), null, null, null,
+      userName, filter);
+  }
+
   /**
    * Checks the given permissions of the given user against the authorization cache.
    * @param caller   the request user
@@ -275,99 +414,6 @@ public class AclManager implements AclView {
       }
     }
     return results;
-  }
-
-  /**
-   * Reads the entry state back after the write landed, applies it to the local snapshot and queues
-   * it for broadcast to the region servers.
-   */
-  private void announce(Table t, byte[] entry, long ts) throws IOException {
-    ListMultimap<String, UserPermission> perms =
-      PermissionStorage.getPermissions(t, entry, null, null, null, false);
-    AclSnapshot.EntryUpdate update = perms.isEmpty()
-      ? AclSnapshot.EntryUpdate.deleted(entry)
-      : AclSnapshot.EntryUpdate.replace(entry, perms);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Announcing acl entry {} update at ts {}, deleted={}", Bytes.toStringBinary(entry),
-        ts, update.isDeleted());
-    }
-    // the write is done and the write path is serialized, the state read back is the current one:
-    // apply it right away so the master's snapshot never lags behind its own writes
-    snapshot = snapshot.applyEntryUpdates(Collections.singletonList(update), ts);
-    if (AccessChecker.isAuthorizationSupported(conf)) {
-      onEntryUpdate(ts, update);
-    }
-  }
-
-  /**
-   * Queues an updated entry for broadcast to all region servers. Called by the write path after it
-   * applied the update locally.
-   */
-  public void onEntryUpdate(long ts, AclSnapshot.EntryUpdate update) {
-    synchronized (this) {
-      pending.put(update.getEntry(), new PendingUpdate(ts, update));
-      maybeSubmitPush();
-    }
-  }
-
-  /**
-   * Takes all pending entry updates as one change set and returns {@code null} when there are none.
-   * Called by {@link RefreshAclProcedure} as its first step; the change set is persisted in the
-   * procedure store, so it survives a master failover and is replayed at-least-once.
-   */
-  public synchronized AclChangeSet drainPending() {
-    if (pending.isEmpty()) {
-      return null;
-    }
-    long ts = 0L;
-    List<AclEntryUpdate> updates = new ArrayList<>(pending.size());
-    for (PendingUpdate p : pending.values()) {
-      updates.add(toProto(p.update));
-      ts = Math.max(ts, p.ts);
-    }
-    pending.clear();
-    return new AclChangeSet(updates, false, ts);
-  }
-
-  /**
-   * Called when a push procedure terminates (success or not); submits the next one when updates
-   * piled up meanwhile.
-   */
-  public synchronized void onPushComplete() {
-    pushInFlight = false;
-    maybeSubmitPush();
-  }
-
-  public long getLastTimestamp() {
-    return current().getTs();
-  }
-
-  private void maybeSubmitPush() {
-    if (pushInFlight || pending.isEmpty()) {
-      return;
-    }
-    pushInFlight = true;
-    submitPushProcedure(new RefreshAclProcedure());
-  }
-
-  private synchronized void submitFullPush(AclChangeSet changeSet) {
-    pushInFlight = true;
-    submitPushProcedure(new RefreshAclProcedure(changeSet));
-  }
-
-  /** Visible for testing: hands the push procedure over to the procedure executor. */
-  void submitPushProcedure(RefreshAclProcedure procedure) {
-    masterServices.getMasterProcedureExecutor().submitProcedure(procedure);
-  }
-
-  private static List<AclEntryUpdate>
-    toProto(Map<byte[], ListMultimap<String, UserPermission>> snapshot) {
-    List<AclEntryUpdate> updates = new ArrayList<>(snapshot.size());
-    for (Map.Entry<byte[], ListMultimap<String, UserPermission>> e : snapshot.entrySet()) {
-      updates.add(AclEntryUpdate.newBuilder().setEntry(ByteString.copyFrom(e.getKey()))
-        .setPerms(AccessControlUtil.toUserTablePermissions(e.getValue())).build());
-    }
-    return updates;
   }
 
   private static AclEntryUpdate toProto(AclSnapshot.EntryUpdate update) {
