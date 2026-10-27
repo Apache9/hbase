@@ -135,8 +135,8 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
 
   @Override
   protected void completionCleanup(MasterProcedureEnv env) {
-    // release the single-flight gate and submit the queued backlog behind this procedure
-    env.getMasterServices().getAclManager().onProcedureComplete(getProcId());
+    // release the single-flight flag and schedule the queued backlog
+    env.getMasterServices().getAclManager().onProcedureComplete();
   }
 
   @Override

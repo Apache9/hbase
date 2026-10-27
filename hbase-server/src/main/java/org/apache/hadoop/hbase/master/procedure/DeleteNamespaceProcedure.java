@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.master.procedure;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -27,6 +28,7 @@ import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NamespaceNotFoundException;
 import org.apache.hadoop.hbase.constraint.ConstraintException;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
+import org.apache.hadoop.hbase.procedure2.ProcedureFutureUtil;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
@@ -51,6 +53,9 @@ public class DeleteNamespaceProcedure
 
   private NamespaceDescriptor nsDescriptor;
   private String namespaceName;
+  /** Completed once {@link #aclCleanupProcedure} is available. */
+  private CompletableFuture<Void> aclCleanupFuture;
+  private volatile RefreshAclProcedure aclCleanupProcedure;
 
   public DeleteNamespaceProcedure() {
   }
@@ -93,11 +98,24 @@ public class DeleteNamespaceProcedure
           setNextState(DeleteNamespaceState.DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA);
           break;
         case DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA:
-          removeNamespaceQuota(env, namespaceName);
-          // the permission cleanup is applied by an acl procedure like every other acl change;
-          // as a child of this procedure it is persisted with it and completed before it
-          addChildProcedure(
-            env.getMasterServices().getAclManager().newCleanupProcedure(namespaceName));
+          if (
+            ProcedureFutureUtil.checkFuture(this, this::getAclCleanupFuture,
+              this::setAclCleanupFuture, this::attachAclCleanupChild)
+          ) {
+            return Flow.NO_MORE_STATE;
+          }
+          if (aclCleanupFuture == null) {
+            removeNamespaceQuota(env, namespaceName);
+            // the permission cleanup is applied by an acl procedure like every other acl change;
+            // as a child of this procedure it is persisted with it and completed before it. Only
+            // one acl procedure runs at a time, so its creation may have to wait for a running
+            // one: suspend on the future instead of blocking a procedure worker
+            aclCleanupFuture = new CompletableFuture<>();
+            env.getMasterServices().getAclManager().newCleanupProcedure(namespaceName)
+              .whenComplete(this::setAclCleanupProcedure);
+          }
+          ProcedureFutureUtil.suspendIfNecessary(this, this::setAclCleanupFuture, aclCleanupFuture,
+            env, this::attachAclCleanupChild);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(this + " unhandled state=" + state);
@@ -111,6 +129,27 @@ public class DeleteNamespaceProcedure
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  private CompletableFuture<Void> getAclCleanupFuture() {
+    return aclCleanupFuture;
+  }
+
+  private void setAclCleanupFuture(CompletableFuture<Void> future) {
+    aclCleanupFuture = future;
+  }
+
+  private void setAclCleanupProcedure(RefreshAclProcedure procedure, Throwable error) {
+    if (error != null) {
+      aclCleanupFuture.completeExceptionally(error);
+    } else {
+      aclCleanupProcedure = procedure;
+      aclCleanupFuture.complete(null);
+    }
+  }
+
+  private void attachAclCleanupChild() {
+    addChildProcedure(aclCleanupProcedure);
   }
 
   @Override

@@ -90,11 +90,12 @@ public class AclManager implements AclView {
   /** Queued changes in arrival order; guarded by {@code this}. */
   private final List<PendingOp> pending = new ArrayList<>();
 
-  /** Number of submitted procedures that have not completed yet; guarded by {@code this}. */
-  private int proceduresInFlight;
-
-  /** Id of the last submitted procedure, the one the next one chains behind. */
-  private long lastProcedureId;
+  /**
+   * Whether a {@link RefreshAclProcedure} exists and has not completed yet. Only one runs at a
+   * time: while it does, changes queue up and are picked up by the next procedure; guarded by
+   * {@code this}.
+   */
+  private boolean procedureRunning;
 
   /**
    * One queued ACL change. The content is persisted with the procedure that applies it; the ack
@@ -119,6 +120,12 @@ public class AclManager implements AclView {
     public CompletableFuture<Long> acknowledged() {
       return ack;
     }
+
+    /**
+     * Set for a cleanup op whose caller waits for the procedure carrying it: completed with that
+     * procedure so the caller can run it as its child.
+     */
+    private CompletableFuture<RefreshAclProcedure> cleanupRequest;
 
     /** Released once the write of this change landed; for old clients, see the class javadoc. */
     public final ProcedurePrepareLatch syncLatch;
@@ -248,79 +255,95 @@ public class AclManager implements AclView {
   }
 
   /**
-   * Builds the procedure removing all permissions of a deleted table: it carries the cleanup
-   * together with the changes queued so far, so they reach {@code hbase:acl} in order. The caller
-   * runs it as one of its children, which keeps the cleanup persisted with the caller and done
-   * before the caller completes.
+   * Requests the procedure removing all permissions of a deleted table. It carries the cleanup
+   * together with the changes queued in front of it, so they reach {@code hbase:acl} in order. The
+   * caller runs it as one of its children, which keeps the cleanup persisted with the caller and
+   * done before the caller completes.
+   * <p>
+   * Only one acl procedure runs at a time: when one is already running, the future is completed
+   * once it terminates and the next procedure can be built. Callers on a procedure worker should
+   * suspend on the future ({@code ProcedureFutureUtil}) instead of blocking on it.
+   * </p>
    */
-  public RefreshAclProcedure newCleanupProcedure(TableName tableName) {
-    return buildProcedure(PendingOp.removeTable(tableName));
+  public synchronized CompletableFuture<RefreshAclProcedure>
+    newCleanupProcedure(TableName tableName) {
+    return requestCleanup(PendingOp.removeTable(tableName));
   }
 
   /**
-   * Builds the procedure removing all permissions of a deleted namespace, see
+   * Requests the procedure removing all permissions of a deleted namespace, see
    * {@link #newCleanupProcedure(TableName)}.
    */
-  public RefreshAclProcedure newCleanupProcedure(String namespace) {
-    return buildProcedure(PendingOp.removeNamespace(namespace));
+  public synchronized CompletableFuture<RefreshAclProcedure> newCleanupProcedure(String namespace) {
+    return requestCleanup(PendingOp.removeNamespace(namespace));
   }
 
-  private synchronized RefreshAclProcedure buildProcedure(PendingOp cleanup) {
+  private CompletableFuture<RefreshAclProcedure> requestCleanup(PendingOp cleanup) {
+    CompletableFuture<RefreshAclProcedure> request = new CompletableFuture<>();
+    cleanup.cleanupRequest = request;
     pending.add(cleanup);
-    List<PendingOp> ops = new ArrayList<>(pending);
-    pending.clear();
-    proceduresInFlight++;
-    return new RefreshAclProcedure(ops);
+    maybeSchedule();
+    return request;
   }
 
   private synchronized CompletableFuture<Long> enqueue(PendingOp op) {
     pending.add(op);
-    submitPending();
+    maybeSchedule();
     return op.acknowledged();
   }
 
   /**
-   * Takes the queued changes as one procedure and submits it. Nothing is submitted while another
-   * acl procedure is running: a burst of changes then lands in one procedure and one broadcast, and
-   * the changes reach {@code hbase:acl} in the order they were queued. The drained changes are part
-   * of the procedure from its creation, so they are persisted with it before its id is handed out.
+   * Builds the next procedure from the queued changes when none is running. Everything up to the
+   * first cleanup request goes into it, so the changes reach {@code hbase:acl} in the order they
+   * were queued; the procedure is handed to that cleanup's caller to run as its child, or submitted
+   * here when the queue only carries grant and revoke changes. The drained changes are part of the
+   * procedure from its creation, so they are persisted with it before its id is handed out.
    */
-  private void submitPending() {
-    if (pending.isEmpty() || proceduresInFlight > 0) {
+  private void maybeSchedule() {
+    if (procedureRunning || pending.isEmpty()) {
       return;
     }
-    List<PendingOp> ops = new ArrayList<>(pending);
-    pending.clear();
-    RefreshAclProcedure procedure = new RefreshAclProcedure(ops);
-    long procedureId = submitProcedure(procedure);
-    lastProcedureId = procedureId;
-    proceduresInFlight++;
-    for (PendingOp op : ops) {
-      op.acknowledge(procedureId);
+    int cut = pending.size();
+    for (int i = 0; i < pending.size(); i++) {
+      if (pending.get(i).cleanupRequest != null) {
+        cut = i + 1;
+        break;
+      }
     }
-    LOG.debug("Submitted acl update procedure {} with {} changes", procedureId, ops.size());
+    List<PendingOp> ops = new ArrayList<>(pending.subList(0, cut));
+    pending.subList(0, cut).clear();
+    RefreshAclProcedure procedure = new RefreshAclProcedure(ops);
+    procedureRunning = true;
+    PendingOp last = ops.get(ops.size() - 1);
+    if (last.cleanupRequest != null) {
+      // the caller runs it as its child; the calls of the drained changes are acknowledged when
+      // it runs and has an id
+      CompletableFuture<RefreshAclProcedure> request = last.cleanupRequest;
+      last.cleanupRequest = null;
+      request.complete(procedure);
+    } else {
+      long procedureId = submitProcedure(procedure);
+      for (PendingOp op : ops) {
+        op.acknowledge(procedureId);
+      }
+      LOG.debug("Submitted acl update procedure {} with {} changes", procedureId, ops.size());
+    }
   }
 
-  /**
-   * Called by {@link RefreshAclProcedure} when it terminates; records it as the last procedure of
-   * the chain and submits the queued backlog behind it.
-   */
-  public synchronized void onProcedureComplete(long procedureId) {
-    lastProcedureId = procedureId;
-    if (proceduresInFlight > 0) {
-      proceduresInFlight--;
-    }
-    submitPending();
+  /** Called by {@link RefreshAclProcedure} when it terminates; schedules the queued backlog. */
+  public synchronized void onProcedureComplete() {
+    procedureRunning = false;
+    maybeSchedule();
   }
 
   /**
    * Clears the submit state after the procedure executor was restarted under a test: the re-loaded
    * procedures do not run through {@link #submitProcedure} again and would otherwise complete
-   * against a count they never incremented.
+   * against a flag they never set.
    */
   public synchronized void reset() {
     pending.clear();
-    proceduresInFlight = 0;
+    procedureRunning = false;
   }
 
   /** Visible for testing: hands the procedure over to the procedure executor. */

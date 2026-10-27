@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.master.procedure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -41,6 +42,7 @@ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.mob.MobConstants;
 import org.apache.hadoop.hbase.mob.MobUtils;
+import org.apache.hadoop.hbase.procedure2.ProcedureFutureUtil;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureUtil;
@@ -71,6 +73,9 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
   private TableName tableName;
   private RetryCounter retryCounter;
   private String recoverySnapshotName;
+  /** Completed once {@link #aclCleanupProcedure} is available. */
+  private CompletableFuture<Void> aclCleanupFuture;
+  private volatile RefreshAclProcedure aclCleanupProcedure;
 
   public DeleteTableProcedure() {
     // Required by the Procedure framework to create the procedure on replay
@@ -150,14 +155,26 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
           setNextState(DeleteTableState.DELETE_TABLE_POST_OPERATION);
           break;
         case DELETE_TABLE_POST_OPERATION:
-          postDelete(env);
-          retryCounter = null;
-          // the permission cleanup is applied by an acl procedure like every other acl change;
-          // as a child of this procedure it is persisted with it and completed before it, which
-          // is what "the delete is done" means for the permissions of the table
-          addChildProcedure(
-            env.getMasterServices().getAclManager().newCleanupProcedure(getTableName()));
-          LOG.debug("Finished {}", this);
+          if (
+            ProcedureFutureUtil.checkFuture(this, this::getAclCleanupFuture,
+              this::setAclCleanupFuture, this::attachAclCleanupChild)
+          ) {
+            return Flow.NO_MORE_STATE;
+          }
+          if (aclCleanupFuture == null) {
+            postDelete(env);
+            retryCounter = null;
+            // the permission cleanup is applied by an acl procedure like every other acl change;
+            // as a child of this procedure it is persisted with it and completed before it, which
+            // is what "the delete is done" means for the permissions of the table. Only one acl
+            // procedure runs at a time, so its creation may have to wait for a running one: suspend
+            // on the future instead of blocking a procedure worker
+            aclCleanupFuture = new CompletableFuture<>();
+            env.getMasterServices().getAclManager().newCleanupProcedure(getTableName())
+              .whenComplete(this::setAclCleanupProcedure);
+          }
+          ProcedureFutureUtil.suspendIfNecessary(this, this::setAclCleanupFuture, aclCleanupFuture,
+            env, this::attachAclCleanupChild);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException("unhandled state=" + state);
@@ -299,6 +316,28 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
     if (state.hasSnapshotName()) {
       recoverySnapshotName = state.getSnapshotName();
     }
+  }
+
+  private CompletableFuture<Void> getAclCleanupFuture() {
+    return aclCleanupFuture;
+  }
+
+  private void setAclCleanupFuture(CompletableFuture<Void> future) {
+    aclCleanupFuture = future;
+  }
+
+  private void setAclCleanupProcedure(RefreshAclProcedure procedure, Throwable error) {
+    if (error != null) {
+      aclCleanupFuture.completeExceptionally(error);
+    } else {
+      aclCleanupProcedure = procedure;
+      aclCleanupFuture.complete(null);
+    }
+  }
+
+  private void attachAclCleanupChild() {
+    addChildProcedure(aclCleanupProcedure);
+    LOG.debug("Finished {}", this);
   }
 
   private boolean prepareDelete(final MasterProcedureEnv env) throws IOException {

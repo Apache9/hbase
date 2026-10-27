@@ -87,20 +87,20 @@ public class TestAclManager {
     assertEquals(1, submitted.size());
     assertFalse(second.isDone());
 
-    // the queued backlog lands in one procedure, chained behind the running one
-    aclManager.onProcedureComplete(100L);
+    // the queued backlog lands in one procedure once the running one completes
+    aclManager.onProcedureComplete();
     assertEquals(2, submitted.size());
     assertEquals(101L, second.getNow(0L));
     assertEquals(101L, third.getNow(0L));
     assertEquals(2, submitted.get(1).getOpCount());
 
     // nothing queued at completion: no further procedure
-    aclManager.onProcedureComplete(101L);
+    aclManager.onProcedureComplete();
     assertEquals(2, submitted.size());
   }
 
   @Test
-  public void testCleanupIsBuiltForTheCallerAndCarriesTheBacklog() {
+  public void testCleanupWaitsForTheRunningProcedure() {
     grant(TEST_TABLE, "george");
     assertEquals(1, submitted.size());
 
@@ -108,22 +108,45 @@ public class TestAclManager {
     CompletableFuture<Long> queued = grant(TEST_TABLE, "hubert");
     assertFalse(queued.isDone());
 
-    // the cleanup of a deleted table is built for the delete procedure to run as its child: it
-    // carries the queued backlog in order
-    RefreshAclProcedure cleanup = aclManager.newCleanupProcedure(TEST_TABLE);
+    // the cleanup of a deleted table must not build its procedure while another one runs: its
+    // caller suspends on the future instead of blocking a procedure worker
+    CompletableFuture<RefreshAclProcedure> cleanup = aclManager.newCleanupProcedure(TEST_TABLE);
+    assertFalse(cleanup.isDone());
     assertEquals(1, submitted.size());
-    assertEquals(2, cleanup.getOpCount());
 
-    // the backlog is not submitted again behind the cleanup
-    aclManager.onProcedureComplete(100L);
+    // once the running procedure completes, the cleanup procedure is handed to its caller with
+    // the changes queued in front of it; nothing is submitted here, the caller runs it as its
+    // child
+    aclManager.onProcedureComplete();
+    assertTrue(cleanup.isDone());
     assertEquals(1, submitted.size());
-    aclManager.onProcedureComplete(200L);
-    assertEquals(1, submitted.size());
+    RefreshAclProcedure procedure = cleanup.getNow(null);
+    assertEquals(2, procedure.getOpCount());
+  }
+
+  @Test
+  public void testCleanupWithoutRunningProcedureCompletesImmediately() {
+    CompletableFuture<RefreshAclProcedure> cleanup = aclManager.newCleanupProcedure(TEST_TABLE);
+    assertTrue(cleanup.isDone());
+    assertEquals(0, submitted.size());
+    assertEquals(1, cleanup.getNow(null).getOpCount());
   }
 
   @Test
   public void testCleanupOfNamespace() {
-    assertEquals(1, aclManager.newCleanupProcedure("ns").getOpCount());
+    assertEquals(1, aclManager.newCleanupProcedure("ns").getNow(null).getOpCount());
+  }
+
+  @Test
+  public void testOneProcedureAtATime() {
+    CompletableFuture<RefreshAclProcedure> first = aclManager.newCleanupProcedure(TEST_TABLE);
+    assertTrue(first.isDone());
+    // while the caller has not run it, no second procedure is created
+    CompletableFuture<RefreshAclProcedure> second = aclManager.newCleanupProcedure(TEST_TABLE2);
+    assertFalse(second.isDone());
+    aclManager.onProcedureComplete();
+    assertTrue(second.isDone());
+    assertEquals(1, second.getNow(null).getOpCount());
   }
 
   private CompletableFuture<Long> grant(TableName table, String user) {
