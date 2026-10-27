@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,6 +97,9 @@ public class AclManager implements AclView {
   /** Queued changes in arrival order; guarded by {@code this}. */
   private final List<PendingOp> pending = new ArrayList<>();
 
+  /** The wait of a delete procedure for the cleanup it requested, by the id of that procedure. */
+  private final Map<Long, CompletableFuture<Void>> cleanupWaits = new HashMap<>();
+
   /**
    * Whether a {@link RefreshAclProcedure} exists and has not completed yet. Only one runs at a
    * time: while it does, changes queue up and are picked up by the next procedure; guarded by
@@ -113,6 +117,12 @@ public class AclManager implements AclView {
     private boolean mergeExisting;
     private final TableName table;
     private final String namespace;
+    /** The delete procedure that requested a cleanup op and waits for it to be applied. */
+    private final long ownerProcId;
+
+    public long ownerProcId() {
+      return ownerProcId;
+    }
 
     /** Completed with the id of the procedure that applies this change, at submit time. */
     private final CompletableFuture<Long> ack = new CompletableFuture<>();
@@ -127,22 +137,17 @@ public class AclManager implements AclView {
       return ack;
     }
 
-    /**
-     * Set for a cleanup op whose caller waits for the procedure carrying it: completed with that
-     * procedure so the caller can run it as its child.
-     */
-    private CompletableFuture<RefreshAclProcedure> cleanupRequest;
-
     /** Released once the write of this change landed; for old clients, see the class javadoc. */
     public final ProcedurePrepareLatch syncLatch;
 
     private PendingOp(AclOp.Type type, UserPermission userPermission, boolean mergeExisting,
-      TableName table, String namespace, ProcedurePrepareLatch syncLatch) {
+      TableName table, String namespace, long ownerProcId, ProcedurePrepareLatch syncLatch) {
       this.type = type;
       this.userPermission = userPermission;
       this.mergeExisting = mergeExisting;
       this.table = table;
       this.namespace = namespace;
+      this.ownerProcId = ownerProcId;
       this.syncLatch = syncLatch;
     }
 
@@ -192,19 +197,21 @@ public class AclManager implements AclView {
 
     static PendingOp grant(UserPermission userPermission, boolean mergeExisting,
       ProcedurePrepareLatch syncLatch) {
-      return new PendingOp(AclOp.Type.GRANT, userPermission, mergeExisting, null, null, syncLatch);
+      return new PendingOp(AclOp.Type.GRANT, userPermission, mergeExisting, null, null, 0L,
+        syncLatch);
     }
 
     static PendingOp revoke(UserPermission userPermission, ProcedurePrepareLatch syncLatch) {
-      return new PendingOp(AclOp.Type.REVOKE, userPermission, false, null, null, syncLatch);
+      return new PendingOp(AclOp.Type.REVOKE, userPermission, false, null, null, 0L, syncLatch);
     }
 
-    static PendingOp removeTable(TableName table) {
-      return new PendingOp(AclOp.Type.REMOVE_TABLE, null, false, table, null, null);
+    static PendingOp removeTable(long ownerProcId, TableName table) {
+      return new PendingOp(AclOp.Type.REMOVE_TABLE, null, false, table, null, ownerProcId, null);
     }
 
-    static PendingOp removeNamespace(String namespace) {
-      return new PendingOp(AclOp.Type.REMOVE_NAMESPACE, null, false, null, namespace, null);
+    static PendingOp removeNamespace(long ownerProcId, String namespace) {
+      return new PendingOp(AclOp.Type.REMOVE_NAMESPACE, null, false, null, namespace, ownerProcId,
+        null);
     }
 
     /** For the procedure: a recovered procedure has no callers to acknowledge any more. */
@@ -218,11 +225,13 @@ public class AclManager implements AclView {
         proto.hasTableName() ? TableName.valueOf(proto.getTableName().toByteArray()) : null;
       this.namespace =
         proto.hasNamespaceName() ? Bytes.toString(proto.getNamespaceName().toByteArray()) : null;
+      this.ownerProcId = proto.getOwnerProcId();
       this.syncLatch = null;
     }
 
     public AclOp toProto() {
-      AclOp.Builder builder = AclOp.newBuilder().setType(type).setMergeExisting(mergeExisting);
+      AclOp.Builder builder = AclOp.newBuilder().setType(type).setMergeExisting(mergeExisting)
+        .setOwnerProcId(ownerProcId);
       if (userPermission != null) {
         builder.setUserPermission(ShadedAccessControlUtil.toUserPermission(userPermission));
       }
@@ -309,38 +318,6 @@ public class AclManager implements AclView {
     return enqueue(PendingOp.revoke(userPermission, syncLatch));
   }
 
-  /**
-   * Requests the procedure removing all permissions of a deleted table. It carries the cleanup
-   * together with the changes queued in front of it, so they reach {@code hbase:acl} in order. The
-   * caller runs it as one of its children, which keeps the cleanup persisted with the caller and
-   * done before the caller completes.
-   * <p>
-   * Only one acl procedure runs at a time: when one is already running, the future is completed
-   * once it terminates and the next procedure can be built. Callers on a procedure worker should
-   * suspend on the future ({@code ProcedureFutureUtil}) instead of blocking on it.
-   * </p>
-   */
-  public synchronized CompletableFuture<RefreshAclProcedure>
-    newCleanupProcedure(TableName tableName) {
-    return requestCleanup(PendingOp.removeTable(tableName));
-  }
-
-  /**
-   * Requests the procedure removing all permissions of a deleted namespace, see
-   * {@link #newCleanupProcedure(TableName)}.
-   */
-  public synchronized CompletableFuture<RefreshAclProcedure> newCleanupProcedure(String namespace) {
-    return requestCleanup(PendingOp.removeNamespace(namespace));
-  }
-
-  private CompletableFuture<RefreshAclProcedure> requestCleanup(PendingOp cleanup) {
-    CompletableFuture<RefreshAclProcedure> request = new CompletableFuture<>();
-    cleanup.cleanupRequest = request;
-    pending.add(cleanup);
-    maybeSchedule();
-    return request;
-  }
-
   private synchronized CompletableFuture<Long> enqueue(PendingOp op) {
     pending.add(op);
     maybeSchedule();
@@ -348,41 +325,67 @@ public class AclManager implements AclView {
   }
 
   /**
-   * Builds the next procedure from the queued changes when none is running. Everything up to the
-   * first cleanup request goes into it, so the changes reach {@code hbase:acl} in the order they
-   * were queued; the procedure is handed to that cleanup's caller to run as its child, or submitted
-   * here when the queue only carries grant and revoke changes. The drained changes are part of the
-   * procedure from its creation, so they are persisted with it before its id is handed out.
+   * Queues the cleanup of a deleted table or namespace. The returned future is completed once the
+   * {@link RefreshAclProcedure} carrying the change has run to completion, so the delete procedure
+   * that owns the change waits on it: the delete is only done once its permissions are gone from
+   * {@code hbase:acl} and from the region server caches. The change goes into the next batch of
+   * queued changes like every other one, so several deletions share one procedure and one
+   * broadcast.
    */
+  public synchronized CompletableFuture<Void> requestCleanup(long ownerProcId, TableName table) {
+    return requestCleanup(PendingOp.removeTable(ownerProcId, table));
+  }
+
+  public synchronized CompletableFuture<Void> requestCleanup(long ownerProcId, String namespace) {
+    return requestCleanup(PendingOp.removeNamespace(ownerProcId, namespace));
+  }
+
+  private CompletableFuture<Void> requestCleanup(PendingOp cleanup) {
+    CompletableFuture<Void> wait = cleanupWaits.get(cleanup.ownerProcId);
+    if (wait != null) {
+      // the cleanup of this owner is already queued or running: keep waiting on the procedure
+      // that carries it instead of scheduling a second one
+      return wait;
+    }
+    wait = new CompletableFuture<>();
+    cleanupWaits.put(cleanup.ownerProcId, wait);
+    pending.add(cleanup);
+    maybeSchedule();
+    return wait;
+  }
+
+  /**
+   * Called at recovery: the given procedure already carries the cleanup of the owner, so the wait
+   * goes on here instead of scheduling a second change. The returned future is also the one the
+   * owning delete procedure is given to wait on, see {@link RefreshAclProcedure#afterReplay}.
+   */
+  public synchronized CompletableFuture<Void> restoreCleanupWait(long ownerProcId) {
+    return cleanupWaits.computeIfAbsent(ownerProcId, id -> new CompletableFuture<>());
+  }
+
+  /** Called when the procedure applying the cleanup of the owner has run to completion. */
+  public synchronized void completeCleanupWait(long ownerProcId) {
+    CompletableFuture<Void> wait = cleanupWaits.remove(ownerProcId);
+    if (wait != null) {
+      wait.complete(null);
+    }
+  }
+
   private void maybeSchedule() {
     if (procedureRunning || pending.isEmpty()) {
       return;
     }
-    int cut = pending.size();
-    for (int i = 0; i < pending.size(); i++) {
-      if (pending.get(i).cleanupRequest != null) {
-        cut = i + 1;
-        break;
-      }
-    }
-    List<PendingOp> ops = new ArrayList<>(pending.subList(0, cut));
-    pending.subList(0, cut).clear();
+    // the whole queue goes into one procedure: the changes reach hbase:acl in the order they were
+    // queued, and the deletions queued alongside them share one broadcast
+    List<PendingOp> ops = new ArrayList<>(pending);
+    pending.clear();
     RefreshAclProcedure procedure = new RefreshAclProcedure(ops);
     procedureRunning = true;
-    PendingOp last = ops.get(ops.size() - 1);
-    if (last.cleanupRequest != null) {
-      // the caller runs it as its child; the calls of the drained changes are acknowledged when
-      // it runs and has an id
-      CompletableFuture<RefreshAclProcedure> request = last.cleanupRequest;
-      last.cleanupRequest = null;
-      request.complete(procedure);
-    } else {
-      long procedureId = submitProcedure(procedure);
-      for (PendingOp op : ops) {
-        op.acknowledge(procedureId);
-      }
-      LOG.debug("Submitted acl update procedure {} with {} changes", procedureId, ops.size());
+    long procedureId = submitProcedure(procedure);
+    for (PendingOp op : ops) {
+      op.acknowledge(procedureId);
     }
+    LOG.debug("Submitted acl update procedure {} with {} changes", procedureId, ops.size());
   }
 
   /** Called by {@link RefreshAclProcedure} when it terminates; schedules the queued backlog. */
@@ -398,6 +401,7 @@ public class AclManager implements AclView {
    */
   public synchronized void reset() {
     pending.clear();
+    cleanupWaits.clear();
     procedureRunning = false;
   }
 

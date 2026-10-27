@@ -742,6 +742,9 @@ message AclOp {
   optional bool merge_existing = 3 [default = false];
   optional bytes table_name = 4;
   optional bytes namespace_name = 5;
+  // for a remove op: the DeleteTable/DeleteNamespaceProcedure that requested the cleanup and
+  // waits for the procedure carrying this op to complete
+  optional uint64 owner_proc_id = 6 [default = 0];
 }
 
 message RefreshAclStateData {

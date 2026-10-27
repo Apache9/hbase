@@ -53,9 +53,8 @@ public class DeleteNamespaceProcedure
 
   private NamespaceDescriptor nsDescriptor;
   private String namespaceName;
-  /** Completed once {@link #aclCleanupProcedure} is available. */
+  /** Completed once the acl procedure carrying the cleanup of this namespace has completed. */
   private CompletableFuture<Void> aclCleanupFuture;
-  private volatile RefreshAclProcedure aclCleanupProcedure;
 
   public DeleteNamespaceProcedure() {
   }
@@ -98,24 +97,19 @@ public class DeleteNamespaceProcedure
           setNextState(DeleteNamespaceState.DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA);
           break;
         case DELETE_NAMESPACE_REMOVE_NAMESPACE_QUOTA:
-          if (
-            ProcedureFutureUtil.checkFuture(this, this::getAclCleanupFuture,
-              this::setAclCleanupFuture, this::attachAclCleanupChild)
-          ) {
-            return Flow.NO_MORE_STATE;
-          }
           if (aclCleanupFuture == null) {
             removeNamespaceQuota(env, namespaceName);
-            // the permission cleanup is applied by an acl procedure like every other acl change;
-            // as a child of this procedure it is persisted with it and completed before it. Only
-            // one acl procedure runs at a time, so its creation may have to wait for a running
-            // one: suspend on the future instead of blocking a procedure worker
-            aclCleanupFuture = new CompletableFuture<>();
-            env.getMasterServices().getAclManager().newCleanupProcedure(namespaceName)
-              .whenComplete(this::setAclCleanupProcedure);
+            // the permission cleanup goes through an acl procedure like every other acl change,
+            // batched with the changes queued alongside it; this procedure waits for that
+            // procedure to complete: the delete is only done once the permissions of the
+            // namespace are gone from hbase:acl and from the region server caches. The wait is
+            // rebuilt at recovery, see RefreshAclProcedure#afterReplay
+            aclCleanupFuture =
+              env.getMasterServices().getAclManager().requestCleanup(getProcId(), namespaceName);
           }
+          // completed already: continues inline; not yet: suspends until the acl procedure ends
           ProcedureFutureUtil.suspendIfNecessary(this, this::setAclCleanupFuture, aclCleanupFuture,
-            env, this::attachAclCleanupChild);
+            env, this::afterAclCleanup);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(this + " unhandled state=" + state);
@@ -131,25 +125,17 @@ public class DeleteNamespaceProcedure
     return Flow.HAS_MORE_STATE;
   }
 
-  private CompletableFuture<Void> getAclCleanupFuture() {
-    return aclCleanupFuture;
-  }
-
   private void setAclCleanupFuture(CompletableFuture<Void> future) {
     aclCleanupFuture = future;
   }
 
-  private void setAclCleanupProcedure(RefreshAclProcedure procedure, Throwable error) {
-    if (error != null) {
-      aclCleanupFuture.completeExceptionally(error);
-    } else {
-      aclCleanupProcedure = procedure;
-      aclCleanupFuture.complete(null);
-    }
+  /** Rebuilt at recovery when the cleanup was already scheduled before the restart. */
+  void restoreAclCleanupWait(CompletableFuture<Void> wait) {
+    aclCleanupFuture = wait;
   }
 
-  private void attachAclCleanupChild() {
-    addChildProcedure(aclCleanupProcedure);
+  private void afterAclCleanup() {
+    LOG.debug("Finished {}", this);
   }
 
   @Override

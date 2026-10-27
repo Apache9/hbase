@@ -73,9 +73,8 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
   private TableName tableName;
   private RetryCounter retryCounter;
   private String recoverySnapshotName;
-  /** Completed once {@link #aclCleanupProcedure} is available. */
+  /** Completed once the acl procedure carrying the cleanup of this table has completed. */
   private CompletableFuture<Void> aclCleanupFuture;
-  private volatile RefreshAclProcedure aclCleanupProcedure;
 
   public DeleteTableProcedure() {
     // Required by the Procedure framework to create the procedure on replay
@@ -155,26 +154,20 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
           setNextState(DeleteTableState.DELETE_TABLE_POST_OPERATION);
           break;
         case DELETE_TABLE_POST_OPERATION:
-          if (
-            ProcedureFutureUtil.checkFuture(this, this::getAclCleanupFuture,
-              this::setAclCleanupFuture, this::attachAclCleanupChild)
-          ) {
-            return Flow.NO_MORE_STATE;
-          }
           if (aclCleanupFuture == null) {
             postDelete(env);
             retryCounter = null;
-            // the permission cleanup is applied by an acl procedure like every other acl change;
-            // as a child of this procedure it is persisted with it and completed before it, which
-            // is what "the delete is done" means for the permissions of the table. Only one acl
-            // procedure runs at a time, so its creation may have to wait for a running one: suspend
-            // on the future instead of blocking a procedure worker
-            aclCleanupFuture = new CompletableFuture<>();
-            env.getMasterServices().getAclManager().newCleanupProcedure(getTableName())
-              .whenComplete(this::setAclCleanupProcedure);
+            // the permission cleanup goes through an acl procedure like every other acl change,
+            // batched with the changes queued alongside it; this procedure waits for that
+            // procedure to complete: the delete is only done once the permissions of the table
+            // are gone from hbase:acl and from the region server caches. The wait is rebuilt at
+            // recovery, see RefreshAclProcedure#afterReplay
+            aclCleanupFuture =
+              env.getMasterServices().getAclManager().requestCleanup(getProcId(), getTableName());
           }
+          // completed already: continues inline; not yet: suspends until the acl procedure ends
           ProcedureFutureUtil.suspendIfNecessary(this, this::setAclCleanupFuture, aclCleanupFuture,
-            env, this::attachAclCleanupChild);
+            env, this::afterAclCleanup);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException("unhandled state=" + state);
@@ -318,25 +311,16 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
     }
   }
 
-  private CompletableFuture<Void> getAclCleanupFuture() {
-    return aclCleanupFuture;
-  }
-
   private void setAclCleanupFuture(CompletableFuture<Void> future) {
     aclCleanupFuture = future;
   }
 
-  private void setAclCleanupProcedure(RefreshAclProcedure procedure, Throwable error) {
-    if (error != null) {
-      aclCleanupFuture.completeExceptionally(error);
-    } else {
-      aclCleanupProcedure = procedure;
-      aclCleanupFuture.complete(null);
-    }
+  /** Rebuilt at recovery when the cleanup was already scheduled before the restart. */
+  void restoreAclCleanupWait(CompletableFuture<Void> wait) {
+    aclCleanupFuture = wait;
   }
 
-  private void attachAclCleanupChild() {
-    addChildProcedure(aclCleanupProcedure);
+  private void afterAclCleanup() {
     LOG.debug("Finished {}", this);
   }
 

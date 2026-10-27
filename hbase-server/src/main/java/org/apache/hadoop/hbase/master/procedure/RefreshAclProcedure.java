@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.master.procedure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureYieldException;
@@ -63,6 +65,13 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.R
  * were queued. The broadcast is replayed at-least-once; stale replays are dropped by the timestamp
  * watermark on the servers.
  * </p>
+ * <p>
+ * A cleanup change of a deleted table or namespace carries the id of the delete procedure that
+ * requested it. That procedure waits for this one to complete: the delete is only done once its
+ * permissions are gone from {@code hbase:acl} and from the region server caches. The link is
+ * rebuilt at recovery ({@link #afterReplay}) so a master restart does not schedule the cleanup a
+ * second time, and deletions queued together share one procedure and one broadcast.
+ * </p>
  */
 @InterfaceAudience.Private
 public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEnv, RefreshAclState>
@@ -93,7 +102,6 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     switch (state) {
       case REFRESH_ACL_PREPARE: {
-        acknowledgeCallers();
         // compute the content to write for the changes that do not carry it and let the state
         // transition persist it before anything touches hbase:acl: the write step then replays
         // the resolved content and never recomputes it against a table that already carries part
@@ -106,7 +114,6 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
         return Flow.HAS_MORE_STATE;
       }
       case REFRESH_ACL_WRITE: {
-        acknowledgeCallers();
         long maxTs = 0L;
         for (int i = 0; i < ops.size(); i++) {
           AclManager.PendingOp op = ops.get(i);
@@ -169,18 +176,35 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     }
   }
 
-  /**
-   * Changes drained into a child procedure are only persisted with their parent: their callers are
-   * acknowledged here, once this procedure runs and has an id.
-   */
-  private void acknowledgeCallers() {
+  @Override
+  protected void afterReplay(MasterProcedureEnv env) {
+    // the delete procedures waiting for the cleanup this procedure carries are reloaded without
+    // their transient wait fields: rebuild the waits so they keep waiting on this procedure
+    // instead of scheduling the cleanup a second time
     for (AclManager.PendingOp op : ops) {
-      op.acknowledge(getProcId());
+      if (op.ownerProcId() == 0) {
+        continue;
+      }
+      CompletableFuture<Void> wait =
+        env.getMasterServices().getAclManager().restoreCleanupWait(op.ownerProcId());
+      Procedure<?> owner =
+        env.getMasterServices().getMasterProcedureExecutor().getProcedure(op.ownerProcId());
+      if (owner instanceof DeleteTableProcedure) {
+        ((DeleteTableProcedure) owner).restoreAclCleanupWait(wait);
+      } else if (owner instanceof DeleteNamespaceProcedure) {
+        ((DeleteNamespaceProcedure) owner).restoreAclCleanupWait(wait);
+      }
     }
   }
 
   @Override
   protected void completionCleanup(MasterProcedureEnv env) {
+    // the delete procedures of the cleanup changes in this batch are done waiting on it
+    for (AclManager.PendingOp op : ops) {
+      if (op.ownerProcId() != 0) {
+        env.getMasterServices().getAclManager().completeCleanupWait(op.ownerProcId());
+      }
+    }
     // release the single-flight flag and schedule the queued backlog
     env.getMasterServices().getAclManager().onProcedureComplete();
   }
