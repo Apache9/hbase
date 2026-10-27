@@ -19,10 +19,15 @@ package org.apache.hadoop.hbase.security.access;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -38,6 +43,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hbase.thirdparty.com.google.common.collect.ArrayListMultimap;
 import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
 import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
 
@@ -55,7 +61,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.A
  * <li>because the writes happen inside the procedure, they are persisted with it before the caller
  * hears back: a master failover replays them from the procedure store and no update can fall into
  * the gap between a table write and its broadcast;</li>
- * <li>the master's own snapshot is updated with every write, so it never lags behind its own
+ * <li>the master's own snapshot is updated with each applied batch, so it never lags behind its own
  * changes and needs no periodic reload.</li>
  * </ul>
  * A change is queued in the caller's thread and applied asynchronously:
@@ -103,8 +109,8 @@ public class AclManager implements AclView {
    */
   public static final class PendingOp {
     private final AclOp.Type type;
-    private final UserPermission userPermission;
-    private final boolean mergeExisting;
+    private UserPermission userPermission;
+    private boolean mergeExisting;
     private final TableName table;
     private final String namespace;
 
@@ -138,6 +144,50 @@ public class AclManager implements AclView {
       this.table = table;
       this.namespace = namespace;
       this.syncLatch = syncLatch;
+    }
+
+    /**
+     * Whether the exact content to write is not in the request and has to be computed from what the
+     * entry holds: a grant merging with the existing actions, or a partial revoke reducing them.
+     * Everything else carries its write content in the request.
+     */
+    public boolean needsResolve() {
+      switch (type) {
+        case GRANT:
+          return mergeExisting;
+        case REVOKE:
+          return hasActions(userPermission);
+        default:
+          return false;
+      }
+    }
+
+    /**
+     * Replaces the requested change with the exact content to write: the action set a merge grant
+     * lands on, or what remains of the permission after a partial revoke (an empty set removes the
+     * record). Called before anything is written, so the resolved content is persisted with the
+     * procedure and the write step just replays it.
+     */
+    public void resolveTo(Permission.Action[] actions) {
+      userPermission = withActions(userPermission, actions);
+      mergeExisting = false;
+    }
+
+    /** The same scope with the given actions; {@link Permission#setActions} cannot empty a set. */
+    private static UserPermission withActions(UserPermission userPermission,
+      Permission.Action[] actions) {
+      Permission permission = userPermission.getPermission();
+      Permission.Builder builder;
+      if (permission instanceof TablePermission) {
+        TablePermission table = (TablePermission) permission;
+        builder = Permission.newBuilder(table.getTableName()).withFamily(table.getFamily())
+          .withQualifier(table.getQualifier());
+      } else if (permission instanceof NamespacePermission) {
+        builder = Permission.newBuilder(((NamespacePermission) permission).getNamespace());
+      } else {
+        builder = Permission.newBuilder();
+      }
+      return new UserPermission(userPermission.getUser(), builder.withActions(actions).build());
     }
 
     static PendingOp grant(UserPermission userPermission, boolean mergeExisting,
@@ -245,6 +295,11 @@ public class AclManager implements AclView {
    */
   public CompletableFuture<Long> grant(UserPermission userPermission,
     boolean mergeExistingPermissions, ProcedurePrepareLatch syncLatch) {
+    // rejected here because a write that can never land must not enter a procedure that retries
+    // its writes until they do
+    if (!hasActions(userPermission)) {
+      throw new IllegalArgumentException("No actions associated with " + userPermission.getUser());
+    }
     return enqueue(PendingOp.grant(userPermission, mergeExistingPermissions, syncLatch));
   }
 
@@ -352,53 +407,69 @@ public class AclManager implements AclView {
   }
 
   /**
-   * Writes one queued change to {@code hbase:acl} and applies it to the local snapshot, recording
-   * the derived entry state for the broadcast. Called by the apply step of
-   * {@link RefreshAclProcedure}, which also acknowledges the caller once the write landed.
-   * @return the master assigned timestamp of the write
+   * Fills in the exact content to write for the changes that do not carry it in the request: the
+   * action set a merge grant lands on, and what remains of a permission after a partial revoke.
+   * Called by the prepare step of {@link RefreshAclProcedure} before anything is written, so the
+   * resolved content is persisted with the procedure and the write step replays it instead of
+   * recomputing it against a table that already carries part of the batch. Changes queued behind
+   * one another resolve against what the ones in front of them will write, so a batch lands exactly
+   * as its changes were queued.
    */
-  public long applyOp(PendingOp op, Map<byte[], AclEntryUpdate> derived) throws IOException {
+  public void resolveOps(List<PendingOp> ops) throws IOException {
     synchronized (writeLock) {
-      byte[] entry;
-      long ts;
       try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
+        // the entry states as this batch changes them, seeded from the table at the first change
+        Map<byte[], ListMultimap<String, UserPermission>> states =
+          new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
+        for (PendingOp op : ops) {
+          byte[] entry = entryKey(op);
+          ListMultimap<String, UserPermission> state = states.get(entry);
+          if (state == null) {
+            state = ArrayListMultimap
+              .create(PermissionStorage.getPermissions(t, entry, null, null, null, false));
+            states.put(entry, state);
+          }
+          if (op.needsResolve()) {
+            op.resolveTo(resolveActions(op, state));
+          }
+          applyToState(op, state);
+        }
+      }
+    }
+  }
+
+  /**
+   * Writes one change to {@code hbase:acl}. The content is what {@link #resolveOps} computed, or
+   * what the request carried: the write only lands fixed bytes and is idempotent, so the caller
+   * retries it until it succeeds, see {@link RefreshAclProcedure}.
+   * @return the master assigned timestamp of the write, 0 when there was nothing to write
+   */
+  public long writeOp(PendingOp op) throws IOException {
+    synchronized (writeLock) {
+      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
+        long ts = nextTimestamp();
         switch (op.type) {
           case GRANT:
-            entry = PermissionStorage.userPermissionRowKey(op.userPermission.getPermission());
-            ts = nextTimestamp();
-            PermissionStorage.addUserPermission(conf, op.userPermission, t, op.mergeExisting, ts);
+            PermissionStorage.addUserPermission(conf, op.userPermission, t, false, ts);
             break;
           case REVOKE:
-            entry = PermissionStorage.userPermissionRowKey(op.userPermission.getPermission());
-            ts = nextTimestamp();
-            PermissionStorage.removeUserPermission(conf, op.userPermission, t, ts);
+            if (hasActions(op.userPermission)) {
+              // a partial revoke: the prepare step resolved it to the actions that remain for the
+              // user, and the write lands them as the entry's value
+              PermissionStorage.addUserPermission(conf, op.userPermission, t, false, ts);
+            } else {
+              PermissionStorage.removeUserPermission(conf, op.userPermission, t, ts);
+            }
             break;
           case REMOVE_TABLE:
-            entry = op.table.getName();
-            ts = nextTimestamp();
             PermissionStorage.removeTablePermissions(conf, op.table, t, ts);
             break;
           case REMOVE_NAMESPACE:
-            entry = Bytes.toBytes(PermissionStorage.toNamespaceEntry(op.namespace));
-            ts = nextTimestamp();
             PermissionStorage.removeNamespacePermissions(conf, op.namespace, t, ts);
             break;
           default:
             throw new UnsupportedOperationException("unhandled acl op=" + op.type);
         }
-        ListMultimap<String, UserPermission> perms =
-          PermissionStorage.getPermissions(t, entry, null, null, null, false);
-        AclSnapshot.EntryUpdate update = perms.isEmpty()
-          ? AclSnapshot.EntryUpdate.deleted(entry)
-          : AclSnapshot.EntryUpdate.replace(entry, perms);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Applied acl entry {} change at ts {}, deleted={}", Bytes.toStringBinary(entry),
-            ts, update.isDeleted());
-        }
-        // the write is done and the write path is serialized, the state read back is the current
-        // one: apply it right away so the master's snapshot never lags behind its own writes
-        snapshot = snapshot.applyEntryUpdates(Collections.singletonList(update), ts);
-        derived.put(entry, toProto(update));
         return ts;
       } catch (TableNotFoundException e) {
         if (!isCleanupOp(op)) {
@@ -411,6 +482,109 @@ public class AclManager implements AclView {
         return 0L;
       }
     }
+  }
+
+  /**
+   * Reads the entries the batch wrote and generates the new {@link AclSnapshot} from them: what is
+   * read here is the state the batch left behind, so the snapshot and the broadcast carry exactly
+   * what landed. Called by the snapshot step of {@link RefreshAclProcedure} after the writes are
+   * done, and holds the write lock, so nothing else writes {@code hbase:acl} in between.
+   * @return the entry states to broadcast
+   */
+  public List<AclEntryUpdate> applyEntryStates(List<PendingOp> ops, long ts) throws IOException {
+    synchronized (writeLock) {
+      Map<byte[], AclSnapshot.EntryUpdate> states = new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
+      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
+        for (PendingOp op : ops) {
+          byte[] entry = entryKey(op);
+          if (states.containsKey(entry)) {
+            continue;
+          }
+          ListMultimap<String, UserPermission> perms =
+            PermissionStorage.getPermissions(t, entry, null, null, null, false);
+          states.put(entry,
+            perms.isEmpty()
+              ? AclSnapshot.EntryUpdate.deleted(entry)
+              : AclSnapshot.EntryUpdate.replace(entry, perms));
+        }
+      } catch (TableNotFoundException e) {
+        if (ops.stream().anyMatch(op -> !isCleanupOp(op))) {
+          throw e;
+        }
+        // a cleanup batch on a cluster without hbase:acl: there is nothing to clean up and
+        // nothing was ever recorded for the deleted tables or namespaces
+        return Collections.emptyList();
+      }
+      List<AclSnapshot.EntryUpdate> updates = new ArrayList<>(states.values());
+      if (!updates.isEmpty()) {
+        snapshot = snapshot.applyEntryUpdates(updates, ts);
+      }
+      return updates.stream().map(AclManager::toProto).collect(Collectors.toList());
+    }
+  }
+
+  private static byte[] entryKey(PendingOp op) {
+    switch (op.type) {
+      case REMOVE_TABLE:
+        return op.table.getName();
+      case REMOVE_NAMESPACE:
+        return Bytes.toBytes(PermissionStorage.toNamespaceEntry(op.namespace));
+      default:
+        return PermissionStorage.userPermissionRowKey(op.userPermission.getPermission());
+    }
+  }
+
+  /**
+   * The action set {@link PendingOp#resolveTo} lands on for the change, against the entry state.
+   */
+  private static Permission.Action[] resolveActions(PendingOp op,
+    ListMultimap<String, UserPermission> state) {
+    Permission.Action[] current = null;
+    for (UserPermission held : state.values()) {
+      if (op.userPermission.equalsExceptActions(held)) {
+        current = held.getPermission().getActions();
+        break;
+      }
+    }
+    Set<Permission.Action> resolved = new TreeSet<>();
+    if (current != null) {
+      resolved.addAll(Arrays.asList(current));
+    }
+    if (op.type == AclOp.Type.GRANT) {
+      // merged: what the entry holds for the user plus the granted actions
+      resolved.addAll(Arrays.asList(op.userPermission.getPermission().getActions()));
+    } else {
+      // what remains of the user's permission once the revoked actions are dropped
+      resolved.removeAll(Arrays.asList(op.userPermission.getPermission().getActions()));
+    }
+    return resolved.toArray(new Permission.Action[0]);
+  }
+
+  /** Records what the change writes into the entry state, so changes queued behind it see it. */
+  private static void applyToState(PendingOp op, ListMultimap<String, UserPermission> state) {
+    switch (op.type) {
+      case REMOVE_TABLE:
+      case REMOVE_NAMESPACE:
+        state.clear();
+        return;
+      default:
+        break;
+    }
+    // the change writes one cell of the entry: what it held for the same user and scope is
+    // replaced by the value of the write
+    for (Map.Entry<String, UserPermission> held : new ArrayList<>(state.entries())) {
+      if (op.userPermission.equalsExceptActions(held.getValue())) {
+        state.remove(held.getKey(), held.getValue());
+      }
+    }
+    if (op.type == AclOp.Type.GRANT || hasActions(op.userPermission)) {
+      state.put(op.userPermission.getUser(), op.userPermission);
+    }
+  }
+
+  private static boolean hasActions(UserPermission userPermission) {
+    return userPermission.getPermission().getActions() != null
+      && userPermission.getPermission().getActions().length > 0;
   }
 
   private static boolean isCleanupOp(PendingOp op) {
