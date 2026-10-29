@@ -189,6 +189,16 @@ public final class ProcedureTestingUtility {
     procExecutor.testing.killIfSuspended = value;
   }
 
+  /**
+   * Restricts the kill-before-store-update hooks to procedures of the given class: procedures of
+   * other classes run by the same executor do not consume the kills or the toggle.
+   */
+  public static <TEnv> void setKillBeforeStoreUpdateOnlyFor(ProcedureExecutor<TEnv> procExecutor,
+    Class<?> procClass) {
+    createExecutorTesting(procExecutor);
+    procExecutor.testing.killBeforeStoreUpdateOnlyFor = procClass;
+  }
+
   public static <TEnv> void setKillBeforeStoreUpdate(ProcedureExecutor<TEnv> procExecutor,
     boolean value) {
     createExecutorTesting(procExecutor);

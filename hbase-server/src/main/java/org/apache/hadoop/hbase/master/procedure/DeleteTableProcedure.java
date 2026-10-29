@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.master.procedure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -41,6 +42,7 @@ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.mob.MobConstants;
 import org.apache.hadoop.hbase.mob.MobUtils;
+import org.apache.hadoop.hbase.procedure2.ProcedureFutureUtil;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
 import org.apache.hadoop.hbase.procedure2.ProcedureUtil;
@@ -64,10 +66,15 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ProcedureProtos;
 public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<DeleteTableState> {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteTableProcedure.class);
 
+  /** Backoff while waiting for the acl cleanup procedure. */
+  private static final int ACL_WAIT_BACKOFF_MSEC = 100;
+
   private List<RegionInfo> regions;
   private TableName tableName;
   private RetryCounter retryCounter;
   private String recoverySnapshotName;
+  /** Completed once the acl procedure carrying the cleanup of this table has completed. */
+  private CompletableFuture<Void> aclCleanupFuture;
 
   public DeleteTableProcedure() {
     // Required by the Procedure framework to create the procedure on replay
@@ -147,9 +154,20 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
           setNextState(DeleteTableState.DELETE_TABLE_POST_OPERATION);
           break;
         case DELETE_TABLE_POST_OPERATION:
-          postDelete(env);
-          retryCounter = null;
-          LOG.debug("Finished {}", this);
+          if (aclCleanupFuture == null) {
+            postDelete(env);
+            retryCounter = null;
+            // the permission cleanup goes through an acl procedure like every other acl change,
+            // batched with the changes queued alongside it; this procedure waits for that
+            // procedure to complete: the delete is only done once the permissions of the table
+            // are gone from hbase:acl and from the region server caches. The wait is rebuilt at
+            // recovery, see RefreshAclProcedure#afterReplay
+            aclCleanupFuture =
+              env.getMasterServices().getAclManager().requestCleanup(getProcId(), getTableName());
+          }
+          // completed already: continues inline; not yet: suspends until the acl procedure ends
+          ProcedureFutureUtil.suspendIfNecessary(this, this::setAclCleanupFuture, aclCleanupFuture,
+            env, this::afterAclCleanup);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException("unhandled state=" + state);
@@ -291,6 +309,19 @@ public class DeleteTableProcedure extends AbstractStateMachineTableProcedure<Del
     if (state.hasSnapshotName()) {
       recoverySnapshotName = state.getSnapshotName();
     }
+  }
+
+  private void setAclCleanupFuture(CompletableFuture<Void> future) {
+    aclCleanupFuture = future;
+  }
+
+  /** Rebuilt at recovery when the cleanup was already scheduled before the restart. */
+  void restoreAclCleanupWait(CompletableFuture<Void> wait) {
+    aclCleanupFuture = wait;
+  }
+
+  private void afterAclCleanup() {
+    LOG.debug("Finished {}", this);
   }
 
   private boolean prepareDelete(final MasterProcedureEnv env) throws IOException {

@@ -525,7 +525,7 @@ public final class SnapshotDescriptionUtils {
         @Override
         public ListMultimap<String, UserPermission> run() throws Exception {
           try (Table aclTable = conn.getTable(PermissionStorage.ACL_TABLE_NAME)) {
-            return PermissionStorage.getTablePermissions(conf,
+            return PermissionStorage.getTablePermissions(conn,
               TableName.valueOf(snapshot.getTable()), aclTable);
           }
         }
