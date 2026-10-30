@@ -735,16 +735,18 @@ message AclOp {
     GRANT = 1;
     REVOKE = 2;
     REMOVE_TABLE = 3;
-    REMOVE_NAMESPACE = 4;
+    REMOVE_FAMILIES = 4;
+    REMOVE_NAMESPACE = 5;
   }
   required Type type = 1;
   optional UserPermission user_permission = 2;
   optional bool merge_existing = 3 [default = false];
   optional bytes table_name = 4;
-  optional bytes namespace_name = 5;
+  repeated bytes family_name = 5;
+  optional bytes namespace_name = 6;
   // for a remove op: the DeleteTable/DeleteNamespaceProcedure that requested the cleanup and
   // waits for the procedure carrying this op to complete
-  optional uint64 owner_proc_id = 6 [default = 0];
+  optional uint64 owner_proc_id = 7 [default = 0];
 }
 
 message RefreshAclStateData {

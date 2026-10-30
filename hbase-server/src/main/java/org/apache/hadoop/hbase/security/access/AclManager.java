@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.procedure.ProcedurePrepareLatch;
@@ -40,11 +41,11 @@ import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ArrayListMultimap;
 import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
 import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
 
@@ -116,6 +117,7 @@ public class AclManager implements AclView {
     private UserPermission userPermission;
     private boolean mergeExisting;
     private final TableName table;
+    private final Set<byte[]> families;
     private final String namespace;
     /** The delete procedure that requested a cleanup op and waits for it to be applied. */
     private final long ownerProcId;
@@ -141,77 +143,42 @@ public class AclManager implements AclView {
     public final ProcedurePrepareLatch syncLatch;
 
     private PendingOp(AclOp.Type type, UserPermission userPermission, boolean mergeExisting,
-      TableName table, String namespace, long ownerProcId, ProcedurePrepareLatch syncLatch) {
+      TableName table, Set<byte[]> families, String namespace, long ownerProcId,
+      ProcedurePrepareLatch syncLatch) {
       this.type = type;
       this.userPermission = userPermission;
       this.mergeExisting = mergeExisting;
       this.table = table;
+      this.families = families;
       this.namespace = namespace;
       this.ownerProcId = ownerProcId;
       this.syncLatch = syncLatch;
     }
 
-    /**
-     * Whether the exact content to write is not in the request and has to be computed from what the
-     * entry holds: a grant merging with the existing actions, or a partial revoke reducing them.
-     * Everything else carries its write content in the request.
-     */
-    public boolean needsResolve() {
-      switch (type) {
-        case GRANT:
-          return mergeExisting;
-        case REVOKE:
-          return hasActions(userPermission);
-        default:
-          return false;
-      }
-    }
-
-    /**
-     * Replaces the requested change with the exact content to write: the action set a merge grant
-     * lands on, or what remains of the permission after a partial revoke (an empty set removes the
-     * record). Called before anything is written, so the resolved content is persisted with the
-     * procedure and the write step just replays it.
-     */
-    public void resolveTo(Permission.Action[] actions) {
-      userPermission = withActions(userPermission, actions);
-      mergeExisting = false;
-    }
-
-    /** The same scope with the given actions; {@link Permission#setActions} cannot empty a set. */
-    private static UserPermission withActions(UserPermission userPermission,
-      Permission.Action[] actions) {
-      Permission permission = userPermission.getPermission();
-      Permission.Builder builder;
-      if (permission instanceof TablePermission) {
-        TablePermission table = (TablePermission) permission;
-        builder = Permission.newBuilder(table.getTableName()).withFamily(table.getFamily())
-          .withQualifier(table.getQualifier());
-      } else if (permission instanceof NamespacePermission) {
-        builder = Permission.newBuilder(((NamespacePermission) permission).getNamespace());
-      } else {
-        builder = Permission.newBuilder();
-      }
-      return new UserPermission(userPermission.getUser(), builder.withActions(actions).build());
-    }
-
     static PendingOp grant(UserPermission userPermission, boolean mergeExisting,
       ProcedurePrepareLatch syncLatch) {
-      return new PendingOp(AclOp.Type.GRANT, userPermission, mergeExisting, null, null, 0L,
-        syncLatch);
+      return new PendingOp(AclOp.Type.GRANT, userPermission, mergeExisting, null,
+        Collections.emptySet(), null, 0L, syncLatch);
     }
 
     static PendingOp revoke(UserPermission userPermission, ProcedurePrepareLatch syncLatch) {
-      return new PendingOp(AclOp.Type.REVOKE, userPermission, false, null, null, 0L, syncLatch);
+      return new PendingOp(AclOp.Type.REVOKE, userPermission, false, null, Collections.emptySet(),
+        null, 0L, syncLatch);
     }
 
     static PendingOp removeTable(long ownerProcId, TableName table) {
-      return new PendingOp(AclOp.Type.REMOVE_TABLE, null, false, table, null, ownerProcId, null);
+      return new PendingOp(AclOp.Type.REMOVE_TABLE, null, false, table, Collections.emptySet(),
+        null, ownerProcId, null);
+    }
+
+    static PendingOp removeTableFamilies(long ownerProcId, TableName table, Set<byte[]> families) {
+      return new PendingOp(AclOp.Type.REMOVE_TABLE, null, false, table, families, null, ownerProcId,
+        null);
     }
 
     static PendingOp removeNamespace(long ownerProcId, String namespace) {
-      return new PendingOp(AclOp.Type.REMOVE_NAMESPACE, null, false, null, namespace, ownerProcId,
-        null);
+      return new PendingOp(AclOp.Type.REMOVE_NAMESPACE, null, false, null, Collections.emptySet(),
+        namespace, ownerProcId, null);
     }
 
     /** For the procedure: a recovered procedure has no callers to acknowledge any more. */
@@ -223,8 +190,9 @@ public class AclManager implements AclView {
       this.mergeExisting = proto.getMergeExisting();
       this.table =
         proto.hasTableName() ? TableName.valueOf(proto.getTableName().toByteArray()) : null;
-      this.namespace =
-        proto.hasNamespaceName() ? Bytes.toString(proto.getNamespaceName().toByteArray()) : null;
+      this.families = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
+      proto.getFamilyNameList().stream().map(ByteString::toByteArray).forEach(families::add);
+      this.namespace = proto.hasNamespaceName() ? proto.getNamespaceName().toStringUtf8() : null;
       this.ownerProcId = proto.getOwnerProcId();
       this.syncLatch = null;
     }
@@ -238,8 +206,11 @@ public class AclManager implements AclView {
       if (table != null) {
         builder.setTableName(ByteString.copyFrom(table.getName()));
       }
+      for (byte[] family : families) {
+        builder.addFamilyName(ByteString.copyFrom(family));
+      }
       if (namespace != null) {
-        builder.setNamespaceName(ByteString.copyFrom(Bytes.toBytes(namespace)));
+        builder.setNamespaceName(ByteString.copyFromUtf8(namespace));
       }
       return builder.build();
     }
@@ -287,7 +258,7 @@ public class AclManager implements AclView {
    * cell timestamps carry the master assigned write order. Advances the timestamp clock of the
    * snapshot; callers hold the write lock.
    */
-  public long nextTimestamp() {
+  long nextTimestamp() {
     long ts = Math.max(EnvironmentEdgeManager.currentTime(), snapshot.getTs() + 1);
     snapshot = snapshot.withTs(ts);
     return ts;
@@ -316,6 +287,22 @@ public class AclManager implements AclView {
   public CompletableFuture<Long> revoke(UserPermission userPermission,
     ProcedurePrepareLatch syncLatch) {
     return enqueue(PendingOp.revoke(userPermission, syncLatch));
+  }
+
+  public CompletableFuture<Long> removeTable(long ownerProcId, TableName table) {
+    // TODO:
+    return null;
+  }
+
+  public CompletableFuture<Long> removeTableFamilies(long ownerProcId, TableName table,
+    List<byte[]> families) {
+    // TODO:
+    return null;
+  }
+
+  public CompletableFuture<Long> removeNamespace(long ownerProcId, String namespace) {
+    // TODO:
+    return null;
   }
 
   private synchronized CompletableFuture<Long> enqueue(PendingOp op) {
@@ -410,82 +397,57 @@ public class AclManager implements AclView {
     return masterServices.getMasterProcedureExecutor().submitProcedure(procedure);
   }
 
-  /**
-   * Fills in the exact content to write for the changes that do not carry it in the request: the
-   * action set a merge grant lands on, and what remains of a permission after a partial revoke.
-   * Called by the prepare step of {@link RefreshAclProcedure} before anything is written, so the
-   * resolved content is persisted with the procedure and the write step replays it instead of
-   * recomputing it against a table that already carries part of the batch. Changes queued behind
-   * one another resolve against what the ones in front of them will write, so a batch lands exactly
-   * as its changes were queued.
-   */
-  public void resolveOps(List<PendingOp> ops) throws IOException {
-    synchronized (writeLock) {
-      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-        // the entry states as this batch changes them, seeded from the table at the first change
-        Map<byte[], ListMultimap<String, UserPermission>> states =
-          new TreeMap<>(Bytes.BYTES_RAWCOMPARATOR);
-        for (PendingOp op : ops) {
-          byte[] entry = entryKey(op);
-          ListMultimap<String, UserPermission> state = states.get(entry);
-          if (state == null) {
-            state = ArrayListMultimap
-              .create(PermissionStorage.getPermissions(t, entry, null, null, null, false));
-            states.put(entry, state);
-          }
-          if (op.needsResolve()) {
-            op.resolveTo(resolveActions(op, state));
-          }
-          applyToState(op, state);
-        }
-      }
-    }
+  private Table getAclTable() throws IOException {
+    return masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME);
   }
 
   /**
-   * Writes one change to {@code hbase:acl}. The content is what {@link #resolveOps} computed, or
-   * what the request carried: the write only lands fixed bytes and is idempotent, so the caller
-   * retries it until it succeeds, see {@link RefreshAclProcedure}.
-   * @return the master assigned timestamp of the write, 0 when there was nothing to write
+   * Compute the mutations which will be finally added to the acl table.
    */
-  public long writeOp(PendingOp op) throws IOException {
-    synchronized (writeLock) {
-      try (Table t = masterServices.getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
-        long ts = nextTimestamp();
-        switch (op.type) {
-          case GRANT:
-            PermissionStorage.addUserPermission(conf, op.userPermission, t, false, ts);
-            break;
-          case REVOKE:
-            if (hasActions(op.userPermission)) {
-              // a partial revoke: the prepare step resolved it to the actions that remain for the
-              // user, and the write lands them as the entry's value
-              PermissionStorage.addUserPermission(conf, op.userPermission, t, false, ts);
-            } else {
-              PermissionStorage.removeUserPermission(conf, op.userPermission, t, ts);
-            }
-            break;
-          case REMOVE_TABLE:
-            PermissionStorage.removeTablePermissions(conf, op.table, t, ts);
-            break;
-          case REMOVE_NAMESPACE:
-            PermissionStorage.removeNamespacePermissions(conf, op.namespace, t, ts);
-            break;
-          default:
-            throw new UnsupportedOperationException("unhandled acl op=" + op.type);
-        }
-        return ts;
-      } catch (TableNotFoundException e) {
-        if (!isCleanupOp(op)) {
-          throw e;
-        }
-        // a cleanup op on a cluster without hbase:acl: nothing was ever recorded for the deleted
-        // table or namespace, so there is nothing to clean up
-        LOG.debug("No {} yet, nothing to clean up for {}", PermissionStorage.ACL_TABLE_NAME,
-          op.type);
-        return 0L;
+  public Pair<List<Mutation>, List<AclSnapshot.EntryUpdate>>
+    toMutationsAndUpdates(List<PendingOp> ops) throws IOException {
+    List<Mutation> mutations = new ArrayList<>();
+    List<AclSnapshot.EntryUpdate> updates = new ArrayList<>();
+    long ts = nextTimestamp();
+    for (PendingOp op : ops) {
+      Pair<? extends Mutation, AclSnapshot.EntryUpdate> pair;
+      switch (op.type) {
+        case GRANT:
+          try (Table table = getAclTable()) {
+            pair = PermissionStorage.genAddUserPermission(conf, op.userPermission, op.mergeExisting,
+              ts, table);
+          }
+          break;
+        case REVOKE:
+          try (Table table = getAclTable()) {
+            pair = PermissionStorage.genRemoveUserPermission(conf, op.userPermission, ts, table);
+          }
+          break;
+        case REMOVE_TABLE:
+          try (Table table = getAclTable()) {
+            pair = PermissionStorage.genRemoveTablePermissions(conf, op.table, ts);
+          }
+          break;
+        case REMOVE_FAMILIES:
+          try (Table table = getAclTable()) {
+            pair = PermissionStorage.genRemoveTableFamiliesPermissions(conf, op.table, op.families,
+              ts, table);
+          }
+          break;
+        case REMOVE_NAMESPACE:
+          try (Table table = getAclTable()) {
+            pair = PermissionStorage.genRemoveNamespacePermissions(conf, op.namespace, ts);
+          }
+          break;
+        default:
+          throw new IllegalArgumentException("Unexpected value: " + op.type);
+      }
+      if (pair != null) {
+        mutations.add(pair.getFirst());
+        updates.add(pair.getSecond());
       }
     }
+    return Pair.newPair(mutations, updates);
   }
 
   /**
@@ -530,6 +492,7 @@ public class AclManager implements AclView {
   private static byte[] entryKey(PendingOp op) {
     switch (op.type) {
       case REMOVE_TABLE:
+      case REMOVE_FAMILIES:
         return op.table.getName();
       case REMOVE_NAMESPACE:
         return Bytes.toBytes(PermissionStorage.toNamespaceEntry(op.namespace));

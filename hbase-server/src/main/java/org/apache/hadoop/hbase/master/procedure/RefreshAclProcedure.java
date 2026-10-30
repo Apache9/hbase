@@ -21,23 +21,32 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.LongConsumer;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.procedure2.ProcedureSuspendedException;
+import org.apache.hadoop.hbase.procedure2.ProcedureUtil;
 import org.apache.hadoop.hbase.procedure2.ProcedureYieldException;
 import org.apache.hadoop.hbase.procedure2.StateMachineProcedure;
 import org.apache.hadoop.hbase.security.access.AclChangeSet;
 import org.apache.hadoop.hbase.security.access.AclManager;
+import org.apache.hadoop.hbase.security.access.AclManager.PendingOp;
+import org.apache.hadoop.hbase.security.access.AclSnapshot;
+import org.apache.hadoop.hbase.security.access.PermissionStorage;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.RetryCounter;
 import org.apache.hadoop.hbase.util.RetryCounterFactory;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclEntryUpdate;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.AclOp;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.RefreshAclState;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.RefreshAclStateData;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ProcedureProtos;
 
 /**
  * Applies a batch of queued ACL changes to {@code hbase:acl} and broadcasts the resulting entry
@@ -84,10 +93,13 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
 
   private List<AclManager.PendingOp> ops;
 
-  /** Entry states read after the writes, filled in by the snapshot step and then broadcast. */
-  private List<AclEntryUpdate> updates;
+  private List<Mutation> aclMutations;
+
+  private List<AclSnapshot.EntryUpdate> aclUpdates;
 
   private long ts;
+
+  private RetryCounter retryCounter;
 
   /** For the framework to create the procedure on replay. */
   public RefreshAclProcedure() {
@@ -97,46 +109,75 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     this.ops = ops;
   }
 
+  private ProcedureSuspendedException suspend(Configuration conf, LongConsumer backoffConsumer)
+    throws ProcedureSuspendedException {
+    if (retryCounter == null) {
+      retryCounter = ProcedureUtil.createRetryCounter(conf);
+    }
+    long backoff = retryCounter.getBackoffTimeAndIncrementAttempts();
+    backoffConsumer.accept(backoff);
+    throw suspend(Math.toIntExact(backoff), true);
+  }
+
+  private final void resetRetry() {
+    retryCounter = null;
+  }
+
+  @Override
+  protected synchronized boolean setTimeoutFailure(MasterProcedureEnv env) {
+    setState(ProcedureProtos.ProcedureState.RUNNABLE);
+    env.getProcedureScheduler().addFront(this);
+    return false;
+  }
+
   @Override
   protected Flow executeFromState(MasterProcedureEnv env, RefreshAclState state)
     throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     switch (state) {
       case REFRESH_ACL_PREPARE: {
-        // compute the content to write for the changes that do not carry it and let the state
-        // transition persist it before anything touches hbase:acl: the write step then replays
-        // the resolved content and never recomputes it against a table that already carries part
-        // of the batch
-        retryUntilDone("acl resolve", () -> {
-          env.getMasterServices().getAclManager().resolveOps(ops);
-          return null;
-        });
+        Pair<List<Mutation>, List<AclSnapshot.EntryUpdate>> pair;
+        try {
+          pair = env.getMasterServices().getAclManager().toMutationsAndUpdates(ops);
+        } catch (IOException e) {
+          suspend(env.getMasterConfiguration(), backoff -> LOG
+            .warn("Failed to compute mutations for writing to acl table, sleep {} ms", backoff, e));
+        }
+        resetRetry();
+        aclMutations = pair.getFirst();
+        if (aclMutations.isEmpty()) {
+          assert pair.getSecond().isEmpty();
+          LOG.info("No acl entry to update, quit...");
+          return Flow.NO_MORE_STATE;
+        }
+        aclUpdates = pair.getSecond();
+        ts = aclMutations.stream().mapToLong(Mutation::getTimestamp).max().getAsLong();
         setNextState(RefreshAclState.REFRESH_ACL_WRITE);
         return Flow.HAS_MORE_STATE;
       }
       case REFRESH_ACL_WRITE: {
-        long maxTs = 0L;
-        for (int i = 0; i < ops.size(); i++) {
-          AclManager.PendingOp op = ops.get(i);
-          // the write content is fixed and the writes are idempotent: retry until they land,
-          // there is no rollback of a partial batch to fall back to
-          maxTs = Math.max(maxTs, retryUntilDone("acl write " + (i + 1) + " of " + ops.size(),
-            () -> env.getMasterServices().getAclManager().writeOp(op)));
-          // the write landed: acknowledge its caller, old clients return at this point
+        try (Table aclTable =
+          env.getMasterServices().getConnection().getTable(PermissionStorage.ACL_TABLE_NAME)) {
+          Object[] results = new Object[aclMutations.size()];
+          aclTable.batch(aclMutations, results);
+        } catch (IOException e) {
+          suspend(env.getMasterConfiguration(),
+            backoff -> LOG.warn("Failed to write to acl table, sleep {} ms", backoff, e));
+        }
+        resetRetry();
+        // the write landed: acknowledge its caller, old clients return at this point
+        for (PendingOp op : ops) {
           ProcedurePrepareLatch.releaseLatch(op.syncLatch, this);
         }
-        ts = maxTs;
-        setNextState(RefreshAclState.REFRESH_ACL_SNAPSHOT);
+        setNextState(RefreshAclState.REFRESH_ACL_DISPATCH);
         return Flow.HAS_MORE_STATE;
       }
       case REFRESH_ACL_SNAPSHOT: {
-        // generate the new AclSnapshot from the entries as the batch left them: the writes are
-        // done and replay exactly, so what is read here is what the batch produced
-        updates = retryUntilDone("acl snapshot",
-          () -> env.getMasterServices().getAclManager().applyEntryStates(ops, ts));
+        // TODO:
         setNextState(RefreshAclState.REFRESH_ACL_DISPATCH);
         return Flow.HAS_MORE_STATE;
       }
       case REFRESH_ACL_DISPATCH: {
+        // TODO:
         RefreshAclRemoteProcedure[] subProcedures =
           env.getMasterServices().getServerManager().getOnlineServersList().stream()
             .map(sn -> new RefreshAclRemoteProcedure(sn, new AclChangeSet(updates, ts)))
@@ -239,13 +280,7 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
 
   @Override
   protected RefreshAclState getInitialState() {
-    for (AclManager.PendingOp op : ops) {
-      if (op.needsResolve()) {
-        return RefreshAclState.REFRESH_ACL_PREPARE;
-      }
-    }
-    // every change carries its exact write content: skip the compute step and write right away
-    return RefreshAclState.REFRESH_ACL_WRITE;
+    return RefreshAclState.REFRESH_ACL_PREPARE;
   }
 
   @Override
@@ -256,9 +291,6 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
       for (AclManager.PendingOp op : ops) {
         builder.addOps(op.toProto());
       }
-    }
-    if (updates != null) {
-      builder.addAllUpdates(updates);
     }
     serializer.serialize(builder.build());
   }
@@ -272,7 +304,6 @@ public class RefreshAclProcedure extends StateMachineProcedure<MasterProcedureEn
     for (AclOp proto : data.getOpsList()) {
       ops.add(new AclManager.PendingOp(proto));
     }
-    updates = new ArrayList<>(data.getUpdatesList());
   }
 
   @Override

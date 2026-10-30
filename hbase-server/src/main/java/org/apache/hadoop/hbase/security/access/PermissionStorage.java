@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase.security.access;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -114,61 +115,67 @@ public final class PermissionStorage {
   private static final Logger LOG = LoggerFactory.getLogger(PermissionStorage.class);
 
   /**
-   * Stores a new user permission grant in the access control lists table.
-   * @param conf     the configuration
-   * @param userPerm the details of the permission to be granted
-   * @param t        acl table instance. It is closed upon method return.
-   * @throws IOException in the case of an error accessing the metadata table
+   * Build the {@code Put} instance for a new user permission grant, which will be put into the acl
+   * table.
+   * @param conf                     the configuration
+   * @param userPerm                 the details of the permission to be granted
+   * @param mergeExistingPermissions whether to merge the new permissions with the existing
+   *                                 permissions.
+   * @param ts                       the timestamp to stamp the write with, the master assigns
+   *                                 monotonically increasing timestamps so the cell timestamps
+   *                                 carry the write order
+   * @param table                    the acl table instance. when {@code mergeExistingPermissions}
+   *                                 is true, we need to read from the acl table to get the existing
+   *                                 permissions.
+   * @return A {@code Put} instance for putting to acl table
+   * @throws IOException in the case of an error accessing the acl table
    */
-  public static void addUserPermission(Configuration conf, UserPermission userPerm, Table t,
-    boolean mergeExistingPermissions) throws IOException {
-    addUserPermission(conf, userPerm, t, mergeExistingPermissions,
-      EnvironmentEdgeManager.currentTime());
-  }
-
-  /**
-   * Stores a new user permission grant in the access control lists table.
-   * @param ts the timestamp to stamp the write with, the master assigns monotonically increasing
-   *           timestamps so the cell timestamps carry the write order
-   */
-  public static void addUserPermission(Configuration conf, UserPermission userPerm, Table t,
-    boolean mergeExistingPermissions, long ts) throws IOException {
+  public static Pair<Put, AclSnapshot.EntryUpdate> genAddUserPermission(Configuration conf,
+    UserPermission userPerm, boolean mergeExistingPermissions, long ts, Table table)
+    throws IOException {
     Permission permission = userPerm.getPermission();
     Permission.Action[] actions = permission.getActions();
     byte[] rowKey = userPermissionRowKey(permission);
     Put p = new Put(rowKey, ts);
     byte[] key = userPermissionKey(userPerm);
 
-    if ((actions == null) || (actions.length == 0)) {
+    if (actions == null || actions.length == 0) {
       String msg = "No actions associated with user '" + userPerm.getUser() + "'";
       LOG.warn(msg);
       throw new IOException(msg);
     }
 
-    Set<Permission.Action> actionSet = new TreeSet<Permission.Action>();
+    Permission toAdd;
     if (mergeExistingPermissions) {
-      List<UserPermission> perms =
-        toUserPermissions(getPermissions(t, rowKey, null, null, null, false));
-      UserPermission currentPerm = null;
-      for (UserPermission perm : perms) {
-        if (userPerm.equalsExceptActions(perm)) {
-          currentPerm = perm;
+      List<UserPermission> userPerms =
+        toUserPermissions(getPermissions(table, rowKey, null, null, null, false));
+      UserPermission currentUserPerm = null;
+      for (UserPermission up : userPerms) {
+        if (userPerm.equalsExceptActions(up)) {
+          currentUserPerm = up;
           break;
         }
       }
 
-      if (currentPerm != null && currentPerm.getPermission().getActions() != null) {
-        actionSet.addAll(Arrays.asList(currentPerm.getPermission().getActions()));
+      if (currentUserPerm != null && currentUserPerm.getPermission().getActions() != null) {
+        Permission currentPerm = currentUserPerm.getPermission();
+        // merge current action with new action.
+        Set<Permission.Action> actionSet = new TreeSet<>();
+        actionSet.addAll(Arrays.asList(currentPerm.getActions()));
+        actionSet.addAll(Arrays.asList(actions));
+        currentPerm.setActions(actionSet.toArray(Permission.Action[]::new));
+        toAdd = currentPerm;
+      } else {
+        toAdd = permission;
       }
+    } else {
+      toAdd = permission;
     }
 
-    // merge current action with new action.
-    actionSet.addAll(Arrays.asList(actions));
-
     // serialize to byte array.
-    byte[] value = new byte[actionSet.size()];
+    byte[] value = new byte[toAdd.getActions().length];
     int index = 0;
-    for (Permission.Action action : actionSet) {
+    for (Permission.Action action : toAdd.getActions()) {
       value[index++] = action.code();
     }
     p.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(p.getRow())
@@ -178,83 +185,77 @@ public final class PermissionStorage {
       LOG.debug("Writing permission with rowKey " + Bytes.toString(rowKey) + " "
         + Bytes.toString(key) + ": " + Bytes.toStringBinary(value));
     }
-    try {
-      t.put(p);
-    } finally {
-      t.close();
-    }
+    return Pair.newPair(p,
+      AclSnapshot.EntryUpdate.update(p.getRow(), new UserPermission(userPerm.getUser(), toAdd)));
   }
 
-  static void addUserPermission(Configuration conf, UserPermission userPerm, Table t)
-    throws IOException {
-    addUserPermission(conf, userPerm, t, false, EnvironmentEdgeManager.currentTime());
+  private static Pair<Delete, AclSnapshot.EntryUpdate> genRemovePermissionRecord(Configuration conf,
+    UserPermission userPerm, long ts) throws IOException {
+    byte[] entry = userPermissionRowKey(userPerm.getPermission());
+    return Pair.newPair(
+      new Delete(entry, ts).addColumns(ACL_LIST_FAMILY, userPermissionKey(userPerm)),
+      AclSnapshot.EntryUpdate.delete(entry, Collections.singletonList(userPerm)));
   }
 
   /**
-   * Removes a previously granted permission from the stored access control lists. The
-   * {@link TablePermission} being removed must exactly match what is stored -- no wildcard matching
-   * is attempted. Ie, if user "bob" has been granted "READ" access to the "data" table, but only to
-   * column family plus qualifier "info:colA", then trying to call this method with only user "bob"
-   * and the table name "data" (but without specifying the column qualifier "info:colA") will have
-   * no effect.
+   * Generate the {@code Put} or {@code Delete} instance when removing a previously granted
+   * permission from the stored access control lists.
+   * <p>
+   * The {@link TablePermission} being removed must exactly match what is stored -- no wildcard
+   * matching is attempted. Ie, if user "bob" has been granted "READ" access to the "data" table,
+   * but only to column family plus qualifier "info:colA", then trying to call this method with only
+   * user "bob" and the table name "data" (but without specifying the column qualifier "info:colA")
+   * will have no effect.
    * @param conf     the configuration
    * @param userPerm the details of the permission to be revoked
-   * @param t        acl table
+   * @param ts       the timestamp to stamp the write with, the master assigns monotonically
+   *                 increasing timestamps so the cell timestamps carry the write order
+   * @param table    acl table
    * @throws IOException if there is an error accessing the metadata table
+   * @return @return A {@code Put} or {@code Delete} instance for writing to acl table
    */
-  public static void removeUserPermission(Configuration conf, UserPermission userPerm, Table t)
-    throws IOException {
-    removeUserPermission(conf, userPerm, t, EnvironmentEdgeManager.currentTime());
-  }
-
-  /**
-   * Removes a previously granted permission, see
-   * {@link #removeUserPermission(Configuration, UserPermission, Table)}. The write is stamped with
-   * the given timestamp.
-   */
-  public static void removeUserPermission(Configuration conf, UserPermission userPerm, Table t,
-    long ts) throws IOException {
+  public static Pair<? extends Mutation, AclSnapshot.EntryUpdate> genRemoveUserPermission(
+    Configuration conf, UserPermission userPerm, long ts, Table table) throws IOException {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Removing permission {}", userPerm);
+    }
     if (
       null == userPerm.getPermission().getActions()
         || userPerm.getPermission().getActions().length == 0
     ) {
-      removePermissionRecord(conf, userPerm, t, ts);
-    } else {
-      // Get all the global user permissions from the acl table
-      List<UserPermission> permsList = toUserPermissions(
-        getPermissions(t, userPermissionRowKey(userPerm.getPermission()), null, null, null, false));
-      List<Permission.Action> remainingActions = new ArrayList<>();
-      List<Permission.Action> dropActions = Arrays.asList(userPerm.getPermission().getActions());
-      for (UserPermission perm : permsList) {
-        // Find the user and remove only the requested permissions
-        if (perm.getUser().equals(userPerm.getUser())) {
-          for (Permission.Action oldAction : perm.getPermission().getActions()) {
-            if (!dropActions.contains(oldAction)) {
-              remainingActions.add(oldAction);
-            }
+      return genRemovePermissionRecord(conf, userPerm, ts);
+    }
+    // Get all the global user permissions from the acl table
+    List<UserPermission> permsList = toUserPermissions(getPermissions(table,
+      userPermissionRowKey(userPerm.getPermission()), null, null, null, false));
+    List<Permission.Action> remainingActions = new ArrayList<>();
+    List<Permission.Action> dropActions = Arrays.asList(userPerm.getPermission().getActions());
+    for (UserPermission perm : permsList) {
+      // Find the user and remove only the requested permissions
+      if (perm.getUser().equals(userPerm.getUser())) {
+        for (Permission.Action oldAction : perm.getPermission().getActions()) {
+          if (!dropActions.contains(oldAction)) {
+            remainingActions.add(oldAction);
           }
-          if (!remainingActions.isEmpty()) {
-            perm.getPermission()
-              .setActions(remainingActions.toArray(new Permission.Action[remainingActions.size()]));
-            addUserPermission(conf, perm, t, false, ts);
-          } else {
-            removePermissionRecord(conf, userPerm, t, ts);
-          }
-          break;
+        }
+        if (!remainingActions.isEmpty()) {
+          perm.getPermission()
+            .setActions(remainingActions.toArray(new Permission.Action[remainingActions.size()]));
+          return genAddUserPermission(conf, userPerm, false, ts, table);
+        } else {
+          return genRemovePermissionRecord(conf, userPerm, ts);
         }
       }
     }
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Removed permission " + userPerm.toString());
-    }
+    return null;
   }
 
-  private static void removePermissionRecord(Configuration conf, UserPermission userPerm, Table t,
-    long ts) throws IOException {
-    Delete d = new Delete(userPermissionRowKey(userPerm.getPermission()), ts);
-    d.addColumns(ACL_LIST_FAMILY, userPermissionKey(userPerm));
+  static void addUserPermission(Configuration conf, UserPermission userPerm, Table t)
+    throws IOException {
+    Put p = genAddUserPermission(conf, userPerm, false, EnvironmentEdgeManager.currentTime(), t)
+      .getFirst();
     try {
-      t.delete(d);
+      t.put(p);
     } finally {
       t.close();
     }
@@ -265,79 +266,58 @@ public final class PermissionStorage {
    */
   static void removeTablePermissions(Configuration conf, TableName tableName, Table t)
     throws IOException {
-    removeTablePermissions(conf, tableName, t, EnvironmentEdgeManager.currentTime());
+    Delete d =
+      genRemoveTablePermissions(conf, tableName, EnvironmentEdgeManager.currentTime()).getFirst();
+    try {
+      t.delete(d);
+    } finally {
+      t.close();
+    }
   }
 
-  static void removeTablePermissions(Configuration conf, TableName tableName, Table t, long ts)
-    throws IOException {
-    Delete d = new Delete(tableName.getName(), ts);
-    d.addFamily(ACL_LIST_FAMILY);
-
+  public static Pair<Delete, AclSnapshot.EntryUpdate> genRemoveTablePermissions(Configuration conf,
+    TableName tableName, long ts) {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Removing permissions of removed table " + tableName);
     }
-    try {
-      t.delete(d);
-    } finally {
-      t.close();
-    }
+    byte[] entry = tableName.getName();
+    return Pair.newPair(new Delete(tableName.getName(), ts).addFamily(ACL_LIST_FAMILY),
+      AclSnapshot.EntryUpdate.delete(entry));
   }
 
-  /**
-   * Remove specified namespace from the acl table.
-   */
-  static void removeNamespacePermissions(Configuration conf, String namespace, Table t)
+  public static Pair<Delete, AclSnapshot.EntryUpdate> genRemoveTableFamiliesPermissions(
+    Configuration conf, TableName tableName, Set<byte[]> families, long ts, Table table)
     throws IOException {
-    removeNamespacePermissions(conf, namespace, t, EnvironmentEdgeManager.currentTime());
-  }
-
-  static void removeNamespacePermissions(Configuration conf, String namespace, Table t, long ts)
-    throws IOException {
-    byte[] entry = Bytes.toBytes(toNamespaceEntry(namespace));
-    Delete d = new Delete(entry, ts);
-    d.addFamily(ACL_LIST_FAMILY);
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Removing permissions of removed namespace " + namespace);
+      LOG.debug("Removing permissions of removed families {} from table {}",
+        families.stream().map(Bytes::toStringBinary).collect(Collectors.joining(", ")), tableName);
     }
-
-    try {
-      t.delete(d);
-    } finally {
-      t.close();
-    }
-  }
-
-  /**
-   * Remove permissions of the specified column families of the given table from the acl table.
-   */
-  static void removeTableColumnFamiliesPermissions(Configuration conf, TableName tableName,
-    Collection<byte[]> columns, Table t, long ts) throws IOException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Removing permissions of removed columns {} from table {}",
-        columns.stream().map(Bytes::toStringBinary).collect(Collectors.joining(", ")), tableName);
-    }
-    try {
-      Set<byte[]> families = new TreeSet<>(Bytes.BYTES_COMPARATOR);
-      families.addAll(columns);
-      ListMultimap<String, UserPermission> perms = getTablePermissions(conf, tableName, t);
-      Delete d = new Delete(tableName.getName(), ts);
-      boolean found = false;
-      for (UserPermission perm : perms.values()) {
-        Permission permission = perm.getPermission();
-        if (permission instanceof TablePermission) {
-          byte[] family = ((TablePermission) permission).getFamily();
-          if (family != null && families.contains(family)) {
-            d.addColumns(ACL_LIST_FAMILY, userPermissionKey(perm));
-            found = true;
-          }
+    ListMultimap<String, UserPermission> perms = getTablePermissions(null, tableName, table);
+    Delete d = new Delete(tableName.getName(), ts);
+    List<UserPermission> toRemove = new ArrayList<>();
+    for (UserPermission perm : perms.values()) {
+      Permission permission = perm.getPermission();
+      if (permission instanceof TablePermission) {
+        byte[] family = ((TablePermission) permission).getFamily();
+        if (family != null && families.contains(family)) {
+          d.addColumns(ACL_LIST_FAMILY, userPermissionKey(perm));
+          toRemove.add(perm);
         }
       }
-      if (found) {
-        t.delete(d);
-      }
-    } finally {
-      t.close();
     }
+    return toRemove.isEmpty()
+      ? null
+      : Pair.newPair(d, AclSnapshot.EntryUpdate.delete(d.getRow(), toRemove));
+  }
+
+  public static Pair<Delete, AclSnapshot.EntryUpdate>
+    genRemoveNamespacePermissions(Configuration conf, String namespace, long ts) {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Removing permissions of removed namespace {}", namespace);
+    }
+    byte[] entry = Bytes.toBytes(toNamespaceEntry(namespace));
+    return Pair.newPair(new Delete(entry, ts).addFamily(ACL_LIST_FAMILY),
+      AclSnapshot.EntryUpdate.delete(entry));
   }
 
   static byte[] userPermissionRowKey(Permission permission) {

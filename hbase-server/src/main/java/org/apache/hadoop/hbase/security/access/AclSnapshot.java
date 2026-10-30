@@ -65,30 +65,35 @@ public final class AclSnapshot {
    */
   public static final class EntryUpdate {
     private final byte[] entry;
-    private final ListMultimap<String, UserPermission> perms;
+    private final List<UserPermission> perms;
     private final boolean deleted;
 
-    private EntryUpdate(byte[] entry, ListMultimap<String, UserPermission> perms, boolean deleted) {
+    private EntryUpdate(byte[] entry, List<UserPermission> perms, boolean deleted) {
       this.entry = entry;
       this.perms = perms;
       this.deleted = deleted;
     }
 
-    /** Replaces the whole permission set of the entry. */
-    public static EntryUpdate replace(byte[] entry, ListMultimap<String, UserPermission> perms) {
-      return new EntryUpdate(entry, perms, false);
+    /** Update the UserPermission for this entry. */
+    public static EntryUpdate update(byte[] entry, UserPermission perm) {
+      return new EntryUpdate(entry, Collections.singletonList(perm), false);
     }
 
     /** Marks the entry as removed. */
-    public static EntryUpdate deleted(byte[] entry) {
-      return new EntryUpdate(entry, null, true);
+    public static EntryUpdate delete(byte[] entry) {
+      return new EntryUpdate(entry, Collections.emptyList(), true);
+    }
+
+    /** Remove the given UserPermissions for the given entry */
+    public static EntryUpdate delete(byte[] entry, List<UserPermission> perms) {
+      return new EntryUpdate(entry, perms, true);
     }
 
     public byte[] getEntry() {
       return entry;
     }
 
-    public ListMultimap<String, UserPermission> getPermissions() {
+    public List<UserPermission> getPermissions() {
       return perms;
     }
 
