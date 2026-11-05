@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.security.access;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,12 +66,12 @@ public final class AclSnapshot {
    */
   public static final class EntryUpdate {
     private final byte[] entry;
-    private final List<UserPermission> perms;
+    private final List<UserPermission> userPerms;
     private final boolean deleted;
 
-    private EntryUpdate(byte[] entry, List<UserPermission> perms, boolean deleted) {
+    private EntryUpdate(byte[] entry, List<UserPermission> userPerms, boolean deleted) {
       this.entry = entry;
-      this.perms = perms;
+      this.userPerms = userPerms;
       this.deleted = deleted;
     }
 
@@ -94,7 +95,7 @@ public final class AclSnapshot {
     }
 
     public List<UserPermission> getPermissions() {
-      return perms;
+      return userPerms;
     }
 
     public boolean isDeleted() {
@@ -143,6 +144,78 @@ public final class AclSnapshot {
   /** This snapshot's content under a new timestamp; advances the holder's timestamp clock. */
   AclSnapshot withTs(long ts) {
     return new AclSnapshot(ts, globalCache, namespaceCache, tableCache);
+  }
+
+  private void applyGlobalEntryUpdate(EntryUpdate update, Map<String, GlobalPermission> global) {
+    if (update.isDeleted()) {
+      // removing the whole global entry is not a valid operation
+      assert !update.userPerms.isEmpty();
+      for (UserPermission userPerm : update.userPerms) {
+        // Here we are safe to remove the user completely, if we only revoke partial actions, we
+        // will generate a new permission to replace the old one, instead of generating a delete.
+        // Please see the logic in PermissionStorage for more details.
+        global.remove(userPerm.getUser());
+      }
+    } else {
+      assert !update.userPerms.isEmpty();
+      for (UserPermission userPerm : update.userPerms) {
+        global.put(userPerm.getUser(), (GlobalPermission) userPerm.getPermission());
+      }
+    }
+  }
+
+  private void applyNamespaceEntryUpdate(EntryUpdate update,
+    Map<String, Map<String, Set<NamespacePermission>>> ns) {
+    String nsName = Bytes.toString(PermissionStorage.fromNamespaceEntry(update.entry));
+    if (update.isDeleted()) {
+      if (update.userPerms.isEmpty()) {
+        // remove the namespace completely
+        ns.remove(nsName);
+      } else {
+        for (UserPermission userPerm : update.userPerms) {
+          Map<String, Set<NamespacePermission>> userPerms = ns.get(nsName);
+          // For namespace, it is also safe to remove the user permission completely, the reason is
+          // the same to the above global permission
+          if (userPerms != null) {
+            userPerms.remove(userPerm.getUser());
+          }
+        }
+      }
+    } else {
+      assert !update.userPerms.isEmpty();
+      for (UserPermission userPerm : update.userPerms) {
+        Map<String, Set<NamespacePermission>> userPerms =
+          ns.computeIfAbsent(nsName, k -> new HashMap<>());
+        Set<NamespacePermission> userNsPerms =
+          userPerms.computeIfAbsent(userPerm.getUser(), k -> new HashSet<>());
+        userNsPerms.add((NamespacePermission) userPerm.getPermission());
+      }
+    }
+  }
+
+  private void applyTableEntryUpdate(EntryUpdate update,
+    Map<TableName, Map<String, Set<TablePermission>>> table) {
+    if (update.isDeleted()) {
+      if (update.userPerms.isEmpty()) {
+
+      }
+    }
+  }
+
+  public AclSnapshot applyEntryUpdates(List<EntryUpdate> updates, long ts) {
+    Map<String, GlobalPermission> global = new HashMap<>(globalCache);
+    global.putAll(globalCache);
+    Map<String, Map<String, Set<NamespacePermission>>> ns = new HashMap<>(namespaceCache);
+    Map<TableName, Map<String, Set<TablePermission>>> table = new HashMap<>(tableCache);
+    for (EntryUpdate update : updates) {
+      if (PermissionStorage.isGlobalEntry(update.entry)) {
+
+      } else if (PermissionStorage.isNamespaceEntry(update.entry)) {
+
+      } else {
+
+      }
+    }
   }
 
   /**

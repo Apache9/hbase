@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.master.procedure.ProcedurePrepareLatch;
 import org.apache.hadoop.hbase.master.procedure.RefreshAclProcedure;
 import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.security.access.AclSnapshot.EntryUpdate;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
@@ -448,6 +449,10 @@ public class AclManager implements AclView {
       }
     }
     return Pair.newPair(mutations, updates);
+  }
+
+  public void applyEntryUpdates(List<EntryUpdate> updates, long ts) {
+
   }
 
   /**
