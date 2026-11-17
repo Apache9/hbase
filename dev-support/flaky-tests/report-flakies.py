@@ -30,7 +30,9 @@ Print help: report-flakies.py -h
 import argparse
 import logging
 import os
+import re
 import time
+import urllib.parse
 from collections import OrderedDict
 from jinja2 import Template
 
@@ -54,6 +56,12 @@ parser.add_argument('--max-builds', metavar='n', action='append', type=int,
 parser.add_argument('--is-yetus', metavar='True/False', action='append', choices=['True', 'False'],
                     help='True, if build is yetus style i.e. look for maven output in artifacts; '
                          'False, if maven output is in <url>/consoleText itself.')
+parser.add_argument('--nightlies-base', metavar='URL',
+                    help='Base url of the nightlies archive, e.g. '
+                         'https://nightlies.apache.org/hbase. '
+                         'When given, the console output (consoleText) that each non-yetus build '
+                         'published there is analyzed instead of the output kept on jenkins, so '
+                         'the statistics do not depend on jenkins build retention.')
 parser.add_argument('--excludes-threshold-flakiness', metavar='n', type=float, default=20.0,
                     required=False, help='Flakiness threshold for adding a test to excludes file')
 parser.add_argument('--excludes-threshold-runs', metavar='n', type=int, default=10,
@@ -91,7 +99,12 @@ def get_bad_tests(build_url, is_yetus):
     needed_fields="_class,building"
     if is_yetus:
         needed_fields+=",artifacts[fileName,relativePath]"
-    response = requests.get(build_url + "/api/json?tree=" + needed_fields).json()
+    try:
+        response = requests.get(build_url + "/api/json?tree=" + needed_fields).json()
+    except (requests.RequestException, ValueError):
+        logger.info("Can't read build information of %s (is the build still kept on jenkins?). "
+                    "Ignoring this build.", build_url)
+        return
     if response["building"]:
         logger.info("Skipping this build since it is in progress.")
         return {}
@@ -112,6 +125,45 @@ def get_bad_tests(build_url, is_yetus):
         logger.info("Ignoring build %s", build_url)
         return
     return build_result
+
+
+def nightlies_job_path(job_url):
+    """
+    Maps a jenkins job url to its directory in the nightlies archive, e.g.
+    'https://ci.example.org/job/HBase-Flaky-Tests/job/master/' -> 'HBase-Flaky-Tests/master'.
+    Returns None if the url doesn't look like a jenkins job url.
+    """
+    path = urllib.parse.urlparse(job_url).path
+    segments = path.split("/job/")[1:]
+    segments = [urllib.parse.unquote(segment.strip("/")) for segment in segments
+                if segment.strip("/")]
+    if not segments:
+        return None
+    return "/".join(segments)
+
+
+def nightlies_url(base, path):
+    return "/".join([base.rstrip("/")] + [urllib.parse.quote(segment, safe="")
+                                          for segment in path.split("/") if segment])
+
+
+def get_builds_from_nightlies(job_nightlies_url):
+    """
+    Lists the numbers of the builds which have a directory in the nightlies archive, newest first.
+    Returns None if the directory can't be listed.
+    """
+    try:
+        response = requests.get(job_nightlies_url + "/")
+    except requests.RequestException as error:
+        logger.info("Can't list %s: %s", job_nightlies_url, error)
+        return None
+    if response.status_code != 200:
+        logger.info("Can't list %s: HTTP status %s", job_nightlies_url, response.status_code)
+        return None
+    build_numbers = [int(number) for number in re.findall(r'href="(\d+)/"', response.text)]
+    if not build_numbers:
+        return None
+    return sorted(build_numbers, reverse=True)
 
 
 def expand_multi_config_projects(cli_args):
@@ -164,6 +216,10 @@ url_to_bad_test_results = OrderedDict()
 # Contains { <url> : [run_ids] }
 # Used for common min/max build ids when generating sparklines.
 url_to_build_ids = OrderedDict()
+# Contains { <url> : <base url for links to individual runs> }
+# Runs are linked to their nightlies directory when available, since the builds themselves may
+# no longer be kept on jenkins.
+link_bases = {}
 all_flaky_results = {}
 
 
@@ -172,22 +228,58 @@ expanded_urls = expand_multi_config_projects(args)
 for url_max_build in expanded_urls:
     url = url_max_build["url"]
     excludes = url_max_build["excludes"]
-    json_response = requests.get(url + "/api/json?tree=id,builds%5Bnumber,url%5D").json()
-    if "builds" in json_response:
-        builds = json_response["builds"]
-        logger.info("Analyzing job: %s", url)
-    else:
-        builds = [{'number': json_response["id"], 'url': url}]
-        logger.info("Analyzing build : %s", url)
+    is_yetus = url_max_build["is_yetus"]
+    # The console output that each build publishes to the nightlies archive allows computing the
+    # statistics without the builds kept on jenkins. Only non-yetus builds do this for now.
+    job_nightlies_url = None
+    builds = None
+    if args.nightlies_base is not None and not is_yetus:
+        job_path = nightlies_job_path(url)
+        candidate_url = nightlies_url(args.nightlies_base, job_path) if job_path else None
+        build_numbers = get_builds_from_nightlies(candidate_url) if candidate_url else None
+        if build_numbers is not None:
+            logger.info("Analyzing job: %s (builds from %s)", url, candidate_url)
+            job_nightlies_url = candidate_url
+            builds = [{'number': number, 'url': url.rstrip("/") + "/" + str(number)}
+                      for number in build_numbers]
+        else:
+            logger.info("Can't find console output of %s in the nightlies archive. Falling back "
+                        "to the builds kept on jenkins.", url)
+    if builds is None:
+        json_response = requests.get(url + "/api/json?tree=id,builds%5Bnumber,url%5D").json()
+        if "builds" in json_response:
+            builds = json_response["builds"]
+            logger.info("Analyzing job: %s", url)
+        else:
+            builds = [{'number': json_response["id"], 'url': url}]
+            logger.info("Analyzing build : %s", url)
+    link_bases[url] = job_nightlies_url if job_nightlies_url is not None else url
     build_id_to_results = {}
     num_builds = 0
+    num_probed = 0
+    fallback_budget = url_max_build["max_builds"]
     url_to_build_ids[url] = []
     build_ids_without_tests_run = []
     for build in builds:
         build_id = build["number"]
         if build_id in excludes:
             continue
-        result = get_bad_tests(build["url"], url_max_build['is_yetus'])
+        if num_builds == url_max_build["max_builds"]:
+            break
+        if num_probed >= 2 * url_max_build["max_builds"]:
+            logger.info("Giving up after probing %d builds without enough usable results.",
+                        num_probed)
+            break
+        num_probed += 1
+        result = None
+        if job_nightlies_url is not None:
+            result = findHangingTests.get_bad_tests(
+                "{}/{}/consoleText".format(job_nightlies_url, build_id))
+        if result is None and fallback_budget > 0:
+            # This build didn't publish its console output to the nightlies archive (e.g. it
+            # predates that); the output may still be available on jenkins.
+            fallback_budget -= 1
+            result = get_bad_tests(build["url"], is_yetus)
         if not result:
             continue
         if len(result[0]) > 0:
@@ -196,8 +288,6 @@ for url_max_build in expanded_urls:
             build_ids_without_tests_run.append(build_id)
         num_builds += 1
         url_to_build_ids[url].append(build_id)
-        if num_builds == url_max_build["max_builds"]:
-            break
     url_to_build_ids[url].sort()
 
     # Collect list of bad tests.
@@ -307,4 +397,5 @@ with open(os.path.join(dev_support_dir, "flaky-dashboard-template.html"), "r") a
 with open(output_dir + "/dashboard.html", "w") as f:
     datetime = time.strftime("%m/%d/%Y %H:%M:%S")
     f.write(template.render(datetime=datetime, bad_tests_count=len(bad_tests),
-                            results=url_to_bad_test_results, build_ids=url_to_build_ids))
+                            results=url_to_bad_test_results, build_ids=url_to_build_ids,
+                            link_bases=link_bases))

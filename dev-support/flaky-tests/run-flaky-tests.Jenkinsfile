@@ -26,8 +26,10 @@ pipeline {
     cron('H H/12 * * *') // See https://jenkins.io/doc/book/pipeline/syntax/#cron-syntax
   }
   options {
-    // this should roughly match how long we tell the flaky dashboard to look at
-    buildDiscarder(logRotator(numToKeepStr: '50'))
+    // Each build's console output is saved to the nightlies archive (see post below) and
+    // flaky-reporting.Jenkinsfile computes its flakiness data from there, so the analysis no
+    // longer depends on builds being kept here. Keep only a few builds for debugging.
+    buildDiscarder(logRotator(numToKeepStr: '10'))
     timeout (time: 2, unit: 'HOURS')
     timestamps()
   }
@@ -81,11 +83,18 @@ pipeline {
   post {
     always {
       junit testResults: "**/surefire-reports/*.xml", allowEmptyResults: true
+      // Save this build's console output to the nightlies archive with the test logs. It is the
+      // input of the flaky statistics computed by flaky-reporting.Jenkinsfile, which reads it from
+      // there so that the statistics don't depend on the builds kept on jenkins.
+      sh '''#!/usr/bin/env bash
+        curl --fail --silent --show-error -o consoleText "${BUILD_URL}consoleText" \
+          || echo "WARNING: could not save the console output of this build."
+      '''
       sshPublisher(publishers: [
         sshPublisherDesc(configName: 'Nightlies',
           transfers: [
             sshTransfer(remoteDirectory: "hbase/${JOB_NAME}/${BUILD_NUMBER}",
-              sourceFiles: "**/surefire-reports/*,**/test-data/*"
+              sourceFiles: "**/surefire-reports/*,**/test-data/*,consoleText"
             )
           ]
         )

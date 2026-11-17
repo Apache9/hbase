@@ -24,7 +24,9 @@ pipeline {
     cron('@daily')
   }
   options {
-    buildDiscarder(logRotator(numToKeepStr: '50'))
+    // Statistics are computed from the console output published to the nightlies archive (plus the
+    // yetus builds kept on jenkins), so only a few builds are kept here for debugging.
+    buildDiscarder(logRotator(numToKeepStr: '5'))
     timeout (time: 15, unit: 'MINUTES')
     timestamps()
   }
@@ -43,6 +45,9 @@ pipeline {
             set -x
           fi
           declare -a flaky_args
+          flaky_args=("${flaky_args[@]}" --nightlies-base "${ASF_NIGHTLIES}/hbase")
+          # Yetus builds don't publish their console output to the nightlies archive (yet), so
+          # their build output is read from jenkins and their builds have to be kept there.
           flaky_args=("${flaky_args[@]}" --urls "${JENKINS_URL}/job/HBase%20Nightly/job/${BRANCH_NAME}" --is-yetus True --max-builds 20)
           flaky_args=("${flaky_args[@]}" --urls "${JENKINS_URL}/job/HBase-Flaky-Tests/job/${BRANCH_NAME}" --is-yetus False --max-builds 50)
           docker build -t hbase-dev-support -f dev-support/flaky-tests/Dockerfile .

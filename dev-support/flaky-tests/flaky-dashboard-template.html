@@ -170,15 +170,16 @@ Legend : green: success, red: failed, yellow: timeout, blue: hanging
             <br/>
             <div id="{{ id }}"
                  style="display: none; width:300px; white-space: normal">
-                {% macro print_run_ids(url, run_ids) -%}
+                {% macro print_run_ids(base, run_ids) -%}
                 {% for i in run_ids %}
-                <a href="{{ url }}/{{ i }}">{{ i }}</a>&nbsp;
+                <a href="{{ base }}/{{ i }}">{{ i }}</a>&nbsp;
                 {% endfor %}
                 {%- endmacro %}
-                Failed : {{ print_run_ids(url, failed) }}<br/>
-                Timed Out : {{ print_run_ids(url, timeout) }}<br/>
-                Hanging : {{ print_run_ids(url, hanging) }}<br/>
-                Succeeded : {{ print_run_ids(url, success) }}
+                {% set run_link_base = link_bases.get(url, url) %}
+                Failed : {{ print_run_ids(run_link_base, failed) }}<br/>
+                Timed Out : {{ print_run_ids(run_link_base, timeout) }}<br/>
+                Hanging : {{ print_run_ids(run_link_base, hanging) }}<br/>
+                Succeeded : {{ print_run_ids(run_link_base, success) }}
             </div>
         </td>
     </tr>
